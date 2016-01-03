@@ -6,13 +6,17 @@
 //#define _USE_MATH_DEFINES
 //#include "math.h"
 #include <vector_types.h>
-
+class timestep;
 class ParticleReader:public Reader
 {
 	int num;
 	float3* pos;
+	timestep* ts;
 public:
 	ParticleReader(const char* filename) :Reader(filename){ Load(); }
+	float3* GetPos();
+	int GetNum();
+	void GetDataRange(float3& posMin, float3& posMax);
 protected:
 	void Load() override;
 };

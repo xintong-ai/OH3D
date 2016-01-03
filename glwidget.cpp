@@ -344,6 +344,13 @@ void GLWidget::SetVol(int3 dim)
 	dataMax = make_float3(dim.x - 1, dim.y - 1, dim.z - 1);
 }
 
+void GLWidget::SetVol(float3 posMin, float3 posMax)
+{
+	dataMin = posMin;
+	dataMax = posMax;
+}
+
+
 void GLWidget::UpdateGL()
 {
 	update();

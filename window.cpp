@@ -3,9 +3,7 @@
 //#include "VecReader.h"
 #include "BoxRenderable.h"
 #include "ParticleReader.h"
-//#include "GlyphRenderable.h"
-//#include "Cubemap.h"
-//#include "GL2DProjWidget.h"
+#include "SphereRenderable.h"
 
 class GLTextureCube;
 Window::Window()
@@ -50,12 +48,15 @@ Window::Window()
 	//glyphRenderable->SetVolumeDim(innerDim.x, innerDim.y, innerDim.z);
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 
-	ParticleReader particleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/100.vtu");
-	int3 vol = make_int3(20,20,20);
-	BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());
-	bbox->SetVisibility(true);
-	openGL->SetVol(vol);// cubemap->GetInnerDim());
-	openGL->AddRenderable("bbox", bbox);
+	ParticleReader particleReader("D:/onedrive/data/particle/smoothinglength_0.44/run11/002.vtu");
+	SphereRenderable* sphereRenderable = new SphereRenderable(particleReader.GetPos(), particleReader.GetNum());
+	float3 posMin, posMax;
+	particleReader.GetDataRange(posMin, posMax);
+	//BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());
+	//bbox->SetVisibility(true);
+	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
+	//openGL->AddRenderable("bbox", bbox);
+	openGL->AddRenderable("spheres", sphereRenderable);
 
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;

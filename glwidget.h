@@ -31,6 +31,8 @@ public:
 
 	void SetVol(int3 dim);
 
+	void SetVol(float3 posMin, float3 posMax);
+
 	void UpdateGL();
 
 	void animate();

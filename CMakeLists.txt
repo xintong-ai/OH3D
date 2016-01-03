@@ -25,13 +25,13 @@ set(SHARED_LIBRARIES
 set( Srcs main.cpp GLSphere.cpp
 	window.cpp glwidget.cpp Renderable.cpp Trackball.cpp Rotation.cpp QuatVector.cpp
 	DataMgr.cpp Reader.cpp 
-	BoxRenderable.cpp ParticleReader.cpp
+	BoxRenderable.cpp ParticleReader.cpp SphereRenderable.cpp
 	)
 set( Hdrs 
 GLSphere.h
 	window.h glwidget.h Renderable.h Trackball.h Rotation.h QuatVector.h
 	DataMgr.h defines.h Reader.h
-	BoxRenderable.h ShaderProgram.h ParticleReader.h
+	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
     )
 #set( Rcs resources/vechist.qrc)
 
