@@ -48,8 +48,8 @@ Window::Window()
 	//glyphRenderable->SetVolumeDim(innerDim.x, innerDim.y, innerDim.z);
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 
-	ParticleReader particleReader("D:/onedrive/data/particle/smoothinglength_0.44/run11/002.vtu");
-	SphereRenderable* sphereRenderable = new SphereRenderable(particleReader.GetPos(), particleReader.GetNum());
+	ParticleReader particleReader("D:/onedrive/data/particle/smoothinglength_0.44/run11/050.vtu");
+	SphereRenderable* sphereRenderable = new SphereRenderable(particleReader.GetPos(), particleReader.GetNum(), particleReader.GetConcentration());
 	float3 posMin, posMax;
 	particleReader.GetDataRange(posMin, posMax);
 	//BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());

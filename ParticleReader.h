@@ -16,6 +16,7 @@ public:
 	ParticleReader(const char* filename) :Reader(filename){ Load(); }
 	float3* GetPos();
 	int GetNum();
+	float* GetConcentration();
 	void GetDataRange(float3& posMin, float3& posMax);
 protected:
 	void Load() override;

@@ -1,4 +1,3 @@
-#include "helper_math.h"
 #include "SphereRenderable.h"
 #include "glwidget.h"
 
@@ -12,7 +11,6 @@
 #include <QOpenGLVertexArrayObject>
 #include "ShaderProgram.h"
 #include "GLSphere.h"
-#include <fstream>
 
 void SphereRenderable::LoadShaders()
 {
@@ -37,8 +35,6 @@ void SphereRenderable::LoadShaders()
 		eyeCoords = ModelViewMatrix *
 			vec4(VertexPosition, 1.0);
 		tnorm = normalize(NormalMatrix * VertexPosition);
-
-		//we use sqrt(), because the projected area is proportional to the square of the radius.
 		gl_Position = MVP * vec4(VertexPosition * Scale + Transform, 1.0);
 	}
 	);
@@ -69,8 +65,6 @@ void SphereRenderable::LoadShaders()
 	}
 
 	void main() {
-		vec3 FrontColor;
-		vec3 BackColor;
 		vec3 unlitColor = 0.6 * vec3(1.0f, 1.0f, 1.0f);// GetColor2(norm, v);
 		FragColor = vec4(phongModel(unlitColor, eyeCoords, tnorm), 1.0);
 	}
@@ -80,8 +74,6 @@ void SphereRenderable::LoadShaders()
 	glProg->initFromStrings(vertexVS, vertexFS);
 
 	glProg->addAttribute("VertexPosition");
-	//glProg->addAttribute("VertexNormal");
-
 	glProg->addUniform("LightPosition");
 	//glProg->addUniform("Ka");
 	glProg->addUniform("Kd");
@@ -114,7 +106,6 @@ void SphereRenderable::UpdateData()
 {
 }
 
-
 void SphereRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!updated) {
@@ -127,11 +118,12 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 	Renderable::draw(modelview, projection);
 	glMatrixMode(GL_MODELVIEW);
 
-	for (int i = 0; i < sphereCnt; i+=10) {
+	for (int i = 0; i < sphereCnt; i++) {
+		if (sphereSize[i] < 30) continue;
 		glPushMatrix();
 
-		float3 shift = make_float3(0.005 + spherePos[i].x, 0.005 + spherePos[i].y, 0.005 + spherePos[i].z);
-		float min_dim = 0.01;
+		float3 shift = spherePos[i];
+		float scale = pow(sphereSize[i], 0.333) * 0.01;
 
 		glProg->use();
 		m_vao->bind();
@@ -140,16 +132,16 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		q_modelview = q_modelview.transposed();
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(dataDim[0], dataDim[1]), dataDim[2]) * 2, 1);
 		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
-		qgl->glUniform3f(glProg->uniform("Kd"), 0.1f, 0.1f, 0.1f);
+		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &shift.x);
-		qgl->glUniform1f(glProg->uniform("Scale"), min_dim);
+		qgl->glUniform1f(glProg->uniform("Scale"), scale);
 		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
-		glDrawArrays(GL_LINES_ADJACENCY, 0, glyphMesh->GetNumVerts());
+		glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
 		//glDrawElements(GL_TRIANGLES, glyphMesh->numElements, GL_UNSIGNED_INT, glyphMesh->indices);
 		m_vao->release();
 		glProg->disable();
