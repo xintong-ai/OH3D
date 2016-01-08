@@ -32,6 +32,7 @@ public:
 	void SetVol(int3 dim);
 
 	void SetVol(float3 posMin, float3 posMax);
+	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
 
 	void UpdateGL();
 
@@ -77,12 +78,6 @@ private:
     Trackball *trackball;
     QPointF prevPos;//previous mouse position
     Rotation *rot;
-
-	//CHANGE_Huijie
-	GLuint framebuffer, renderbuffer[2];
-	bool picking = false;
-	int xMouse, yMouse;
-	int pickID;
 
     /****timing****/
     StopWatchInterface *timer = 0;

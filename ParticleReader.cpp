@@ -81,10 +81,19 @@ struct timestep
 	}
 };
 
-
 void ParticleReader::Load()
 {
 	ts = new timestep(datafilename.c_str());
+
+	for (int i = 0; i < ts->size; i++) {
+		if (ts->concentration[i] < 50)
+			continue;
+		//Particle p(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], ts->concentration[i]);
+		//particles.push_back(p);
+		pos.push_back(make_float3(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2]));
+		val.push_back(ts->concentration[i]);
+	}
+	delete ts;
 	//float3 pMin, pMax;
 	//GetDataRange(pMin, pMax);
 }
@@ -93,22 +102,22 @@ void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
 {
 	posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
-	int n = ts->position.size() / 3;
+	int n = pos.size();
 	float v = 0;
 	for (int i = 0; i < n; i++) {
-		v = ts->position[i * 3];
+		v = pos[i].x;
 		if (v > posMax.x)
 			posMax.x = v;
 		if (v < posMin.x)
 			posMin.x = v;
 
-		v = ts->position[i * 3 + 1];
+		v = pos[i].y;
 		if (v > posMax.y)
 			posMax.y = v;
 		if (v < posMin.y)
 			posMin.y = v;
 
-		v = ts->position[i * 3 + 2];
+		v = pos[i].z;
 		if (v > posMax.z)
 			posMax.z = v;
 		if (v < posMin.z)
@@ -119,15 +128,15 @@ void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
 
 float3* ParticleReader::GetPos()
 {
-	return (float3*)(&ts->position[0]);
+	return (float3*)(&pos[0]);
 }
 
 int ParticleReader::GetNum()
 {
-	return ts->position.size() / 3;
+	return pos.size();
 }
 
-float* ParticleReader::GetConcentration()
+float* ParticleReader::GetVal()
 {
-	return &ts->concentration[0];
+	return &val[0];
 }

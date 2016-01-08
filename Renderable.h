@@ -43,9 +43,6 @@ public:
 
     virtual void draw(float modelview[16], float projection[16]);
 
-	//CHANGE_Huijie
-	virtual void drawPicking(float modelview[16], float projection[16]){}
-
 	virtual void cleanup(){}
 
 	virtual void animate() {}
@@ -88,9 +85,6 @@ public:
 
 	void SetVisibility(bool b) { visible = b; }
 
-	//CHANGE_Huijie
-	void SetPickID(int id){ pickID = id; }
-
 protected:
     //DataMgr *dataMgr;
     int winWidth, winHeight;
@@ -109,8 +103,6 @@ protected:
 
 	bool visible = true;
 
-	//CHANGE_Huijie
-	int pickID = 0;
 
 private:
     void AllocOutImage();

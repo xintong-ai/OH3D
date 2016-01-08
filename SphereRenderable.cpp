@@ -11,6 +11,7 @@
 #include <QOpenGLVertexArrayObject>
 #include "ShaderProgram.h"
 #include "GLSphere.h"
+#include <helper_math.h>
 
 void SphereRenderable::LoadShaders()
 {
@@ -65,7 +66,7 @@ void SphereRenderable::LoadShaders()
 	}
 
 	void main() {
-		vec3 unlitColor = 0.6 * vec3(1.0f, 1.0f, 1.0f);// GetColor2(norm, v);
+		vec3 unlitColor = 0.5 * vec3(1.0f, 1.0f, 1.0f);// GetColor2(norm, v);
 		FragColor = vec4(phongModel(unlitColor, eyeCoords, tnorm), 1.0);
 	}
 	);
@@ -119,7 +120,6 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 	glMatrixMode(GL_MODELVIEW);
 
 	for (int i = 0; i < sphereCnt; i++) {
-		if (sphereSize[i] < 30) continue;
 		glPushMatrix();
 
 		float3 shift = spherePos[i];
@@ -130,7 +130,8 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
-		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(dataDim[0], dataDim[1]), dataDim[2]) * 2, 1);
+		float3 cen = DataCenter();
+		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
 		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
@@ -147,6 +148,11 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		glProg->disable();
 		glPopMatrix();
 	}
+}
+
+float3 SphereRenderable::DataCenter()
+{ 
+	return (dataMin + dataMax) * 0.5; 
 }
 
 

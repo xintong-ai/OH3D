@@ -6,17 +6,26 @@
 //#define _USE_MATH_DEFINES
 //#include "math.h"
 #include <vector_types.h>
+#include <vector_functions.h>
+#include <vector>
 class timestep;
+//struct Particle{
+//	float3 pos;
+//	float val;
+//	Particle(float x, float y, float z, float v) { pos = make_float3(x, y, z); val = v; }
+//};
 class ParticleReader:public Reader
 {
 	int num;
-	float3* pos;
+	//float3* pos;
 	timestep* ts;
+	std::vector<float3> pos;
+	std::vector<float> val;
 public:
 	ParticleReader(const char* filename) :Reader(filename){ Load(); }
 	float3* GetPos();
 	int GetNum();
-	float* GetConcentration();
+	float* GetVal();
 	void GetDataRange(float3& posMin, float3& posMax);
 protected:
 	void Load() override;
