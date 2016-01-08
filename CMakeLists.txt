@@ -26,12 +26,14 @@ set( Srcs main.cpp GLSphere.cpp
 	window.cpp glwidget.cpp Renderable.cpp Trackball.cpp Rotation.cpp QuatVector.cpp
 	DataMgr.cpp Reader.cpp 
 	BoxRenderable.cpp ParticleReader.cpp SphereRenderable.cpp
+	Displace.cu
 	)
 set( Hdrs 
 GLSphere.h
 	window.h glwidget.h Renderable.h Trackball.h Rotation.h QuatVector.h
 	DataMgr.h defines.h Reader.h
 	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
+	Displace.h
     )
 #set( Rcs resources/vechist.qrc)
 
@@ -39,6 +41,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 #qt5_add_resources(QtApp_RCC_SRCS ${Rcs})
-add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} ${QtApp_RCC_SRCS})
+cuda_add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} ${QtApp_RCC_SRCS})
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui)
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets  ${SHARED_LIBRARIES} )

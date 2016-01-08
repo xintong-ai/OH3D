@@ -3,6 +3,7 @@
 
 #include "Renderable.h"
 #include <QObject>
+#include <Displace.h>
 
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
@@ -14,7 +15,7 @@ public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	SphereRenderable(float3* _spherePos, int _sphereCnt, float* _sphereSize = nullptr){ spherePos = _spherePos; sphereCnt = _sphereCnt; sphereSize = _sphereSize; }
+	SphereRenderable(float3* _spherePos, int _sphereCnt, float* _sphereSize = nullptr);// { spherePos = _spherePos; sphereCnt = _sphereCnt; sphereSize = _sphereSize; }
 
 	//void SetVolumeDim(int x, int y, int z){ dataDim[0] = x; dataDim[1] = y; dataDim[2] = z; }
 	void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
@@ -34,6 +35,6 @@ private:
 	float3 dataMin, dataMax;
 
 	float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
-	
+	Displace displace;
 };
 #endif //GLYPH_RENDERABLE_H

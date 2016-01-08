@@ -36,7 +36,7 @@ void SphereRenderable::LoadShaders()
 		eyeCoords = ModelViewMatrix *
 			vec4(VertexPosition, 1.0);
 		tnorm = normalize(NormalMatrix * VertexPosition);
-		gl_Position = MVP * vec4(VertexPosition * Scale + Transform, 1.0);
+		gl_Position = MVP * vec4(VertexPosition * (pow(Scale, 0.333) * 0.01) + Transform, 1.0);
 	}
 	);
 
@@ -50,6 +50,7 @@ void SphereRenderable::LoadShaders()
 	in vec4 eyeCoords;
 	smooth in vec3 tnorm;
 	layout(location = 0) out vec4 FragColor;
+	uniform float Scale;
 
 	vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
 		vec3 s = normalize(vec3(LightPosition - position));
@@ -65,8 +66,38 @@ void SphereRenderable::LoadShaders()
 		return ambient + diffuse + spec;
 	}
 
+	vec4 GetColor(float v, float vmin, float vmax)
+	{
+		vec4 c = vec4(0.0, 0.0, 0.0, 1.0);
+		float dv;
+		dv = vmax - vmin;
+		vec4 cm[3];
+		cm[0] = vec4(0, 0, 1, 1);
+		cm[1] = vec4(1, 1, 1, 1);
+		cm[2] = vec4(1, 0, 0, 1);
+
+		float pdv = 0.5 * dv;
+
+		int i = 0;
+		for (i = 0; i < 2; i++) {
+			if (v >= (vmin + i*pdv) && v < (vmin + (i + 1)*pdv)) {
+				c.r = cm[i].r + (v - vmin - i*pdv) / pdv * (cm[i + 1].r - cm[i].r);
+				c.g = cm[i].g + (v - vmin - i*pdv) / pdv * (cm[i + 1].g - cm[i].g);
+				c.b = cm[i].b + (v - vmin - i*pdv) / pdv * (cm[i + 1].b - cm[i].b);
+
+				break;
+			}
+		}
+		if (v == vmax) {
+			c.r = cm[2].r;
+			c.g = cm[2].g;
+			c.b = cm[2].b;
+		}
+		return(c);
+	}
+
 	void main() {
-		vec3 unlitColor = 0.5 * vec3(1.0f, 1.0f, 1.0f);// GetColor2(norm, v);
+		vec3 unlitColor = 0.5 * vec3(GetColor(Scale, 50, 400));// 0.5 * vec3(1.0f, 1.0f, 1.0f);// GetColor2(norm, v);
 		FragColor = vec4(phongModel(unlitColor, eyeCoords, tnorm), 1.0);
 	}
 	);
@@ -117,13 +148,17 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		return;
 
 	Renderable::draw(modelview, projection);
+	displace.Compute(modelview, projection, spherePos);
+
 	glMatrixMode(GL_MODELVIEW);
 
 	for (int i = 0; i < sphereCnt; i++) {
 		glPushMatrix();
 
 		float3 shift = spherePos[i];
-		float scale = pow(sphereSize[i], 0.333) * 0.01;
+		//float scale = pow(sphereSize[i], 0.333) * 0.01;
+
+		//std::cout << sphereSize[i] << " ";
 
 		glProg->use();
 		m_vao->bind();
@@ -137,7 +172,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &shift.x);
-		qgl->glUniform1f(glProg->uniform("Scale"), scale);
+		qgl->glUniform1f(glProg->uniform("Scale"), sphereSize[i]);
 		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
@@ -168,4 +203,12 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 
 	m_vao->release();
+}
+
+SphereRenderable::SphereRenderable(float3* _spherePos, int _sphereCnt, float* _sphereSize)
+{ 
+	spherePos = _spherePos; 
+	sphereCnt = _sphereCnt; 
+	sphereSize = _sphereSize; 
+	displace.LoadOrig(spherePos, sphereCnt);
 }
