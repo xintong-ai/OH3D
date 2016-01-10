@@ -90,7 +90,7 @@ void ParticleReader::Load()
 			continue;
 		//Particle p(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], ts->concentration[i]);
 		//particles.push_back(p);
-		pos.push_back(make_float3(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2]));
+		pos.push_back(make_float4(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], 1.0f));
 		val.push_back(ts->concentration[i]);
 	}
 	delete ts;
@@ -126,9 +126,9 @@ void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
 }
 
 
-float3* ParticleReader::GetPos()
+float4* ParticleReader::GetPos()
 {
-	return (float3*)(&pos[0]);
+	return (float4*)(&pos[0]);
 }
 
 int ParticleReader::GetNum()

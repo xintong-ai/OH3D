@@ -33,7 +33,7 @@ GLSphere.h
 	window.h glwidget.h Renderable.h Trackball.h Rotation.h QuatVector.h
 	DataMgr.h defines.h Reader.h
 	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
-	Displace.h
+	Displace.h TransformFunc.h
     )
 #set( Rcs resources/vechist.qrc)
 

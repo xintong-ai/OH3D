@@ -4,11 +4,11 @@
 
 class Displace
 {
-	thrust::device_vector<float3> posOrig;
+	thrust::device_vector<float4> posOrig;
 public:
 	Displace() {}
-	void Compute(float* modelview, float* projection, float3* ret);
-	void LoadOrig(float3* v, int num);
+	void Compute(float* modelview, float* projection, int winW, int winH, float4* ret);
+	void LoadOrig(float4* v, int num);
 };
 
 #endif

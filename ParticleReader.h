@@ -17,13 +17,13 @@ class timestep;
 class ParticleReader:public Reader
 {
 	int num;
-	//float3* pos;
+	//float4* pos;
 	timestep* ts;
-	std::vector<float3> pos;
 	std::vector<float> val;
 public:
 	ParticleReader(const char* filename) :Reader(filename){ Load(); }
-	float3* GetPos();
+	float4* GetPos();
+	std::vector<float4> pos;
 	int GetNum();
 	float* GetVal();
 	void GetDataRange(float3& posMin, float3& posMax);
