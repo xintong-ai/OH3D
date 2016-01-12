@@ -70,7 +70,8 @@ struct functor_Unproject
 
 };
 
-void Displace::Compute(float* modelview, float* projection, int winW, int winH, float4* ret)
+void Displace::Compute(float* modelview, float* projection, int winW, int winH,
+	std::vector<Lens*> lenses, float4* ret)
 {
 	int size = posOrig.size();
 
@@ -109,8 +110,3 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH, 
 	thrust::copy(d_vec_ret.begin(), d_vec_ret.end(), ret);
 }
 
-void Displace::AddSphereLens(int x, int y, int radius, float3 center)
-{
-	Lens* l = new CircleLens(x, y, radius, center);
-	lenses.push_back(l);
-}

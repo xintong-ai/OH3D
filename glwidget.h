@@ -33,6 +33,8 @@ public:
 
 	void SetVol(float3 posMin, float3 posMax);
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
+	float3 DataCenter();
+
 
 	void UpdateGL();
 

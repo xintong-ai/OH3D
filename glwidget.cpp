@@ -204,9 +204,14 @@ void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 
 void GLWidget::wheelEvent(QWheelEvent * event)
 {
-	transScale *= exp(event->delta() * -0.001);
-	for (auto renderer : renderers)
-		renderer.second->MouseWheel(event->delta());
+	bool doTransform = true;
+	for (auto renderer : renderers){
+		if(renderer.second->MouseWheel(event->pos().x(), event->pos().y(), event->delta()))
+			doTransform = false;
+	}
+	if (doTransform){
+		transScale *= exp(event->delta() * -0.001);
+	}
 	update();
 }
 
@@ -304,4 +309,9 @@ void GLWidget::animate()
 	for (auto renderer : renderers)
 		renderer.second->animate();
 	update();
+}
+
+float3 GLWidget::DataCenter()
+{
+	return (dataMin + dataMax) * 0.5;
 }

@@ -4,6 +4,7 @@
 #include "BoxRenderable.h"
 #include "ParticleReader.h"
 #include "SphereRenderable.h"
+#include "LensRenderable.h"
 #include "Displace.h"
 
 class GLTextureCube;
@@ -54,12 +55,14 @@ Window::Window()
 	sphereRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
 	float3 posMin, posMax;
 	particleReader->GetDataRange(posMin, posMax);
-	sphereRenderable->SetVolRange(posMin, posMax);
+	lensRenderable = new LensRenderable();
+	//sphereRenderable->SetVolRange(posMin, posMax);
 	//BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());
 	//bbox->SetVisibility(true);
 	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("spheres", sphereRenderable);
+	openGL->AddRenderable("lenses", lensRenderable);
 
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;
@@ -168,8 +171,8 @@ Window::Window()
 
 void Window::AddLens()
 {
-	sphereRenderable->AddCircleLens();
-
+	//sphereRenderable->AddCircleLens();
+	lensRenderable->AddCircleLens();
 	//openGL->AddLens();
 	//lensWidSlider->setValue(((GLLensTracer*)lensRenderable)->GetLensWidth() * 10);
 	//UpdateStatusLabel();

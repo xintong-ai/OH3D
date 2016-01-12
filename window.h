@@ -17,6 +17,7 @@ class Cubemap;
 class SphereRenderable;
 class QRadioButton;
 class QTimer;
+class LensRenderable;
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
@@ -38,6 +39,7 @@ private:
 	const int nScale = 20;
 	QPushButton* addLensBtn;
 	SphereRenderable* sphereRenderable;
+	LensRenderable* lensRenderable;
 	//QPushButton* addNodeBtn;
 	//QPushButton* viewBtn;
 	//QSlider* xSlider;

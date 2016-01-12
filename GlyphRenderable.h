@@ -6,7 +6,7 @@ class Displace;
 
 class GlyphRenderable: public Renderable
 {
-	float3 dataMin, dataMax;
+	//float3 dataMin, dataMax;
 protected:
 	float4* pos = nullptr;
 	int num;
@@ -14,9 +14,9 @@ protected:
 	void ComputeDisplace();
 	
 	GlyphRenderable(float4* _pos, int _num);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
-	float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
+	//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
 public:
-	void AddCircleLens();
-	void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
+	//void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
+	bool MouseWheel(int x, int y, int delta)  override;
 };
 #endif
