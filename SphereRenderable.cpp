@@ -148,14 +148,14 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		return;
 
 	Renderable::draw(modelview, projection);
-	displace.Compute(modelview, projection, winWidth, winHeight, spherePos);
+	ComputeDisplace();
 
 	glMatrixMode(GL_MODELVIEW);
 
-	for (int i = 0; i < sphereCnt; i++) {
+	for (int i = 0; i < num; i++) {
 		glPushMatrix();
 
-		float4 shift = spherePos[i];
+		float4 shift = pos[i];
 		//float scale = pow(sphereSize[i], 0.333) * 0.01;
 
 		//std::cout << sphereSize[i] << " ";
@@ -185,11 +185,6 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 	}
 }
 
-float3 SphereRenderable::DataCenter()
-{ 
-	return (dataMin + dataMax) * 0.5; 
-}
-
 
 void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 {
@@ -206,9 +201,7 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 }
 
 SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _sphereSize)
+	:GlyphRenderable(_spherePos, _sphereCnt)
 { 
-	spherePos = _spherePos; 
-	sphereCnt = _sphereCnt; 
 	sphereSize = _sphereSize; 
-	displace.LoadOrig(spherePos, sphereCnt);
 }

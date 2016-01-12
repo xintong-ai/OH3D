@@ -26,14 +26,14 @@ set( Srcs main.cpp GLSphere.cpp
 	window.cpp glwidget.cpp Renderable.cpp Trackball.cpp Rotation.cpp QuatVector.cpp
 	DataMgr.cpp Reader.cpp 
 	BoxRenderable.cpp ParticleReader.cpp SphereRenderable.cpp
-	Displace.cu
+	Displace.cu Lens.cpp GlyphRenderable.cpp
 	)
 set( Hdrs 
 GLSphere.h
 	window.h glwidget.h Renderable.h Trackball.h Rotation.h QuatVector.h
 	DataMgr.h defines.h Reader.h
 	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
-	Displace.h TransformFunc.h
+	Displace.h TransformFunc.h Lens.h GlyphRenderable.h
     )
 #set( Rcs resources/vechist.qrc)
 

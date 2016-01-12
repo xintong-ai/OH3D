@@ -13,7 +13,8 @@ class TexPlaneRenderable;
 class QCheckBox;
 class QLabel;
 class Cubemap;
-class GlyphRenderable;
+//class GlyphRenderable;
+class SphereRenderable;
 class QRadioButton;
 class QTimer;
 class Window : public QWidget
@@ -25,17 +26,18 @@ public:
 
 private:
     GLWidget *openGL;
-	QSlider* sliceSlider;
-	QSlider* heightScaleSlider;
-	QSlider* sizeScaleSlider;
+	//QSlider* sliceSlider;
+	//QSlider* heightScaleSlider;
+	//QSlider* sizeScaleSlider;
 	Cubemap* cubemap;
-	GlyphRenderable* glyphRenderable;
-	QRadioButton *radioX;
-	QRadioButton *radioY;
-	QRadioButton *radioZ;
+	//GlyphRenderable* glyphRenderable;
+	//QRadioButton *radioX;
+	//QRadioButton *radioY;
+	//QRadioButton *radioZ;
 	QTimer *aTimer;
 	const int nScale = 20;
-	//QPushButton* addLensBtn;
+	QPushButton* addLensBtn;
+	SphereRenderable* sphereRenderable;
 	//QPushButton* addNodeBtn;
 	//QPushButton* viewBtn;
 	//QSlider* xSlider;
@@ -59,7 +61,8 @@ private:
 	//QSlider* CreateSliceSlider(TexPlaneRenderable* renderable);
 
 private slots:
-	//void SlotSliceOrieChanged(bool clicked);
+	void AddLens();
+//void SlotSliceOrieChanged(bool clicked);
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);
 	

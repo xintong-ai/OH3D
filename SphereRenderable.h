@@ -1,28 +1,23 @@
-#ifndef GLYPH_RENDERABLE_H
-#define GLYPH_RENDERABLE_H
+#ifndef SPHERE_RENDERABLE_H
+#define SPHERE_RENDERABLE_H
 
-#include "Renderable.h"
+#include "GlyphRenderable.h"
 #include <QObject>
-#include <Displace.h>
-
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
-class SphereRenderable :public Renderable, public QObject
+class SphereRenderable :public GlyphRenderable, public QObject
 {
 	Q_OBJECT
 public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	SphereRenderable(float4* _spherePos, int _sphereCnt, float* _sphereSize = nullptr);// { spherePos = _spherePos; sphereCnt = _sphereCnt; sphereSize = _sphereSize; }
+	SphereRenderable(float4* _spherePos, int _sphereCnt, float* _sphereSize);
 
 	//void SetVolumeDim(int x, int y, int z){ dataDim[0] = x; dataDim[1] = y; dataDim[2] = z; }
-	void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
 private:
-	float4* spherePos = nullptr;
 	float* sphereSize = nullptr;
-	int sphereCnt = 0;
 	void GenVertexBuffer(int nv, float* vertex);
 	void LoadShaders();
 	unsigned int vbo_vert;
@@ -32,9 +27,6 @@ private:
 	QOpenGLVertexArrayObject* m_vao;
 	bool updated = false;
 	//int dataMin[3];
-	float3 dataMin, dataMax;
 
-	float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
-	Displace displace;
 };
-#endif //GLYPH_RENDERABLE_H
+#endif //SPHERE_RENDERABLE_H

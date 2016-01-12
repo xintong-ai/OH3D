@@ -4,6 +4,7 @@
 #include "BoxRenderable.h"
 #include "ParticleReader.h"
 #include "SphereRenderable.h"
+#include "Displace.h"
 
 class GLTextureCube;
 Window::Window()
@@ -49,7 +50,8 @@ Window::Window()
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 
 	ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
-	SphereRenderable* sphereRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
+	//Displace* displace = new Displace();
+	sphereRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
 	float3 posMin, posMax;
 	particleReader->GetDataRange(posMin, posMax);
 	sphereRenderable->SetVolRange(posMin, posMax);
@@ -62,20 +64,27 @@ Window::Window()
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 
-	QGroupBox *groupBox = new QGroupBox(tr("Slice Orientation"));
+	//QGroupBox *groupBox = new QGroupBox(tr("Slice Orientation"));
 
-	radioX = new QRadioButton(tr("&X"));
-	radioY = new QRadioButton(tr("&Y"));
-	radioZ = new QRadioButton(tr("&Z"));
-	radioX->setChecked(true);
-	QHBoxLayout *sliceOrieLayout = new QHBoxLayout;
-	sliceOrieLayout->addWidget(radioX);
-	sliceOrieLayout->addWidget(radioY);
-	sliceOrieLayout->addWidget(radioZ);
-	sliceOrieLayout->addStretch();
-	groupBox->setLayout(sliceOrieLayout);
-	controlLayout->addWidget(groupBox);
+	addLensBtn = new QPushButton("Add Circle Lens");
+	QHBoxLayout* addThingsLayout = new QHBoxLayout;
+	addThingsLayout->addWidget(addLensBtn);
+	//radioX = new QRadioButton(tr("&X"));
+	//radioY = new QRadioButton(tr("&Y"));
+	//radioZ = new QRadioButton(tr("&Z"));
+	//radioX->setChecked(true);
+	//QHBoxLayout *sliceOrieLayout = new QHBoxLayout;
+	//sliceOrieLayout->addWidget(radioX);
+	//sliceOrieLayout->addWidget(radioY);
+	//sliceOrieLayout->addWidget(radioZ);
+	//sliceOrieLayout->addStretch();
+	//groupBox->setLayout(sliceOrieLayout);
+	//controlLayout->addWidget(groupBox);
+	controlLayout->addWidget(addLensBtn);
+	controlLayout->addStretch();
 
+
+	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioZ, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -157,6 +166,13 @@ Window::Window()
 	setLayout(mainLayout);
 }
 
+void Window::AddLens()
+{
+	sphereRenderable->AddCircleLens();
+	//openGL->AddLens();
+	//lensWidSlider->setValue(((GLLensTracer*)lensRenderable)->GetLensWidth() * 10);
+	//UpdateStatusLabel();
+}
 //void Window::SlotSliceOrieChanged(bool clicked)
 //{
 //	if (radioX->isChecked()){
@@ -193,4 +209,6 @@ Window::Window()
 //}
 
 Window::~Window() {
+	//TOOO:
+//	delete ;
 }
