@@ -169,6 +169,7 @@ Window::Window()
 void Window::AddLens()
 {
 	sphereRenderable->AddCircleLens();
+
 	//openGL->AddLens();
 	//lensWidSlider->setValue(((GLLensTracer*)lensRenderable)->GetLensWidth() * 10);
 	//UpdateStatusLabel();

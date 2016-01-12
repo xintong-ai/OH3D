@@ -2,6 +2,7 @@
 #include <TransformFunc.h>
 
 #include <vector_functions.h>
+#include <helper_math.h>
 #include <Lens.h>
 
 void Displace::LoadOrig(float4* v, int num)
@@ -32,6 +33,22 @@ struct functor_Clip2Screen
 		return Clip2ScreenGlobal(GetXY(p), w, h);
 	}
 	functor_Clip2Screen(int _w, int _h) { w = _w; h = _h; }
+};
+
+struct functor_Displace
+{
+	int x, y, r;
+	float d;
+	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
+		float2 ret = screenPos;
+		if (clipPos.z < d) {
+			float dis = length(make_float2(x, y) - screenPos);
+			if (dis < r)
+				ret = make_float2(0,0);
+		}
+		return ret;
+	}
+	functor_Displace(int _x, int _y, int _r, float _d) : x(_x), y(_y), r(_r), d(_d){}
 };
 
 struct functor_Unproject
@@ -70,6 +87,13 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH, 
 
 	thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(),
 		d_vec_posScreen.begin(), functor_Clip2Screen(winW, winH));
+
+	for (int i = 0; i < lenses.size(); i++) {
+		CircleLens* l = (CircleLens*)lenses[i];
+		thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+			d_vec_posClip.begin(), d_vec_posScreen.begin(),
+			functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection)));
+	}
 
 	//posScreenTarget = d_vec_posScreen;
 	//}

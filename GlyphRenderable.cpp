@@ -3,6 +3,7 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <helper_math.h>
+#include <glwidget.h>
 
 void GlyphRenderable::ComputeDisplace()
 {
@@ -20,6 +21,7 @@ GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
 void GlyphRenderable::AddCircleLens()
 {
 	displace->AddSphereLens(winWidth * 0.5, winHeight * 0.5, winHeight * 0.1, DataCenter());
+	actor->UpdateGL();
 }
 
 

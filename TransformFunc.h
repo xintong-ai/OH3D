@@ -1,5 +1,7 @@
 #ifndef TRANSFORM_FUNC_H
 #define TRANSFORM_FUNC_H
+#include <vector_types.h>
+#include <vector_functions.h>
 //#include "VectorMatrix.h"
 //#include "cutil_math.h"
 
