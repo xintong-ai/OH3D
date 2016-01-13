@@ -8,6 +8,7 @@
 void Displace::LoadOrig(float4* v, int num)
 {
 	posOrig.assign(v, v + num);// , posOrig.begin());
+	d_vec_posScreenTarget.assign(num, make_float2(0, 0));
 }
 
 struct functor_Object2Clip//: public thrust::unary_function<float,float>
@@ -62,6 +63,21 @@ struct functor_Displace
 	functor_Displace(int _x, int _y, int _r, float _d) : x(_x), y(_y), r(_r), d(_d){}
 };
 
+//thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+//	d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
+//	functor_ApproachTarget());
+
+struct functor_ApproachTarget
+{
+	__device__ float2 operator() (float2 screenPos, float2 screenTarget) {
+		float2 dir = screenTarget - screenPos;
+		//float dis = length(dir);
+		return screenPos + dir * 0.1;
+	}
+
+	functor_ApproachTarget(){}
+};
+
 struct functor_Unproject
 {
 	matrix4x4 inv_mv, inv_pj;
@@ -84,28 +100,42 @@ struct functor_Unproject
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 	std::vector<Lens*> lenses, float4* ret)
 {
+	if (lenses.size() <= 0)
+		return;
 	int size = posOrig.size();
 
 	//clip coordiates of streamlines
 	matrix4x4 mv(modelview);
 	matrix4x4 pj(projection);
 
-	//if (doRefresh) {
-
 	thrust::device_vector<float4> d_vec_posClip(size);
 	thrust::device_vector<float2> d_vec_posScreen(size);
 
-	thrust::transform(posOrig.begin(), posOrig.end(), d_vec_posClip.begin(), functor_Object2Clip(mv, pj));
+	if (recomputeTarget) {
+		thrust::transform(posOrig.begin(), posOrig.end(), d_vec_posClip.begin(), functor_Object2Clip(mv, pj));
 
+		thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(),
+			d_vec_posScreen.begin(), functor_Clip2Screen(winW, winH));
+
+		for (int i = 0; i < lenses.size(); i++) {
+			CircleLens* l = (CircleLens*)lenses[i];
+			thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+				d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
+				functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection)));
+		}
+		recomputeTarget = false;
+	}
+
+	thrust::device_vector<float4> d_vec_posCur(size);
+	thrust::copy(ret, ret + size, d_vec_posCur.begin());
+
+	thrust::transform(d_vec_posCur.begin(), d_vec_posCur.end(), d_vec_posClip.begin(), functor_Object2Clip(mv, pj));
 	thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(),
 		d_vec_posScreen.begin(), functor_Clip2Screen(winW, winH));
 
-	for (int i = 0; i < lenses.size(); i++) {
-		CircleLens* l = (CircleLens*)lenses[i];
-		thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-			d_vec_posClip.begin(), d_vec_posScreen.begin(),
-			functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection)));
-	}
+	thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+		d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
+		functor_ApproachTarget());
 
 	//posScreenTarget = d_vec_posScreen;
 	//}
@@ -120,4 +150,3 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 		functor_Unproject(invMV, invPJ, winW, winH));
 	thrust::copy(d_vec_ret.begin(), d_vec_ret.end(), ret);
 }
-

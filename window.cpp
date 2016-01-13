@@ -61,7 +61,7 @@ Window::Window()
 	//bbox->SetVisibility(true);
 	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	//openGL->AddRenderable("bbox", bbox);
-	openGL->AddRenderable("spheres", sphereRenderable);
+	openGL->AddRenderable("glyph", sphereRenderable);
 	openGL->AddRenderable("lenses", lensRenderable);
 
 	///********controls******/

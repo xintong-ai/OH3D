@@ -16,6 +16,7 @@ protected:
 	GlyphRenderable(float4* _pos, int _num);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
 	//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
 public:
+	void RecomputeTarget();
 	//void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
 };
 #endif

@@ -19,6 +19,10 @@ GLWidget::GLWidget(QWidget *parent)
     trackball = new Trackball();
     rot = new Rotation();
 
+	QTimer *aTimer = new QTimer;
+	connect(aTimer, SIGNAL(timeout()), SLOT(animate()));
+	aTimer->start(17);
+
     transRot.setToIdentity();
 
 	grabGesture(Qt::PinchGesture);

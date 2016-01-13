@@ -1,4 +1,5 @@
 #include "LensRenderable.h"
+#include "GlyphRenderable.h"
 #include "Lens.h"
 #include "glwidget.h"
 
@@ -55,6 +56,7 @@ void LensRenderable::AddCircleLens()
 {
 	Lens* l = new CircleLens(winWidth * 0.5, winHeight * 0.5, winHeight * 0.2, actor->DataCenter());
 	lenses.push_back(l);
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }
 
@@ -84,6 +86,7 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		lenses[pickedLens]->x += (x - lastPt.x);
 		lenses[pickedLens]->y += (y - lastPt.y);
 	}
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	lastPt = make_int2(x, y);
 }
 
@@ -98,5 +101,6 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 			l->ChangeClipDepth(delta*0.1, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
 		}
 	}
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	return insideAnyLens;
 }

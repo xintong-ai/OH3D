@@ -21,6 +21,11 @@ GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
 	displace->LoadOrig(pos, num); 
 }
 
+void GlyphRenderable::RecomputeTarget()
+{
+	displace->RecomputeTarget();
+}
+
 //float3 GlyphRenderable::DataCenter()
 //{
 //	return (dataMin + dataMax) * 0.5;

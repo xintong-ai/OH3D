@@ -50,7 +50,6 @@ public:
 
 	void UpdateGL();
 
-	void animate();
 
 	INTERACT_MODE GetInteractMode(){ return interactMode; }
 
@@ -119,6 +118,10 @@ private:
 
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
+
+private slots:
+	void animate();
+
 };
 
 #endif //GL_WIDGET_H
