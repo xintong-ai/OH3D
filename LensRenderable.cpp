@@ -13,6 +13,8 @@ void LensRenderable::UpdateData() {
 
 void LensRenderable::draw(float modelview[16], float projection[16])
 {
+	RecordMatrix(modelview, projection);
+
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
 	glLoadIdentity();
@@ -54,4 +56,47 @@ void LensRenderable::AddCircleLens()
 	Lens* l = new CircleLens(winWidth * 0.5, winHeight * 0.5, winHeight * 0.2, actor->DataCenter());
 	lenses.push_back(l);
 	actor->UpdateGL();
+}
+
+void LensRenderable::mousePress(int x, int y, int modifier)
+{
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (l->PointInsideLens(x, y)) {
+			//workingOnLens = true;
+			actor->SetInteractMode(INTERACT_MODE::LENS);
+			pickedLens = i;
+			lastPt = make_int2(x, y);
+		}
+	}
+	//return insideAnyLens;
+}
+
+void LensRenderable::mouseRelease(int x, int y, int modifier)
+{
+	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	//workingOnLens = false;
+}
+
+void LensRenderable::mouseMove(int x, int y, int modifier)
+{
+	if (INTERACT_MODE::LENS == actor->GetInteractMode()) {
+		lenses[pickedLens]->x += (x - lastPt.x);
+		lenses[pickedLens]->y += (y - lastPt.y);
+	}
+	lastPt = make_int2(x, y);
+}
+
+bool LensRenderable::MouseWheel(int x, int y, int delta)
+{
+	bool insideAnyLens = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (l->PointInsideLens(x, y)) {
+			insideAnyLens = true;
+			//std::cout << delta << std::endl;
+			l->ChangeClipDepth(delta*0.1, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+		}
+	}
+	return insideAnyLens;
 }

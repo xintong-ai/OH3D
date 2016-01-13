@@ -17,6 +17,5 @@ protected:
 	//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
 public:
 	//void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
-	bool MouseWheel(int x, int y, int delta)  override;
 };
 #endif

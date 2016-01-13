@@ -147,7 +147,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
-	Renderable::draw(modelview, projection);
+	RecordMatrix(modelview, projection);
 	ComputeDisplace();
 
 	glMatrixMode(GL_MODELVIEW);

@@ -53,6 +53,11 @@ public:
 
 	virtual void UpdateData() {}
 
+	void RecordMatrix(float* modelview, float* projection){
+		memcpy(&matrix_mv.v[0].x, modelview, sizeof(float4) * 4);
+		memcpy(&matrix_pj.v[0].x, projection, sizeof(float4) * 4);
+	}
+
     //void SetDataMgr(DataMgr* ptr) {dataMgr = (DataMgr*)ptr;}
 
     uint* GetHostImage(){ return h_output;}

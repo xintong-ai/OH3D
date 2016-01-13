@@ -86,7 +86,7 @@ void ParticleReader::Load()
 	ts = new timestep(datafilename.c_str());
 
 	for (int i = 0; i < ts->size; i++) {
-		if (ts->concentration[i] < 50)
+		if (ts->concentration[i] <70)
 			continue;
 		//Particle p(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], ts->concentration[i]);
 		//particles.push_back(p);

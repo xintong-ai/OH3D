@@ -35,16 +35,27 @@ struct functor_Clip2Screen
 	functor_Clip2Screen(int _w, int _h) { w = _w; h = _h; }
 };
 
+__device__ inline float G(float x, float r)
+{
+	return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
+}
+
 struct functor_Displace
 {
 	int x, y, r;
 	float d;
 	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
 		float2 ret = screenPos;
+
 		if (clipPos.z < d) {
-			float dis = length(make_float2(x, y) - screenPos);
-			if (dis < r)
-				ret = make_float2(0,0);
+			float2 dir = screenPos - make_float2(x, y);
+			float disOrig = length(dir);
+			float ratio = 0.5;
+			float rOut = r / ratio; //including the focus and transition region
+			if (disOrig < rOut) {
+				float disNew = G(disOrig / rOut, ratio) * rOut;
+				ret = make_float2(x, y) + dir / disOrig * disNew;
+			}
 		}
 		return ret;
 	}

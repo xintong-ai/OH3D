@@ -7,6 +7,18 @@
 #include <QOpenGLWidget>
 #include <vector_types.h>
 #include <vector_functions.h>
+enum INTERACT_MODE{
+	//	DRAG_LENS_EDGE,
+	//	DRAG_LENS_TWO_ENDS,
+	LENS,
+	TRANSFORMATION,
+	//CUT_LINE,
+	//ADD_NODE,
+	//MODIFY_LENS,
+	//	CUT_POLYLINE,
+	//DRAW_ELLIPSE,
+};
+
 
 class Trackball;
 class Rotation;
@@ -40,6 +52,11 @@ public:
 
 	void animate();
 
+	INTERACT_MODE GetInteractMode(){ return interactMode; }
+
+	void SetInteractMode(INTERACT_MODE v) { interactMode = v; }
+
+
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;
@@ -52,6 +69,7 @@ protected:
 	virtual bool event(QEvent *event) Q_DECL_OVERRIDE;
 
 	uint width = 750, height = 900;
+
 
 private:
     void computeFPS();
@@ -80,6 +98,8 @@ private:
     Trackball *trackball;
     QPointF prevPos;//previous mouse position
     Rotation *rot;
+
+	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
 
     /****timing****/
     StopWatchInterface *timer = 0;

@@ -157,21 +157,27 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 		return;
 
 	QPointF pos = event->pos();
-	if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
-        QPointF from = pixelPosToViewPos(prevPos);
-		QPointF to = pixelPosToViewPos(pos);
-        *rot = trackball->rotate(from.x(), from.y(),
-                                to.x(), to.y());
-        float m[16];
-        rot->matrix(m);
-        QMatrix4x4 qm = QMatrix4x4(m).transposed();
-        transRot = qm * transRot;
+	if (INTERACT_MODE::TRANSFORMATION == interactMode) {
+		if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
+			QPointF from = pixelPosToViewPos(prevPos);
+			QPointF to = pixelPosToViewPos(pos);
+			*rot = trackball->rotate(from.x(), from.y(),
+				to.x(), to.y());
+			float m[16];
+			rot->matrix(m);
+			QMatrix4x4 qm = QMatrix4x4(m).transposed();
+			transRot = qm * transRot;
+		}
+		else if (event->buttons() & Qt::RightButton) {
+			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
+			transVec[0] += diff.x();
+			transVec[1] += diff.y();
+		}
+	}
+	QPoint posGL = pixelPosToGLPos(event->pos());
+	for (auto renderer : renderers)
+		renderer.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
-    } else if (event->buttons() & Qt::RightButton) {
-        QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
-        transVec[0] += diff.x();
-        transVec[1] += diff.y();
-    }
     prevPos = pos;
     update();
 }
@@ -184,8 +190,8 @@ void GLWidget::mousePressEvent(QMouseEvent *event)
 	QPointF pos = event->pos();
 	QPoint posGL = pixelPosToGLPos(event->pos());
 
-	/*for (auto renderer : renderers)
-		renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());*/
+	for (auto renderer : renderers)
+		renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
     prevPos = pos;
 }
@@ -205,8 +211,9 @@ void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 void GLWidget::wheelEvent(QWheelEvent * event)
 {
 	bool doTransform = true;
+	QPoint posGL = pixelPosToGLPos(event->pos());
 	for (auto renderer : renderers){
-		if(renderer.second->MouseWheel(event->pos().x(), event->pos().y(), event->delta()))
+		if (renderer.second->MouseWheel(posGL.x(), posGL.y(), event->delta()))
 			doTransform = false;
 	}
 	if (doTransform){
