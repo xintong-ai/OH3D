@@ -33,7 +33,7 @@ void GLWidget::AddRenderable(const char* name, void* r)
 	renderers[name] = (Renderable*)r;
 	((Renderable*)r)->SetAllRenderable(&renderers);
 	((Renderable*)r)->SetActor(this);
-	((Renderable*)r)->SetWindowSize(width, height);
+	//((Renderable*)r)->SetWindowSize(width, height);
 }
 
 GLWidget::~GLWidget()

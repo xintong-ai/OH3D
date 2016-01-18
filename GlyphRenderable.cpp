@@ -9,7 +9,8 @@
 
 void GlyphRenderable::ComputeDisplace()
 {
-	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight, 
+	int2 winSize = actor->GetWindowSize();
+	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
 		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), pos);
 }
 
@@ -24,6 +25,12 @@ GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
 void GlyphRenderable::RecomputeTarget()
 {
 	displace->RecomputeTarget();
+}
+
+void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
+{
+	displace->DisplacePoints(pts,
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses());
 }
 
 //float3 GlyphRenderable::DataCenter()

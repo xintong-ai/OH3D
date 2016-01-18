@@ -32,9 +32,23 @@ struct functor_Clip2Screen
 	functor_Clip2Screen(int _w, int _h) :w(_w), h(_h){}
 };
 
-__device__ inline float G(float x, float r)
+__device__ __host__ inline float G(float x, float r)
 {
 	return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
+}
+
+__device__ __host__ float2 DisplaceCircleLens(float x, float y, float r, float2 screenPos, float rSide = 0)
+{
+	float2 ret = screenPos;
+	float2 dir = screenPos - make_float2(x, y);
+	float disOrig = length(dir);
+	float ratio = 0.5;
+	float rOut = (r + rSide) / ratio; //including the focus and transition region
+	if (disOrig < rOut) {
+		float disNew = G(disOrig / rOut, ratio) * rOut;
+		ret = make_float2(x, y) + dir / disOrig * disNew;
+	}
+	return ret;
 }
 
 struct functor_Displace
@@ -42,20 +56,13 @@ struct functor_Displace
 	int x, y, r;
 	float d;
 	template<typename Tuple>
-	__device__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
+	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
 		float2 screenPos = thrust::get<0>(t);
 		float4 clipPos = thrust::get<1>(t);
 		float sideSize = 1.0;
 		float2 ret = screenPos;
 		if (clipPos.z < d) {
-			float2 dir = screenPos - make_float2(x, y);
-			float disOrig = length(dir);
-			float ratio = 0.5;
-			float rOut = (r + (d - clipPos.z) * r * 32 * sideSize) / ratio; //including the focus and transition region
-			if (disOrig < rOut) {
-				float disNew = G(disOrig / rOut, ratio) * rOut;
-				ret = make_float2(x, y) + dir / disOrig * disNew;
-			}
+			ret = DisplaceCircleLens(x, y, r, screenPos, (d - clipPos.z) * r * 32 * sideSize);
 		}
 		thrust::get<2>(t) = ret;
 	}
@@ -99,6 +106,15 @@ struct functor_Unproject
 //};
 //thrust::transform(posOrig.begin(), posOrig.end(), d_vec_Dist2LensBtm.begin(), (l->c, modelview));
 
+void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses)
+{
+	for (int i = 0; i < lenses.size(); i++) {
+		CircleLens* l = (CircleLens*)lenses[i];
+		for (auto& p : pts) {
+			p = DisplaceCircleLens(l->x, l->y, l->radius, p);
+		}
+	}
+}
 
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 	std::vector<Lens*> lenses, float4* ret)

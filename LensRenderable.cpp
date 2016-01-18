@@ -16,10 +16,11 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 {
 	RecordMatrix(modelview, projection);
 
+	int2 winSize = actor->GetWindowSize();
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
 	glLoadIdentity();
-	glOrtho(0.0, winWidth - 1, 0.0, winHeight - 1, -1, 1);
+	glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
 
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
@@ -54,7 +55,8 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 void LensRenderable::AddCircleLens()
 {
-	Lens* l = new CircleLens(winWidth * 0.5, winHeight * 0.5, winHeight * 0.2, actor->DataCenter());
+	int2 winSize = actor->GetWindowSize();
+	Lens* l = new CircleLens(winSize.x * 0.5, winSize.y * 0.5, winSize.y * 0.2, actor->DataCenter());
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
@@ -104,3 +106,8 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	return insideAnyLens;
 }
+//
+//void LensRenderable::DisplacePoints(std::vector<float2>& pts)
+//{
+//	displace
+//}

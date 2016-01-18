@@ -41,6 +41,8 @@ public:
 
     void GetWindowSize(int &w, int &h) {w = width; h = height;}
 
+	int2 GetWindowSize() { return make_int2(width, height); }
+
 	void SetVol(int3 dim);
 
 	void SetVol(float3 posMin, float3 posMax);
