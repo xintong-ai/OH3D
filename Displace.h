@@ -6,6 +6,7 @@ class Displace
 {
 	thrust::device_vector < float4 > posOrig;
 	thrust::device_vector<float2> d_vec_posScreenTarget;
+	thrust::device_vector<float> d_vec_Dist2LensBtm;
 	//thrust::device_vector < float4 > posScreenTarget;
 	bool recomputeTarget = false;
 public:
