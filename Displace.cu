@@ -41,6 +41,11 @@ __device__ inline float G(float x, float r)
 	return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
 }
 
+__device__ inline float G_Line(float x, float r) //wrong!
+{
+	return (1 - r)*x + r;//pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
+}
+
 struct functor_Displace
 {
 	int x, y, r;
@@ -62,6 +67,62 @@ struct functor_Displace
 	}
 	functor_Displace(int _x, int _y, int _r, float _d) : x(_x), y(_y), r(_r), d(_d){}
 };
+
+struct functor_Displace_Line
+{
+	int x, y;
+	float d;
+
+	float lSemiMajorAxis, lSemiMinorAxis;
+	float2 direction;
+
+	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
+		float2 ret = screenPos;
+
+		if (clipPos.z < d) {
+			//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
+			//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
+
+			//dot product of (_x-x, _y-y) and direction
+
+			float2 toPoint = screenPos - make_float2(x, y);
+			float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+			if (abs(disMajor) < lSemiMajorAxis) {
+
+				float2 minorDirection = make_float2(-direction.y, direction.x);
+				//dot product of (_x-x, _y-y) and minorDirection
+				float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
+
+
+				float disMajorRatio = disMajor / lSemiMajorAxis;
+				float disSigmoid; //always positive or 0
+				if (disMajorRatio < 0){
+					disSigmoid = 2 * (1 / (1 + exp(-20 * (disMajorRatio + 1))) - 0.5);
+				}
+				else {
+					disSigmoid = 2 * (1 / (1 + exp(20 * (disMajorRatio - 1))) - 0.5);
+				}
+
+				float ratio = 0.5;
+				if (abs(disMinor) < disSigmoid*lSemiMinorAxis / ratio){			
+					float rOut = disSigmoid *lSemiMinorAxis / ratio; //including the focus and transition region
+
+					float disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
+					if (disMinor > 0){
+						ret = make_float2(screenPos.x, screenPos.y) + minorDirection * (disMinorNewAbs - disMinor);
+					}
+					else {
+						ret = make_float2(screenPos.x, screenPos.y) - minorDirection * (disMinorNewAbs + disMinor);
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	functor_Displace_Line(int _x, int _y, int _lSemiMajorAxis, int _lSemiMinorAxis, float2 _direction, float _d) :
+		x(_x), y(_y), lSemiMajorAxis(_lSemiMajorAxis), lSemiMinorAxis(_lSemiMinorAxis), direction(_direction), d(_d){}
+};
+
 
 //thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 //	d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
@@ -118,10 +179,16 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 			d_vec_posScreen.begin(), functor_Clip2Screen(winW, winH));
 
 		for (int i = 0; i < lenses.size(); i++) {
+			/*
 			CircleLens* l = (CircleLens*)lenses[i];
 			thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 				d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
 				functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection)));
+				*/
+			LineLens* l = (LineLens*)lenses[i];
+			thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+				d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
+				functor_Displace_Line(l->x, l->y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
 		}
 		recomputeTarget = false;
 	}

@@ -60,6 +60,14 @@ void LensRenderable::AddCircleLens()
 	actor->UpdateGL();
 }
 
+void LensRenderable::AddLineLens()
+{
+	Lens* l = new LineLens(winWidth * 0.5, winHeight * 0.5, winHeight * 0.2, actor->DataCenter());
+	lenses.push_back(l);
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	actor->UpdateGL();
+}
+
 void LensRenderable::mousePress(int x, int y, int modifier)
 {
 	for (int i = 0; i < lenses.size(); i++) {

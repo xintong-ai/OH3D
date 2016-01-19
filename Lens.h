@@ -43,4 +43,94 @@ struct CircleLens :public Lens
 
 };
 
+
+struct LineLens :public Lens
+{
+	float lSemiMajorAxis, lSemiMinorAxis;
+	float2 direction; //suppose normalized
+	float ratio; //the ratio of lSemiMajorAxis and lSemiMinorAxis
+
+	LineLens(int _x, int _y, int _r, float3 _c) : Lens(_x, _y, _c){ 
+		lSemiMajorAxis = _r;
+		ratio = 3.0f;
+		lSemiMinorAxis = lSemiMajorAxis / ratio;
+
+		direction = make_float2(1.0, 0.0);
+	};
+
+	bool PointInsideLens(int _x, int _y) {
+		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
+		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
+
+		//dot product of (_x-x, _y-y) and direction
+
+		float2 toPoint = make_float2(_x - x, _y - y);
+		float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+
+		if (abs(disMajor) < lSemiMajorAxis) {
+			float2 minorDirection = make_float2(-direction.y, direction.x);
+			//dot product of (_x-x, _y-y) and minorDirection
+			float disMinor = (_x - x)*minorDirection.x + (_y - y)*minorDirection.y;
+			
+			float disMajorRatio = disMajor / lSemiMajorAxis;
+			float disSigmoid;
+			if (disMajorRatio < 0){
+				disSigmoid = 2 * (1 / (1 + exp(-20 * (disMajorRatio + 1))) - 0.5);
+			}
+			else {
+				disSigmoid = 2 * (1 / (1 + exp(20 * (disMajorRatio - 1))) - 0.5);
+			}
+
+			if (abs(disMinor) < disSigmoid*lSemiMinorAxis)
+				return true;
+		}
+		return false;
+	}
+
+	std::vector<float2> GetContour() {
+		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
+		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
+		float sigmoidCutOff = 0.2f; // assuming the sigmoid function value is constant when input is larger than sigmoidCutOff
+
+		float2 minorDirection = make_float2(-direction.y, direction.x);
+
+		std::vector<float2> ret;
+
+		const int num_segments = 10;
+		for (int ii = 0; ii < num_segments; ii++)
+		{
+			float tt = -1.0f + sigmoidCutOff*ii / num_segments;
+
+			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+				+ 2 * (1 / (1 + exp(-20 * (tt + 1))) - 0.5) *lSemiMinorAxis *minorDirection);//output vertex 
+		}
+
+		for (int ii = 0; ii < num_segments; ii++)
+		{
+			float tt = 1.0f - sigmoidCutOff + sigmoidCutOff*ii / num_segments;
+
+			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+				+ 2 * (1 / (1 + exp(20 * (tt - 1))) - 0.5) *lSemiMinorAxis *minorDirection);//output vertex 
+		}
+
+		
+		for (int ii = 0; ii < num_segments; ii++)
+		{
+			float tt = 1.0f - sigmoidCutOff*ii / num_segments;
+
+			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+				- 2 * (1 / (1 + exp(20 * (tt - 1))) - 0.5) *lSemiMinorAxis *minorDirection);//output vertex 
+		}
+
+		for (int ii = 0; ii < num_segments; ii++)
+		{
+			float tt = -1.0f + sigmoidCutOff - sigmoidCutOff*ii / num_segments;
+
+			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+				- 2 * (1 / (1 + exp(-20 * (tt + 1))) - 0.5) *lSemiMinorAxis *minorDirection);//output vertex 
+		}
+		
+		return ret;
+	}
+};
 #endif
