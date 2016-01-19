@@ -41,11 +41,6 @@ __device__ inline float G(float x, float r)
 	return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
 }
 
-__device__ inline float G_Line(float x, float r) //wrong!
-{
-	return (1 - r)*x + r;//pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
-}
-
 struct functor_Displace
 {
 	int x, y, r;
@@ -97,10 +92,10 @@ struct functor_Displace_Line
 				float disMajorRatio = disMajor / lSemiMajorAxis;
 				float disSigmoid; //always positive or 0
 				if (disMajorRatio < 0){
-					disSigmoid = 2 * (1 / (1 + exp(-20 * (disMajorRatio + 1))) - 0.5);
+					disSigmoid = 1 / (1 + exp(-40 * (disMajorRatio + 0.8)));
 				}
 				else {
-					disSigmoid = 2 * (1 / (1 + exp(20 * (disMajorRatio - 1))) - 0.5);
+					disSigmoid = 1 / (1 + exp(40 * (disMajorRatio - 0.8)));
 				}
 
 				float ratio = 0.5;
