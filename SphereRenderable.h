@@ -13,11 +13,12 @@ public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	SphereRenderable(float4* _spherePos, int _sphereCnt, float* _sphereSize);
+	SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val);
 
 	//void SetVolumeDim(int x, int y, int z){ dataDim[0] = x; dataDim[1] = y; dataDim[2] = z; }
 private:
-	float* sphereSize = nullptr;
+	float* val = nullptr;
+	std::vector<float3> sphereColor;
 	void GenVertexBuffer(int nv, float* vertex);
 	void LoadShaders();
 	unsigned int vbo_vert;

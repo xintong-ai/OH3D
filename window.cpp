@@ -8,6 +8,14 @@
 #include "GridRenderable.h"
 #include "Displace.h"
 
+QSlider* CreateSlider()
+{
+	QSlider* slider = new QSlider(Qt::Horizontal);
+	slider->setRange(0, 10);
+	slider->setValue(5);
+	return slider;
+}
+
 class GLTextureCube;
 Window::Window()
 {
@@ -53,18 +61,18 @@ Window::Window()
 
 	ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
 	//Displace* displace = new Displace();
-	sphereRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
+	glyphRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
 	float3 posMin, posMax;
 	particleReader->GetDataRange(posMin, posMax);
 	lensRenderable = new LensRenderable();
 
-	GridRenderable* gridRenderable = new GridRenderable(64);
+	gridRenderable = new GridRenderable(64);
 	//sphereRenderable->SetVolRange(posMin, posMax);
 	//BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());
 	//bbox->SetVisibility(true);
 	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	//openGL->AddRenderable("bbox", bbox);
-	openGL->AddRenderable("glyph", sphereRenderable);
+	openGL->AddRenderable("glyph", glyphRenderable);
 	openGL->AddRenderable("lenses", lensRenderable);
 	openGL->AddRenderable("grid", gridRenderable);
 
@@ -76,6 +84,22 @@ Window::Window()
 	addLensBtn = new QPushButton("Add Circle Lens");
 	QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	addThingsLayout->addWidget(addLensBtn);
+
+	QCheckBox* gridCheck = new QCheckBox("Grid", this);
+	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
+
+	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
+	QSlider* transSizeSlider = CreateSlider();
+	connect(transSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotFocusSizeChanged(int)));
+
+	QLabel* sideSizeLabel = new QLabel("Lens side size:", this);
+	QSlider* sideSizeSlider = CreateSlider();
+	connect(sideSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotSideSizeChanged(int)));
+
+	QLabel* glyphSizeAdjustLabel = new QLabel("Glyph size adjust:", this);
+	QSlider* glyphSizeAdjustSlider = CreateSlider();
+	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotGlyphSizeAdjustChanged(int)));
+
 	//radioX = new QRadioButton(tr("&X"));
 	//radioY = new QRadioButton(tr("&Y"));
 	//radioZ = new QRadioButton(tr("&Z"));
@@ -88,6 +112,14 @@ Window::Window()
 	//groupBox->setLayout(sliceOrieLayout);
 	//controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(addLensBtn);
+	controlLayout->addWidget(gridCheck);
+	controlLayout->addWidget(transSizeLabel);
+	controlLayout->addWidget(transSizeSlider);
+	controlLayout->addWidget(sideSizeLabel);
+	controlLayout->addWidget(sideSizeSlider);
+	controlLayout->addWidget(glyphSizeAdjustLabel);
+	controlLayout->addWidget(glyphSizeAdjustSlider);
+	
 	controlLayout->addStretch();
 
 
@@ -106,11 +138,7 @@ Window::Window()
 	//sliceSlider->setRange(0, cubemap->GetInnerDim( glyphRenderable->GetSliceDimIdx())/*vecReader->GetVolumeDim().z*/ - 1);
 	//sliceSlider->setValue(0);
 
-	//QLabel* sliceThicknessLabel = new QLabel("Layer thickness:", this);
-	//QSlider* numPartSlider = new QSlider(Qt::Horizontal);
-	////numPartSlider->setFixedSize(120, 30);
-	//numPartSlider->setRange(1, cubemap->GetInnerDim(glyphRenderable->GetSliceDimIdx()));
-	//numPartSlider->setValue(1);
+
 
 	//QLabel* heightScaleLabel = new QLabel("Glyph Height Scale:", this);
 	//heightScaleSlider = new QSlider(Qt::Horizontal);
@@ -164,8 +192,7 @@ Window::Window()
 	//aTimer->start(33);
 	//aTimer->stop();
 	//
-	//QCheckBox* animationCheck = new QCheckBox("Animation", this);
-	//connect(animationCheck, SIGNAL(clicked(bool)), this, SLOT(SlotSetAnimation(bool)));
+
 	//interactLayout->addWidget(animationCheck);
 	//controlLayout->addStretch();
 	mainLayout->addWidget(openGL,3);
@@ -204,17 +231,10 @@ void Window::AddLens()
 //	openGL->animate();
 //}
 //
-//void Window::SlotSetAnimation(bool doAnimation)
-//{
-//	if (doAnimation){
-//		aTimer->start();
-//		glyphRenderable->SetAnimationOn(true);
-//	}
-//	else {
-//		aTimer->stop();
-//		glyphRenderable->SetAnimationOn(false);
-//	}
-//}
+void Window::SlotToggleGrid(bool b)
+{
+	gridRenderable->SetVisibility(b);
+}
 
 Window::~Window() {
 	//TOOO:

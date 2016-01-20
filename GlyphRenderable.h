@@ -6,18 +6,27 @@ class Displace;
 
 class GlyphRenderable: public Renderable
 {
-	//float3 dataMin, dataMax;
+	Q_OBJECT
+		//float3 dataMin, dataMax;
 protected:
 	float4* pos = nullptr;
 	int num;
 	Displace* displace;
+	std::vector<float> glyphSizeScale;
+	float glyphSizeAdjust = 0.5;
+
 	void ComputeDisplace();
 	
-	GlyphRenderable(float4* _pos, int _num);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
+	GlyphRenderable(float4* _pos, int _num);//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
 	//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
 public:
 	void RecomputeTarget();
 	void DisplacePoints(std::vector<float2>& pts);
 	//void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
+public slots:
+	void SlotFocusSizeChanged(int v);// { displace - (10 - v) * 0.1; }
+	void SlotSideSizeChanged(int v);// { displace - (10 - v) * 0.1; }
+	void SlotGlyphSizeAdjustChanged(int v);// { displace - (10 - v) * 0.1; }
+	
 };
 #endif

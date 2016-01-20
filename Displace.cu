@@ -9,6 +9,7 @@ void Displace::LoadOrig(float4* v, int num)
 {
 	posOrig.assign(v, v + num);// , posOrig.begin());
 	d_vec_posScreenTarget.assign(num, make_float2(0, 0));
+	d_vec_glyphSizeTarget.assign(num, 1);
 	//d_vec_Dist2LensBtm.assign(num, 0);
 }
 
@@ -37,16 +38,21 @@ __device__ __host__ inline float G(float x, float r)
 	return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
 }
 
-__device__ __host__ float2 DisplaceCircleLens(float x, float y, float r, float2 screenPos, float rSide = 0)
+__device__ __host__ inline float G_Diff(float x, float r)
+{
+	return pow((r - 1)/ (r * x - 1), 2);
+}
+
+__device__ __host__ float2 DisplaceCircleLens(float x, float y, float r, float2 screenPos, float& glyphSize, float focusRatio, float rSide = 0)
 {
 	float2 ret = screenPos;
 	float2 dir = screenPos - make_float2(x, y);
 	float disOrig = length(dir);
-	float ratio = 0.5;
-	float rOut = (r + rSide) / ratio; //including the focus and transition region
+	float rOut = (r + rSide) / focusRatio; //including the focus and transition region
 	if (disOrig < rOut) {
-		float disNew = G(disOrig / rOut, ratio) * rOut;
+		float disNew = G(disOrig / rOut, focusRatio) * rOut;
 		ret = make_float2(x, y) + dir / disOrig * disNew;
+		glyphSize = G_Diff(disOrig / rOut, focusRatio);
 	}
 	return ret;
 }
@@ -55,28 +61,41 @@ struct functor_Displace
 {
 	int x, y, r;
 	float d;
+	float focusRatio;
+	float sideSize;
 	template<typename Tuple>
 	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
 		float2 screenPos = thrust::get<0>(t);
 		float4 clipPos = thrust::get<1>(t);
-		float sideSize = 1.0;
 		float2 ret = screenPos;
 		if (clipPos.z < d) {
-			ret = DisplaceCircleLens(x, y, r, screenPos, (d - clipPos.z) * r * 32 * sideSize);
+			float glyphSize = 1;
+			ret = DisplaceCircleLens(x, y, r, screenPos, glyphSize, focusRatio, (d - clipPos.z) * r * 64 * sideSize);
+			thrust::get<3>(t) = glyphSize;
 		}
 		thrust::get<2>(t) = ret;
 	}
-	functor_Displace(int _x, int _y, int _r, float _d) : x(_x), y(_y), r(_r), d(_d){}
+	functor_Displace(int _x, int _y, int _r, float _d, float _focusRatio, float _sideSize) 
+		: x(_x), y(_y), r(_r), d(_d), focusRatio(_focusRatio), sideSize(_sideSize){}
 };
 
 struct functor_ApproachTarget
 {
-	__device__ float2 operator() (float2 screenPos, float2 screenTarget) {
+	template<typename Tuple>
+	__device__ float2 operator() (Tuple t) {
+		float2 screenPos = thrust::get<0>(t); 
+		float2 screenTarget = thrust::get<1>(t);
 		float2 dir = screenTarget - screenPos;
-		if (length(dir) < 0.5) 
-			return screenTarget;
-		else
-			return screenPos + dir * 0.1;
+		float sizeDiff = thrust::get<3>(t) - thrust::get<2>(t);
+		if (length(dir) < 0.5) {
+			thrust::get<0>(t) = screenTarget;
+			thrust::get<2>(t) = thrust::get<3>(t);
+		}
+		else{
+			thrust::get<0>(t) = screenPos + dir * 0.1;
+			thrust::get<2>(t) = thrust::get<2>(t) + sizeDiff * 0.1;
+		}
+
 	}
 };
 
@@ -111,13 +130,14 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 	for (int i = 0; i < lenses.size(); i++) {
 		CircleLens* l = (CircleLens*)lenses[i];
 		for (auto& p : pts) {
-			p = DisplaceCircleLens(l->x, l->y, l->radius, p);
+			float tmp = 1;
+			p = DisplaceCircleLens(l->x, l->y, l->radius, p, tmp, focusRatio);
 		}
 	}
 }
 
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
-	std::vector<Lens*> lenses, float4* ret)
+	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale)
 {
 	if (lenses.size() <= 0)
 		return;
@@ -137,6 +157,9 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 		thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(),
 			d_vec_posScreen.begin(), functor_Clip2Screen(winW, winH));
 
+		//reset to 1
+		d_vec_glyphSizeTarget.assign(size, 1);
+
 
 		for (int i = 0; i < lenses.size(); i++) {
 			CircleLens* l = (CircleLens*)lenses[i];
@@ -147,15 +170,18 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 				thrust::make_tuple(
 				d_vec_posScreen.begin(), 
 				d_vec_posClip.begin(), 
-				d_vec_posScreenTarget.begin()
+				d_vec_posScreenTarget.begin(),
+				d_vec_glyphSizeTarget.begin()
 				)),
 				thrust::make_zip_iterator(
 				thrust::make_tuple(
 				d_vec_posScreen.end(),
 				d_vec_posClip.end(),
-				d_vec_posScreenTarget.end()
+				d_vec_posScreenTarget.end(),
+				d_vec_glyphSizeTarget.end()
 				)),
-				functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection)));
+				functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), focusRatio, sideSize));
+
 		}
 		
 
@@ -166,13 +192,28 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 
 	thrust::device_vector<float4> d_vec_posCur(size);
 	thrust::copy(ret, ret + size, d_vec_posCur.begin());
+	thrust::device_vector<float> d_vec_glyphSizeScale(size);
+	thrust::copy(glyphSizeScale, glyphSizeScale + size, d_vec_glyphSizeScale.begin());
 
 	thrust::transform(d_vec_posCur.begin(), d_vec_posCur.end(), d_vec_posClip.begin(), functor_Object2Clip(mv, pj));
 	thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(),
 		d_vec_posScreen.begin(), functor_Clip2Screen(winW, winH));
 
-	thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-		d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
+	thrust::for_each(
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_posScreen.begin(), 
+		d_vec_posScreenTarget.begin(), 
+		d_vec_glyphSizeScale.begin(),
+		d_vec_glyphSizeTarget.begin()
+		)),
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_posScreen.end(),
+		d_vec_posScreenTarget.end(),
+		d_vec_glyphSizeScale.end(),
+		d_vec_glyphSizeTarget.end()
+		)),
 		functor_ApproachTarget());
 
 	//posScreenTarget = d_vec_posScreen;
@@ -187,4 +228,5 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 	thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(), d_vec_posScreen.begin(), d_vec_ret.begin(),
 		functor_Unproject(invMV, invPJ, winW, winH));
 	thrust::copy(d_vec_ret.begin(), d_vec_ret.end(), ret);
+	thrust::copy(d_vec_glyphSizeScale.begin(), d_vec_glyphSizeScale.end(), glyphSizeScale);
 }

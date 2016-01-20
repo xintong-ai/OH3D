@@ -94,9 +94,27 @@ void ParticleReader::Load()
 		val.push_back(ts->concentration[i]);
 	}
 	delete ts;
+	//float a, b;
+	//GetValRange(a, b);
 	//float3 pMin, pMax;
 	//GetDataRange(pMin, pMax);
 }
+
+void ParticleReader::GetValRange(float& vMin, float& vMax)
+{
+	vMax = -FLT_MAX;
+	vMin = FLT_MAX;
+	int n = pos.size();
+	float v = 0;
+	for (int i = 0; i < n; i++) {
+		v = val[i];
+		if (v > vMax)
+			vMax = v;
+		if (v < vMin)
+			vMin = v;
+	}
+}
+
 
 void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
 {

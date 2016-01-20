@@ -36,6 +36,7 @@ GLSphere.h
 	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
 	Displace.h TransformFunc.h Lens.h GlyphRenderable.h LensRenderable.h
 	GridRenderable.h
+	ColorGradient.h
     )
 #set( Rcs resources/vechist.qrc)
 

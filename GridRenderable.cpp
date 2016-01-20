@@ -5,7 +5,7 @@
 GridRenderable::GridRenderable(int n)
 {
 	gridResolution.x = n;
-
+	visible = false;
 	//winWidth
 }
 
@@ -47,6 +47,8 @@ void GridRenderable::resize(int width, int height)
 
 void GridRenderable::draw(float modelview[16], float projection[16])
 {
+	if (!visible)
+		return;
 	int2 winSize = actor->GetWindowSize();
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
