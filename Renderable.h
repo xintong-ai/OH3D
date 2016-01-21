@@ -68,7 +68,7 @@ public:
 
     //void GetDataDim(int &nx, int &ny, int &nz);
 
-    void SetWindowSize(int w, int h) {winWidth = w; winHeight = h;}
+    //void SetWindowSize(int w, int h) {winWidth = w; winHeight = h;}
 
     //void SaveMatrices(float* mv, float* pj) {
     //    ModelviewMatrix = QMatrix4x4(mv);
@@ -92,7 +92,7 @@ public:
 
 protected:
     //DataMgr *dataMgr;
-    int winWidth, winHeight;
+    //int winWidth, winHeight;
     uint pbo;
     uint* d_output = NULL;
     uint* h_output = NULL;

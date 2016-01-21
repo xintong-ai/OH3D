@@ -14,10 +14,11 @@ class QCheckBox;
 class QLabel;
 class Cubemap;
 //class GlyphRenderable;
-class SphereRenderable;
+class GlyphRenderable;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
+class GridRenderable;
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
@@ -40,8 +41,9 @@ private:
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
-	SphereRenderable* sphereRenderable;
+	GlyphRenderable* glyphRenderable;
 	LensRenderable* lensRenderable;
+	GridRenderable* gridRenderable;
 	//QPushButton* addNodeBtn;
 	//QPushButton* viewBtn;
 	//QSlider* xSlider;
@@ -70,7 +72,8 @@ private slots:
 //void SlotSliceOrieChanged(bool clicked);
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);
-	
+	void SlotToggleGrid(bool b);
+
 	//void XSliderChanged(int i);
 	//void YSliderChanged(int i);
 	//void ZSliderChanged(int i);

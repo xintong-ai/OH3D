@@ -27,6 +27,7 @@ public:
 	int GetNum();
 	float* GetVal();
 	void GetDataRange(float3& posMin, float3& posMax);
+	void GetValRange(float& vMin, float& vMax);
 protected:
 	void Load() override;
 };

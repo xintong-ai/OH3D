@@ -3,8 +3,13 @@
 #include <vector_types.h>
 #include <helper_math.h>
 #include <vector>
+enum LENS_TYPE{
+	TYPE_CIRCLE,
+	TYPE_LINE,
+};
 struct Lens
 {
+	LENS_TYPE type;
 	float3 c; //center
 	int x, y; //screen location
 	float4 GetCenter();// { return make_float4(c.x, c.y, c.z, 1.0f); }
@@ -14,12 +19,13 @@ struct Lens
 	virtual bool PointInsideLens(int x, int y) = 0;
 	virtual std::vector<float2> GetContour() = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
+	LENS_TYPE GetType(){ return type; }
 };
 
 struct CircleLens :public Lens
 {
 	float radius;
-	CircleLens(int _x, int _y, int _r, float3 _c) : Lens(_x, _y, _c){ radius = _r; };
+	CircleLens(int _x, int _y, int _r, float3 _c) : Lens(_x, _y, _c){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
 	bool PointInsideLens(int _x, int _y) {
 		float dis = length(make_float2(_x, _y) - make_float2(x, y));
 		return dis < radius;
@@ -56,6 +62,7 @@ struct LineLens :public Lens
 		lSemiMinorAxis = lSemiMajorAxis / ratio;
 
 		direction = make_float2(1.0, 0.0);
+		type = LENS_TYPE::TYPE_LINE;
 	};
 
 	bool PointInsideLens(int _x, int _y) {

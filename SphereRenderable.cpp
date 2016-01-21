@@ -12,6 +12,7 @@
 #include "ShaderProgram.h"
 #include "GLSphere.h"
 #include <helper_math.h>
+#include <ColorGradient.h>
 
 void SphereRenderable::LoadShaders()
 {
@@ -36,14 +37,14 @@ void SphereRenderable::LoadShaders()
 		eyeCoords = ModelViewMatrix *
 			vec4(VertexPosition, 1.0);
 		tnorm = normalize(NormalMatrix * VertexPosition);
-		gl_Position = MVP * vec4(VertexPosition * (pow(Scale, 0.333) * 0.01) + Transform, 1.0);
+		gl_Position = MVP * vec4(VertexPosition * (Scale * 0.08) + Transform, 1.0);
 	}
 	);
 
 	const char* vertexFS =
 		GLSL(
 		uniform vec4 LightPosition; // Light position in eye coords.
-	//uniform vec3 Ka; // Diffuse reflectivity
+	uniform vec3 Ka; // Diffuse reflectivity
 	uniform vec3 Kd; // Diffuse reflectivity
 	uniform vec3 Ks; // Diffuse reflectivity
 	uniform float Shininess;
@@ -56,7 +57,7 @@ void SphereRenderable::LoadShaders()
 		vec3 s = normalize(vec3(LightPosition - position));
 		vec3 v = normalize(-position.xyz);
 		vec3 r = reflect(-s, normal);
-		vec3 ambient = a;// Ka;
+		vec3 ambient = a;// Ka * 0.8;
 		float sDotN = max(dot(s, normal), 0.0);
 		vec3 diffuse = Kd * sDotN;
 		vec3 spec = vec3(0.0);
@@ -66,39 +67,8 @@ void SphereRenderable::LoadShaders()
 		return ambient + diffuse + spec;
 	}
 
-	vec4 GetColor(float v, float vmin, float vmax)
-	{
-		vec4 c = vec4(0.0, 0.0, 0.0, 1.0);
-		float dv;
-		dv = vmax - vmin;
-		vec4 cm[3];
-		cm[0] = vec4(0, 0, 1, 1);
-		cm[1] = vec4(1, 1, 1, 1);
-		cm[2] = vec4(1, 0, 0, 1);
-
-		float pdv = 0.5 * dv;
-
-		int i = 0;
-		for (i = 0; i < 2; i++) {
-			if (v >= (vmin + i*pdv) && v < (vmin + (i + 1)*pdv)) {
-				c.r = cm[i].r + (v - vmin - i*pdv) / pdv * (cm[i + 1].r - cm[i].r);
-				c.g = cm[i].g + (v - vmin - i*pdv) / pdv * (cm[i + 1].g - cm[i].g);
-				c.b = cm[i].b + (v - vmin - i*pdv) / pdv * (cm[i + 1].b - cm[i].b);
-
-				break;
-			}
-		}
-		if (v == vmax) {
-			c.r = cm[2].r;
-			c.g = cm[2].g;
-			c.b = cm[2].b;
-		}
-		return(c);
-	}
-
 	void main() {
-		vec3 unlitColor = 0.5 * vec3(GetColor(Scale, 50, 400));// 0.5 * vec3(1.0f, 1.0f, 1.0f);// GetColor2(norm, v);
-		FragColor = vec4(phongModel(unlitColor, eyeCoords, tnorm), 1.0);
+		FragColor = vec4(phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
 	}
 	);
 
@@ -107,7 +77,7 @@ void SphereRenderable::LoadShaders()
 
 	glProg->addAttribute("VertexPosition");
 	glProg->addUniform("LightPosition");
-	//glProg->addUniform("Ka");
+	glProg->addUniform("Ka");
 	glProg->addUniform("Kd");
 	glProg->addUniform("Ks");
 	glProg->addUniform("Shininess");
@@ -167,12 +137,12 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		q_modelview = q_modelview.transposed();
 		float3 cen = actor->DataCenter();
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
-		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
+		qgl->glUniform3fv(glProg->uniform("Ka"), 1, &sphereColor[i].x);
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &shift.x);
-		qgl->glUniform1f(glProg->uniform("Scale"), sphereSize[i]);
+		qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
 		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
@@ -200,8 +170,16 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	m_vao->release();
 }
 
-SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _sphereSize)
+SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
 	:GlyphRenderable(_spherePos, _sphereCnt)
 { 
-	sphereSize = _sphereSize; 
+	val = _val; 
+	sphereColor.assign(_sphereCnt, make_float3(1.0f, 1.0f, 1.0f));
+	ColorGradient cg;
+	const float valMax = 350;
+	const float valMin = 70;
+	for (int i = 0; i < _sphereCnt; i++) {
+		float valScaled = (val[i] - valMin) / (valMax - valMin);
+		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
+	}
 }
