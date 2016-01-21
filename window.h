@@ -38,6 +38,8 @@ private:
 	QTimer *aTimer;
 	const int nScale = 20;
 	QPushButton* addLensBtn;
+	QPushButton* addLineLensBtn;
+
 	SphereRenderable* sphereRenderable;
 	LensRenderable* lensRenderable;
 	//QPushButton* addNodeBtn;
@@ -64,6 +66,7 @@ private:
 
 private slots:
 	void AddLens();
+	void AddLineLens();
 //void SlotSliceOrieChanged(bool clicked);
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);

@@ -50,7 +50,7 @@ Window::Window()
 	//glyphRenderable->SetVolumeDim(innerDim.x, innerDim.y, innerDim.z);
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 
-	ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+	ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 	//Displace* displace = new Displace();
 	sphereRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
 	float3 posMin, posMax;
@@ -70,8 +70,11 @@ Window::Window()
 	//QGroupBox *groupBox = new QGroupBox(tr("Slice Orientation"));
 
 	addLensBtn = new QPushButton("Add Circle Lens");
+	addLineLensBtn = new QPushButton("Add Line Lens");
 	QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	addThingsLayout->addWidget(addLensBtn);
+	addThingsLayout->addWidget(addLineLensBtn);
+
 	//radioX = new QRadioButton(tr("&X"));
 	//radioY = new QRadioButton(tr("&Y"));
 	//radioZ = new QRadioButton(tr("&Z"));
@@ -84,10 +87,14 @@ Window::Window()
 	//groupBox->setLayout(sliceOrieLayout);
 	//controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(addLensBtn);
+	controlLayout->addWidget(addLineLensBtn);
+
 	controlLayout->addStretch();
 
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
+	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
+
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioZ, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -177,6 +184,12 @@ void Window::AddLens()
 	//lensWidSlider->setValue(((GLLensTracer*)lensRenderable)->GetLensWidth() * 10);
 	//UpdateStatusLabel();
 }
+
+void Window::AddLineLens()
+{
+	lensRenderable->AddLineLens();
+}
+
 //void Window::SlotSliceOrieChanged(bool clicked)
 //{
 //	if (radioX->isChecked()){

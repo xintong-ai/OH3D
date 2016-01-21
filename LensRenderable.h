@@ -18,6 +18,8 @@ public:
 	std::vector<Lens*> GetLenses() { return lenses; }
 	//void AddSphereLens(int x, int y, int radius, float3 center);
 	void AddCircleLens();
+	void AddLineLens();
+
 	//bool IsWorkingOnLens(){ return workingOnLens; }
 
 	void mousePress(int x, int y, int modifier) override;
