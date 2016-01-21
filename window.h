@@ -40,6 +40,7 @@ private:
 	const int nScale = 20;
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
+	QPushButton* addPolyLineLensBtn;
 
 	GlyphRenderable* glyphRenderable;
 	LensRenderable* lensRenderable;
@@ -69,6 +70,8 @@ private:
 private slots:
 	void AddLens();
 	void AddLineLens();
+	void AddPolyLineLens();
+
 //void SlotSliceOrieChanged(bool clicked);
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);

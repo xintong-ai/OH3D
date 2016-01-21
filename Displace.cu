@@ -135,6 +135,29 @@ struct functor_Displace_Line
 };
 
 
+
+
+
+struct functor_Displace_PolyLine
+{
+	int x, y;
+	float d;
+
+	float lSemiMajorAxis, lSemiMinorAxis;
+	float2 direction;
+
+	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
+		float2 ret = screenPos;
+
+		return screenPos;
+		return ret;
+	}
+	functor_Displace_PolyLine(){}
+};
+
+
+
+
 //thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 //	d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
 //	functor_ApproachTarget());
@@ -253,13 +276,23 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						functor_Displace_Line(l->x, l->y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
 					break;
 				}
-
+				case LENS_TYPE::TYPE_POLYLINE:
+				{
+												 PolyLineLens* l = (PolyLineLens*)lenses[i];
+					thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+						d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
+						functor_Displace_PolyLine());
+					break;
+				}
 			}
 			//thrust::transform(posOrig.begin(), posOrig.end(), 
 			//	d_vec_Dist2LensBtm.begin(), func_CompDist2LensBtm(l->c, mv));
 		}
 		recomputeTarget = false;
 	}
+
+
+	 
 
 	thrust::device_vector<float4> d_vec_posCur(size);
 	thrust::copy(ret, ret + size, d_vec_posCur.begin());

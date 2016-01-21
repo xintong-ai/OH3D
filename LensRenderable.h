@@ -19,7 +19,7 @@ public:
 	//void AddSphereLens(int x, int y, int radius, float3 center);
 	void AddCircleLens();
 	void AddLineLens();
-
+	void AddPolyLineLens();
 	//bool IsWorkingOnLens(){ return workingOnLens; }
 
 	void mousePress(int x, int y, int modifier) override;

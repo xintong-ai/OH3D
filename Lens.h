@@ -6,6 +6,7 @@
 enum LENS_TYPE{
 	TYPE_CIRCLE,
 	TYPE_LINE,
+	TYPE_POLYLINE
 };
 struct Lens
 {
@@ -137,6 +138,74 @@ struct LineLens :public Lens
 				- (1 / (1 + exp(-40 * (tt + 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
 		}
 		
+		return ret;
+	}
+};
+
+struct PolyLineLens :public Lens
+{
+	float width;
+	int numCtrlPoints;
+	float2 *ctrlPoints; //need to delete when release
+
+	PolyLineLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
+		width = _w;
+
+		numCtrlPoints = 5;
+		ctrlPoints = new float2[numCtrlPoints];
+
+		ctrlPoints[0].x = x + 100;
+		ctrlPoints[0].y = y -10;
+
+		ctrlPoints[1].x = x + 50;
+		ctrlPoints[1].y = y + 40;
+
+		ctrlPoints[2].x = x;
+		ctrlPoints[2].y = y;
+
+		ctrlPoints[3].x = x - 50;
+		ctrlPoints[3].y = y - 40;
+
+		ctrlPoints[4].x = x - 100;
+		ctrlPoints[4].y = y + 10;
+
+		type = LENS_TYPE::TYPE_POLYLINE;
+
+
+		//compute PCA
+		//X is matrix formed by row vectors of points, i.e., X=[ctrlPoints[0].x, ctrlPoints[0].y;ctrlPoints[1].x, ctrlPoints[1].y;...]
+		//get the eignevector of A = X'X
+		float A11 = 0, A12 = 0, A21 = 0, A22 = 0;
+		for (int ii = 0; ii < numCtrlPoints; ii++) {
+			A11 += ctrlPoints[ii].x * ctrlPoints[ii].x;
+			A22 += ctrlPoints[ii].y * ctrlPoints[ii].y;
+			A12 += ctrlPoints[ii].x * ctrlPoints[ii].y;
+			A21 += ctrlPoints[ii].y * ctrlPoints[ii].x;
+		}
+		
+		//Av=lv -> (A-lI)v=0 -> f(l) = |A-lI| = 0 -> (A11-l)*(A22-l)-A12*A21 = 0
+		//-> l^2 - (A11+A22)*l + A11*A22-A12*A21 = 0;
+
+	};
+
+	bool PointInsideLens(int _x, int _y)
+	{
+		
+
+		return true;
+	}
+
+	std::vector<float2> GetContour(){
+		std::vector<float2> ret;
+
+		for (int ii = 0; ii < numCtrlPoints; ii++) {
+			ret.push_back(make_float2(ctrlPoints[ii].x, ctrlPoints[ii].y + 40));
+		}
+
+		for (int ii = numCtrlPoints-1; ii >=0; ii--) {
+			ret.push_back(make_float2(ctrlPoints[ii].x, ctrlPoints[ii].y - 40));
+		}
+
 		return ret;
 	}
 };
