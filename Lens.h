@@ -3,6 +3,8 @@
 #include <vector_types.h>
 #include <helper_math.h>
 #include <vector>
+
+
 enum LENS_TYPE{
 	TYPE_CIRCLE,
 	TYPE_LINE,
@@ -146,7 +148,11 @@ struct PolyLineLens :public Lens
 {
 	float width;
 	int numCtrlPoints;
+	//!note!  positions relative to the center
 	float2 *ctrlPoints; //need to delete when release
+
+	float2 direction;
+	float lSemiMajor, lSemiMinor;
 
 	PolyLineLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
 		width = _w;
@@ -154,20 +160,20 @@ struct PolyLineLens :public Lens
 		numCtrlPoints = 5;
 		ctrlPoints = new float2[numCtrlPoints];
 
-		ctrlPoints[0].x = x + 100;
-		ctrlPoints[0].y = y -10;
+		ctrlPoints[0].x = 100;
+		ctrlPoints[0].y = 90;
 
-		ctrlPoints[1].x = x + 50;
-		ctrlPoints[1].y = y + 40;
+		ctrlPoints[1].x = 30;
+		ctrlPoints[1].y = 40;
 
-		ctrlPoints[2].x = x;
-		ctrlPoints[2].y = y;
+		ctrlPoints[2].x = 0;
+		ctrlPoints[2].y = 0;
 
-		ctrlPoints[3].x = x - 50;
-		ctrlPoints[3].y = y - 40;
+		ctrlPoints[3].x = -33;
+		ctrlPoints[3].y = -20;
 
-		ctrlPoints[4].x = x - 100;
-		ctrlPoints[4].y = y + 10;
+		ctrlPoints[4].x = -70;
+		ctrlPoints[4].y = -110;
 
 		type = LENS_TYPE::TYPE_POLYLINE;
 
@@ -182,9 +188,32 @@ struct PolyLineLens :public Lens
 			A12 += ctrlPoints[ii].x * ctrlPoints[ii].y;
 			A21 += ctrlPoints[ii].y * ctrlPoints[ii].x;
 		}
-		
 		//Av=lv -> (A-lI)v=0 -> f(l) = |A-lI| = 0 -> (A11-l)*(A22-l)-A12*A21 = 0
 		//-> l^2 - (A11+A22)*l + A11*A22-A12*A21 = 0;
+		float equa = 1, equb = -(A11 + A22), equc = A11*A22 - A12*A21;
+		float lembda1 = (-equb + sqrt(equb*equb - 4 * equa * equc)) / 2.0 / equa;
+		//Av=lv -> (A-lI)v=0 -> (A11-l, A12) .* (v1, v2) = 0
+		direction = normalize( make_float2(-A12, A11 - lembda1));
+
+		float2 minorDirection = make_float2(-direction.y, direction.x);
+
+		float maxMajor = -9999, maxMinor = -9999, minMajor = 9999, minMinor = 9999;
+		for (int ii = 0; ii < numCtrlPoints; ii++) {
+			//(ctrlPoints[ii].x - x, ctrlPoints[ii].y - y) dot product direction (and minorDirection)
+			float disMajorii = (ctrlPoints[ii].x)*direction.x + (ctrlPoints[ii].y)*direction.y;
+			float disMinorii = (ctrlPoints[ii].x)*minorDirection.x + (ctrlPoints[ii].y)*minorDirection.y;
+			if (disMajorii > maxMajor)
+				maxMajor = disMajorii;
+			if (disMajorii < minMajor)
+				minMajor = disMajorii;
+			if (disMinorii > maxMinor)
+				maxMinor = disMinorii;
+			if (disMinorii < minMinor)
+				minMinor = disMinorii;
+		}
+
+		lSemiMajor = max(abs(maxMajor), abs(minMajor)) * 1.1;
+		lSemiMinor = max(abs(maxMinor), abs(minMinor)) * 1.1;
 
 	};
 
@@ -198,6 +227,7 @@ struct PolyLineLens :public Lens
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
 
+		/*
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			ret.push_back(make_float2(ctrlPoints[ii].x, ctrlPoints[ii].y + 40));
 		}
@@ -205,8 +235,27 @@ struct PolyLineLens :public Lens
 		for (int ii = numCtrlPoints-1; ii >=0; ii--) {
 			ret.push_back(make_float2(ctrlPoints[ii].x, ctrlPoints[ii].y - 40));
 		}
+		*/
+
+		float2 minorDirection = make_float2(-direction.y, direction.x);
+
+		ret.push_back(make_float2(x + direction.x * lSemiMajor + minorDirection.x * lSemiMinor, y + direction.y * lSemiMajor + minorDirection.y * lSemiMinor));
+		ret.push_back(make_float2(x - direction.x * lSemiMajor + minorDirection.x * lSemiMinor, y - direction.y * lSemiMajor + minorDirection.y * lSemiMinor));
+		ret.push_back(make_float2(x - direction.x * lSemiMajor - minorDirection.x * lSemiMinor, y - direction.y * lSemiMajor - minorDirection.y * lSemiMinor));
+		ret.push_back(make_float2(x + direction.x * lSemiMajor - minorDirection.x * lSemiMinor, y + direction.y * lSemiMajor - minorDirection.y * lSemiMinor));
 
 		return ret;
 	}
+
+	std::vector<float2> GetExtraLensRendering(){
+		std::vector<float2> ret;
+
+		for (int ii = 0; ii < numCtrlPoints; ii++) {
+			ret.push_back(make_float2(ctrlPoints[ii].x+x, ctrlPoints[ii].y+y));
+		}
+
+		return ret;
+	}
+
 };
 #endif

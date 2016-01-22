@@ -142,17 +142,36 @@ struct functor_Displace_PolyLine
 {
 	int x, y;
 	float d;
+	int numCtrlPoints;
+	float2 * ctrlPoints;
+	float lSemiMajor, lSemiMinor;
 
-	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction;
 
 	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
 		float2 ret = screenPos;
+		if (clipPos.z < d) {
+			float2 toPoint = screenPos - make_float2(x, y);
+			float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+			if (abs(disMajor) < lSemiMajor/1.1) { //!!!may need to modify about 1.1
+				float ratio = 0.5;
 
-		return screenPos;
+				float2 minorDirection = make_float2(-direction.y, direction.x);
+				//dot product of (_x-x, _y-y) and minorDirection
+				float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
+				if (abs(disMinor) < lSemiMinor / ratio)	{
+					int segmentID = -1;
+					for (int ii = 0; ii < numCtrlPoints; ii++) {
+
+					}
+				}
+			}
+		}
 		return ret;
 	}
-	functor_Displace_PolyLine(){}
+
+	functor_Displace_PolyLine(int _x, int _y, int _numCtrlPoints, float2*  _ctrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
+		x(_x), y(_y), numCtrlPoints(_numCtrlPoints), ctrlPoints(_ctrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d){}
 };
 
 
@@ -278,10 +297,10 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 				}
 				case LENS_TYPE::TYPE_POLYLINE:
 				{
-												 PolyLineLens* l = (PolyLineLens*)lenses[i];
+					PolyLineLens* l = (PolyLineLens*)lenses[i];
 					thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 						d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-						functor_Displace_PolyLine());
+						functor_Displace_PolyLine(l->x, l->y, l->numCtrlPoints, l->ctrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
 					break;
 				}
 			}

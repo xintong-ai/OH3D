@@ -36,6 +36,19 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		for (auto v : lensContour)
 			glVertex2f(v.x, v.y);
 		glEnd();
+
+		if (l->type = LENS_TYPE::TYPE_POLYLINE) {
+			glColor3f(0.2f, 1.0f, 0.2f);
+
+			std::vector<float2> lensExtraRendering = ((PolyLineLens*)l)->GetExtraLensRendering();
+			glBegin(GL_LINE_STRIP);
+			for (auto v : lensExtraRendering)
+				glVertex2f(v.x, v.y);
+			glEnd();
+
+			glColor3f(1.0f, 0.2f, 0.2f);
+
+		}
 	}
 	glPopAttrib();
 
@@ -126,8 +139,4 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	return insideAnyLens;
 }
-//
-//void LensRenderable::DisplacePoints(std::vector<float2>& pts)
-//{
-//	displace
-//}
+

@@ -59,7 +59,8 @@ Window::Window()
 	//glyphRenderable->SetVolumeDim(innerDim.x, innerDim.y, innerDim.z);
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 
-	ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
+	ParticleReader* particleReader = new ParticleReader("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
+//	ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 	//Displace* displace = new Displace();
 	glyphRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
 	float3 posMin, posMax;
