@@ -8,9 +8,10 @@ find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets)
 find_package(CUDA REQUIRED)
 #find_package(OpenMP)
-#if (OPENMP_FOUND)
-#    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+#if(OPENMP_FOUND)
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 #endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
@@ -23,7 +24,7 @@ set(SHARED_LIBRARIES
 )
 
 set( Srcs main.cpp GLSphere.cpp
-	window.cpp glwidget.cpp Renderable.cpp Trackball.cpp Rotation.cpp QuatVector.cpp
+	window.cpp glwidget.cpp Renderable.cpp trackball.cpp Rotation.cpp QuatVector.cpp
 	DataMgr.cpp Reader.cpp 
 	BoxRenderable.cpp ParticleReader.cpp SphereRenderable.cpp
 	Displace.cu Lens.cpp GlyphRenderable.cpp LensRenderable.cpp
@@ -31,7 +32,7 @@ set( Srcs main.cpp GLSphere.cpp
 	)
 set( Hdrs 
 GLSphere.h
-	window.h glwidget.h Renderable.h Trackball.h Rotation.h QuatVector.h
+	window.h glwidget.h Renderable.h trackball.h Rotation.h QuatVector.h
 	DataMgr.h defines.h Reader.h
 	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
 	Displace.h TransformFunc.h Lens.h GlyphRenderable.h LensRenderable.h
@@ -43,7 +44,12 @@ GLSphere.h
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
+#set(omp_deps gomp)
+
+#list( APPEND CUDA_NVCC_FLAGS  -Xcompiler /openmp -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP )
+#list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-O2;-DVERBOSE")
+#SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 #qt5_add_resources(QtApp_RCC_SRCS ${Rcs})
 cuda_add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} ${QtApp_RCC_SRCS})
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui)
-target_link_libraries(${PROJECT_NAME} Qt5::Widgets  ${SHARED_LIBRARIES} )
+target_link_libraries(${PROJECT_NAME} Qt5::Widgets  ${SHARED_LIBRARIES})

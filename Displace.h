@@ -1,6 +1,6 @@
 #ifndef DISPLACE_H
 #define DISPLACE_H
-#include <thrust\device_vector.h>
+#include <thrust/device_vector.h>
 class Lens;
 class Displace
 {
