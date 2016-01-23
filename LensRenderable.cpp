@@ -36,8 +36,8 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		for (auto v : lensContour)
 			glVertex2f(v.x, v.y);
 		glEnd();
-
-		if (l->type = LENS_TYPE::TYPE_POLYLINE) {
+		
+		if (l->type == LENS_TYPE::TYPE_POLYLINE) {
 			glColor3f(0.2f, 1.0f, 0.2f);
 
 			std::vector<float2> lensExtraRendering = ((PolyLineLens*)l)->GetExtraLensRendering();
@@ -49,8 +49,20 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glColor3f(1.0f, 0.2f, 0.2f);
 
 		}
+		
 	}
 	glPopAttrib();
+
+	glPointSize(10.0);
+
+	glBegin(GL_POINTS);
+	glColor3f(1.0, 0.5, 0.0);
+	glVertex2f(10, 10);
+	glVertex2f(30, 30);
+
+	glEnd();
+
+
 
 	//restore the original 3D coordinate system
 	glMatrixMode(GL_PROJECTION);
@@ -99,11 +111,17 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 {
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (l->PointInsideLens(x, y)) {
-			//workingOnLens = true;
-			actor->SetInteractMode(INTERACT_MODE::LENS);
-			pickedLens = i;
-			lastPt = make_int2(x, y);
+		if (l->type == LENS_TYPE::TYPE_POLYLINE && ((PolyLineLens *)l)->isConstructing) {
+			((PolyLineLens *)l)->AddCtrlPoint(x, y);
+		}
+		else {
+
+			if (l->PointInsideLens(x, y)) {
+				//workingOnLens = true;
+				actor->SetInteractMode(INTERACT_MODE::LENS);
+				pickedLens = i;
+				lastPt = make_int2(x, y);
+			}
 		}
 	}
 	//return insideAnyLens;

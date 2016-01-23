@@ -143,7 +143,8 @@ struct functor_Displace_PolyLine
 	int x, y;
 	float d;
 	int numCtrlPoints;
-	float2 * ctrlPoints;
+	//vector<float2> ctrlPoints;
+	float2 *ctrlPoints;
 	float lSemiMajor, lSemiMinor;
 
 	float2 direction;
@@ -170,8 +171,12 @@ struct functor_Displace_PolyLine
 		return ret;
 	}
 
-	functor_Displace_PolyLine(int _x, int _y, int _numCtrlPoints, float2*  _ctrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
-		x(_x), y(_y), numCtrlPoints(_numCtrlPoints), ctrlPoints(_ctrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d){}
+//	functor_Displace_PolyLine(int _x, int _y, int _numCtrlPoints, vector<float2> _ctrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
+	//	x(_x), y(_y), numCtrlPoints(_numCtrlPoints), ctrlPoints(_ctrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d){}
+
+	functor_Displace_PolyLine(int _x, int _y, int _numCtrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
+		x(_x), y(_y), numCtrlPoints(_numCtrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d){}
+
 };
 
 
@@ -298,9 +303,10 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 				case LENS_TYPE::TYPE_POLYLINE:
 				{
 					PolyLineLens* l = (PolyLineLens*)lenses[i];
+					
 					thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 						d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-						functor_Displace_PolyLine(l->x, l->y, l->numCtrlPoints, l->ctrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
+						functor_Displace_PolyLine(l->x, l->y, l->numCtrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
 					break;
 				}
 			}
