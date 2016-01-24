@@ -5,6 +5,11 @@
 #include <Lens.h>
 #include <math_constants.h>
 
+Displace::Displace()
+{
+
+}
+
 void Displace::LoadOrig(float4* v, int num)
 {
 	posOrig.assign(v, v + num);// , posOrig.begin());

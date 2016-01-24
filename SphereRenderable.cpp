@@ -1,5 +1,12 @@
 #include "SphereRenderable.h"
 #include "glwidget.h"
+//TODO:
+//The corrent performance bottle neck is the rendering but not the displacement
+//a more efficient way to draw sphere 
+//http://11235813tdd.blogspot.com/2013/04/raycasted-spheres-and-point-sprites-vs.html
+//The sample code can be found from
+//http://tubafun.bplaced.net/public/sphere_shader.zip
+//
 
 //removing the following lines will cause runtime error
 #ifdef WIN32
@@ -72,7 +79,7 @@ void SphereRenderable::LoadShaders()
 	}
 	);
 
-	glProg = new ShaderProgram();
+	glProg = std::make_unique<ShaderProgram>();
 	glProg->initFromStrings(vertexVS, vertexFS);
 
 	glProg->addAttribute("VertexPosition");
@@ -93,10 +100,10 @@ void SphereRenderable::LoadShaders()
 void SphereRenderable::init()
 {
 	LoadShaders();
-	m_vao = new QOpenGLVertexArrayObject();
+	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	m_vao->create();
 
-	glyphMesh = new GLSphere(1, 8);
+	glyphMesh = std::make_unique<GLSphere>(1, 8);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	GenVertexBuffer(glyphMesh->GetNumVerts(),

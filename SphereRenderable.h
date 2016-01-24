@@ -3,6 +3,7 @@
 
 #include "GlyphRenderable.h"
 #include <QObject>
+#include <memory>
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
@@ -22,10 +23,10 @@ private:
 	void GenVertexBuffer(int nv, float* vertex);
 	void LoadShaders();
 	unsigned int vbo_vert;
-	GLSphere* glyphMesh;
-	ShaderProgram *glProg;
+	std::unique_ptr<GLSphere> glyphMesh;
+	std::unique_ptr<ShaderProgram> glProg;
 
-	QOpenGLVertexArrayObject* m_vao;
+	std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
 	bool updated = false;
 	//int dataMin[3];
 

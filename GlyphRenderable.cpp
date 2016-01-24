@@ -7,6 +7,8 @@
 #include <Lens.h>
 #include <LensRenderable.h>
 
+//GlyphRenderable::GlyphRenderable(){}
+
 void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
@@ -19,7 +21,7 @@ GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
 { 
 	pos = _pos; 
 	num = _num; 
-	displace = new Displace();
+	displace = std::make_shared<Displace>();
 	displace->LoadOrig(pos, num); 
 	glyphSizeScale.assign(num, 1.0f);
 }

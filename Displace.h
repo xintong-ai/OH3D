@@ -13,7 +13,7 @@ class Displace
 	float focusRatio = 0.6;
 	float sideSize = 0.5;
 public:
-	Displace() {}
+	Displace();
 	void Compute(float* modelview, float* projection, int winW, int winH,
 		std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale = 0);
 	void LoadOrig(float4* v, int num);

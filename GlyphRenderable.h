@@ -2,6 +2,8 @@
 #define GLYPH_RENDERABLE_H
 
 #include "Renderable.h"
+#include <memory>
+//#include <Displace.h>
 class Displace;
 
 class GlyphRenderable: public Renderable
@@ -11,12 +13,12 @@ class GlyphRenderable: public Renderable
 protected:
 	float4* pos = nullptr;
 	int num;
-	Displace* displace;
+	std::shared_ptr<Displace> displace;
 	std::vector<float> glyphSizeScale;
 	float glyphSizeAdjust = 0.5;
 
 	void ComputeDisplace();
-	
+	//GlyphRenderable();
 	GlyphRenderable(float4* _pos, int _num);//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
 	//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
 public:
