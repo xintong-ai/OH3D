@@ -75,7 +75,7 @@ protected:
 private:
     void computeFPS();
 
-    void cleanup();
+    //void cleanup();
 
     void TimerStart();
 

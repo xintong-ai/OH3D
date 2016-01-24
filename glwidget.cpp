@@ -38,7 +38,8 @@ void GLWidget::AddRenderable(const char* name, void* r)
 
 GLWidget::~GLWidget()
 {
-    cleanup();
+	sdkDeleteTimer(&timer);
+    //cleanup();
 }
 
 QSize GLWidget::minimumSizeHint() const
@@ -62,12 +63,11 @@ void GLWidget::initializeGL()
 
 }
 
-void GLWidget::cleanup()
-{
-    sdkDeleteTimer(&timer);
-	for (auto renderer:renderers)
-		renderer.second->cleanup();
-}
+//void GLWidget::cleanup()
+//{
+//	//for (auto renderer:renderers)
+//	//	renderer.second->cleanup();
+//}
 
 void GLWidget::computeFPS()
 {

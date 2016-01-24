@@ -2,6 +2,7 @@
 #define WINDOW_H
 
 #include <QWidget>
+#include <memory>
 
 class DataMgr;
 class GLWidget;
@@ -27,7 +28,7 @@ public:
     ~Window();
 
 private:
-    GLWidget *openGL;
+    std::unique_ptr<GLWidget> openGL;
 	//QSlider* sliceSlider;
 	//QSlider* heightScaleSlider;
 	//QSlider* sizeScaleSlider;
@@ -41,9 +42,9 @@ private:
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
-	GlyphRenderable* glyphRenderable;
-	LensRenderable* lensRenderable;
-	GridRenderable* gridRenderable;
+	std::unique_ptr<GlyphRenderable> glyphRenderable;
+	std::unique_ptr<LensRenderable> lensRenderable;
+	std::unique_ptr<GridRenderable> gridRenderable;
 	//QPushButton* addNodeBtn;
 	//QPushButton* viewBtn;
 	//QSlider* xSlider;

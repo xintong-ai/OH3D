@@ -28,7 +28,7 @@ Window::Window()
 	//this->move(100, 100);
 
 	/********GL widget******/
-	openGL = new GLWidget;
+	openGL = std::make_unique<GLWidget>();
 	QSurfaceFormat format;
     format.setDepthBufferSize(24);
     format.setStencilBufferSize(8);
@@ -62,20 +62,20 @@ Window::Window()
 	ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
 	//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 	//Displace* displace = new Displace();
-	glyphRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
+	glyphRenderable = std::make_unique<SphereRenderable>(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
 	float3 posMin, posMax;
 	particleReader->GetDataRange(posMin, posMax);
-	lensRenderable = new LensRenderable();
+	lensRenderable = std::make_unique<LensRenderable>();
 
-	gridRenderable = new GridRenderable(64);
+	gridRenderable = std::make_unique<GridRenderable>(64);
 	//sphereRenderable->SetVolRange(posMin, posMax);
 	//BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());
 	//bbox->SetVisibility(true);
 	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	//openGL->AddRenderable("bbox", bbox);
-	openGL->AddRenderable("glyph", glyphRenderable);
-	openGL->AddRenderable("lenses", lensRenderable);
-	openGL->AddRenderable("grid", gridRenderable);
+	openGL->AddRenderable("glyph", glyphRenderable.get());
+	openGL->AddRenderable("lenses", lensRenderable.get());
+	openGL->AddRenderable("grid", gridRenderable.get());
 
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;
@@ -93,15 +93,15 @@ Window::Window()
 
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
-	connect(transSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotFocusSizeChanged(int)));
+	connect(transSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 
 	QLabel* sideSizeLabel = new QLabel("Lens side size:", this);
 	QSlider* sideSizeSlider = CreateSlider();
-	connect(sideSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotSideSizeChanged(int)));
+	connect(sideSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotSideSizeChanged(int)));
 
 	QLabel* glyphSizeAdjustLabel = new QLabel("Glyph size adjust:", this);
 	QSlider* glyphSizeAdjustSlider = CreateSlider();
-	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotGlyphSizeAdjustChanged(int)));
+	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotGlyphSizeAdjustChanged(int)));
 
 	//radioX = new QRadioButton(tr("&X"));
 	//radioY = new QRadioButton(tr("&Y"));
@@ -202,7 +202,7 @@ Window::Window()
 
 	//interactLayout->addWidget(animationCheck);
 	//controlLayout->addStretch();
-	mainLayout->addWidget(openGL,3);
+	mainLayout->addWidget(openGL.get(),3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
 }
