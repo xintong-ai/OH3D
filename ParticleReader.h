@@ -22,10 +22,12 @@ class ParticleReader:public Reader
 	std::vector<float> val;
 public:
 	ParticleReader(const char* filename) :Reader(filename){ Load(); }
-	float4* GetPos();
+	//float4* GetPos();
+	std::vector<float4> GetPos();
 	std::vector<float4> pos;
 	int GetNum();
-	float* GetVal();
+	//float* GetVal();
+	std::vector<float> GetVal();
 	void GetDataRange(float3& posMin, float3& posMax);
 	void GetValRange(float& vMin, float& vMax);
 protected:

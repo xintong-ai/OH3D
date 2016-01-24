@@ -177,7 +177,8 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	m_vao->release();
 }
 
-SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
+SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, int _sphereCnt, std::vector<float> _val)
+//SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
 	:GlyphRenderable(_spherePos, _sphereCnt)
 { 
 	val = _val; 

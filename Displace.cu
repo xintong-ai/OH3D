@@ -5,6 +5,9 @@
 #include <Lens.h>
 #include <math_constants.h>
 
+//when using thrust::device_vector instead of thrust::device_vector,
+//the performance does not reduce much.
+
 Displace::Displace()
 {
 
@@ -31,7 +34,7 @@ struct functor_Object2Clip//: public thrust::unary_function<float,float>
 struct functor_Clip2Screen
 {
 	int w, h;
-	__device__ float2 operator() (float4 p)
+	__device__ __host__ float2 operator() (float4 p)
 	{
 		return Clip2ScreenGlobal(GetXY(p), w, h);
 	}
@@ -92,7 +95,7 @@ struct functor_Displace_Line
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction;
 
-	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
+	__device__ __host__ float2 operator() (float2 screenPos, float4 clipPos) {
 		float2 ret = screenPos;
 
 		if (clipPos.z < d) {
@@ -147,7 +150,7 @@ struct functor_Displace_Line
 struct functor_ApproachTarget
 {
 	template<typename Tuple>
-	__device__ float2 operator() (Tuple t) {
+	__device__ __host__ void operator() (Tuple t) {
 		float2 screenPos = thrust::get<0>(t); 
 		float2 screenTarget = thrust::get<1>(t);
 		float2 dir = screenTarget - screenPos;
@@ -168,7 +171,7 @@ struct functor_Unproject
 {
 	matrix4x4 inv_mv, inv_pj;
 	int w, h;
-	__device__ float4 operator() (float4 pClip, float2 pScreen)
+	__device__ __host__ float4 operator() (float4 pClip, float2 pScreen)
 	{
 		float2 clip = Screen2Clip(pScreen, w, h);
 		float4 clip2 = make_float4(clip.x, clip.y, pClip.z, pClip.w);

@@ -144,17 +144,28 @@ void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
 }
 
 
-float4* ParticleReader::GetPos()
+//float4* ParticleReader::GetPos()
+//{
+//	return (float4*)(&pos[0]);
+//}
+
+std::vector<float4> ParticleReader::GetPos()
 {
-	return (float4*)(&pos[0]);
+	return pos;
 }
+
 
 int ParticleReader::GetNum()
 {
 	return pos.size();
 }
 
-float* ParticleReader::GetVal()
+//float* ParticleReader::GetVal()
+//{
+//	return &val[0];
+//}
+
+std::vector<float> ParticleReader::GetVal()
 {
-	return &val[0];
+	return val;
 }
