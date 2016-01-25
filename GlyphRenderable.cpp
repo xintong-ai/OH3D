@@ -17,14 +17,13 @@ void GlyphRenderable::ComputeDisplace()
 }
 
 
-GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos, int _num)//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
+GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
 //GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
 { 
 	pos = _pos; 
-	num = _num; 
 	displace = std::make_shared<Displace>();
-	displace->LoadOrig(&pos[0], num); 
-	glyphSizeScale.assign(num, 1.0f);
+	displace->LoadOrig(&pos[0], pos.size());
+	glyphSizeScale.assign(pos.size(), 1.0f);
 }
 
 void GlyphRenderable::RecomputeTarget()

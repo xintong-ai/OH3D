@@ -129,7 +129,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 	glMatrixMode(GL_MODELVIEW);
 
-	for (int i = 0; i < num; i++) {
+	for (int i = 0; i < pos.size(); i++) {
 		glPushMatrix();
 
 		float4 shift = pos[i];
@@ -177,16 +177,16 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	m_vao->release();
 }
 
-SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, int _sphereCnt, std::vector<float> _val)
+SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val)
 //SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
-	:GlyphRenderable(_spherePos, _sphereCnt)
+	:GlyphRenderable(_spherePos)
 { 
 	val = _val; 
-	sphereColor.assign(_sphereCnt, make_float3(1.0f, 1.0f, 1.0f));
+	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
 	ColorGradient cg;
 	const float valMax = 350;
 	const float valMin = 70;
-	for (int i = 0; i < _sphereCnt; i++) {
+	for (int i = 0; i < _spherePos.size(); i++) {
 		float valScaled = (val[i] - valMin) / (valMax - valMin);
 		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 	}

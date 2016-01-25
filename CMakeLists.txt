@@ -7,6 +7,7 @@ cmake_minimum_required(VERSION 2.6)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets)
 find_package(CUDA REQUIRED)
+find_package(Teem)
 #find_package(OpenMP)
 #if(OPENMP_FOUND)
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -17,18 +18,21 @@ find_package(CUDA REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR} 
-	${CUDA_TOOLKIT_INCLUDE} ${CUDA_SDK_ROOT_DIR}/common/inc required)
+	${CUDA_TOOLKIT_INCLUDE} ${CUDA_SDK_ROOT_DIR}/common/inc 
+	${Teem_INCLUDE_DIRS} required)
 
 set(SHARED_LIBRARIES
 		${OPENGL_LIBRARIES}
 )
+
+link_directories(${Teem_LIBRARY_DIRS})
 
 set( Srcs main.cpp GLSphere.cpp
 	window.cpp glwidget.cpp Renderable.cpp trackball.cpp Rotation.cpp QuatVector.cpp
 	DataMgr.cpp Reader.cpp 
 	BoxRenderable.cpp ParticleReader.cpp SphereRenderable.cpp
 	Displace.cu Lens.cpp GlyphRenderable.cpp LensRenderable.cpp
-	GridRenderable.cpp SuperquadricRenderable.cpp
+	GridRenderable.cpp SQRenderable.cpp
 	)
 set( Hdrs 
 GLSphere.h
@@ -37,7 +41,7 @@ GLSphere.h
 	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
 	Displace.h TransformFunc.h Lens.h GlyphRenderable.h LensRenderable.h
 	GridRenderable.h
-	ColorGradient.h SuperquadricRenderable.h
+	ColorGradient.h SQRenderable.h
     )
 #set( Rcs resources/vechist.qrc)
 
@@ -52,4 +56,4 @@ set(CMAKE_AUTOMOC ON)
 #qt5_add_resources(QtApp_RCC_SRCS ${Rcs})
 cuda_add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} ${QtApp_RCC_SRCS})
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui)
-target_link_libraries(${PROJECT_NAME} Qt5::Widgets  ${SHARED_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} Qt5::Widgets  ${SHARED_LIBRARIES} ${Teem_LIBRARY_DIRS}/teem.lib)

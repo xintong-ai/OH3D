@@ -12,14 +12,13 @@ class GlyphRenderable: public Renderable
 		//float3 dataMin, dataMax;
 protected:
 	std::vector<float4> pos;// = nullptr;
-	int num;
 	std::shared_ptr<Displace> displace;
 	std::vector<float> glyphSizeScale;
 	float glyphSizeAdjust = 0.5;
 
 	void ComputeDisplace();
 	//GlyphRenderable();
-	GlyphRenderable(std::vector<float4>& _pos, int _num);//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
+	GlyphRenderable(std::vector<float4>& _pos);//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
 	//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
 public:
 	void RecomputeTarget();

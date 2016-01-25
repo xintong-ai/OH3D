@@ -14,7 +14,7 @@ public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	SphereRenderable(std::vector<float4>& _spherePos, int _sphereCnt, std::vector<float> _val);
+	SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val);
 
 	//void SetVolumeDim(int x, int y, int z){ dataDim[0] = x; dataDim[1] = y; dataDim[2] = z; }
 private:

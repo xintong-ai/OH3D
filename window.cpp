@@ -62,7 +62,7 @@ Window::Window()
 	ParticleReader particleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
 	//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 	//Displace* displace = new Displace();
-	glyphRenderable = std::make_unique<SphereRenderable>(particleReader.GetPos(), particleReader.GetNum(), particleReader.GetVal());
+	glyphRenderable = std::make_unique<SphereRenderable>(particleReader.GetPos(), particleReader.GetVal());
 	float3 posMin, posMax;
 	particleReader.GetDataRange(posMin, posMax);
 	lensRenderable = std::make_unique<LensRenderable>();
