@@ -146,118 +146,41 @@ struct functor_Displace_PolyLine
 	//vector<float2> ctrlPoints;
 	float2 *ctrlPoints;
 	float lSemiMajor, lSemiMinor;
-	int width;
-	float2 direction;
 
-	//precompute can increase speed?
-	float2 *angleBisectDirs;
-	float2 *dirs;
+	float2 direction;
 
 	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
 		float2 ret = screenPos;
-		////old
-		//if (clipPos.z < d) {
-		//	float2 toPoint = screenPos - make_float2(x, y);
-		//	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
-		//	if (abs(disMajor) < lSemiMajor/1.1) { //!!!may need to modify about 1.1
-		//		float ratio = 0.5;
-		//		float2 minorDirection = make_float2(-direction.y, direction.x);
-		//		//dot product of (_x-x, _y-y) and minorDirection
-		//		float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
-		//		if (abs(disMinor) < lSemiMinor / ratio)	{
-		//			int segmentID = -1;
-		//			for (int ii = 0; ii < numCtrlPoints; ii++) {
-		//				float2 kk = ctrlPoints[numCtrlPoints - 1];
-		//			}
-		//		}
-		//	}
-		//}
-		
 		if (clipPos.z < d) {
-			int segmentId = -1;
-			bool segmentIdNotFound = true;
-			bool locatedAtSegmentPos;
-			float2 center = make_float2(x, y);
-			 
-			for (int ii = 0; ii < numCtrlPoints - 1 && segmentIdNotFound; ii++) {
-				float2 toPoint = screenPos - (center+ctrlPoints[ii]);
-				
-				//float2 dir = dirs[ii];
-				float2 dir = normalize(ctrlPoints[ii + 1] - ctrlPoints[ii]);
+			float2 toPoint = screenPos - make_float2(x, y);
+			float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+			if (abs(disMajor) < lSemiMajor/1.1) { //!!!may need to modify about 1.1
+				float ratio = 0.5;
 
-				float disMajor = toPoint.x*dir.x + toPoint.y*dir.y;
-				if (disMajor >= 0 && disMajor <= length(ctrlPoints[ii + 1] - ctrlPoints[ii])) {
-					float2 minorDir = make_float2(-dir.y, dir.x);
-					float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
-					if (abs(disMinor) <= width) {
-						segmentId = ii;
-						segmentIdNotFound = false;
+				float2 minorDirection = make_float2(-direction.y, direction.x);
+				//dot product of (_x-x, _y-y) and minorDirection
+				float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
+				if (abs(disMinor) < lSemiMinor / ratio)	{
+					int segmentID = -1;
+					for (int ii = 0; ii < numCtrlPoints; ii++) {
+
 					}
 				}
 			}
-			
-			if (segmentId >= 0) {
-
-				//float2 dir = dirs[segmentId];
-				float2 dir = normalize(ctrlPoints[segmentId + 1] - ctrlPoints[segmentId]);
-
-				float2 minorDir = make_float2(-dir.y, dir.x);
-				float2 toPoint = screenPos - (center + ctrlPoints[segmentId]);
-				float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
-
-				//float2 dd = normalize(screenPos - center);
-				//ret = screenPos + dd * 5;;
-
-
-				/*if (disMinor>0)
-					ret = make_float2(screenPos.x, screenPos.y) + (width - disMinor) * minorDir;
-				else
-					ret = make_float2(screenPos.x, screenPos.y) - (width + disMinor) * minorDir;
-					*/
-			}
-			
 		}
-		
 		return ret;
 	}
 
 //	functor_Displace_PolyLine(int _x, int _y, int _numCtrlPoints, vector<float2> _ctrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
 	//	x(_x), y(_y), numCtrlPoints(_numCtrlPoints), ctrlPoints(_ctrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d){}
 
-	functor_Displace_PolyLine(int _x, int _y, int _width, int _numCtrlPoints, float2* _ctrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
-		x(_x), y(_y), width(_width), numCtrlPoints(_numCtrlPoints), ctrlPoints(_ctrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d)
-	{/*
-		//will the new operation cause memory problem???
-		angleBisectDirs = new float2[numCtrlPoints];
-		float2 dirFirst = normalize(ctrlPoints[1] - ctrlPoints[0]);
-		angleBisectDirs[0] = make_float2(-dirFirst.y, dirFirst.x);
-		for (int ii = 1; ii < numCtrlPoints - 1; ii++) {
-			float2 dir1 = normalize(ctrlPoints[ii] - ctrlPoints[ii - 1]);
-			float2 dir2 = normalize(ctrlPoints[ii + 1] - ctrlPoints[ii]);
-			float2 perpenAngleBisectDir = normalize(dir2 + dir1);
-			angleBisectDirs[ii] = make_float2(-perpenAngleBisectDir.y, perpenAngleBisectDir.x);
-		}
-		float2 dirLast = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
-		angleBisectDirs[numCtrlPoints - 1] = make_float2(-dirLast.y, dirLast.x);
-		
-		dirs = new float2[numCtrlPoints-1];
-		for (int ii = 0; ii < numCtrlPoints - 1; ii++) {
-			dirs[ii] = normalize(ctrlPoints[ii+1] - ctrlPoints[ii]);
-		}
-		*/
-	}
+	functor_Displace_PolyLine(int _x, int _y, int _numCtrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
+		x(_x), y(_y), numCtrlPoints(_numCtrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d){}
 
 };
 
-struct functor_Displace_PolyLine_NotFinished
-{
-	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
-		float2 ret = screenPos;
-		return ret;
-	}
 
-	functor_Displace_PolyLine_NotFinished(){}
-};
+
 
 //thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 //	d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
@@ -381,18 +304,9 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 				{
 					PolyLineLens* l = (PolyLineLens*)lenses[i];
 					
-					if (!l->isConstructing) {
-						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-							functor_Displace_PolyLine(l->x, l->y, l->width, l->numCtrlPoints, l->ctrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
-					}
-					else
-					{
-						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-							functor_Displace_PolyLine_NotFinished());
-
-					}
+					thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+						d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
+						functor_Displace_PolyLine(l->x, l->y, l->numCtrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
 					break;
 				}
 			}

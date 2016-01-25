@@ -112,12 +112,7 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
 		if (l->type == LENS_TYPE::TYPE_POLYLINE && ((PolyLineLens *)l)->isConstructing) {
-			if (Qt::ControlModifier == modifier) {
-				((PolyLineLens *)l)->FinishConstructing();
-			}
-			else {
-				((PolyLineLens *)l)->AddCtrlPoint(x, y);
-			}
+			((PolyLineLens *)l)->AddCtrlPoint(x, y);
 		}
 		else {
 

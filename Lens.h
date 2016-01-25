@@ -150,8 +150,8 @@ struct PolyLineLens :public Lens
 	float width;
 	int numCtrlPoints;
 	//!note!  positions relative to the center
-	vector<float2> ctrlPointsVec; //need to delete when release
-	float2 *ctrlPoints;
+	vector<float2> ctrlPoints; //need to delete when release
+
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
@@ -161,29 +161,25 @@ struct PolyLineLens :public Lens
 
 		isConstructing = true;
 
-		width = _w/2.0;
+		width = _w;
 
-		numCtrlPoints = 0;
+		numCtrlPoints = 0;/* 2;
+		//ctrlPoints = new float2[numCtrlPoints];
+		ctrlPoints.resize(numCtrlPoints);
+
+		ctrlPoints[0].x = -10;
+		ctrlPoints[0].y = 10;
+
+		ctrlPoints[1].x = 10;
+		ctrlPoints[1].y = -10;
+		*/
 		type = LENS_TYPE::TYPE_POLYLINE;
 
-		ComputePCA();
+		computePCA();
 	};
 
-	void FinishConstructing() {
-		if (numCtrlPoints >= 2){
-			isConstructing = false;
+	void computePCA(){
 
-			ctrlPoints = new float2[numCtrlPoints];
-			for (int ii = 0; ii < numCtrlPoints; ii++) {
-				ctrlPoints[ii] = ctrlPointsVec[ii];
-			}
-
-			ComputePCA();
-		}
-	}
-
-	void ComputePCA(){
-		
 		if (numCtrlPoints == 0)
 		{
 		}
@@ -242,7 +238,7 @@ struct PolyLineLens :public Lens
 		if (numCtrlPoints == 0){
 			x = _x;
 			y = _y;
-			ctrlPointsVec.push_back(make_float2(0, 0));
+			ctrlPoints.push_back(make_float2(0, 0));
 			numCtrlPoints = 1;
 		}
 		else {
@@ -253,18 +249,18 @@ struct PolyLineLens :public Lens
 			float newx = sumx / (numCtrlPoints+1), newy = sumy / (numCtrlPoints+1);
 
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
-				ctrlPointsVec[ii].x = ctrlPointsVec[ii].x + x - newx;
-				ctrlPointsVec[ii].y = ctrlPointsVec[ii].y + y - newy;
+				ctrlPoints[ii].x = ctrlPoints[ii].x + x - newx;
+				ctrlPoints[ii].y = ctrlPoints[ii].y + y - newy;
 			}
 
-			ctrlPointsVec.push_back(make_float2(_x - newx, _y - newy));
+			ctrlPoints.push_back(make_float2(_x-newx, _y-newy));
 			numCtrlPoints++;
 
 			x = newx;
 			y = newy;
 		}
 
-		//ComputePCA();
+		computePCA();
 	}
 
 	bool PointInsideLens(int _x, int _y)
@@ -274,7 +270,7 @@ struct PolyLineLens :public Lens
 		return true;
 	}
 
-	std::vector<float2> GetContourOld(){
+	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
 		if (numCtrlPoints > 0){
 
@@ -288,45 +284,11 @@ struct PolyLineLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetContour(){
-		std::vector<float2> ret;
-		if (numCtrlPoints >= 2 ){
-			float2 center = make_float2(x, y);
-
-			std::vector<float2> temp;
-			float2 dirFirst = normalize(ctrlPointsVec[1] - ctrlPointsVec[0]);
-			float2 perpenDirFirst = make_float2(-dirFirst.y, dirFirst.x);
-			temp.push_back(center + ctrlPointsVec[0] + perpenDirFirst*width);
-			temp.push_back(center + ctrlPointsVec[0] - perpenDirFirst*width);
-			
-			for (int ii = 1; ii < numCtrlPoints - 1; ii++) {
-				float2 dir1 = normalize(ctrlPointsVec[ii] - ctrlPointsVec[ii - 1]);
-				float2 dir2 = normalize(ctrlPointsVec[ii + 1] - ctrlPointsVec[ii]);
-				float2 perpenAngleBisectDir = normalize(dir2 + dir1);
-				float2 angleBisectDir = make_float2(-perpenAngleBisectDir.y, perpenAngleBisectDir.x);
-				temp.push_back(center + ctrlPointsVec[ii] + angleBisectDir*width);
-				temp.push_back(center + ctrlPointsVec[ii] - angleBisectDir*width);
-			}
-
-			float2 dirLast = normalize(ctrlPointsVec[numCtrlPoints - 1] - ctrlPointsVec[numCtrlPoints - 2]);
-			float2 perpenDirLast = make_float2(-dirLast.y, dirLast.x);
-			temp.push_back(center + ctrlPointsVec[numCtrlPoints - 1] + perpenDirLast*width);
-			temp.push_back(center + ctrlPointsVec[numCtrlPoints - 1] - perpenDirLast*width);
-
-			ret.resize(2 * numCtrlPoints);
-			for (int jj = 0; jj < numCtrlPoints; jj++) {
-				ret[jj] = temp[2 * jj];
-				ret[2 * numCtrlPoints - 1 - jj] = temp[2 * jj + 1];
-			}
-		}
-		return ret;
-	}
-
 	std::vector<float2> GetExtraLensRendering(){
 		std::vector<float2> ret;
 
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			ret.push_back(make_float2(ctrlPointsVec[ii].x + x, ctrlPointsVec[ii].y + y));
+			ret.push_back(make_float2(ctrlPoints[ii].x+x, ctrlPoints[ii].y+y));
 		}
 
 		return ret;
