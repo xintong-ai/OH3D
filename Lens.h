@@ -11,6 +11,15 @@ enum LENS_TYPE{
 	TYPE_LINE,
 	TYPE_POLYLINE
 };
+
+struct PolyLineLensCtrlPoints
+{
+	int numCtrlPoints;
+	float2 ctrlPoints[20];
+	float2 dirs[19];
+	float2 angleBisectors[20];
+};
+
 struct Lens
 {
 	LENS_TYPE type;
@@ -147,27 +156,29 @@ struct LineLens :public Lens
 
 struct PolyLineLens :public Lens
 {
-	float width;
+	int width;
 	int numCtrlPoints;
 	//!note!  positions relative to the center
-	vector<float2> ctrlPoints; //need to delete when release?
 
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
 	//need to delete when release?
-	//float2 *dirs;
-	//float2 *angleBisectors;
+	vector<float2> ctrlPoints; 
 	vector<float2> dirs;
 	vector<float2> angleBisectors;
+
+	//used for transfering data to GPU
+	PolyLineLensCtrlPoints polyLineLensCtrlPoints;
 
 	bool isConstructing;
 
 	void FinishConstructing(){
 		if (numCtrlPoints >= 2){
-			isConstructing = false;
-
+			
 			computePCA();
+
+			isConstructing = false;
 		}
 	}
 
@@ -175,7 +186,7 @@ struct PolyLineLens :public Lens
 
 		isConstructing = true;
 
-		width = _w / 2.0;
+		width = _w / 3.0;
 
 		numCtrlPoints = 0;
 		type = LENS_TYPE::TYPE_POLYLINE;	
@@ -277,11 +288,58 @@ struct PolyLineLens :public Lens
 			}
 			angleBisectors[numCtrlPoints - 1] = make_float2(-dirs[numCtrlPoints - 2].y, dirs[numCtrlPoints - 2].x);
 		}
+
+
+		//note!!! currently limit the maximum amount of control points as 20
+		if (numCtrlPoints > 20)
+			polyLineLensCtrlPoints.numCtrlPoints = 20;
+		else
+			polyLineLensCtrlPoints.numCtrlPoints = numCtrlPoints;
+
+		for (int ii = 0; ii < polyLineLensCtrlPoints.numCtrlPoints - 1; ii++) {
+			polyLineLensCtrlPoints.ctrlPoints[ii] = ctrlPoints[ii];
+			polyLineLensCtrlPoints.dirs[ii] = dirs[ii];
+			polyLineLensCtrlPoints.angleBisectors[ii] = angleBisectors[ii];
+		}
+		polyLineLensCtrlPoints.ctrlPoints[polyLineLensCtrlPoints.numCtrlPoints - 1]
+			= ctrlPoints[polyLineLensCtrlPoints.numCtrlPoints - 1];
+		if (numCtrlPoints >= 2) {
+			polyLineLensCtrlPoints.angleBisectors[polyLineLensCtrlPoints.numCtrlPoints - 1]
+				= angleBisectors[polyLineLensCtrlPoints.numCtrlPoints - 1];
+		}
 	}
 
 	bool PointInsideLens(int _x, int _y)
 	{
-		return true;
+		bool segmentNotFound = true;
+		for (int ii = 0; ii < numCtrlPoints - 1 && segmentNotFound; ii++) {
+			float2 center = make_float2(x, y);
+			float2 screenPos = make_float2(_x, _y);
+			float2 toPoint = screenPos - (center + ctrlPoints[ii]);
+			float2 dir = dirs[ii];
+			float2 minorDir = make_float2(-dir.y, dir.x);
+			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
+			if (abs(disMinor) < width)	{
+				float2 ctrlPointAbsolute1 = center + ctrlPoints[ii];
+				float2 ctrlPointAbsolute2 = center + ctrlPoints[ii + 1];
+
+				//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, angleBisectors[ii])
+				//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, angleBisectors[ii+1])
+				if (((screenPos.x - ctrlPointAbsolute1.x)*angleBisectors[ii].y - (screenPos.y - ctrlPointAbsolute1.y)*angleBisectors[ii].x)
+					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*angleBisectors[ii].y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*angleBisectors[ii].x)
+					>= 0) {
+					if (((screenPos.x - ctrlPointAbsolute2.x)*angleBisectors[ii + 1].y - (screenPos.y - ctrlPointAbsolute2.y)*angleBisectors[ii + 1].x)
+						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*angleBisectors[ii + 1].y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*angleBisectors[ii + 1].x)
+						>= 0) {
+
+						segmentNotFound = false;
+					}
+				}
+
+			}
+		}
+
+		return !segmentNotFound;
 	}
 
 	std::vector<float2> GetContour(){
@@ -302,8 +360,14 @@ struct PolyLineLens :public Lens
 			ret.resize(2 * numCtrlPoints);
 			float2 center = make_float2(x, y);
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
-				ret[ii] = center + ctrlPoints[ii] + angleBisectors[ii] * width;
-				ret[2 * numCtrlPoints - 1 - ii] = center + ctrlPoints[ii] - angleBisectors[ii] * width;
+				float2 dir;
+				if (ii == numCtrlPoints - 1)
+					dir = dirs[numCtrlPoints - 2];
+				else
+					dir = dirs[ii];
+				float sinValue = dir.x*angleBisectors[ii].y - dir.y*angleBisectors[ii].x;
+				ret[ii] = center + ctrlPoints[ii] + angleBisectors[ii] * width / sinValue;
+				ret[2 * numCtrlPoints - 1 - ii] = center + ctrlPoints[ii] - angleBisectors[ii] * width / sinValue;
 			}
 		}
 		return ret;

@@ -137,6 +137,9 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 {
 	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	//workingOnLens = false;
+
+	//added by lc
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 }
 
 void LensRenderable::mouseMove(int x, int y, int modifier)
