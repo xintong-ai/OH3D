@@ -11,6 +11,15 @@ enum LENS_TYPE{
 	TYPE_LINE,
 	TYPE_POLYLINE
 };
+
+struct PolyLineLensCtrlPoints
+{
+	int numCtrlPoints;
+	float2 ctrlPoints[20];
+	float2 dirs[19];
+	float2 angleBisectors[20];
+};
+
 struct Lens
 {
 	LENS_TYPE type;
@@ -147,35 +156,40 @@ struct LineLens :public Lens
 
 struct PolyLineLens :public Lens
 {
-	float width;
+	int width;
 	int numCtrlPoints;
 	//!note!  positions relative to the center
-	vector<float2> ctrlPoints; //need to delete when release
 
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
+	//need to delete when release?
+	vector<float2> ctrlPoints; 
+	vector<float2> dirs;
+	vector<float2> angleBisectors;
+
+	//used for transfering data to GPU
+	PolyLineLensCtrlPoints polyLineLensCtrlPoints;
+
 	bool isConstructing;
+
+	void FinishConstructing(){
+		if (numCtrlPoints >= 2){
+			
+			computePCA();
+
+			isConstructing = false;
+		}
+	}
 
 	PolyLineLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
 
 		isConstructing = true;
 
-		width = _w;
+		width = _w / 3.0;
 
-		numCtrlPoints = 0;/* 2;
-		//ctrlPoints = new float2[numCtrlPoints];
-		ctrlPoints.resize(numCtrlPoints);
-
-		ctrlPoints[0].x = -10;
-		ctrlPoints[0].y = 10;
-
-		ctrlPoints[1].x = 10;
-		ctrlPoints[1].y = -10;
-		*/
-		type = LENS_TYPE::TYPE_POLYLINE;
-
-		computePCA();
+		numCtrlPoints = 0;
+		type = LENS_TYPE::TYPE_POLYLINE;	
 	};
 
 	void computePCA(){
@@ -260,26 +274,101 @@ struct PolyLineLens :public Lens
 			y = newy;
 		}
 
-		computePCA();
+		dirs.resize(numCtrlPoints - 1);
+		for (int ii = 0; ii < numCtrlPoints - 1; ii++){
+			dirs[ii] = normalize(ctrlPoints[ii + 1] - ctrlPoints[ii]);
+		}
+
+		if (numCtrlPoints >= 2) {
+			angleBisectors.resize(numCtrlPoints);
+			angleBisectors[0] = make_float2(-dirs[0].y, dirs[0].x);
+			for (int ii = 1; ii < numCtrlPoints - 1; ii++){
+				float2 perpenAngleBosector = normalize(dirs[ii - 1] + dirs[ii]);
+				angleBisectors[ii] = make_float2(-perpenAngleBosector.y, perpenAngleBosector.x);
+			}
+			angleBisectors[numCtrlPoints - 1] = make_float2(-dirs[numCtrlPoints - 2].y, dirs[numCtrlPoints - 2].x);
+		}
+
+
+		//note!!! currently limit the maximum amount of control points as 20
+		if (numCtrlPoints > 20)
+			polyLineLensCtrlPoints.numCtrlPoints = 20;
+		else
+			polyLineLensCtrlPoints.numCtrlPoints = numCtrlPoints;
+
+		for (int ii = 0; ii < polyLineLensCtrlPoints.numCtrlPoints - 1; ii++) {
+			polyLineLensCtrlPoints.ctrlPoints[ii] = ctrlPoints[ii];
+			polyLineLensCtrlPoints.dirs[ii] = dirs[ii];
+			polyLineLensCtrlPoints.angleBisectors[ii] = angleBisectors[ii];
+		}
+		polyLineLensCtrlPoints.ctrlPoints[polyLineLensCtrlPoints.numCtrlPoints - 1]
+			= ctrlPoints[polyLineLensCtrlPoints.numCtrlPoints - 1];
+		if (numCtrlPoints >= 2) {
+			polyLineLensCtrlPoints.angleBisectors[polyLineLensCtrlPoints.numCtrlPoints - 1]
+				= angleBisectors[polyLineLensCtrlPoints.numCtrlPoints - 1];
+		}
 	}
 
 	bool PointInsideLens(int _x, int _y)
 	{
-		
+		bool segmentNotFound = true;
+		for (int ii = 0; ii < numCtrlPoints - 1 && segmentNotFound; ii++) {
+			float2 center = make_float2(x, y);
+			float2 screenPos = make_float2(_x, _y);
+			float2 toPoint = screenPos - (center + ctrlPoints[ii]);
+			float2 dir = dirs[ii];
+			float2 minorDir = make_float2(-dir.y, dir.x);
+			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
+			if (abs(disMinor) < width)	{
+				float2 ctrlPointAbsolute1 = center + ctrlPoints[ii];
+				float2 ctrlPointAbsolute2 = center + ctrlPoints[ii + 1];
 
-		return true;
+				//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, angleBisectors[ii])
+				//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, angleBisectors[ii+1])
+				if (((screenPos.x - ctrlPointAbsolute1.x)*angleBisectors[ii].y - (screenPos.y - ctrlPointAbsolute1.y)*angleBisectors[ii].x)
+					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*angleBisectors[ii].y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*angleBisectors[ii].x)
+					>= 0) {
+					if (((screenPos.x - ctrlPointAbsolute2.x)*angleBisectors[ii + 1].y - (screenPos.y - ctrlPointAbsolute2.y)*angleBisectors[ii + 1].x)
+						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*angleBisectors[ii + 1].y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*angleBisectors[ii + 1].x)
+						>= 0) {
+
+						segmentNotFound = false;
+					}
+				}
+
+			}
+		}
+
+		return !segmentNotFound;
 	}
 
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
-		if (numCtrlPoints > 0){
+		if (numCtrlPoints == 1){
+			float2 center = make_float2(x, y);
 
-			float2 minorDirection = make_float2(-direction.y, direction.x);
+			float2 rightUp = normalize(make_float2(1.0, 1.0));
+			float2 rightDown = normalize(make_float2(1.0, -1.0));
 
-			ret.push_back(make_float2(x + direction.x * lSemiMajor + minorDirection.x * lSemiMinor, y + direction.y * lSemiMajor + minorDirection.y * lSemiMinor));
-			ret.push_back(make_float2(x - direction.x * lSemiMajor + minorDirection.x * lSemiMinor, y - direction.y * lSemiMajor + minorDirection.y * lSemiMinor));
-			ret.push_back(make_float2(x - direction.x * lSemiMajor - minorDirection.x * lSemiMinor, y - direction.y * lSemiMajor - minorDirection.y * lSemiMinor));
-			ret.push_back(make_float2(x + direction.x * lSemiMajor - minorDirection.x * lSemiMinor, y + direction.y * lSemiMajor - minorDirection.y * lSemiMinor));
+			ret.push_back(center + rightUp*width);
+			ret.push_back(center + rightDown*width);
+			ret.push_back(center - rightUp*width);
+			ret.push_back(center - rightDown*width);
+
+		}
+		else if (numCtrlPoints >=2) {
+			ret.resize(2 * numCtrlPoints);
+			float2 center = make_float2(x, y);
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				float2 dir;
+				if (ii == numCtrlPoints - 1)
+					dir = dirs[numCtrlPoints - 2];
+				else
+					dir = dirs[ii];
+				float sinValue = dir.x*angleBisectors[ii].y - dir.y*angleBisectors[ii].x;
+				ret[ii] = center + ctrlPoints[ii] + angleBisectors[ii] * width / sinValue;
+				ret[2 * numCtrlPoints - 1 - ii] = center + ctrlPoints[ii] - angleBisectors[ii] * width / sinValue;
+			}
 		}
 		return ret;
 	}

@@ -112,7 +112,13 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
 		if (l->type == LENS_TYPE::TYPE_POLYLINE && ((PolyLineLens *)l)->isConstructing) {
-			((PolyLineLens *)l)->AddCtrlPoint(x, y);
+			if (modifier == Qt::ControlModifier) {
+				((PolyLineLens *)l)->AddCtrlPoint(x, y);
+				((PolyLineLens *)l)->FinishConstructing();
+			}
+			else {
+				((PolyLineLens *)l)->AddCtrlPoint(x, y);
+			}
 		}
 		else {
 
@@ -131,6 +137,9 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 {
 	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	//workingOnLens = false;
+
+	//added by lc
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 }
 
 void LensRenderable::mouseMove(int x, int y, int modifier)
