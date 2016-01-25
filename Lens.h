@@ -150,32 +150,35 @@ struct PolyLineLens :public Lens
 	float width;
 	int numCtrlPoints;
 	//!note!  positions relative to the center
-	vector<float2> ctrlPoints; //need to delete when release
+	vector<float2> ctrlPoints; //need to delete when release?
 
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
+	//need to delete when release?
+	//float2 *dirs;
+	//float2 *angleBisectors;
+	vector<float2> dirs;
+	vector<float2> angleBisectors;
+
 	bool isConstructing;
+
+	void FinishConstructing(){
+		if (numCtrlPoints >= 2){
+			isConstructing = false;
+
+			computePCA();
+		}
+	}
 
 	PolyLineLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
 
 		isConstructing = true;
 
-		width = _w;
+		width = _w / 2.0;
 
-		numCtrlPoints = 0;/* 2;
-		//ctrlPoints = new float2[numCtrlPoints];
-		ctrlPoints.resize(numCtrlPoints);
-
-		ctrlPoints[0].x = -10;
-		ctrlPoints[0].y = 10;
-
-		ctrlPoints[1].x = 10;
-		ctrlPoints[1].y = -10;
-		*/
-		type = LENS_TYPE::TYPE_POLYLINE;
-
-		computePCA();
+		numCtrlPoints = 0;
+		type = LENS_TYPE::TYPE_POLYLINE;	
 	};
 
 	void computePCA(){
@@ -260,26 +263,48 @@ struct PolyLineLens :public Lens
 			y = newy;
 		}
 
-		computePCA();
+		dirs.resize(numCtrlPoints - 1);
+		for (int ii = 0; ii < numCtrlPoints - 1; ii++){
+			dirs[ii] = normalize(ctrlPoints[ii + 1] - ctrlPoints[ii]);
+		}
+
+		if (numCtrlPoints >= 2) {
+			angleBisectors.resize(numCtrlPoints);
+			angleBisectors[0] = make_float2(-dirs[0].y, dirs[0].x);
+			for (int ii = 1; ii < numCtrlPoints - 1; ii++){
+				float2 perpenAngleBosector = normalize(dirs[ii - 1] + dirs[ii]);
+				angleBisectors[ii] = make_float2(-perpenAngleBosector.y, perpenAngleBosector.x);
+			}
+			angleBisectors[numCtrlPoints - 1] = make_float2(-dirs[numCtrlPoints - 2].y, dirs[numCtrlPoints - 2].x);
+		}
 	}
 
 	bool PointInsideLens(int _x, int _y)
 	{
-		
-
 		return true;
 	}
 
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
-		if (numCtrlPoints > 0){
+		if (numCtrlPoints == 1){
+			float2 center = make_float2(x, y);
 
-			float2 minorDirection = make_float2(-direction.y, direction.x);
+			float2 rightUp = normalize(make_float2(1.0, 1.0));
+			float2 rightDown = normalize(make_float2(1.0, -1.0));
 
-			ret.push_back(make_float2(x + direction.x * lSemiMajor + minorDirection.x * lSemiMinor, y + direction.y * lSemiMajor + minorDirection.y * lSemiMinor));
-			ret.push_back(make_float2(x - direction.x * lSemiMajor + minorDirection.x * lSemiMinor, y - direction.y * lSemiMajor + minorDirection.y * lSemiMinor));
-			ret.push_back(make_float2(x - direction.x * lSemiMajor - minorDirection.x * lSemiMinor, y - direction.y * lSemiMajor - minorDirection.y * lSemiMinor));
-			ret.push_back(make_float2(x + direction.x * lSemiMajor - minorDirection.x * lSemiMinor, y + direction.y * lSemiMajor - minorDirection.y * lSemiMinor));
+			ret.push_back(center + rightUp*width);
+			ret.push_back(center + rightDown*width);
+			ret.push_back(center - rightUp*width);
+			ret.push_back(center - rightDown*width);
+
+		}
+		else if (numCtrlPoints >=2) {
+			ret.resize(2 * numCtrlPoints);
+			float2 center = make_float2(x, y);
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ret[ii] = center + ctrlPoints[ii] + angleBisectors[ii] * width;
+				ret[2 * numCtrlPoints - 1 - ii] = center + ctrlPoints[ii] - angleBisectors[ii] * width;
+			}
 		}
 		return ret;
 	}

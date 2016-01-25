@@ -179,7 +179,16 @@ struct functor_Displace_PolyLine
 
 };
 
+struct functor_Displace_PolyLine_NotFinish
+{
+	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
+		float2 ret = screenPos;
+		
+		return ret;
+	}
 
+	functor_Displace_PolyLine_NotFinish(){}
+};
 
 
 //thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
@@ -303,10 +312,17 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 				case LENS_TYPE::TYPE_POLYLINE:
 				{
 					PolyLineLens* l = (PolyLineLens*)lenses[i];
-					
-					thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-						d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-						functor_Displace_PolyLine(l->x, l->y, l->numCtrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
+					if (l->isConstructing){
+						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
+							functor_Displace_PolyLine_NotFinish());
+
+					}
+					else {
+						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
+							functor_Displace_PolyLine(l->x, l->y, l->numCtrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
+					}
 					break;
 				}
 			}
