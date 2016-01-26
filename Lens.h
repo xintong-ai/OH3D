@@ -163,7 +163,6 @@ struct PolyLineLens :public Lens
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
-	//need to delete when release?
 	vector<float2> ctrlPoints; 
 	vector<float2> dirs;
 	vector<float2> angleBisectors;
@@ -385,3 +384,64 @@ struct PolyLineLens :public Lens
 
 };
 #endif
+
+struct CurveLens :public Lens
+{
+#define numCtrlPointsLimit 500
+#define distanceThr 1
+#define distanceThrCount 10
+
+	int width;
+	int numCtrlPoints;
+	vector<float2> ctrlPoints;
+
+	bool isConstructing;
+	void FinishConstructing(){
+		if (numCtrlPoints >= 2){
+			isConstructing = false;
+		}
+	}
+
+
+	void AddCtrlPoint(int _x, int _y){
+
+		if (numCtrlPoints == 0){
+			x = _x;
+			y = _y;
+			ctrlPoints.push_back(make_float2(0, 0));
+			numCtrlPoints = 1;
+		}
+		else if (numCtrlPoints<numCtrlPointsLimit) {
+			
+			//first check if the candidate point is not too close to previous points
+			int tt = max(0, numCtrlPoints - distanceThrCount);
+			bool notFoundTooClose = true;
+			for (int i = numCtrlPoints - 1; i >= tt; i--){
+				if (length(make_float2(x, y) + ctrlPoints[i] - make_float2(_x, _y)) < distanceThr)
+					notFoundTooClose = false;
+			}
+			
+			if (notFoundTooClose) {
+				//then do the process due to the relative position
+
+				float sumx = x*numCtrlPoints, sumy = y*numCtrlPoints;
+				sumx += _x, sumy += _y;  //sum of absolute position
+				float newx = sumx / (numCtrlPoints + 1), newy = sumy / (numCtrlPoints + 1);
+
+				for (int ii = 0; ii < numCtrlPoints; ii++) {
+					ctrlPoints[ii].x = ctrlPoints[ii].x + x - newx;
+					ctrlPoints[ii].y = ctrlPoints[ii].y + y - newy;
+				}
+
+				ctrlPoints.push_back(make_float2(_x - newx, _y - newy));
+				numCtrlPoints++;
+
+				x = newx;
+				y = newy;
+			}
+		}
+
+	
+	}
+
+};
