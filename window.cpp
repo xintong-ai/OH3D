@@ -3,10 +3,18 @@
 //#include "VecReader.h"
 #include "BoxRenderable.h"
 #include "ParticleReader.h"
+#include "DTIVolumeReader.h"
 #include "SphereRenderable.h"
+#include "SQRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
 #include "Displace.h"
+
+enum DATA_TYPE
+{
+	TYPE_PARTICLE,
+	TYPE_TENSOR,
+};
 
 QSlider* CreateSlider()
 {
@@ -58,13 +66,35 @@ Window::Window()
 	//int3 innerDim = cubemap->GetInnerDim();
 	//glyphRenderable->SetVolumeDim(innerDim.x, innerDim.y, innerDim.z);
 	//openGL->AddRenderable("glyphs", glyphRenderable);
+	std::unique_ptr<Reader> reader;
 
-	ParticleReader particleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
-	//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
-	//Displace* displace = new Displace();
-	glyphRenderable = std::make_unique<SphereRenderable>(particleReader.GetPos(), particleReader.GetVal());
+	const DATA_TYPE dataType = DATA_TYPE::TYPE_TENSOR;// DATA_TYPE::TYPE_PARTICLE;
+	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
+		reader = std::make_unique<ParticleReader>
+			("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+		//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
+		//Displace* displace = new Displace();
+		glyphRenderable = std::make_unique<SphereRenderable>(
+			((ParticleReader*)reader.get())->GetPos(),
+			((ParticleReader*)reader.get())->GetVal());
+	}
+	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
+		//reader = std::make_unique<DTIVolumeReader>
+		//	("D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr");
+		reader = std::make_unique<DTIVolumeReader>
+			("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
+		std::vector<float4> pos;
+		std::vector<float> val;
+		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		//glyphRenderable = std::make_unique<SQRenderable>(
+		//	);
+		//	((ParticleReader*)reader.get())->GetPos(),
+		//	((ParticleReader*)reader.get())->GetVal());
+	}
+
 	float3 posMin, posMax;
-	particleReader.GetDataRange(posMin, posMax);
+	reader->GetPosRange(posMin, posMax);
 	lensRenderable = std::make_unique<LensRenderable>();
 
 	gridRenderable = std::make_unique<GridRenderable>(64);

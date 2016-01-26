@@ -28,8 +28,8 @@ public:
 	int GetNum();
 	//float* GetVal();
 	std::vector<float> GetVal();
-	void GetDataRange(float3& posMin, float3& posMax);
 	void GetValRange(float& vMin, float& vMax);
+	void GetPosRange(float3& posMin, float3& posMax) override;
 protected:
 	void Load() override;
 };

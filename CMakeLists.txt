@@ -33,6 +33,7 @@ set( Srcs main.cpp GLSphere.cpp
 	BoxRenderable.cpp ParticleReader.cpp SphereRenderable.cpp
 	Displace.cu Lens.cpp GlyphRenderable.cpp LensRenderable.cpp
 	GridRenderable.cpp SQRenderable.cpp
+	VolumeReader.cpp DTIVolumeReader.cpp
 	)
 set( Hdrs 
 GLSphere.h
@@ -42,6 +43,7 @@ GLSphere.h
 	Displace.h TransformFunc.h Lens.h GlyphRenderable.h LensRenderable.h
 	GridRenderable.h
 	ColorGradient.h SQRenderable.h
+	VolumeReader.h DTIVolumeReader.h
     )
 #set( Rcs resources/vechist.qrc)
 

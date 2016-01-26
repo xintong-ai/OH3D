@@ -116,7 +116,7 @@ void ParticleReader::GetValRange(float& vMin, float& vMax)
 }
 
 
-void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
+void ParticleReader::GetPosRange(float3& posMin, float3& posMax)
 {
 	posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
