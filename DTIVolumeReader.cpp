@@ -105,11 +105,11 @@ void DTIVolumeReader::GetSamples(std::vector<float4>& _pos, std::vector<float>& 
 	float* b = GetFractionalAnisotropy();
 	int nCells = dataSizes.x * dataSizes.y * dataSizes.z;
 
-	for (int k = 0; k < dataSizes.z; k+= 4){
-		for (int j = 0; j < dataSizes.y; j += 4) {
-			for (int i = 0; i < dataSizes.x; i += 4){
+	for (int k = 0; k < dataSizes.z; k++){
+		for (int j = 0; j < dataSizes.y; j++) {
+			for (int i = 0; i < dataSizes.x; i++){
 				int idx = k * dataSizes.x * dataSizes.y + j * dataSizes.x + i;
-				if (b[idx] > 0.5) {
+				if (b[idx] > 0.7) {
 					_pos.push_back(float3To4(GetDataPos(make_int3(i, j, k))));
 					_val.push_back(1.0f);
 					_val.push_back(*((float*)data + 9 * idx));

@@ -14,6 +14,7 @@ class SQRenderable :public GlyphRenderable
 	std::vector<float3> normals;
 	std::vector<unsigned int> indices;
 	std::vector<int> nIndices;
+	std::vector<QMatrix4x4> rotations;
 	void LoadShaders();
 
 	unsigned int vbo_vert;

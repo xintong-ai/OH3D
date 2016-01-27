@@ -19,11 +19,10 @@ void SQRenderable::LoadShaders()
 {
 #define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
-	//using two sides shading
 	const char* vertexVS =
 		GLSL(
-		layout(location = 0) in vec3 VertexPosition;
-	//layout(location = 1) in vec3 VertexNormal;
+	in vec4 VertexPosition;
+	in vec3 VertexNormal;
 	smooth out vec3 tnorm;
 	out vec4 eyeCoords;
 
@@ -35,10 +34,9 @@ void SQRenderable::LoadShaders()
 	void main()
 	{
 		mat4 MVP = ProjectionMatrix * ModelViewMatrix;
-		eyeCoords = ModelViewMatrix *
-			vec4(VertexPosition, 1.0);
-		tnorm = normalize(NormalMatrix * VertexPosition);
-		gl_Position = MVP * vec4(VertexPosition * (Scale * 0.08) + Transform, 1.0);
+		eyeCoords = ModelViewMatrix * VertexPosition;
+		tnorm = normalize(NormalMatrix * /*vec3(VertexPosition) + 0.001 * */VertexNormal);
+		gl_Position = MVP * vec4(vec3(VertexPosition * Scale) + Transform, 1.0);
 	}
 	);
 
@@ -77,6 +75,7 @@ void SQRenderable::LoadShaders()
 	glProg->initFromStrings(vertexVS, vertexFS);
 
 	glProg->addAttribute("VertexPosition");
+	glProg->addAttribute("VertexNormal");
 	glProg->addUniform("LightPosition");
 	glProg->addUniform("Ka");
 	glProg->addUniform("Kd");
@@ -120,6 +119,7 @@ void SQRenderable::init()
 
 	m_vao->release();
 }
+
 void SQRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!visible)
@@ -135,41 +135,39 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 
 	for (int i = 0; i < pos.size(); i++) {
 		glPushMatrix();
-
-		float4 shift = pos[i];
-		//float scale = pow(sphereSize[i], 0.333) * 0.01;
-
-		//std::cout << sphereSize[i] << " ";
-
 		glProg->use();
 		m_vao->bind();
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
+		//TODO: the rotation has to do in the GLWidget along with other rotations.
+		//q_modelview = q_modelview * rotations[i];
+
 		float3 cen = actor->DataCenter();
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
 		qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
-		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &shift.x);
+		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &pos[i].x);
 		qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
-		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
+		//QMatrix4x4 temp = q_modelview.transposed();// .data()
+		//float* dd = temp.data();
+		//the data() returns array in column major, so there is no need to do transpose.
+		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, q_modelview.data());
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-		qgl->glEnableVertexAttribArray(0);    //We like submitting vertices on stream 0 for no special reason
-		qgl->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float4), (char*)NULL + firstVertex * sizeof(float4));   //The starting point of the VBO, for the vertices
-		qgl->glEnableVertexAttribArray(1);    //We like submitting normals on stream 1 for no special reason
-		qgl->glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float3), (char*)NULL + firstVertex * sizeof(float3));     //The starting point of normals, 12 bytes away
-		//qgl->glEnableVertexAttribArray(2);    //We like submitting texcoords on stream 2 for no special reason
-		//qgl->glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(MyVertex), BUFFER_OFFSET(24));   //The starting point of texcoords, 24 bytes away
-
+		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 4, GL_FLOAT, 
+			GL_FALSE, sizeof(float4), (char*)NULL + firstVertex * sizeof(float4));
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
+		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, 
+			GL_TRUE, sizeof(float3), (char*)NULL + firstVertex * sizeof(float3));
 		qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
-		//glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
-		glDrawElements(GL_TRIANGLE_STRIP, nIndices[i], GL_UNSIGNED_INT, (char*)NULL + firstIndex * sizeof(float3));
+		glDrawElements(GL_TRIANGLE_STRIP, nIndices[i], GL_UNSIGNED_INT, (char*)NULL + firstIndex * sizeof(unsigned int));
+
 		m_vao->release();
 		glProg->disable();
 		glPopMatrix();
@@ -177,7 +175,6 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 		firstVertex += nVerts[i];
 		firstIndex += nIndices[i];
 	}
-
 }
 void SQRenderable::UpdateData()
 {
@@ -223,7 +220,7 @@ GlyphRenderable(_pos)
 			verts.push_back(make_float4(lpd->xyzw[4 * j], 
 				lpd->xyzw[4 * j + 1], lpd->xyzw[4 * j + 2], lpd->xyzw[4 * j + 3]));
 			normals.push_back(make_float3(lpd->norm[3 * j],
-				lpd->xyzw[3 * j + 1], lpd->xyzw[3 * j + 2]));
+				lpd->norm[3 * j + 1], lpd->norm[3 * j + 2]));
 		}
 		nVerts.push_back(lpd->xyzwNum);
 
@@ -255,5 +252,11 @@ GlyphRenderable(_pos)
 		}
 		double gltrans[16];
 		ELL_4M_TRANSPOSE(gltrans, trans); /* OpenGL expects column-major format */
+		QMatrix4x4 rot = QMatrix4x4(
+			gltrans[0], gltrans[4], gltrans[8], gltrans[12], 
+			gltrans[1], gltrans[5], gltrans[9], gltrans[13], 
+			gltrans[2], gltrans[6], gltrans[10], gltrans[14], 
+			gltrans[3], gltrans[7], gltrans[11], gltrans[15]);
+		rotations.push_back(rot);
 	}
 }
