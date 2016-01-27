@@ -21,7 +21,7 @@ GLWidget::GLWidget(QWidget *parent)
 
 	QTimer *aTimer = new QTimer;
 	connect(aTimer, SIGNAL(timeout()), SLOT(animate()));
-	aTimer->start(17);
+	aTimer->start(30);
 
     transRot.setToIdentity();
 
