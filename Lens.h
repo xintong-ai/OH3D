@@ -9,7 +9,8 @@ using namespace std;
 enum LENS_TYPE{
 	TYPE_CIRCLE,
 	TYPE_LINE,
-	TYPE_POLYLINE
+	TYPE_POLYLINE,
+	TYPE_CURVE,
 };
 
 struct PolyLineLensCtrlPoints
@@ -185,7 +186,7 @@ struct PolyLineLens :public Lens
 
 		isConstructing = true;
 
-		width = _w / 3.0;
+		width = _w ;
 
 		numCtrlPoints = 0;
 		type = LENS_TYPE::TYPE_POLYLINE;	
@@ -383,7 +384,7 @@ struct PolyLineLens :public Lens
 	}
 
 };
-#endif
+
 
 struct CurveLens :public Lens
 {
@@ -391,17 +392,30 @@ struct CurveLens :public Lens
 #define distanceThr 1
 #define distanceThrCount 10
 
+public:
+
 	int width;
 	int numCtrlPoints;
 	vector<float2> ctrlPoints;
 
 	bool isConstructing;
+
+
+	CurveLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
+
+		isConstructing = true;
+
+		width = _w;
+
+		numCtrlPoints = 0;
+		type = LENS_TYPE::TYPE_CURVE;
+	};
+
 	void FinishConstructing(){
 		if (numCtrlPoints >= 2){
 			isConstructing = false;
 		}
 	}
-
 
 	void AddCtrlPoint(int _x, int _y){
 
@@ -444,4 +458,27 @@ struct CurveLens :public Lens
 	
 	}
 
+	bool PointInsideLens(int _x, int _y)
+	{
+		bool segmentNotFound = true;
+		
+		return segmentNotFound;
+	}
+
+	std::vector<float2> GetContour(){
+		std::vector<float2> ret;
+
+		return ret;
+	}
+
+	std::vector<float2> GetExtraLensRendering(){
+		std::vector<float2> ret;
+
+		for (int ii = 0; ii < numCtrlPoints; ii++) {
+			ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
+		}
+
+		return ret;
+	}
 };
+#endif

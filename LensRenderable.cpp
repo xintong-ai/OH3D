@@ -49,20 +49,20 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glColor3f(1.0f, 0.2f, 0.2f);
 
 		}
+		else if (l->type == LENS_TYPE::TYPE_CURVE) {
+			glColor3f(0.2f, 1.0f, 0.2f);
+
+			std::vector<float2> lensExtraRendering = ((CurveLens*)l)->GetExtraLensRendering();
+			glBegin(GL_LINE_STRIP);
+			for (auto v : lensExtraRendering)
+				glVertex2f(v.x, v.y);
+			glEnd();
+
+			glColor3f(1.0f, 0.2f, 0.2f);
+		}
 		
 	}
 	glPopAttrib();
-
-	glPointSize(10.0);
-
-	glBegin(GL_POINTS);
-	glColor3f(1.0, 0.5, 0.0);
-	glVertex2f(10, 10);
-	glVertex2f(30, 30);
-
-	glEnd();
-
-
 
 	//restore the original 3D coordinate system
 	glMatrixMode(GL_PROJECTION);
@@ -100,28 +100,48 @@ void LensRenderable::AddLineLens()
 void LensRenderable::AddPolyLineLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new PolyLineLens(winSize.x * 0.5, winSize.y * 0.5, winSize.y * 0.2, actor->DataCenter());
+	Lens* l = new PolyLineLens(winSize.x * 0.5, winSize.y * 0.5, winSize.y * 0.05, actor->DataCenter());
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
+	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
+}
+
+void LensRenderable::AddCurveLens()
+{
+	int2 winSize = actor->GetWindowSize();
+	Lens* l = new CurveLens(winSize.x * 0.5, winSize.y * 0.5, winSize.y * 0.05, actor->DataCenter());
+	lenses.push_back(l);
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	actor->UpdateGL();
+	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
 }
 
 
 void LensRenderable::mousePress(int x, int y, int modifier)
 {
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
-		if (l->type == LENS_TYPE::TYPE_POLYLINE && ((PolyLineLens *)l)->isConstructing) {
-			if (modifier == Qt::ControlModifier) {
-				((PolyLineLens *)l)->AddCtrlPoint(x, y);
-				((PolyLineLens *)l)->FinishConstructing();
+	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
+		for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
+			if (l->type == LENS_TYPE::TYPE_POLYLINE) {
+				if (modifier == Qt::ControlModifier) {
+					((PolyLineLens *)l)->AddCtrlPoint(x, y);
+				}
+				else{
+					((PolyLineLens *)l)->FinishConstructing();
+					actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+				}
 			}
-			else {
-				((PolyLineLens *)l)->AddCtrlPoint(x, y);
+			else if (l->type == LENS_TYPE::TYPE_CURVE) {
+				if (modifier == Qt::ControlModifier) {
+					((CurveLens *)l)->AddCtrlPoint(x, y);
+				}
 			}
 		}
-		else {
-
+	}
+	else {
+		for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
 			if (l->PointInsideLens(x, y)) {
 				//workingOnLens = true;
 				actor->SetInteractMode(INTERACT_MODE::LENS);
@@ -130,26 +150,48 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 			}
 		}
 	}
+
+	
+		
 	//return insideAnyLens;
 }
 
 void LensRenderable::mouseRelease(int x, int y, int modifier)
 {
-	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-	//workingOnLens = false;
+	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
+		Lens* l = lenses[lenses.size() - 1];
+		if (l->type == LENS_TYPE::TYPE_CURVE) {
+			((CurveLens *)l)->FinishConstructing();
+			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+		}
+		else{
+			//polyline lens
+		}
+	}
+	else {
+		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	}
 
-	//added by lc
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 }
 
 void LensRenderable::mouseMove(int x, int y, int modifier)
 {
-	if (INTERACT_MODE::LENS == actor->GetInteractMode()) {
-		lenses[pickedLens]->x += (x - lastPt.x);
-		lenses[pickedLens]->y += (y - lastPt.y);
+	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
+		Lens* l = lenses[lenses.size()-1];
+		if (l->type == LENS_TYPE::TYPE_CURVE){
+			((CurveLens *)l)->AddCtrlPoint(x,y);
+		}
 	}
-	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	lastPt = make_int2(x, y);
+	else{
+
+		if (INTERACT_MODE::LENS == actor->GetInteractMode()) {
+			lenses[pickedLens]->x += (x - lastPt.x);
+			lenses[pickedLens]->y += (y - lastPt.y);
+		}
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		lastPt = make_int2(x, y);
+	}
 }
 
 bool LensRenderable::MouseWheel(int x, int y, int delta)

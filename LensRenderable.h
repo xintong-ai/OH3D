@@ -20,6 +20,7 @@ public:
 	void AddCircleLens();
 	void AddLineLens();
 	void AddPolyLineLens();
+	void AddCurveLens();
 	//bool IsWorkingOnLens(){ return workingOnLens; }
 
 	void mousePress(int x, int y, int modifier) override;

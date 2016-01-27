@@ -41,6 +41,7 @@ private:
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 	QPushButton* addPolyLineLensBtn;
+	QPushButton* addCurveLensBtn;
 
 	GlyphRenderable* glyphRenderable;
 	LensRenderable* lensRenderable;
@@ -71,6 +72,7 @@ private slots:
 	void AddLens();
 	void AddLineLens();
 	void AddPolyLineLens();
+	void AddCurveLens();
 
 //void SlotSliceOrieChanged(bool clicked);
 	//void animate();

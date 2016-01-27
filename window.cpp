@@ -85,6 +85,7 @@ Window::Window()
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
 	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
+	addCurveLensBtn = new QPushButton("Add Curve Line Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	//addThingsLayout->addWidget(addLensBtn);
 	//addThingsLayout->addWidget(addLineLensBtn);
@@ -118,6 +119,7 @@ Window::Window()
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 	controlLayout->addWidget(addPolyLineLensBtn);
+	controlLayout->addWidget(addCurveLensBtn);
 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(transSizeLabel);
@@ -132,6 +134,7 @@ Window::Window()
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
 	connect(addPolyLineLensBtn, SIGNAL(clicked()), this, SLOT(AddPolyLineLens()));
+	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -228,6 +231,10 @@ void Window::AddPolyLineLens()
 	lensRenderable->AddPolyLineLens();
 }
 
+void Window::AddCurveLens()
+{
+	lensRenderable->AddCurveLens();
+}
 
 //void Window::SlotSliceOrieChanged(bool clicked)
 //{
