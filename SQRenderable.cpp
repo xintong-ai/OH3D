@@ -17,8 +17,11 @@ using namespace std;
 
 void SQRenderable::LoadShaders()
 {
+
 #define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
+
+
 	const char* vertexVS =
 		GLSL(
 	in vec4 VertexPosition;
@@ -29,14 +32,21 @@ void SQRenderable::LoadShaders()
 	uniform mat4 ModelViewMatrix;
 	uniform mat3 NormalMatrix;
 	uniform mat4 ProjectionMatrix;
+	uniform mat4 SQRotMatrix;
+	
 	uniform vec3 Transform;
 	uniform float Scale;
+
+	vec4 DivZ(vec4 v){
+		return vec4(v.x / v.w, v.y / v.w, v.z / v.w, 1.0f);
+	}
+
 	void main()
 	{
 		mat4 MVP = ProjectionMatrix * ModelViewMatrix;
 		eyeCoords = ModelViewMatrix * VertexPosition;
 		tnorm = normalize(NormalMatrix * /*vec3(VertexPosition) + 0.001 * */VertexNormal);
-		gl_Position = MVP * vec4(vec3(VertexPosition * Scale) + Transform, 1.0);
+		gl_Position = MVP * vec4(vec3(DivZ(SQRotMatrix * VertexPosition)) * 1000 * Scale + Transform, 1.0);
 	}
 	);
 
@@ -85,6 +95,8 @@ void SQRenderable::LoadShaders()
 	glProg->addUniform("ModelViewMatrix");
 	glProg->addUniform("NormalMatrix");
 	glProg->addUniform("ProjectionMatrix");
+	glProg->addUniform("SQRotMatrix");
+	
 
 	glProg->addUniform("Transform");
 	glProg->addUniform("Scale");
@@ -140,23 +152,21 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
-		//TODO: the rotation has to do in the GLWidget along with other rotations.
-		//q_modelview = q_modelview * rotations[i];
 
 		float3 cen = actor->DataCenter();
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
 		qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
-		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
+		qgl->glUniform1f(glProg->uniform("Shininess"), 1);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &pos[i].x);
 		qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
-		//QMatrix4x4 temp = q_modelview.transposed();// .data()
-		//float* dd = temp.data();
 		//the data() returns array in column major, so there is no need to do transpose.
 		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, q_modelview.data());
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
-		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
+		//TODO: Not entirely sure about the correctness of the normal matrix, but it works
+		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * rotations[i]).normalMatrix().data());
+		qgl->glUniformMatrix4fv(glProg->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
 
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
 		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 4, GL_FLOAT, 
@@ -241,6 +251,7 @@ GlyphRenderable(_pos)
 			absevals[0] * evecs[2], absevals[1] * evecs[5],
 			absevals[2] * evecs[8], 0,
 			0, 0, 0, 1 };
+
 		unsigned int zone = tenGlyphBqdZoneUv(uv);
 		if (0 == zone || 5 == zone || 6 == zone || 7 == zone || 8 == zone) {
 			/* we need an additional rotation */

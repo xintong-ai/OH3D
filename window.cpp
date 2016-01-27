@@ -68,7 +68,7 @@ Window::Window()
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 	std::unique_ptr<Reader> reader;
 
-	const DATA_TYPE dataType = DATA_TYPE::TYPE_TENSOR;// DATA_TYPE::TYPE_PARTICLE;
+	const DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE;// DATA_TYPE::TYPE_TENSOR;// 
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
 		reader = std::make_unique<ParticleReader>
 			("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
