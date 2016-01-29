@@ -386,6 +386,8 @@ struct PolyLineLens :public Lens
 };
 
 
+
+
 struct CurveLens :public Lens
 {
 #define numCtrlPointsLimit 500
@@ -397,6 +399,7 @@ public:
 	int width;
 	int numCtrlPoints;
 	vector<float2> ctrlPoints;
+	vector<float2> ctrlPointsAbs;
 
 	bool isConstructing;
 
@@ -411,13 +414,13 @@ public:
 		type = LENS_TYPE::TYPE_CURVE;
 	};
 
-	void FinishConstructing(){
+	void FinishConstructingOld(){
 		if (numCtrlPoints >= 2){
 			isConstructing = false;
 		}
 	}
 
-	void AddCtrlPoint(int _x, int _y){
+	void AddCtrlPointOld(int _x, int _y){
 
 		if (numCtrlPoints == 0){
 			x = _x;
@@ -458,6 +461,41 @@ public:
 	
 	}
 
+	void AddCtrlPoint(int _x, int _y){
+
+		if (numCtrlPoints < numCtrlPointsLimit) {
+
+			//first check if the candidate point is not too close to previous points
+			int tt = max(0, numCtrlPoints - distanceThrCount);
+			bool notFoundTooClose = true;
+			for (int i = numCtrlPoints - 1; i >= tt; i--){
+				if (length(ctrlPointsAbs[i] - make_float2(_x, _y)) < distanceThr)
+					notFoundTooClose = false;
+			}
+			if (notFoundTooClose) {
+				ctrlPointsAbs.push_back(make_float2(_x, _y));
+				numCtrlPoints++;
+			}
+		}
+	}
+
+	void FinishConstructing(){
+		if (numCtrlPoints >= 2){
+			isConstructing = false;
+
+			float sumx = 0, sumy = 0;
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
+			}
+			x = sumx / numCtrlPoints, y = sumy / numCtrlPoints;
+			ctrlPoints.resize(numCtrlPoints);
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ctrlPoints[ii].x = ctrlPointsAbs[ii].x - x;
+				ctrlPoints[ii].y = ctrlPointsAbs[ii].y - y;
+			}
+		}
+	}
+
 	bool PointInsideLens(int _x, int _y)
 	{
 		bool segmentNotFound = true;
@@ -468,17 +506,87 @@ public:
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
 
+		
+		if (!isConstructing && numCtrlPoints >= 3) {
+			//ret.resize(2 * numCtrlPoints);
+			std::vector<float2> sidePointsPos, sidePointsNeg;
+			int numContourParts = 0;
+			float2 center = make_float2(x, y);
+
+			int lastValidID = -1;
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				float2 dir; //tangent
+				if (ii == numCtrlPoints - 1)
+					dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints-2]);
+				else if (ii==0)
+					dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
+				else
+					dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
+
+				float2 normal = make_float2(-dir.y, dir.x);
+
+				if (ii == 0){
+					sidePointsPos.push_back(center + ctrlPoints[0] + normal*width);
+					sidePointsNeg.push_back(center + ctrlPoints[0] - normal*width);
+					numContourParts++;
+					lastValidID = 0;
+				}
+				//else if (ii == numCtrlPoints - 1){
+
+				//}
+				else{
+					float2 candiPos = center + ctrlPoints[ii] + normal*width;
+					float2 candiNeg = center + ctrlPoints[ii] - normal*width;
+					if (  !intersect(center + ctrlPoints[lastValidID], sidePointsPos[numContourParts - 1], 
+								center + ctrlPoints[ii], candiPos)
+						&& !intersect(center + ctrlPoints[lastValidID], sidePointsNeg[numContourParts - 1], 
+								center + ctrlPoints[ii], candiNeg) ){
+						sidePointsPos.push_back(candiPos);
+						sidePointsNeg.push_back(candiNeg);
+						numContourParts++;
+						lastValidID = ii;
+					}
+				}
+			}
+
+			ret.resize(2 * numContourParts);
+			for (int jj = 0; jj < numContourParts; jj++){
+				ret[jj] = sidePointsPos[jj];
+				ret[2 * numContourParts - 1 - jj] = sidePointsNeg[jj];
+			}
+		}
+
+		
 		return ret;
 	}
 
 	std::vector<float2> GetExtraLensRendering(){
 		std::vector<float2> ret;
-
-		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
+		
+		if (isConstructing){
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ret.push_back(make_float2(ctrlPointsAbs[ii].x, ctrlPointsAbs[ii].y));
+			}
 		}
-
+		else{
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
+			}
+		}
 		return ret;
 	}
+
+	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
+	{
+		return (C.y - A.y)*(B.x - A.x) >(B.y - A.y)*(C.x - A.x);
+	}
+
+	bool intersect(float2 A, float2 B, float2 C, float2 D)
+	{
+		return (ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D));
+	}
 };
+
+
+
 #endif
