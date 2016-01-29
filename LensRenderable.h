@@ -6,6 +6,8 @@
 class Lens;
 class LensRenderable :public Renderable
 {
+	Q_OBJECT
+	
 	std::vector<Lens*> lenses;
 	int pickedLens = -1;
 	//bool workingOnLens = false;
@@ -27,6 +29,8 @@ public:
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int delta)  override;
-
+public slots:
+	void SlotFocusSizeChanged(int v);// { displace - (10 - v) * 0.1; }
+	void SlotSideSizeChanged(int v);// { displace - (10 - v) * 0.1; }
 };
 #endif
