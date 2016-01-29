@@ -37,6 +37,18 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glVertex2f(v.x, v.y);
 		glEnd();
 	}
+
+	glColor3f(0.2f, 0.8f, 0.8f);
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		std::vector<float2> lensContour = l->GetOuterContour();
+		glBegin(GL_LINE_LOOP);
+		for (auto v : lensContour)
+			glVertex2f(v.x, v.y);
+		glEnd();
+	}
+
+	
 	glPopAttrib();
 
 	//restore the original 3D coordinate system
@@ -121,3 +133,25 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 //{
 //	displace
 //}
+void LensRenderable::SlotFocusSizeChanged(int v)
+{
+	//displace->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
+	if (lenses.size() > 0){
+		lenses.back()->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
+	}
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+//	displace->RecomputeTarget();
+	actor->UpdateGL();
+}
+
+
+void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
+{
+	//displace->SetSideSize(v * 0.1);
+	if (lenses.size() > 0){
+		lenses.back()->SetSideSize(v * 0.1);
+	}
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	//displace->RecomputeTarget();
+	actor->UpdateGL();
+}
