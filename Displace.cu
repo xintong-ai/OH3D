@@ -232,7 +232,6 @@ struct functor_Displace_Curve
 	int x, y;
 	float d;
 	CurveLensCtrlPoints curveLensCtrlPoints;
-
 	float width;
 
 	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
@@ -247,8 +246,8 @@ struct functor_Displace_Curve
 			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
 			float2* keyPoints = curveLensCtrlPoints.keyPoints;
 			int* keyPointIds = curveLensCtrlPoints.keyPointIds;
+			float ratio = curveLensCtrlPoints.ratio;
 
-			float ratio = 0.5;
 			float rOut = width / ratio;
 
 			bool segmentNotFound = true;
@@ -260,28 +259,19 @@ struct functor_Displace_Curve
 				float2 minorDir = make_float2(-dir.y, dir.x);
 				float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
 				if (abs(disMinor) < width / ratio)	{
-					float2 ctrlPointAbsolute1 = center + keyPoints[ii];
-					float2 ctrlPointAbsolute2 = center + keyPoints[ii + 1];
+					float2 keyPointAbsolute1 = center + keyPoints[ii];
+					float2 keyPointAbsolute2 = center + keyPoints[ii + 1];
 
-					//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
-					//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
+					//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (keyPointAbsolute1, normals[ii])
+					//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (keyPointAbsolute2, normals[ii+1])
 
-					if (((screenPos.x - ctrlPointAbsolute1.x)*normals[ii].y - (screenPos.y - ctrlPointAbsolute1.y)*normals[ii].x)
-						*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normals[ii].y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normals[ii].x)
+					if (((screenPos.x - keyPointAbsolute1.x)*normals[ii].y - (screenPos.y - keyPointAbsolute1.y)*normals[ii].x)
+						*((keyPointAbsolute2.x - keyPointAbsolute1.x)*normals[ii].y - (keyPointAbsolute2.y - keyPointAbsolute1.y)*normals[ii].x)
 						>= 0) {
-						if (((screenPos.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (screenPos.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
-							*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
+						if (((screenPos.x - keyPointAbsolute2.x)*normals[ii + 1].y - (screenPos.y - keyPointAbsolute2.y)*normals[ii + 1].x)
+							*((keyPointAbsolute1.x - keyPointAbsolute2.x)*normals[ii + 1].y - (keyPointAbsolute1.y - keyPointAbsolute2.y)*normals[ii + 1].x)
 							>= 0) {
-
-							/*
-							float xx = 30 - abs(disMinor);
-							if (xx < 0)
-							xx = 0;
-							if (disMinor < 0)
-								xx = -xx;
-							ret = screenPos + minorDir*xx;
-							*/
-							
+					
 							segmentNotFound = false;
 							keySegmentId = ii;
 
@@ -289,53 +279,50 @@ struct functor_Displace_Curve
 							float sin2 = dir.x*normals[ii + 1].y - dir.y*normals[ii + 1].x;//sin of the angle of dir x normals[ii+1]
 
 							float disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
-							float2 intersectLeftOri = ctrlPointAbsolute1 + normals[ii] * (disMinor / sin1);
-							float2 intersectRightOri = ctrlPointAbsolute2 + normals[ii + 1] * (disMinor / sin2);
+							float2 intersectLeftOri = keyPointAbsolute1 + normals[ii] * (disMinor / sin1);
+							float2 intersectRightOri = keyPointAbsolute2 + normals[ii + 1] * (disMinor / sin2);
 							float posRatio = length(screenPos - intersectLeftOri) / length(intersectRightOri - intersectLeftOri);
-
-							if (disMinor >= 0){
-								float2 intersectLeft = ctrlPointAbsolute1 + normals[ii] * (disMinorNewAbs / sin1);
-								float2 intersectRight = ctrlPointAbsolute2 + normals[ii + 1] * (disMinorNewAbs / sin2);
-								ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
-							}
-							else {
-								float2 intersectLeft = ctrlPointAbsolute1 - normals[ii] * (disMinorNewAbs / sin1);
-								float2 intersectRight = ctrlPointAbsolute2 - normals[ii + 1] * (disMinorNewAbs / sin2);
-								ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
-							}
-
-							//need to be improved later!!!
-
-							/*
+								
 							//look for the original segment (formed of ctrlPoints)
 							bool oriSegmentNotFound = true;
 							int oriSegmentId = -1;
 
-							for (int jj = keyPointIds[ii]; jj < keyPointIds[ii+1] && oriSegmentNotFound; jj++) {
+							for (int jj = keyPointIds[keySegmentId]; jj < keyPointIds[keySegmentId + 1] && oriSegmentNotFound; jj++) {
 								float2 curToPoint = screenPos - (center + ctrlPoints[jj]);
-								float curDisMinor = curToPoint.x*minorDir.x + curToPoint.y*minorDir.y;
+								float curDisMajor = curToPoint.x*dir.x + curToPoint.y*dir.y;
 								float2 curOriSeg = ctrlPoints[jj + 1] - ctrlPoints[jj];
-								float oriSegDisMinor = curOriSeg.x*minorDir.x + curOriSeg.y*minorDir.y;
-								if (curDisMinor >= 0 && curDisMinor <= oriSegDisMinor){
+								float oriSegDisMajor = curOriSeg.x*dir.x + curOriSeg.y*dir.y;
+								if (curDisMajor >= 0 && curDisMajor <= oriSegDisMajor){
 									oriSegmentId = jj;
 									oriSegmentNotFound = false;
 
-									
-
 									float normCrossProduct = curOriSeg.x*curToPoint.y - curOriSeg.y*curToPoint.x;
 									if (normCrossProduct >= 0){
-										float2 intersectLeft = ctrlPointAbsolute1 + normals[ii] * (disMinorNewAbs / sin1);
-										float2 intersectRight = ctrlPointAbsolute2 + normals[ii + 1] * (disMinorNewAbs / sin2);
+										float2 intersectLeft = keyPointAbsolute1 + normals[keySegmentId] * (disMinorNewAbs / sin1);
+										float2 intersectRight = keyPointAbsolute2 + normals[keySegmentId + 1] * (disMinorNewAbs / sin2);
 										ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
 									}
 									else {
-										float2 intersectLeft = ctrlPointAbsolute1 - normals[ii] * (disMinorNewAbs / sin1);
-										float2 intersectRight = ctrlPointAbsolute2 - normals[ii + 1] * (disMinorNewAbs / sin2);
+										float2 intersectLeft = keyPointAbsolute1 - normals[keySegmentId] * (disMinorNewAbs / sin1);
+										float2 intersectRight = keyPointAbsolute2 - normals[keySegmentId + 1] * (disMinorNewAbs / sin2);
 										ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
 									}
 								}
 							}
-							*/
+
+							//possible for particles located near the normal line
+							if (oriSegmentNotFound){
+								if (disMinor >= 0){
+									float2 intersectLeft = keyPointAbsolute1 + normals[ii] * (disMinorNewAbs / sin1);
+									float2 intersectRight = keyPointAbsolute2 + normals[ii + 1] * (disMinorNewAbs / sin2);
+									ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
+								}
+								else {
+									float2 intersectLeft = keyPointAbsolute1 - normals[ii] * (disMinorNewAbs / sin1);
+									float2 intersectRight = keyPointAbsolute2 - normals[ii + 1] * (disMinorNewAbs / sin2);
+									ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
+								}
+							}
 							
 						}
 					}

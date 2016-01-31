@@ -29,6 +29,7 @@ struct CurveLensCtrlPoints
 	float2 keyPoints[200];
 	int keyPointIds[200];
 	float2 normals[200];
+	float ratio;//ratio of focus region and transition region
 };
 
 struct Lens
@@ -413,6 +414,8 @@ public:
 
 	bool isConstructing;
 
+	float ratio = 0.5;
+
 	CurveLensCtrlPoints curveLensCtrlPoints;
 
 	CurveLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
@@ -459,6 +462,7 @@ public:
 			}
 
 			//compute curveLensCtrlPoints
+			curveLensCtrlPoints.ratio = ratio;
 			curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
 			for (int i = 0; i < numCtrlPoints; i++){
 				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
@@ -498,10 +502,13 @@ public:
 				else{
 					float2 candiPos = center + ctrlPoints[ii] + normal*width;
 					float2 candiNeg = center + ctrlPoints[ii] - normal*width;
-					if (!intersect(center + ctrlPoints[lastValidID], sidePointsPos[numKeyPoints - 1],
-						center + ctrlPoints[ii], candiPos)
-						&& !intersect(center + ctrlPoints[lastValidID], sidePointsNeg[numKeyPoints - 1],
-						center + ctrlPoints[ii], candiNeg)){
+					float2 candiPosTransitionRegion = center + ctrlPoints[ii] + normal*width / ratio;
+					float2 candiNegTransitionRegion = center + ctrlPoints[ii] - normal*width / ratio;
+
+					if (!intersect(center + ctrlPoints[lastValidID], 2 * sidePointsPos[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
+						center + ctrlPoints[ii], candiPosTransitionRegion)
+					 && !intersect(center + ctrlPoints[lastValidID], 2 * sidePointsNeg[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
+						center + ctrlPoints[ii], candiNegTransitionRegion)){
 						sidePointsPos.push_back(candiPos);
 						sidePointsNeg.push_back(candiNeg);
 						
@@ -568,7 +575,6 @@ public:
 
 
 		if (!isConstructing && numCtrlPoints >= 3) {
-			//ret.resize(2 * numCtrlPoints);
 			std::vector<float2> sidePointsPos, sidePointsNeg;
 
 			float2 center = make_float2(x, y);
@@ -577,14 +583,12 @@ public:
 			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
 			float2 * normals = curveLensCtrlPoints.normals;
 
-
 			ret.resize(2 * numKeyPoints);
 			for (int jj = 0; jj < numKeyPoints; jj++){
 				ret[jj] = center + keyPoints[jj] + normals[jj] * width;
 				ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width;
 			}
 		}
-
 
 		return ret;
 	}
