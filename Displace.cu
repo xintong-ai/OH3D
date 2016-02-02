@@ -51,24 +51,24 @@ __device__ __host__ inline float G_Diff(float x, float r)
 	return pow((r - 1)/ (r * x - 1), 2);
 }
 
-__device__ __host__ float2 DisplaceCircleLens(float lensX, float lensY, float lensR, float2 screenPos, float& glyphSize, float r)//, float rSide = 0)
+__device__ __host__ float2 DisplaceCircleLens(float x, float y, float r, float2 screenPos, float& glyphSize, float focusRatio, float rSide = 0)
 {
 	float2 ret = screenPos;
-	float2 dir = screenPos - make_float2(lensX, lensY);
+	float2 dir = screenPos - make_float2(x, y);
 	float disOrig = length(dir);
-	float rOut = (lensR) / r; //including the focus and transition region
+	float rOut = (r + rSide) / focusRatio; //including the focus and transition region
 	if (disOrig < rOut) {
-		float disNew = G(disOrig / rOut, r) * rOut;
-		ret = make_float2(lensX, lensY) + dir / disOrig * disNew;
-		glyphSize = G_Diff(disOrig / rOut, r);
+		float disNew = G(disOrig / rOut, focusRatio) * rOut;
+		ret = make_float2(x, y) + dir / disOrig * disNew;
+		glyphSize = G_Diff(disOrig / rOut, focusRatio);
 	}
 	return ret;
 }
 
 struct functor_Displace
 {
-	int lensX, lensY, circleR;
-	float lensD;
+	int x, y, r;
+	float d;
 	float focusRatio;
 	float sideSize;
 	template<typename Tuple>
@@ -76,19 +76,15 @@ struct functor_Displace
 		float2 screenPos = thrust::get<0>(t);
 		float4 clipPos = thrust::get<1>(t);
 		float2 ret = screenPos;
-		if (clipPos.z < lensD) {
+		if (clipPos.z < d) {
 			float glyphSize = 1;
-			float focusRatioIncrease = (lensD - clipPos.z) * 32 * sideSize;
-			float newfocusRatio = focusRatio + focusRatioIncrease;
-			if (newfocusRatio > 1)
-				newfocusRatio = 1;
-			ret = DisplaceCircleLens(lensX, lensY, circleR * newfocusRatio / focusRatio, screenPos, glyphSize, newfocusRatio);
+			ret = DisplaceCircleLens(x, y, r, screenPos, glyphSize, focusRatio, (d - clipPos.z) * r * 64 * sideSize);
 			thrust::get<3>(t) = glyphSize;
 		}
 		thrust::get<2>(t) = ret;
 	}
-	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, float _sideSize)
-		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), sideSize(_sideSize){}
+	functor_Displace(int _x, int _y, int _r, float _d, float _focusRatio, float _sideSize) 
+		: x(_x), y(_y), r(_r), d(_d), focusRatio(_focusRatio), sideSize(_sideSize){}
 };
 
 struct functor_Displace_Line
@@ -307,7 +303,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 		CircleLens* l = (CircleLens*)lenses[i];
 		for (auto& p : pts) {
 			float tmp = 1;
-			p = DisplaceCircleLens(l->x, l->y, l->radius, p, tmp, l->focusRatio);
+			p = DisplaceCircleLens(l->x, l->y, l->radius, p, tmp, focusRatio);
 		}
 	}
 }
@@ -357,7 +353,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						d_vec_posScreenTarget.end(),
 						d_vec_glyphSizeTarget.end()
 						)),
-						functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, l->sideSize));
+						functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), focusRatio, sideSize));
 					break;
 
 				}

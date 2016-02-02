@@ -26,20 +26,12 @@ struct Lens
 	LENS_TYPE type;
 	float3 c; //center
 	int x, y; //screen location
-	float focusRatio;
-	float sideSize;
 	float4 GetCenter();// { return make_float4(c.x, c.y, c.z, 1.0f); }
 	void SetCenter(float3 _c){ c = _c; }
-	void SetFocusRatio(float _v){ focusRatio = _v; }
-	void SetSideSize(float _v){ sideSize = _v; }
 	float GetClipDepth(float* mv, float* pj);
-	Lens(int _x, int _y, float3 _c, float _focusRatio = 0.6, float _sideSize = 0.5) 
-	{
-		x = _x; y = _y; c = _c; focusRatio = _focusRatio; sideSize = _sideSize;
-	}
+	Lens(int _x, int _y, float3 _c) { x = _x; y = _y; c = _c; }
 	virtual bool PointInsideLens(int x, int y) = 0;
 	virtual std::vector<float2> GetContour() = 0;
-	virtual std::vector<float2> GetOuterContour() = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
 };
@@ -47,33 +39,25 @@ struct Lens
 struct CircleLens :public Lens
 {
 	float radius;
-	CircleLens(int _x, int _y, int _r, float3 _c, float _focusRatio = 0.5, float _sideSize = 0.5) : Lens(_x, _y, _c, _focusRatio, _sideSize){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
+	CircleLens(int _x, int _y, int _r, float3 _c) : Lens(_x, _y, _c){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
 	bool PointInsideLens(int _x, int _y) {
 		float dis = length(make_float2(_x, _y) - make_float2(x, y));
 		return dis < radius;
 	}
 
-	std::vector<float2> GetContourTemplate(int rr) {
+	std::vector<float2> GetContour() {
 		std::vector<float2> ret;
 		const int num_segments = 32;
 		for (int ii = 0; ii < num_segments; ii++)
 		{
 			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments);//get the current angle 
 
-			float ax = rr * cosf(theta);//calculate the x component 
-			float ay = rr * sinf(theta);//calculate the y component 
+			float ax = radius * cosf(theta);//calculate the x component 
+			float ay = radius * sinf(theta);//calculate the y component 
 
 			ret.push_back(make_float2(x + ax, y + ay));//output vertex 
 		}
 		return ret;
-	}
-
-	std::vector<float2> GetContour() {
-		return GetContourTemplate(radius);
-	}
-
-	std::vector<float2> GetOuterContour() {
-		return GetContourTemplate(radius / focusRatio);
 	}
 
 
@@ -122,11 +106,6 @@ struct LineLens :public Lens
 				return true;
 		}
 		return false;
-	}
-
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
-		return ret;
 	}
 
 	std::vector<float2> GetContour() {
@@ -394,11 +373,6 @@ struct PolyLineLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
-		return ret;
-	}
-
 	std::vector<float2> GetExtraLensRendering(){
 		std::vector<float2> ret;
 
@@ -527,11 +501,6 @@ public:
 		bool segmentNotFound = true;
 		
 		return segmentNotFound;
-	}
-
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
-		return ret;
 	}
 
 	std::vector<float2> GetContour(){
