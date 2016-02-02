@@ -12,13 +12,11 @@ enum INTERACT_MODE{
 	//	DRAG_LENS_TWO_ENDS,
 	LENS,
 	TRANSFORMATION,
-
 	//added by lc; might be used when constructing the polyline lens, but not implemented currently
 	MODIFYING_LENS,
-
 	//CUT_LINE,
 	//ADD_NODE,
-	//MODIFY_LENS,
+	MODIFY_LENS,
 	//	CUT_POLYLINE,
 	//DRAW_ELLIPSE,
 };
@@ -79,7 +77,7 @@ protected:
 private:
     void computeFPS();
 
-    void cleanup();
+    //void cleanup();
 
     void TimerStart();
 

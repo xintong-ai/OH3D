@@ -1,5 +1,12 @@
 #include "SphereRenderable.h"
 #include "glwidget.h"
+//TODO:
+//The corrent performance bottle neck is the rendering but not the displacement
+//a more efficient way to draw sphere 
+//http://11235813tdd.blogspot.com/2013/04/raycasted-spheres-and-point-sprites-vs.html
+//The sample code can be found from
+//http://tubafun.bplaced.net/public/sphere_shader.zip
+//
 
 //removing the following lines will cause runtime error
 #ifdef WIN32
@@ -72,7 +79,7 @@ void SphereRenderable::LoadShaders()
 	}
 	);
 
-	glProg = new ShaderProgram();
+	glProg = std::make_unique<ShaderProgram>();
 	glProg->initFromStrings(vertexVS, vertexFS);
 
 	glProg->addAttribute("VertexPosition");
@@ -93,10 +100,10 @@ void SphereRenderable::LoadShaders()
 void SphereRenderable::init()
 {
 	LoadShaders();
-	m_vao = new QOpenGLVertexArrayObject();
+	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	m_vao->create();
 
-	glyphMesh = new GLSphere(1, 8);
+	glyphMesh = std::make_unique<GLSphere>(1, 8);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	GenVertexBuffer(glyphMesh->GetNumVerts(),
@@ -122,7 +129,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 	glMatrixMode(GL_MODELVIEW);
 
-	for (int i = 0; i < num; i++) {
+	for (int i = 0; i < pos.size(); i++) {
 		glPushMatrix();
 
 		float4 shift = pos[i];
@@ -170,15 +177,16 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	m_vao->release();
 }
 
-SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
-	:GlyphRenderable(_spherePos, _sphereCnt)
+SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val)
+//SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
+	:GlyphRenderable(_spherePos)
 { 
 	val = _val; 
-	sphereColor.assign(_sphereCnt, make_float3(1.0f, 1.0f, 1.0f));
+	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
 	ColorGradient cg;
 	const float valMax = 350;
 	const float valMin = 70;
-	for (int i = 0; i < _sphereCnt; i++) {
+	for (int i = 0; i < _spherePos.size(); i++) {
 		float valScaled = (val[i] - valMin) / (valMax - valMin);
 		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 	}

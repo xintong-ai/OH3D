@@ -86,7 +86,7 @@ void ParticleReader::Load()
 	ts = new timestep(datafilename.c_str());
 
 	for (int i = 0; i < ts->size; i++) {
-		if (ts->concentration[i] <170)
+		if (ts->concentration[i] <70)
 			continue;
 		//Particle p(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], ts->concentration[i]);
 		//particles.push_back(p);
@@ -116,7 +116,7 @@ void ParticleReader::GetValRange(float& vMin, float& vMax)
 }
 
 
-void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
+void ParticleReader::GetPosRange(float3& posMin, float3& posMax)
 {
 	posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -144,17 +144,28 @@ void ParticleReader::GetDataRange(float3& posMin, float3& posMax)
 }
 
 
-float4* ParticleReader::GetPos()
+//float4* ParticleReader::GetPos()
+//{
+//	return (float4*)(&pos[0]);
+//}
+
+std::vector<float4> ParticleReader::GetPos()
 {
-	return (float4*)(&pos[0]);
+	return pos;
 }
+
 
 int ParticleReader::GetNum()
 {
 	return pos.size();
 }
 
-float* ParticleReader::GetVal()
+//float* ParticleReader::GetVal()
+//{
+//	return &val[0];
+//}
+
+std::vector<float> ParticleReader::GetVal()
 {
-	return &val[0];
+	return val;
 }

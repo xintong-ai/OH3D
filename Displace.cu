@@ -5,6 +5,14 @@
 #include <Lens.h>
 #include <math_constants.h>
 
+//when using thrust::device_vector instead of thrust::device_vector,
+//the performance does not reduce much.
+
+Displace::Displace()
+{
+
+}
+
 void Displace::LoadOrig(float4* v, int num)
 {
 	posOrig.assign(v, v + num);// , posOrig.begin());
@@ -26,7 +34,7 @@ struct functor_Object2Clip//: public thrust::unary_function<float,float>
 struct functor_Clip2Screen
 {
 	int w, h;
-	__device__ float2 operator() (float4 p)
+	__device__ __host__ float2 operator() (float4 p)
 	{
 		return Clip2ScreenGlobal(GetXY(p), w, h);
 	}
@@ -43,24 +51,24 @@ __device__ __host__ inline float G_Diff(float x, float r)
 	return pow((r - 1)/ (r * x - 1), 2);
 }
 
-__device__ __host__ float2 DisplaceCircleLens(float x, float y, float r, float2 screenPos, float& glyphSize, float focusRatio, float rSide = 0)
+__device__ __host__ float2 DisplaceCircleLens(float lensX, float lensY, float lensR, float2 screenPos, float& glyphSize, float r)//, float rSide = 0)
 {
 	float2 ret = screenPos;
-	float2 dir = screenPos - make_float2(x, y);
+	float2 dir = screenPos - make_float2(lensX, lensY);
 	float disOrig = length(dir);
-	float rOut = (r + rSide) / focusRatio; //including the focus and transition region
+	float rOut = (lensR) / r; //including the focus and transition region
 	if (disOrig < rOut) {
-		float disNew = G(disOrig / rOut, focusRatio) * rOut;
-		ret = make_float2(x, y) + dir / disOrig * disNew;
-		glyphSize = G_Diff(disOrig / rOut, focusRatio);
+		float disNew = G(disOrig / rOut, r) * rOut;
+		ret = make_float2(lensX, lensY) + dir / disOrig * disNew;
+		glyphSize = G_Diff(disOrig / rOut, r);
 	}
 	return ret;
 }
 
 struct functor_Displace
 {
-	int x, y, r;
-	float d;
+	int lensX, lensY, circleR;
+	float lensD;
 	float focusRatio;
 	float sideSize;
 	template<typename Tuple>
@@ -68,15 +76,19 @@ struct functor_Displace
 		float2 screenPos = thrust::get<0>(t);
 		float4 clipPos = thrust::get<1>(t);
 		float2 ret = screenPos;
-		if (clipPos.z < d) {
+		if (clipPos.z < lensD) {
 			float glyphSize = 1;
-			ret = DisplaceCircleLens(x, y, r, screenPos, glyphSize, focusRatio, (d - clipPos.z) * r * 64 * sideSize);
+			float focusRatioIncrease = (lensD - clipPos.z) * 32 * sideSize;
+			float newfocusRatio = focusRatio + focusRatioIncrease;
+			if (newfocusRatio > 1)
+				newfocusRatio = 1;
+			ret = DisplaceCircleLens(lensX, lensY, circleR * newfocusRatio / focusRatio, screenPos, glyphSize, newfocusRatio);
 			thrust::get<3>(t) = glyphSize;
 		}
 		thrust::get<2>(t) = ret;
 	}
-	functor_Displace(int _x, int _y, int _r, float _d, float _focusRatio, float _sideSize) 
-		: x(_x), y(_y), r(_r), d(_d), focusRatio(_focusRatio), sideSize(_sideSize){}
+	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, float _sideSize)
+		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), sideSize(_sideSize){}
 };
 
 struct functor_Displace_Line
@@ -87,21 +99,21 @@ struct functor_Displace_Line
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction;
 
-	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
+	__device__ __host__ float2 operator() (float2 screenPos, float4 clipPos) {
 		float2 ret = screenPos;
 
 		if (clipPos.z < d) {
 			//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
 			//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
 
+			//dot product of (_x-x, _y-y) and direction
+
 			float2 toPoint = screenPos - make_float2(x, y);
-			
-			//dot product of toPoint and direction
 			float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
 			if (abs(disMajor) < lSemiMajorAxis) {
 
 				float2 minorDirection = make_float2(-direction.y, direction.x);
-				//dot product of toPoint and minorDirection
+				//dot product of (_x-x, _y-y) and minorDirection
 				float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
 
 
@@ -130,12 +142,12 @@ struct functor_Displace_Line
 		}
 		return ret;
 	}
-
 	functor_Displace_Line(int _x, int _y, int _lSemiMajorAxis, int _lSemiMinorAxis, float2 _direction, float _d) :
 		x(_x), y(_y), lSemiMajorAxis(_lSemiMajorAxis), lSemiMinorAxis(_lSemiMinorAxis), direction(_direction), d(_d){}
 };
 
 
+//<<<<<<< HEAD
 struct functor_Displace_NotFinish //no deformation when the lens construction is not finished
 {
 	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
@@ -345,6 +357,8 @@ struct functor_Displace_Curve
 		x(_x), y(_y), width(_width), curveLensCtrlPoints(_curveLensCtrlPoints), d(_d){}
 };
 
+//=======
+//>>>>>>> master
 //thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 //	d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
 //	functor_ApproachTarget());
@@ -352,7 +366,7 @@ struct functor_Displace_Curve
 struct functor_ApproachTarget
 {
 	template<typename Tuple>
-	__device__ float2 operator() (Tuple t) {
+	__device__ __host__ void operator() (Tuple t) {
 		float2 screenPos = thrust::get<0>(t); 
 		float2 screenTarget = thrust::get<1>(t);
 		float2 dir = screenTarget - screenPos;
@@ -373,7 +387,7 @@ struct functor_Unproject
 {
 	matrix4x4 inv_mv, inv_pj;
 	int w, h;
-	__device__ float4 operator() (float4 pClip, float2 pScreen)
+	__device__ __host__ float4 operator() (float4 pClip, float2 pScreen)
 	{
 		float2 clip = Screen2Clip(pScreen, w, h);
 		float4 clip2 = make_float4(clip.x, clip.y, pClip.z, pClip.w);
@@ -401,7 +415,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 		CircleLens* l = (CircleLens*)lenses[i];
 		for (auto& p : pts) {
 			float tmp = 1;
-			p = DisplaceCircleLens(l->x, l->y, l->radius, p, tmp, focusRatio);
+			p = DisplaceCircleLens(l->x, l->y, l->radius, p, tmp, l->focusRatio);
 		}
 	}
 }
@@ -451,7 +465,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						d_vec_posScreenTarget.end(),
 						d_vec_glyphSizeTarget.end()
 						)),
-						functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), focusRatio, sideSize));
+						functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, l->sideSize));
 					break;
 
 				}
@@ -466,7 +480,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 				case LENS_TYPE::TYPE_POLYLINE:
 				{
 					PolyLineLens* l = (PolyLineLens*)lenses[i];
-					if(l->numCtrlPoints>=2){
+					if (l->numCtrlPoints >= 2){
 						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
 							functor_Displace_PolyLine(l->x, l->y, l->width, l->polyLineLensCtrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
@@ -489,19 +503,17 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 					else{
 						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-							functor_Displace_Curve(l->x, l->y, l->width, l->curveLensCtrlPoints,l->GetClipDepth(modelview, projection)));
+							functor_Displace_Curve(l->x, l->y, l->width, l->curveLensCtrlPoints, l->GetClipDepth(modelview, projection)));
 					}
 					break;
 				}
+
 			}
 			//thrust::transform(posOrig.begin(), posOrig.end(), 
 			//	d_vec_Dist2LensBtm.begin(), func_CompDist2LensBtm(l->c, mv));
 		}
 		recomputeTarget = false;
 	}
-
-
-	 
 
 	thrust::device_vector<float4> d_vec_posCur(size);
 	thrust::copy(ret, ret + size, d_vec_posCur.begin());

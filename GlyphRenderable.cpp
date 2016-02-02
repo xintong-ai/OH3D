@@ -7,21 +7,23 @@
 #include <Lens.h>
 #include <LensRenderable.h>
 
+//GlyphRenderable::GlyphRenderable(){}
+
 void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
 	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), pos, &glyphSizeScale[0]);
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0]);
 }
 
 
-GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
+GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
+//GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
 { 
 	pos = _pos; 
-	num = _num; 
-	displace = new Displace();
-	displace->LoadOrig(pos, num); 
-	glyphSizeScale.assign(num, 1.0f);
+	displace = std::make_shared<Displace>();
+	displace->LoadOrig(&pos[0], pos.size());
+	glyphSizeScale.assign(pos.size(), 1.0f);
 }
 
 void GlyphRenderable::RecomputeTarget()
@@ -39,20 +41,20 @@ void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 //{
 //	return (dataMin + dataMax) * 0.5;
 //}
-
-void GlyphRenderable::SlotFocusSizeChanged(int v)
-{ 
-	displace->SetFocusRatio( (10 - v) * 0.1 * 0.8 + 0.2); 
-	displace->RecomputeTarget();
-	actor->UpdateGL();
-}
-
-void GlyphRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
-{
-	displace->SetSideSize(v * 0.1); 
-	displace->RecomputeTarget();
-	actor->UpdateGL();
-}
+//
+//void GlyphRenderable::SlotFocusSizeChanged(int v)
+//{
+//	displace->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
+//	displace->RecomputeTarget();
+//	actor->UpdateGL();
+//}
+//
+//void GlyphRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
+//{
+//	displace->SetSideSize(v * 0.1);
+//	displace->RecomputeTarget();
+//	actor->UpdateGL();
+//}
 
 void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)// { displace - (10 - v) * 0.1; }
 {

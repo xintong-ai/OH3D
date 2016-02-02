@@ -3,10 +3,18 @@
 //#include "VecReader.h"
 #include "BoxRenderable.h"
 #include "ParticleReader.h"
+#include "DTIVolumeReader.h"
 #include "SphereRenderable.h"
+#include "SQRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
 #include "Displace.h"
+
+enum DATA_TYPE
+{
+	TYPE_PARTICLE,
+	TYPE_TENSOR,
+};
 
 QSlider* CreateSlider()
 {
@@ -28,7 +36,7 @@ Window::Window()
 	//this->move(100, 100);
 
 	/********GL widget******/
-	openGL = new GLWidget;
+	openGL = std::make_unique<GLWidget>();
 	QSurfaceFormat format;
     format.setDepthBufferSize(24);
     format.setStencilBufferSize(8);
@@ -58,24 +66,54 @@ Window::Window()
 	//int3 innerDim = cubemap->GetInnerDim();
 	//glyphRenderable->SetVolumeDim(innerDim.x, innerDim.y, innerDim.z);
 	//openGL->AddRenderable("glyphs", glyphRenderable);
+	std::unique_ptr<Reader> reader;
 
-	ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+	const DATA_TYPE dataType =  DATA_TYPE::TYPE_PARTICLE;//DATA_TYPE::TYPE_TENSOR;//
+	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
+		reader = std::make_unique<ParticleReader>
+			("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+		//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
+		//Displace* displace = new Displace();
+		glyphRenderable = std::make_unique<SphereRenderable>(
+			((ParticleReader*)reader.get())->GetPos(),
+			((ParticleReader*)reader.get())->GetVal());
+	}
+	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
+		//reader = std::make_unique<DTIVolumeReader>
+		//	("D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr");
+		reader = std::make_unique<DTIVolumeReader>
+			("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
+		std::vector<float4> pos;
+		std::vector<float> val;
+		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		//glyphRenderable = std::make_unique<SQRenderable>(
+		//	);
+		//	((ParticleReader*)reader.get())->GetPos(),
+		//	((ParticleReader*)reader.get())->GetVal());
+	}
+
+
+	//<<<< HEAD
+	//ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
 //	ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 	//Displace* displace = new Displace();
-	glyphRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
+	//glyphRenderable = std::make_unique<SphereRenderable>(particleReader->GetPos(), particleReader->GetVal());
+//=======
+//>>>>>>> master
 	float3 posMin, posMax;
-	particleReader->GetDataRange(posMin, posMax);
-	lensRenderable = new LensRenderable();
+	reader->GetPosRange(posMin, posMax);
+	lensRenderable = std::make_unique<LensRenderable>();
 
-	gridRenderable = new GridRenderable(64);
+	gridRenderable = std::make_unique<GridRenderable>(64);
 	//sphereRenderable->SetVolRange(posMin, posMax);
 	//BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());
 	//bbox->SetVisibility(true);
 	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	//openGL->AddRenderable("bbox", bbox);
-	openGL->AddRenderable("glyph", glyphRenderable);
-	openGL->AddRenderable("lenses", lensRenderable);
-	openGL->AddRenderable("grid", gridRenderable);
+	openGL->AddRenderable("glyph", glyphRenderable.get());
+	openGL->AddRenderable("lenses", lensRenderable.get());
+	openGL->AddRenderable("grid", gridRenderable.get());
 
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;
@@ -95,15 +133,15 @@ Window::Window()
 
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
-	connect(transSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotFocusSizeChanged(int)));
+	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 
 	QLabel* sideSizeLabel = new QLabel("Lens side size:", this);
 	QSlider* sideSizeSlider = CreateSlider();
-	connect(sideSizeSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotSideSizeChanged(int)));
+	connect(sideSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotSideSizeChanged(int)));
 
 	QLabel* glyphSizeAdjustLabel = new QLabel("Glyph size adjust:", this);
 	QSlider* glyphSizeAdjustSlider = CreateSlider();
-	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable, SLOT(SlotGlyphSizeAdjustChanged(int)));
+	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotGlyphSizeAdjustChanged(int)));
 
 	//radioX = new QRadioButton(tr("&X"));
 	//radioY = new QRadioButton(tr("&Y"));
@@ -130,6 +168,7 @@ Window::Window()
 	controlLayout->addWidget(glyphSizeAdjustSlider);
 	
 	controlLayout->addStretch();
+
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
@@ -207,7 +246,7 @@ Window::Window()
 
 	//interactLayout->addWidget(animationCheck);
 	//controlLayout->addStretch();
-	mainLayout->addWidget(openGL,3);
+	mainLayout->addWidget(openGL.get(),3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
 }
@@ -259,6 +298,7 @@ void Window::AddCurveLens()
 //	openGL->animate();
 //}
 //
+
 void Window::SlotToggleGrid(bool b)
 {
 	gridRenderable->SetVisibility(b);

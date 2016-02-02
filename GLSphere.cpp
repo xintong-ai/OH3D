@@ -1,4 +1,4 @@
-#include "glsphere.h"
+#include "GLSphere.h"
 #include "vector_types.h"
 #include "vector_functions.h"
 #include "helper_math.h"// to define normalize()
