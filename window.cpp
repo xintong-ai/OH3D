@@ -92,14 +92,7 @@ Window::Window()
 		//	((ParticleReader*)reader.get())->GetPos(),
 		//	((ParticleReader*)reader.get())->GetVal());
 	}
-//
-//<<<<<<< HEAD
-//=======
-	//ParticleReader* particleReader = new ParticleReader("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
-//	ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
-	//Displace* displace = new Displace();
-	//glyphRenderable = new SphereRenderable(particleReader->GetPos(), particleReader->GetNum(), particleReader->GetVal());
-//>>>>>>> refs/remotes/origin/branch-lc
+
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
 	lensRenderable = std::make_unique<LensRenderable>();
@@ -121,8 +114,6 @@ Window::Window()
 
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
-	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
-	addCurveLensBtn = new QPushButton("Add Curve Line Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	//addThingsLayout->addWidget(addLensBtn);
 	//addThingsLayout->addWidget(addLineLensBtn);
@@ -155,8 +146,6 @@ Window::Window()
 	//controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
-	controlLayout->addWidget(addPolyLineLensBtn);
-	controlLayout->addWidget(addCurveLensBtn);
 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(transSizeLabel);
@@ -168,10 +157,9 @@ Window::Window()
 	
 	controlLayout->addStretch();
 
+
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
-	connect(addPolyLineLensBtn, SIGNAL(clicked()), this, SLOT(AddPolyLineLens()));
-	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -261,16 +249,6 @@ void Window::AddLens()
 void Window::AddLineLens()
 {
 	lensRenderable->AddLineLens();
-}
-
-void Window::AddPolyLineLens()
-{
-	lensRenderable->AddPolyLineLens();
-}
-
-void Window::AddCurveLens()
-{
-	lensRenderable->AddCurveLens();
 }
 
 //void Window::SlotSliceOrieChanged(bool clicked)

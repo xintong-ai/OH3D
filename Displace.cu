@@ -102,14 +102,14 @@ struct functor_Displace_Line
 			//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
 			//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
 
+			//dot product of (_x-x, _y-y) and direction
+
 			float2 toPoint = screenPos - make_float2(x, y);
-			
-			//dot product of toPoint and direction
 			float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
 			if (abs(disMajor) < lSemiMajorAxis) {
 
 				float2 minorDirection = make_float2(-direction.y, direction.x);
-				//dot product of toPoint and minorDirection
+				//dot product of (_x-x, _y-y) and minorDirection
 				float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
 
 
@@ -138,114 +138,10 @@ struct functor_Displace_Line
 		}
 		return ret;
 	}
-
 	functor_Displace_Line(int _x, int _y, int _lSemiMajorAxis, int _lSemiMinorAxis, float2 _direction, float _d) :
 		x(_x), y(_y), lSemiMajorAxis(_lSemiMajorAxis), lSemiMinorAxis(_lSemiMinorAxis), direction(_direction), d(_d){}
 };
 
-
-
-struct functor_Displace_PolyLine
-{
-	int x, y;
-	float d;
-	PolyLineLensCtrlPoints polyLineLensCtrlPoints;
-
-	float width;
-
-	float lSemiMajor, lSemiMinor;
-	float2 direction;
-
-	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
-		float2 ret = screenPos;
-
-		if (clipPos.z < d) {
-			int numCtrlPoints = polyLineLensCtrlPoints.numCtrlPoints;
-			float2* ctrlPoints = polyLineLensCtrlPoints.ctrlPoints;
-			float2* dirs = polyLineLensCtrlPoints.dirs;
-			float2* angleBisectors = polyLineLensCtrlPoints.angleBisectors;
-
-			float ratio = 0.5;
-
-			bool segmentNotFound = true;
-			for (int ii = 0; ii < numCtrlPoints - 1 && segmentNotFound; ii++) {
-				float2 center = make_float2(x, y);
-				float2 toPoint = screenPos - (center + ctrlPoints[ii]);
-				float2 dir = dirs[ii];
-				float2 minorDir = make_float2(-dir.y, dir.x);
-				float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
-				if (abs(disMinor) < width / ratio)	{
-					float2 ctrlPointAbsolute1 = center + ctrlPoints[ii];
-					float2 ctrlPointAbsolute2 = center + ctrlPoints[ii+1];
-
-					//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, angleBisectors[ii])
-					//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, angleBisectors[ii+1])
-
-					if (((screenPos.x - ctrlPointAbsolute1.x)*angleBisectors[ii].y - (screenPos.y - ctrlPointAbsolute1.y)*angleBisectors[ii].x)
-						*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*angleBisectors[ii].y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*angleBisectors[ii].x)
-						>= 0) {
-						if (((screenPos.x - ctrlPointAbsolute2.x)*angleBisectors[ii + 1].y - (screenPos.y - ctrlPointAbsolute2.y)*angleBisectors[ii + 1].x)
-							*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*angleBisectors[ii + 1].y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*angleBisectors[ii + 1].x)
-							>= 0) {
-
-							float sin1 = dir.x*angleBisectors[ii].y - dir.y*angleBisectors[ii].x;//sin of the angle of dir x angleBisectors[ii]
-							float sin2 = dir.x*angleBisectors[ii + 1].y - dir.y*angleBisectors[ii + 1].x;//sin of the angle of dir x angleBisectors[ii+1]
-
-							float rOut = width / ratio;
-							float disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
-							
-
-							float2 intersectLeftOri = ctrlPointAbsolute1 + angleBisectors[ii] * (disMinor / sin1);
-							float2 intersectRightOri = ctrlPointAbsolute2 + angleBisectors[ii + 1] * (disMinor / sin2);
-							float posRatio = length(screenPos - intersectLeftOri) / length(intersectRightOri - intersectLeftOri);
-							if (disMinor >= 0){
-								float2 intersectLeft = ctrlPointAbsolute1 + angleBisectors[ii] * (disMinorNewAbs / sin1);
-								float2 intersectRight = ctrlPointAbsolute2 + angleBisectors[ii + 1] * (disMinorNewAbs / sin2);
-								ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
-							}
-							else {
-								float2 intersectLeft = ctrlPointAbsolute1 - angleBisectors[ii] * (disMinorNewAbs / sin1);
-								float2 intersectRight = ctrlPointAbsolute2 - angleBisectors[ii + 1] * (disMinorNewAbs / sin2);
-								ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
-							}
-
-							segmentNotFound = false;
-						}
-					}
-
-				}
-			}
-
-		}
-		return ret;
-	}
-
-	functor_Displace_PolyLine(int _x, int _y, int _width, PolyLineLensCtrlPoints _polyLineLensCtrlPoints, float2 _direction, float _lSemiMajor, float _lSemiMinor, float _d) :
-		x(_x), y(_y), width(_width), polyLineLensCtrlPoints(_polyLineLensCtrlPoints), direction(_direction), lSemiMajor(_lSemiMajor), lSemiMinor(_lSemiMinor), d(_d){}
-
-};
-
-struct functor_Displace_PolyLine_NotFinish
-{
-	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
-		float2 ret = screenPos;
-		
-		return ret;
-	}
-
-	functor_Displace_PolyLine_NotFinish(){}
-};
-
-struct functor_Displace_Curve
-{
-	__device__ float2 operator() (float2 screenPos, float4 clipPos) {
-		float2 ret = screenPos;
-
-		return ret;
-	}
-
-	functor_Displace_Curve(){}
-};
 
 //thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 //	d_vec_posScreenTarget.begin(), d_vec_posScreen.begin(),
@@ -365,45 +261,13 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						functor_Displace_Line(l->x, l->y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
 					break;
 				}
-				case LENS_TYPE::TYPE_POLYLINE:
-				{
-					PolyLineLens* l = (PolyLineLens*)lenses[i];
-					if(l->numCtrlPoints>=2){
-						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-							functor_Displace_PolyLine(l->x, l->y, l->width, l->polyLineLensCtrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
-					}
-					else{
-						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-							functor_Displace_PolyLine_NotFinish());
-					}
-					break;
-				}
-				case LENS_TYPE::TYPE_CURVE:
-				{
-					CurveLens* l = (CurveLens*)lenses[i];
-					if (l->isConstructing){
-						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-							functor_Displace_PolyLine_NotFinish());
-					}
-					else{
-						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-							d_vec_posClip.begin(), d_vec_posScreenTarget.begin(),
-							functor_Displace_Curve());
-					}
-					break;
-				}
+
 			}
 			//thrust::transform(posOrig.begin(), posOrig.end(), 
 			//	d_vec_Dist2LensBtm.begin(), func_CompDist2LensBtm(l->c, mv));
 		}
 		recomputeTarget = false;
 	}
-
-
-	 
 
 	thrust::device_vector<float4> d_vec_posCur(size);
 	thrust::copy(ret, ret + size, d_vec_posCur.begin());
