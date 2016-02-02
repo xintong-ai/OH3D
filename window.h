@@ -42,6 +42,9 @@ private:
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
+	QPushButton* addPolyLineLensBtn;
+	QPushButton* addCurveLensBtn;
+
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;
@@ -70,6 +73,9 @@ private:
 private slots:
 	void AddLens();
 	void AddLineLens();
+	void AddPolyLineLens();
+	void AddCurveLens();
+
 //void SlotSliceOrieChanged(bool clicked);
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);
