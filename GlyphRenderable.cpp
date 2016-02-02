@@ -42,19 +42,7 @@ void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 //	return (dataMin + dataMax) * 0.5;
 //}
 
-void GlyphRenderable::SlotFocusSizeChanged(int v)
-{ 
-	displace->SetFocusRatio( (10 - v) * 0.1 * 0.8 + 0.2); 
-	displace->RecomputeTarget();
-	actor->UpdateGL();
-}
 
-void GlyphRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
-{
-	displace->SetSideSize(v * 0.1); 
-	displace->RecomputeTarget();
-	actor->UpdateGL();
-}
 
 void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)// { displace - (10 - v) * 0.1; }
 {
