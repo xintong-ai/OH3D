@@ -21,16 +21,6 @@ struct PolyLineLensCtrlPoints
 	float2 angleBisectors[20];
 };
 
-struct CurveLensCtrlPoints
-{
-	int numCtrlPoints;
-	float2 ctrlPoints[200];
-	int numKeyPoints;
-	float2 keyPoints[200];
-	int keyPointIds[200];
-	float2 normals[200];
-};
-
 struct Lens
 {
 	LENS_TYPE type;
@@ -430,7 +420,7 @@ struct CurveLens :public Lens
 #define distanceThr 1
 #define distanceThrCount 10
 
-//public:
+public:
 
 	int width;
 	int numCtrlPoints;
@@ -439,7 +429,6 @@ struct CurveLens :public Lens
 
 	bool isConstructing;
 
-	CurveLensCtrlPoints curveLensCtrlPoints;
 
 	CurveLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
 
@@ -450,6 +439,53 @@ struct CurveLens :public Lens
 		numCtrlPoints = 0;
 		type = LENS_TYPE::TYPE_CURVE;
 	};
+
+	void FinishConstructingOld(){
+		if (numCtrlPoints >= 2){
+			isConstructing = false;
+		}
+	}
+
+	void AddCtrlPointOld(int _x, int _y){
+
+		if (numCtrlPoints == 0){
+			x = _x;
+			y = _y;
+			ctrlPoints.push_back(make_float2(0, 0));
+			numCtrlPoints = 1;
+		}
+		else if (numCtrlPoints<numCtrlPointsLimit) {
+			
+			//first check if the candidate point is not too close to previous points
+			int tt = max(0, numCtrlPoints - distanceThrCount);
+			bool notFoundTooClose = true;
+			for (int i = numCtrlPoints - 1; i >= tt; i--){
+				if (length(make_float2(x, y) + ctrlPoints[i] - make_float2(_x, _y)) < distanceThr)
+					notFoundTooClose = false;
+			}
+			
+			if (notFoundTooClose) {
+				//then do the process due to the relative position
+
+				float sumx = x*numCtrlPoints, sumy = y*numCtrlPoints;
+				sumx += _x, sumy += _y;  //sum of absolute position
+				float newx = sumx / (numCtrlPoints + 1), newy = sumy / (numCtrlPoints + 1);
+
+				for (int ii = 0; ii < numCtrlPoints; ii++) {
+					ctrlPoints[ii].x = ctrlPoints[ii].x + x - newx;
+					ctrlPoints[ii].y = ctrlPoints[ii].y + y - newy;
+				}
+
+				ctrlPoints.push_back(make_float2(_x - newx, _y - newy));
+				numCtrlPoints++;
+
+				x = newx;
+				y = newy;
+			}
+		}
+
+	
+	}
 
 	void AddCtrlPoint(int _x, int _y){
 
@@ -470,7 +506,7 @@ struct CurveLens :public Lens
 	}
 
 	void FinishConstructing(){
-		if (numCtrlPoints >= 3){
+		if (numCtrlPoints >= 2){
 			isConstructing = false;
 
 			float sumx = 0, sumy = 0;
@@ -483,29 +519,37 @@ struct CurveLens :public Lens
 				ctrlPoints[ii].x = ctrlPointsAbs[ii].x - x;
 				ctrlPoints[ii].y = ctrlPointsAbs[ii].y - y;
 			}
+		}
+	}
 
-//<<<<<<< HEAD
+	bool PointInsideLens(int _x, int _y)
+	{
+		bool segmentNotFound = true;
+		
+		return segmentNotFound;
+	}
 
-//=======
-			//compute curveLensCtrlPoints
-			curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
-			for (int i = 0; i < numCtrlPoints; i++){
-				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
-			}
-//>>>>>>> refs/remotes/origin/branch-lc
+	std::vector<float2> GetOuterContour() {
+		std::vector<float2> ret;
+		return ret;
+	}
 
+	std::vector<float2> GetContour(){
+		std::vector<float2> ret;
+
+		
+		if (!isConstructing && numCtrlPoints >= 3) {
+			//ret.resize(2 * numCtrlPoints);
 			std::vector<float2> sidePointsPos, sidePointsNeg;
-
-			int numKeyPoints = 0;
-
+			int numContourParts = 0;
 			float2 center = make_float2(x, y);
 
-			int lastValidID = 0;
+			int lastValidID = -1;
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				float2 dir; //tangent
 				if (ii == numCtrlPoints - 1)
-					dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
-				else if (ii == 0)
+					dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints-2]);
+				else if (ii==0)
 					dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
 				else
 					dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
@@ -515,12 +559,8 @@ struct CurveLens :public Lens
 				if (ii == 0){
 					sidePointsPos.push_back(center + ctrlPoints[0] + normal*width);
 					sidePointsNeg.push_back(center + ctrlPoints[0] - normal*width);
-
-					curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
+					numContourParts++;
 					lastValidID = 0;
-					curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
-					curveLensCtrlPoints.normals[numKeyPoints] = normal;
-					numKeyPoints++;
 				}
 				//else if (ii == numCtrlPoints - 1){
 
@@ -528,105 +568,28 @@ struct CurveLens :public Lens
 				else{
 					float2 candiPos = center + ctrlPoints[ii] + normal*width;
 					float2 candiNeg = center + ctrlPoints[ii] - normal*width;
-					if (!intersect(center + ctrlPoints[lastValidID], sidePointsPos[numKeyPoints - 1],
-						center + ctrlPoints[ii], candiPos)
-						&& !intersect(center + ctrlPoints[lastValidID], sidePointsNeg[numKeyPoints - 1],
-						center + ctrlPoints[ii], candiNeg)){
+					if (  !intersect(center + ctrlPoints[lastValidID], sidePointsPos[numContourParts - 1], 
+								center + ctrlPoints[ii], candiPos)
+						&& !intersect(center + ctrlPoints[lastValidID], sidePointsNeg[numContourParts - 1], 
+								center + ctrlPoints[ii], candiNeg) ){
 						sidePointsPos.push_back(candiPos);
 						sidePointsNeg.push_back(candiNeg);
-						
-						curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
+						numContourParts++;
 						lastValidID = ii;
-						curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
-						curveLensCtrlPoints.normals[numKeyPoints] = normal;
-						numKeyPoints++;
 					}
 				}
 			}
 
-			curveLensCtrlPoints.numKeyPoints = numKeyPoints;
-		}
-	}
-
-	bool PointInsideLens(int _x, int _y)
-	{
-		if (isConstructing)
-			return true;
-
-		float2 screenPos = make_float2(_x, _y);
-		
-		int numCtrlPoints = curveLensCtrlPoints.numCtrlPoints;
-		float2* ctrlPoints = curveLensCtrlPoints.ctrlPoints;
-
-		float2* normals = curveLensCtrlPoints.normals;
-		int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
-		float2* keyPoints = curveLensCtrlPoints.keyPoints;
-		int* keyPointIds = curveLensCtrlPoints.keyPointIds;
-
-		
-		bool segmentNotFound = true;
-		int keySegmentId = -1;
-		for (int ii = 0; ii < numKeyPoints - 1 && segmentNotFound; ii++) {
-			float2 center = make_float2(x, y);
-			float2 toPoint = screenPos - (center + keyPoints[ii]);
-			float2 dir = normalize(keyPoints[ii + 1] - keyPoints[ii]);
-			float2 minorDir = make_float2(-dir.y, dir.x);
-			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
-			if (abs(disMinor) < width)	{
-				float2 ctrlPointAbsolute1 = center + keyPoints[ii];
-				float2 ctrlPointAbsolute2 = center + keyPoints[ii + 1];
-
-				//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
-				//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
-
-				if (((screenPos.x - ctrlPointAbsolute1.x)*normals[ii].y - (screenPos.y - ctrlPointAbsolute1.y)*normals[ii].x)
-					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normals[ii].y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normals[ii].x)
-					>= 0) {
-					if (((screenPos.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (screenPos.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
-						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
-						>= 0) {
-						segmentNotFound = false;
-					}
-				}
-			}
-		}
-		return !segmentNotFound;
-	}
-
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
-		return ret;
-	}
-
-	//std::vector<float2> GetContour(){
-	//	std::vector<float2> ret;
-
-	std::vector<float2> GetContour(){
-		std::vector<float2> ret;
-
-
-		if (!isConstructing && numCtrlPoints >= 3) {
-			//ret.resize(2 * numCtrlPoints);
-			std::vector<float2> sidePointsPos, sidePointsNeg;
-
-			float2 center = make_float2(x, y);
-
-			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
-			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
-			float2 * normals = curveLensCtrlPoints.normals;
-
-
-			ret.resize(2 * numKeyPoints);
-			for (int jj = 0; jj < numKeyPoints; jj++){
-				ret[jj] = center + keyPoints[jj] + normals[jj] * width;
-				ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width;
+			ret.resize(2 * numContourParts);
+			for (int jj = 0; jj < numContourParts; jj++){
+				ret[jj] = sidePointsPos[jj];
+				ret[2 * numContourParts - 1 - jj] = sidePointsNeg[jj];
 			}
 		}
 
-
+		
 		return ret;
 	}
-
 
 	std::vector<float2> GetExtraLensRendering(){
 		std::vector<float2> ret;
