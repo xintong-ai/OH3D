@@ -21,6 +21,8 @@ public:
 	//void AddSphereLens(int x, int y, int radius, float3 center);
 	void AddCircleLens();
 	void AddLineLens();
+	void AddPolyLineLens();
+	void AddCurveLens();
 
 	//bool IsWorkingOnLens(){ return workingOnLens; }
 
