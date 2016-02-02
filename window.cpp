@@ -68,7 +68,7 @@ Window::Window()
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 	std::unique_ptr<Reader> reader;
 
-	const DATA_TYPE dataType = DATA_TYPE::TYPE_TENSOR;// DATA_TYPE::TYPE_PARTICLE;//
+	const DATA_TYPE dataType =  DATA_TYPE::TYPE_PARTICLE;//DATA_TYPE::TYPE_TENSOR;//
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
 		reader = std::make_unique<ParticleReader>
 			("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
@@ -93,6 +93,14 @@ Window::Window()
 		//	((ParticleReader*)reader.get())->GetVal());
 	}
 
+
+	//<<<< HEAD
+	//ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+//	ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
+	//Displace* displace = new Displace();
+	//glyphRenderable = std::make_unique<SphereRenderable>(particleReader->GetPos(), particleReader->GetVal());
+//=======
+//>>>>>>> master
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
 	lensRenderable = std::make_unique<LensRenderable>();
@@ -114,6 +122,8 @@ Window::Window()
 
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
+	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
+	addCurveLensBtn = new QPushButton("Add Curve Line Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	//addThingsLayout->addWidget(addLensBtn);
 	//addThingsLayout->addWidget(addLineLensBtn);
@@ -146,6 +156,8 @@ Window::Window()
 	//controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
+	controlLayout->addWidget(addPolyLineLensBtn);
+	controlLayout->addWidget(addCurveLensBtn);
 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(transSizeLabel);
@@ -160,6 +172,8 @@ Window::Window()
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
+	connect(addPolyLineLensBtn, SIGNAL(clicked()), this, SLOT(AddPolyLineLens()));
+	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -251,6 +265,16 @@ void Window::AddLineLens()
 	lensRenderable->AddLineLens();
 }
 
+void Window::AddPolyLineLens()
+{
+	lensRenderable->AddPolyLineLens();
+}
+
+void Window::AddCurveLens()
+{
+	lensRenderable->AddCurveLens();
+}
+
 //void Window::SlotSliceOrieChanged(bool clicked)
 //{
 //	if (radioX->isChecked()){
@@ -274,6 +298,7 @@ void Window::AddLineLens()
 //	openGL->animate();
 //}
 //
+
 void Window::SlotToggleGrid(bool b)
 {
 	gridRenderable->SetVisibility(b);

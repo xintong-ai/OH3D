@@ -25,6 +25,8 @@ public:
 	void DisplacePoints(std::vector<float2>& pts);
 	//void SetVolRange(float3 _dataMin, float3 _dataMax) { dataMin = _dataMin; dataMax = _dataMax; }
 public slots:
+	//void SlotFocusSizeChanged(int v);// { displace - (10 - v) * 0.1; }
+	//void SlotSideSizeChanged(int v);// { displace - (10 - v) * 0.1; }
 	void SlotGlyphSizeAdjustChanged(int v);// { displace - (10 - v) * 0.1; }
 	
 };
