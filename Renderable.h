@@ -43,8 +43,6 @@ public:
 
     virtual void draw(float modelview[16], float projection[16]);
 
-	//virtual void cleanup(){}
-
 	virtual void animate() {}
 	virtual void mousePress(int x, int y, int modifier) {}
 	virtual void mouseRelease(int x, int y, int modifier) {}

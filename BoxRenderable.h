@@ -15,7 +15,6 @@ public:
 	//void init() override;
 	//void resize(int width, int height) override;
 	virtual void draw(float modelview[16], float projection[16]) override;
-	//virtual void cleanup() override;
 	//void SetVecReader(VecReader* r) { vecReader = r; }
 
 private:

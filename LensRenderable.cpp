@@ -5,11 +5,9 @@
 
 void LensRenderable::init()
 {
-
 }
 
 void LensRenderable::UpdateData() {
-
 }
 
 void LensRenderable::draw(float modelview[16], float projection[16])
@@ -72,24 +70,13 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		}
 	}
 
-
-
-	
 	glPopAttrib();
-
 	//restore the original 3D coordinate system
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 }
-//
-//void Displace::AddSphereLens(int x, int y, int radius, float3 center)
-//{
-//	Lens* l = new CircleLens(x, y, radius, center);
-//	lenses.push_back(l);
-//}
-
 
 void LensRenderable::AddCircleLens()
 {
@@ -102,7 +89,6 @@ void LensRenderable::AddCircleLens()
 
 void LensRenderable::AddLineLens()
 {
-
 	int2 winSize = actor->GetWindowSize();
 	Lens* l = new LineLens(winSize.x * 0.5, winSize.y * 0.5, winSize.y * 0.2, actor->DataCenter());
 	lenses.push_back(l);
@@ -218,31 +204,23 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	return insideAnyLens;
 }
-//
-//void LensRenderable::DisplacePoints(std::vector<float2>& pts)
-//{
-//	displace
-//}
+
 void LensRenderable::SlotFocusSizeChanged(int v)
 {
-	//displace->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
 	if (lenses.size() > 0){
 		lenses.back()->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-//	displace->RecomputeTarget();
 	actor->UpdateGL();
 }
 
 
 void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
 {
-	//displace->SetSideSize(v * 0.1);
 	if (lenses.size() > 0){
 		lenses.back()->SetSideSize(v * 0.1);
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	//displace->RecomputeTarget();
 	actor->UpdateGL();
 }
 
@@ -252,6 +230,5 @@ void LensRenderable::SlotDelLens()
 		lenses.pop_back();
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	//displace->RecomputeTarget();
 	actor->UpdateGL();
 }
