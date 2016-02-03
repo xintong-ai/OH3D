@@ -10,10 +10,13 @@
 #include "GridRenderable.h"
 #include "Displace.h"
 
+#include "VecReader.h"
+
 enum DATA_TYPE
 {
 	TYPE_PARTICLE,
 	TYPE_TENSOR,
+	TYPE_VECTOR,
 };
 
 QSlider* CreateSlider()
@@ -68,7 +71,7 @@ Window::Window()
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 	std::unique_ptr<Reader> reader;
 
-	const DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE;// DATA_TYPE::TYPE_PARTICLE;//
+	const DATA_TYPE dataType = DATA_TYPE::TYPE_VECTOR;// DATA_TYPE::TYPE_PARTICLE;//
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
 		reader = std::make_unique<ParticleReader>
 			("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
@@ -91,6 +94,21 @@ Window::Window()
 		//	);
 		//	((ParticleReader*)reader.get())->GetPos(),
 		//	((ParticleReader*)reader.get())->GetVal());
+	}
+	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
+		VecReader* qqreader = new VecReader("D:/Data/VectorData/UVWf01.vec");
+		//std::vector<float4> pos;
+		//std::vector<float> val;
+		//((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+		//glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		
+
+		reader = std::make_unique<DTIVolumeReader>
+			("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
+		std::vector<float4> pos;
+		std::vector<float> val;
+		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
 	}
 
 	float3 posMin, posMax;
