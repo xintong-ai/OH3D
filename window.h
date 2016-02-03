@@ -43,6 +43,7 @@ private:
 	QPushButton* addLineLensBtn;
 	QPushButton* addPolyLineLensBtn;
 	QPushButton* addCurveLensBtn;
+	std::unique_ptr<QPushButton> delLensBtn;
 
 	//GlyphRenderable* glyphRenderable;
 	//LensRenderable* lensRenderable;

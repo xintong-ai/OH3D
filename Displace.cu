@@ -617,8 +617,8 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale)
 {
-	if (lenses.size() <= 0)
-		return;
+	//if (lenses.size() <= 0)
+	//	return;
 	int size = posOrig.size();
 
 	//clip coordiates of streamlines
@@ -638,6 +638,11 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 		//reset to 1
 		d_vec_glyphSizeTarget.assign(size, 1);
 
+		//use this for the case that there is no lens, 
+		//and the glyphs go back to the original positions
+		if (lenses.size() < 1){
+			d_vec_posScreenTarget = d_vec_posScreen;
+		}
 
 		for (int i = 0; i < lenses.size(); i++) {
 			switch (lenses[i]->GetType()) {

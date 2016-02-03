@@ -61,3 +61,18 @@ void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)// { displace - (10 - v) 
 	glyphSizeAdjust = v * 0.1;
 	actor->UpdateGL();
 }
+
+void GlyphRenderable::mouseMove(int x, int y, int modifier)
+{
+	if (INTERACT_MODE::TRANSFORMATION == actor->GetInteractMode()) {
+		RecomputeTarget();
+	}
+}
+
+void GlyphRenderable::resize(int width, int height)
+{
+	if (INTERACT_MODE::TRANSFORMATION == actor->GetInteractMode()) {
+		RecomputeTarget();
+	}
+}
+

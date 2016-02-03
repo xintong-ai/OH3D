@@ -9,7 +9,7 @@ class Displace
 	thrust::device_vector<float> d_vec_glyphSizeTarget;
 	//thrust::device_vector<float> d_vec_Dist2LensBtm;
 	//thrust::device_vector < float4 > posScreenTarget;
-	bool recomputeTarget = false;
+	bool recomputeTarget =	true;
 	//float focusRatio = 0.6;
 	//float sideSize = 0.5;
 public:

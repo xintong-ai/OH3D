@@ -19,7 +19,9 @@ protected:
 	void ComputeDisplace();
 	//GlyphRenderable();
 	GlyphRenderable(std::vector<float4>& _pos);//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
-	//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
+	void mouseMove(int x, int y, int modifier) override;
+	void resize(int width, int height) override;
+		//float3 DataCenter();// { return (dataMin + dataMax) * 0.5; }
 public:
 	void RecomputeTarget();
 	void DisplacePoints(std::vector<float2>& pts);

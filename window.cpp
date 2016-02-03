@@ -120,6 +120,7 @@ Window::Window()
 	addLineLensBtn = new QPushButton("Add Line Lens");
 	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
 	addCurveLensBtn = new QPushButton("Add Curve Line Lens");
+	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	//addThingsLayout->addWidget(addLensBtn);
 	//addThingsLayout->addWidget(addLineLensBtn);
@@ -139,6 +140,8 @@ Window::Window()
 	QSlider* glyphSizeAdjustSlider = CreateSlider();
 	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotGlyphSizeAdjustChanged(int)));
 
+
+
 	//radioX = new QRadioButton(tr("&X"));
 	//radioY = new QRadioButton(tr("&Y"));
 	//radioZ = new QRadioButton(tr("&Z"));
@@ -154,6 +157,7 @@ Window::Window()
 	controlLayout->addWidget(addLineLensBtn);
 	controlLayout->addWidget(addPolyLineLensBtn);
 	controlLayout->addWidget(addCurveLensBtn);
+	controlLayout->addWidget(delLensBtn.get());
 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(transSizeLabel);
@@ -170,6 +174,8 @@ Window::Window()
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
 	connect(addPolyLineLensBtn, SIGNAL(clicked()), this, SLOT(AddPolyLineLens()));
 	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
+	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
+	
 
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));

@@ -33,5 +33,6 @@ public:
 public slots:
 	void SlotFocusSizeChanged(int v);// { displace - (10 - v) * 0.1; }
 	void SlotSideSizeChanged(int v);// { displace - (10 - v) * 0.1; }
+	void SlotDelLens();
 };
 #endif

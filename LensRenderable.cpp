@@ -245,3 +245,13 @@ void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
 	//displace->RecomputeTarget();
 	actor->UpdateGL();
 }
+
+void LensRenderable::SlotDelLens()
+{
+	if (lenses.size() > 0){
+		lenses.pop_back();
+	}
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	//displace->RecomputeTarget();
+	actor->UpdateGL();
+}
