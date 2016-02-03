@@ -48,6 +48,7 @@ private:
 	//LensRenderable* lensRenderable;
 	//GridRenderable* gridRenderable;
 
+
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;

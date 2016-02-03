@@ -68,10 +68,13 @@ Window::Window()
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 	std::unique_ptr<Reader> reader;
 
-	const DATA_TYPE dataType =  DATA_TYPE::TYPE_PARTICLE;//DATA_TYPE::TYPE_TENSOR;//
+	const DATA_TYPE dataType = DATA_TYPE::TYPE_TENSOR;//DATA_TYPE::TYPE_PARTICLE;//
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
+		//reader = std::make_unique<ParticleReader>
+		//	("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
 		reader = std::make_unique<ParticleReader>
 			("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+
 		//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 		//Displace* displace = new Displace();
 		glyphRenderable = std::make_unique<SphereRenderable>(
@@ -80,7 +83,7 @@ Window::Window()
 	}
 	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
 		//reader = std::make_unique<DTIVolumeReader>
-		//	("D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr");
+		//	("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
 		reader = std::make_unique<DTIVolumeReader>
 			("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
 		std::vector<float4> pos;
@@ -94,13 +97,6 @@ Window::Window()
 	}
 
 
-	//<<<< HEAD
-	//ParticleReader* particleReader = new ParticleReader("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
-//	ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
-	//Displace* displace = new Displace();
-	//glyphRenderable = std::make_unique<SphereRenderable>(particleReader->GetPos(), particleReader->GetVal());
-//=======
-//>>>>>>> master
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
 	lensRenderable = std::make_unique<LensRenderable>();

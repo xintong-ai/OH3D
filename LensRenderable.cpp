@@ -31,7 +31,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 	glColor3f(1.0f, 0.2f, 0.2f);
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		
 
 		if (l->type == LENS_TYPE::TYPE_POLYLINE) {
 			glColor3f(0.2f, 1.0f, 0.2f);
@@ -184,8 +183,6 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 	}
 
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	//actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-	//workingOnLens = false;
 }
 
 void LensRenderable::mouseMove(int x, int y, int modifier)
@@ -196,12 +193,15 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			((CurveLens *)l)->AddCtrlPoint(x, y);
 		}
 	}
-	else if (INTERACT_MODE::LENS == actor->GetInteractMode()) {
-		lenses[pickedLens]->x += (x - lastPt.x);
-		lenses[pickedLens]->y += (y - lastPt.y);
+	else{
+
+		if (actor->GetInteractMode() == INTERACT_MODE::LENS) {
+			lenses[pickedLens]->x += (x - lastPt.x);
+			lenses[pickedLens]->y += (y - lastPt.y);
+		}
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		lastPt = make_int2(x, y);
 	}
-	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	lastPt = make_int2(x, y);
 }
 
 bool LensRenderable::MouseWheel(int x, int y, int delta)

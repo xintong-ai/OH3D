@@ -3,10 +3,11 @@
 #include <vector_types.h>
 #include <helper_math.h>
 #include <vector>
+using namespace std;
+
 enum LENS_TYPE{
 	TYPE_CIRCLE,
 	TYPE_LINE,
-//<<<<<<< HEAD
 	TYPE_POLYLINE,
 	TYPE_CURVE,
 };
@@ -28,9 +29,8 @@ struct CurveLensCtrlPoints
 	int keyPointIds[200];
 	float2 normals[200];
 	float ratio;//ratio of focus region and transition region
-//=======
-//>>>>>>> master
 };
+
 struct Lens
 {
 	LENS_TYPE type;
@@ -185,7 +185,6 @@ struct LineLens :public Lens
 		return ret;
 	}
 };
-//<<<<<<< HEAD
 
 struct PolyLineLens :public Lens
 {
@@ -207,7 +206,6 @@ struct PolyLineLens :public Lens
 
 	void FinishConstructing(){
 		if (numCtrlPoints >= 2){
-			
 			computePCA();
 
 			isConstructing = false;
@@ -218,11 +216,16 @@ struct PolyLineLens :public Lens
 
 		isConstructing = true;
 
-		width = _w ;
+		width = _w;
 
 		numCtrlPoints = 0;
-		type = LENS_TYPE::TYPE_POLYLINE;	
+		type = LENS_TYPE::TYPE_POLYLINE;
 	};
+
+	std::vector<float2> GetOuterContour() {
+		std::vector<float2> ret;
+		return ret;
+	}
 
 	void computePCA(){
 
@@ -233,7 +236,7 @@ struct PolyLineLens :public Lens
 		{
 			lSemiMajor = 10;
 			lSemiMinor = 10;
-			direction = normalize(make_float2(1.0,0.0));
+			direction = normalize(make_float2(1.0, 0.0));
 
 		}
 		else{
@@ -278,7 +281,6 @@ struct PolyLineLens :public Lens
 			lSemiMinor = lSemiMinor + max(lSemiMinor*0.1, 10.0);
 		}
 	}
-	
 	void AddCtrlPoint(int _x, int _y){
 
 		if (numCtrlPoints == 0){
@@ -292,14 +294,14 @@ struct PolyLineLens :public Lens
 
 			float sumx = x*numCtrlPoints, sumy = y*numCtrlPoints;
 			sumx += _x, sumy += _y;  //sum of absolute position
-			float newx = sumx / (numCtrlPoints+1), newy = sumy / (numCtrlPoints+1);
+			float newx = sumx / (numCtrlPoints + 1), newy = sumy / (numCtrlPoints + 1);
 
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				ctrlPoints[ii].x = ctrlPoints[ii].x + x - newx;
 				ctrlPoints[ii].y = ctrlPoints[ii].y + y - newy;
 			}
 
-			ctrlPoints.push_back(make_float2(_x-newx, _y-newy));
+			ctrlPoints.push_back(make_float2(_x - newx, _y - newy));
 			numCtrlPoints++;
 
 			x = newx;
@@ -374,11 +376,6 @@ struct PolyLineLens :public Lens
 		return !segmentNotFound;
 	}
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
-		return ret;
-	}
-
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
 		if (numCtrlPoints == 1){
@@ -393,7 +390,7 @@ struct PolyLineLens :public Lens
 			ret.push_back(center - rightDown*width);
 
 		}
-		else if (numCtrlPoints >=2) {
+		else if (numCtrlPoints >= 2) {
 			ret.resize(2 * numCtrlPoints);
 			float2 center = make_float2(x, y);
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -414,7 +411,7 @@ struct PolyLineLens :public Lens
 		std::vector<float2> ret;
 
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			ret.push_back(make_float2(ctrlPoints[ii].x+x, ctrlPoints[ii].y+y));
+			ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
 		}
 
 		return ret;
@@ -537,7 +534,6 @@ public:
 						center + ctrlPoints[ii], candiNegTransitionRegion)){
 						sidePointsPos.push_back(candiPos);
 						sidePointsNeg.push_back(candiNeg);
-						
 						curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
 						lastValidID = ii;
 						curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
@@ -557,7 +553,6 @@ public:
 			return true;
 
 		float2 screenPos = make_float2(_x, _y);
-		
 		int numCtrlPoints = curveLensCtrlPoints.numCtrlPoints;
 		float2* ctrlPoints = curveLensCtrlPoints.ctrlPoints;
 
@@ -566,7 +561,6 @@ public:
 		float2* keyPoints = curveLensCtrlPoints.keyPoints;
 		int* keyPointIds = curveLensCtrlPoints.keyPointIds;
 
-		
 		bool segmentNotFound = true;
 		int keySegmentId = -1;
 		for (int ii = 0; ii < numKeyPoints - 1 && segmentNotFound; ii++) {
@@ -627,7 +621,6 @@ public:
 
 	std::vector<float2> GetExtraLensRendering(){
 		std::vector<float2> ret;
-		
 		if (isConstructing){
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				ret.push_back(make_float2(ctrlPointsAbs[ii].x, ctrlPointsAbs[ii].y));
@@ -652,8 +645,4 @@ public:
 	}
 };
 
-
-//
-//=======
-//>>>>>>> master
 #endif
