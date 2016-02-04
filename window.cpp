@@ -71,10 +71,14 @@ Window::Window()
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 	std::unique_ptr<Reader> reader;
 
-	const DATA_TYPE dataType = DATA_TYPE::TYPE_VECTOR;// DATA_TYPE::TYPE_PARTICLE;//
+
+	const DATA_TYPE dataType = DATA_TYPE::TYPE_TENSOR;//DATA_TYPE::TYPE_TENSOR; //
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
+		//reader = std::make_unique<ParticleReader>
+		//	("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
 		reader = std::make_unique<ParticleReader>
-			("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
+			("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+
 		//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 		//Displace* displace = new Displace();
 		glyphRenderable = std::make_unique<SphereRenderable>(
@@ -83,9 +87,9 @@ Window::Window()
 	}
 	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
 		//reader = std::make_unique<DTIVolumeReader>
-		//	("D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr");
+		//	("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
 		reader = std::make_unique<DTIVolumeReader>
-			("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
+			("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
 		std::vector<float4> pos;
 		std::vector<float> val;
 		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
@@ -111,6 +115,7 @@ Window::Window()
 		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
 	}
 
+
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
 	lensRenderable = std::make_unique<LensRenderable>();
@@ -134,6 +139,7 @@ Window::Window()
 	addLineLensBtn = new QPushButton("Add Line Lens");
 	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
 	addCurveLensBtn = new QPushButton("Add Curve Line Lens");
+	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	//addThingsLayout->addWidget(addLensBtn);
 	//addThingsLayout->addWidget(addLineLensBtn);
@@ -153,6 +159,8 @@ Window::Window()
 	QSlider* glyphSizeAdjustSlider = CreateSlider();
 	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotGlyphSizeAdjustChanged(int)));
 
+
+
 	//radioX = new QRadioButton(tr("&X"));
 	//radioY = new QRadioButton(tr("&Y"));
 	//radioZ = new QRadioButton(tr("&Z"));
@@ -168,6 +176,7 @@ Window::Window()
 	controlLayout->addWidget(addLineLensBtn);
 	controlLayout->addWidget(addPolyLineLensBtn);
 	controlLayout->addWidget(addCurveLensBtn);
+	controlLayout->addWidget(delLensBtn.get());
 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(transSizeLabel);
@@ -184,7 +193,8 @@ Window::Window()
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
 	connect(addPolyLineLensBtn, SIGNAL(clicked()), this, SLOT(AddPolyLineLens()));
 	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
-
+	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
+	
 
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -309,6 +319,7 @@ void Window::AddCurveLens()
 //	openGL->animate();
 //}
 //
+
 void Window::SlotToggleGrid(bool b)
 {
 	gridRenderable->SetVisibility(b);

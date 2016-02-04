@@ -5,11 +5,9 @@
 
 void LensRenderable::init()
 {
-
 }
 
 void LensRenderable::UpdateData() {
-
 }
 
 void LensRenderable::draw(float modelview[16], float projection[16])
@@ -31,11 +29,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 	glColor3f(1.0f, 0.2f, 0.2f);
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		std::vector<float2> lensContour = l->GetContour();
-		glBegin(GL_LINE_LOOP);
-		for (auto v : lensContour)
-			glVertex2f(v.x, v.y);
-		glEnd();
 
 		if (l->type == LENS_TYPE::TYPE_POLYLINE) {
 			glColor3f(0.2f, 1.0f, 0.2f);
@@ -57,37 +50,33 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			for (auto v : lensExtraRendering)
 				glVertex2f(v.x, v.y);
 			glEnd();
+		}
+		else if (l->type == LENS_TYPE::TYPE_CIRCLE){
+			std::vector<float2> lensContour = l->GetContour();
+			glBegin(GL_LINE_LOOP);
+			for (auto v : lensContour)
+				glVertex2f(v.x, v.y);
+			glEnd();
 
-			glColor3f(1.0f, 0.2f, 0.2f);
+			glColor3f(0.2f, 0.8f, 0.8f);
+			for (int i = 0; i < lenses.size(); i++) {
+				Lens* l = lenses[i];
+				std::vector<float2> lensContour = l->GetOuterContour();
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+			}
 		}
 	}
 
-	glColor3f(0.2f, 0.8f, 0.8f);
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
-		std::vector<float2> lensContour = l->GetOuterContour();
-		glBegin(GL_LINE_LOOP);
-		for (auto v : lensContour)
-			glVertex2f(v.x, v.y);
-		glEnd();
-	}
-
-	
 	glPopAttrib();
-
 	//restore the original 3D coordinate system
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 }
-//
-//void Displace::AddSphereLens(int x, int y, int radius, float3 center)
-//{
-//	Lens* l = new CircleLens(x, y, radius, center);
-//	lenses.push_back(l);
-//}
-
 
 void LensRenderable::AddCircleLens()
 {
@@ -100,14 +89,12 @@ void LensRenderable::AddCircleLens()
 
 void LensRenderable::AddLineLens()
 {
-
 	int2 winSize = actor->GetWindowSize();
 	Lens* l = new LineLens(winSize.x * 0.5, winSize.y * 0.5, winSize.y * 0.2, actor->DataCenter());
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }
-
 
 void LensRenderable::AddPolyLineLens()
 {
@@ -132,7 +119,7 @@ void LensRenderable::AddCurveLens()
 
 void LensRenderable::mousePress(int x, int y, int modifier)
 {
-	if (actor->GetInteractMode() == INTERACT_MODE::MODIFYING_LENS) {
+	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
 			if (l->type == LENS_TYPE::TYPE_POLYLINE) {
@@ -186,7 +173,7 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 
 void LensRenderable::mouseMove(int x, int y, int modifier)
 {
-	if (actor->GetInteractMode() == INTERACT_MODE::MODIFYING_LENS) {
+	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
 		Lens* l = lenses[lenses.size() - 1];
 		if (l->type == LENS_TYPE::TYPE_CURVE){
 			((CurveLens *)l)->AddCtrlPoint(x, y);
@@ -217,30 +204,31 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	return insideAnyLens;
 }
-//
-//void LensRenderable::DisplacePoints(std::vector<float2>& pts)
-//{
-//	displace
-//}
+
 void LensRenderable::SlotFocusSizeChanged(int v)
 {
-	//displace->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
 	if (lenses.size() > 0){
 		lenses.back()->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-//	displace->RecomputeTarget();
 	actor->UpdateGL();
 }
 
 
 void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
 {
-	//displace->SetSideSize(v * 0.1);
 	if (lenses.size() > 0){
 		lenses.back()->SetSideSize(v * 0.1);
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	//displace->RecomputeTarget();
+	actor->UpdateGL();
+}
+
+void LensRenderable::SlotDelLens()
+{
+	if (lenses.size() > 0){
+		lenses.pop_back();
+	}
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }

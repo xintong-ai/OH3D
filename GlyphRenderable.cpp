@@ -7,8 +7,6 @@
 #include <Lens.h>
 #include <LensRenderable.h>
 
-//GlyphRenderable::GlyphRenderable(){}
-
 void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
@@ -17,8 +15,7 @@ void GlyphRenderable::ComputeDisplace()
 }
 
 
-GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)//, float* _glyphSize = 0);// { pos = _pos; num = _num; displace.LoadOrig(spherePos, sphereCnt); }
-//GlyphRenderable::GlyphRenderable(float4* _pos, int _num)
+GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 { 
 	pos = _pos; 
 	displace = std::make_shared<Displace>();
@@ -37,15 +34,20 @@ void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses());
 }
 
-//float3 GlyphRenderable::DataCenter()
-//{
-//	return (dataMin + dataMax) * 0.5;
-//}
-
-
-
-void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)// { displace - (10 - v) * 0.1; }
+void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)
 {
 	glyphSizeAdjust = v * 0.1;
 	actor->UpdateGL();
 }
+
+void GlyphRenderable::mouseMove(int x, int y, int modifier)
+{
+}
+
+void GlyphRenderable::resize(int width, int height)
+{
+	if (INTERACT_MODE::TRANSFORMATION == actor->GetInteractMode()) {
+		RecomputeTarget();
+	}
+}
+

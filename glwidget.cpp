@@ -39,7 +39,6 @@ void GLWidget::AddRenderable(const char* name, void* r)
 GLWidget::~GLWidget()
 {
 	sdkDeleteTimer(&timer);
-    //cleanup();
 }
 
 QSize GLWidget::minimumSizeHint() const
@@ -56,18 +55,10 @@ void GLWidget::initializeGL()
 {
     initializeOpenGLFunctions();
     sdkCreateTimer(&timer);
-	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	//glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 
 }
-
-//void GLWidget::cleanup()
-//{
-//	//for (auto renderer:renderers)
-//	//	renderer.second->cleanup();
-//}
 
 void GLWidget::computeFPS()
 {

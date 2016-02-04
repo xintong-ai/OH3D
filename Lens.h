@@ -186,7 +186,6 @@ struct LineLens :public Lens
 	}
 };
 
-
 struct PolyLineLens :public Lens
 {
 	int width;
@@ -196,9 +195,9 @@ struct PolyLineLens :public Lens
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
-	vector<float2> ctrlPoints;
-	vector<float2> dirs;
-	vector<float2> angleBisectors;
+	std::vector<float2> ctrlPoints;
+	std::vector<float2> dirs;
+	std::vector<float2> angleBisectors;
 
 	//used for transfering data to GPU
 	PolyLineLensCtrlPoints polyLineLensCtrlPoints;
@@ -207,7 +206,6 @@ struct PolyLineLens :public Lens
 
 	void FinishConstructing(){
 		if (numCtrlPoints >= 2){
-
 			computePCA();
 
 			isConstructing = false;
@@ -283,7 +281,6 @@ struct PolyLineLens :public Lens
 			lSemiMinor = lSemiMinor + max(lSemiMinor*0.1, 10.0);
 		}
 	}
-
 	void AddCtrlPoint(int _x, int _y){
 
 		if (numCtrlPoints == 0){
@@ -435,8 +432,8 @@ public:
 
 	int width;
 	int numCtrlPoints;
-	vector<float2> ctrlPoints;
-	vector<float2> ctrlPointsAbs;
+	std::vector<float2> ctrlPoints;
+	std::vector<float2> ctrlPointsAbs;
 
 	bool isConstructing;
 
@@ -533,11 +530,10 @@ public:
 
 					if (!intersect(center + ctrlPoints[lastValidID], 2 * sidePointsPos[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
 						center + ctrlPoints[ii], candiPosTransitionRegion)
-						&& !intersect(center + ctrlPoints[lastValidID], 2 * sidePointsNeg[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
+					 && !intersect(center + ctrlPoints[lastValidID], 2 * sidePointsNeg[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
 						center + ctrlPoints[ii], candiNegTransitionRegion)){
 						sidePointsPos.push_back(candiPos);
 						sidePointsNeg.push_back(candiNeg);
-
 						curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
 						lastValidID = ii;
 						curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
@@ -557,7 +553,6 @@ public:
 			return true;
 
 		float2 screenPos = make_float2(_x, _y);
-
 		int numCtrlPoints = curveLensCtrlPoints.numCtrlPoints;
 		float2* ctrlPoints = curveLensCtrlPoints.ctrlPoints;
 
@@ -565,7 +560,6 @@ public:
 		int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
 		float2* keyPoints = curveLensCtrlPoints.keyPoints;
 		int* keyPointIds = curveLensCtrlPoints.keyPointIds;
-
 
 		bool segmentNotFound = true;
 		int keySegmentId = -1;
@@ -627,7 +621,6 @@ public:
 
 	std::vector<float2> GetExtraLensRendering(){
 		std::vector<float2> ret;
-
 		if (isConstructing){
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				ret.push_back(make_float2(ctrlPointsAbs[ii].x, ctrlPointsAbs[ii].y));

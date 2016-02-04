@@ -15,7 +15,7 @@ enum INTERACT_MODE{
 	MODIFYING_LENS,
 	//CUT_LINE,
 	//ADD_NODE,
-	//MODIFY_LENS,
+	MODIFY_LENS,
 	//	CUT_POLYLINE,
 	//DRAW_ELLIPSE,
 };
@@ -75,8 +75,6 @@ protected:
 
 private:
     void computeFPS();
-
-    //void cleanup();
 
     void TimerStart();
 
