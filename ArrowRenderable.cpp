@@ -101,3 +101,23 @@ void ArrowRenderable::LoadShaders()
 	glProg->addUniform("Transform");
 	glProg->addUniform("Scale");
 }
+
+
+ArrowRenderable::ArrowRenderable(vector<float4> _pos, vector<float> _val) :
+GlyphRenderable(_pos)
+{
+
+}
+
+void ArrowRenderable::init()
+{
+
+}
+void ArrowRenderable::draw(float modelview[16], float projection[16])
+{
+
+}
+void ArrowRenderable::UpdateData()
+{
+
+}
