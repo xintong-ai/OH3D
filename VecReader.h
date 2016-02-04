@@ -42,7 +42,7 @@ public:
 	};
 	
 	void GetPosRange(float3& posMin, float3& posMax) override;
-	void GetSamples(std::vector<float4>& _pos, std::vector<float>& _val);
+	void GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec, std::vector<float>& _val);
 
 protected:
 	void Load() override;
