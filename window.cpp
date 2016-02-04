@@ -11,6 +11,7 @@
 #include "Displace.h"
 
 #include "VecReader.h"
+#include "ArrowRenderable.h"
 
 enum DATA_TYPE
 {
@@ -73,11 +74,12 @@ Window::Window()
 
 	const DATA_TYPE dataType = DATA_TYPE::TYPE_TENSOR;//DATA_TYPE::TYPE_TENSOR; //
 
+
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
-		//reader = std::make_unique<ParticleReader>
-		//	("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
 		reader = std::make_unique<ParticleReader>
-			("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
+			("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
+		//reader = std::make_unique<ParticleReader>
+		//	("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
 
 		//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
 		//Displace* displace = new Displace();
@@ -86,10 +88,10 @@ Window::Window()
 			((ParticleReader*)reader.get())->GetVal());
 	}
 	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
-		//reader = std::make_unique<DTIVolumeReader>
-		//	("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
 		reader = std::make_unique<DTIVolumeReader>
-			("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
+			("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
+		//reader = std::make_unique<DTIVolumeReader>
+		//	("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
 		std::vector<float4> pos;
 		std::vector<float> val;
 		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
@@ -100,19 +102,13 @@ Window::Window()
 		//	((ParticleReader*)reader.get())->GetVal());
 	}
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
-		VecReader* qqreader = new VecReader("D:/Data/VectorData/UVWf01.vec");
-		//std::vector<float4> pos;
-		//std::vector<float> val;
-		//((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		//glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-		
-
-		reader = std::make_unique<DTIVolumeReader>
-			("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
+		reader = std::make_unique<VecReader>
+			("D:/Data/VectorData/UVWf01.vec");
 		std::vector<float4> pos;
 		std::vector<float> val;
-		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		((VecReader*)reader.get())->GetSamples(pos, val);
+
+		glyphRenderable = std::make_unique<ArrowRenderable>(pos, val);
 	}
 
 

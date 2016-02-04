@@ -44,3 +44,19 @@ void VecReader::GetPosRange(float3& posMin, float3& posMax)
 	posMax = make_float3(size[0] - 1, size[1] - 1, size[2] - 1);
 }
 
+void VecReader::GetSamples(std::vector<float4>& _pos, std::vector<float>& _val)
+{
+
+	float lengthThr = 5;
+
+	for (int k = 0; k < size[2]; k++){
+		for (int j = 0; j < size[1]; j++) {
+			for (int i = 0; i < size[0]; i++){
+				if (val[i] > lengthThr) {
+					_pos.push_back(make_float4(i, j, k, 1.0));
+					_val.push_back(val[i]);
+				}
+			}
+		}
+	}
+}
