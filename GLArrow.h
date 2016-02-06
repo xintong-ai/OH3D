@@ -10,16 +10,17 @@ class GLArrow
 public:
 
 	std::vector<float4> grids;
+	std::vector<float4> colors;
 	std::vector<float3> normals;
 	std::vector<unsigned int> indices;
 
 	//paramteres
 	float range = 0.5; //[-range,range]
 	float width = 0.25; //[-width, width] for rod. tip width is doubled 
-	float rodRatio = 0.75;
+	float rodRatio = 0.5;
 	float tipRatio = 1 - rodRatio;
 	float3 orientation = make_float3(0, 0, 1);
-	const int nDivision = 4;
+	const int nDivision = 16;
 
 public:
 	explicit GLArrow();
@@ -29,6 +30,13 @@ public:
 		float* ret = nullptr;
 		if (grids.size() > 0)
 			ret = (float*)&grids[0];
+		return ret;
+	}
+
+	float* GetColors(){
+		float* ret = nullptr;
+		if (colors.size() > 0)
+			ret = (float*)&colors[0];
 		return ret;
 	}
 

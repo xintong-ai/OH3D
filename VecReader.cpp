@@ -54,11 +54,15 @@ void VecReader::GetPosRange(float3& posMin, float3& posMax)
 void VecReader::GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec, std::vector<float>& _val)
 {
 
-	float lengthThr = 50;
+	float lengthThr = 10;// 35;
 
-	for (int k = 0; k < size[2]; k++){
-		for (int j = 0; j < size[1]; j++) {
-			for (int i = 0; i < size[0]; i++){
+	//for isabel only!!
+	for (int k = 0; k < size[2]; k += 8){
+		for (int j = 2 + (k / 4) % 4; j < 250; j += 8) {
+			for (int i = 200+(j / 4) % 4; i < 400; i += 8){
+	//for (int k = 0; k < size[2]; k+=8){
+	//	for (int j = 2+(k/4)%4; j < size[1]; j+=8) {
+	//		for (int i = (j / 4) % 4; i < size[0]; i += 8){
 				int idx = k * size[0] * size[1] + j * size[0] + i;
 				//if (val[idx] > 0.5 && val[idx]<0.501) {
 				if (val[idx] > lengthThr) {

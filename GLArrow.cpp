@@ -20,53 +20,65 @@ GLArrow::GLArrow()
 		float z0 = -1 * range;
 		float z1 = z0 +2 * range*rodRatio;
 		float z2 = 1 * range;
+
 		grids.push_back(make_float4(0, 0, z0, 1.0));
 		grids.push_back(make_float4(x1, y1, z0, 1.0));
 		grids.push_back(make_float4(x2, y2, z0, 1.0));
-
 		grids.push_back(make_float4(x1, y1, z0, 1.0));
 		grids.push_back(make_float4(x2, y2, z0, 1.0));
 		grids.push_back(make_float4(x2, y2, z1, 1.0));
-
 		grids.push_back(make_float4(x1, y1, z0, 1.0));
 		grids.push_back(make_float4(x1, y1, z1, 1.0));
 		grids.push_back(make_float4(x2, y2, z1, 1.0));
-
 		grids.push_back(make_float4(x1, y1, z1, 1.0));
 		grids.push_back(make_float4(x2, y2, z1, 1.0));
 		grids.push_back(make_float4(x2 * 2, y2 * 2, z1, 1.0));
-
 		grids.push_back(make_float4(x1, y1, z1, 1.0));
 		grids.push_back(make_float4(x1 * 2, y1 * 2, z1, 1.0));
 		grids.push_back(make_float4(x2 * 2, y2 * 2, z1, 1.0));
-
 		grids.push_back(make_float4(x1 * 2, y1 * 2, z1, 1.0));
 		grids.push_back(make_float4(x2 * 2, y2 * 2, z1, 1.0));
 		grids.push_back(make_float4(0, 0, z2, 1.0));
 
-		normals.push_back(make_float3(0, 0, -1));
-		normals.push_back(make_float3(0, 0, -1));
-		normals.push_back(make_float3(0, 0, -1));
+		float4 color0 = make_float4(0.0, 0.0, 1.0, 1.0);
+		float4 color1 = make_float4(rodRatio, 0.0, 1 - rodRatio, 1.0);
+		float4 color2 = make_float4(1.0, 0.0, 0.0, 1.0);
+		colors.push_back(color0);
+		colors.push_back(color0);
+		colors.push_back(color0);
+		colors.push_back(color0);
+		colors.push_back(color0);
+		colors.push_back(color1);
+		colors.push_back(color0);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color1);
+		colors.push_back(color2);
 
+		normals.push_back(make_float3(0, 0, -1));
+		normals.push_back(make_float3(0, 0, -1));
+		normals.push_back(make_float3(0, 0, -1));
 		float3 normalRodSurface = normalize(make_float3((x1 + x2) / 2, (y1 + y2) / 2, 0));
-
 		normals.push_back(normalRodSurface);
 		normals.push_back(normalRodSurface);
 		normals.push_back(normalRodSurface);
 		normals.push_back(normalRodSurface);
 		normals.push_back(normalRodSurface);
 		normals.push_back(normalRodSurface);
-
-
 		normals.push_back(make_float3(0, 0, -1));
 		normals.push_back(make_float3(0, 0, -1));
 		normals.push_back(make_float3(0, 0, -1));
 		normals.push_back(make_float3(0, 0, -1));
 		normals.push_back(make_float3(0, 0, -1));
 		normals.push_back(make_float3(0, 0, -1));
-
 		float3 normalTipSurface = normalize(cross(make_float3(2 * x2 - 2 * x1, 2 * y2 - 2 * y1, 0), make_float3(-2 * x1, -2 * x2, z2 - z1)));
-
 		normals.push_back(normalTipSurface);
 		normals.push_back(normalTipSurface);
 		normals.push_back(normalTipSurface);
@@ -86,8 +98,6 @@ GLArrow::GLArrow()
 	normals.push_back(make_float3(1, 0, 0));
 	normals.push_back(make_float3(0, 1, 0));
 	normals.push_back(make_float3(0, 0, 1));
-	//nVerts.push_back(4);
-
 
 	indices.push_back(0);
 	indices.push_back(1);
