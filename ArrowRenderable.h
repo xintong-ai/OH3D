@@ -2,7 +2,6 @@
 #define ARROW_RENDERABLE_H
 
 #include "GlyphRenderable.h"
-//#include <memory>
 
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
@@ -10,7 +9,11 @@ class GLArrow;
 
 class ArrowRenderable :public GlyphRenderable
 {
-	float val; //used for coloring particles
+	std::vector<float3> vecs;
+	std::vector<float> val; //used for coloring particles
+	float lMax, lMin;
+	std::vector<QMatrix4x4> rotations;
+
 	std::vector<float4> verts;
 	std::vector<float3> normals;
 	std::vector<unsigned int> indices;
@@ -19,11 +22,11 @@ class ArrowRenderable :public GlyphRenderable
 
 	unsigned int vbo_vert;
 	unsigned int vbo_indices;
+	unsigned int vbo_colors;
 	unsigned int vbo_normals;
 	std::unique_ptr<ShaderProgram> glProg;
 	std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
 	std::unique_ptr<GLArrow> glyphMesh;
-	std::vector<QMatrix4x4> rotations;
 
 public:
 	ArrowRenderable(std::vector<float4> _pos, std::vector<float3> _vec, std::vector < float > _val);
