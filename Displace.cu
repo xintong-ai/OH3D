@@ -68,6 +68,7 @@ struct functor_Displace
 		float2 screenPos = thrust::get<0>(t);
 		float4 clipPos = thrust::get<1>(t);
 		float2 ret = screenPos;
+		float brightness = 1.0f;
 		if (clipPos.z < lensD) {
 			float glyphSize = 1;
 			float focusRatioIncrease = (lensD - clipPos.z) * 32 * sideSize;
@@ -77,7 +78,11 @@ struct functor_Displace
 			ret = DisplaceCircleLens(lensX, lensY, circleR * newfocusRatio / focusRatio, screenPos, glyphSize, newfocusRatio);
 			thrust::get<2>(t) = glyphSize;
 		}
+		else if (length(make_float2(lensX, lensY) - ret) < circleR){
+			brightness = clamp(1.0f - 300 * abs(clipPos.z - lensD), 0.0f, 1.0f);
+		}
 		thrust::get<0>(t) = ret;
+		thrust::get<3>(t) = brightness;
 	}
 	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, float _sideSize)
 		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), sideSize(_sideSize){}
@@ -357,16 +362,15 @@ struct functor_ApproachTarget
 		float3 screenPos = make_float3(thrust::get<0>(t));
 		float3 screenTarget = make_float3(thrust::get<1>(t));
 		float3 dir = screenTarget - screenPos;
-		float sizeDiff = thrust::get<3>(t) -thrust::get<2>(t);
 		if (length(dir) < 0.01) {
 			thrust::get<0>(t) = Float3ToFloat4(screenTarget);
 			thrust::get<2>(t) = thrust::get<3>(t);
 		}
 		else{
 			thrust::get<0>(t) = Float3ToFloat4(screenPos + dir * 0.1);
-			thrust::get<2>(t) = thrust::get<2>(t) +sizeDiff * 0.1;
+			thrust::get<2>(t) = thrust::get<2>(t) +(thrust::get<3>(t) -thrust::get<2>(t)) * 0.1;
 		}
-
+		thrust::get<4>(t) = thrust::get<4>(t) +(thrust::get<5>(t) -thrust::get<4>(t)) * 0.1;
 	}
 };
 
@@ -393,6 +397,7 @@ void Displace::LoadOrig(float4* v, int num)
 	posOrig.assign(v, v + num);// , posOrig.begin());
 	d_vec_posTarget.assign(num, make_float4(0, 0, 0, 1));
 	d_vec_glyphSizeTarget.assign(num, 1);
+	d_vec_glyphBrightTarget.assign(num, 1.0f);
 }
 
 void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses)
@@ -407,7 +412,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 }
 
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
-	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale)
+	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright)
 {
 	int size = posOrig.size();
 	matrix4x4 mv(modelview);
@@ -439,13 +444,15 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						thrust::make_tuple(
 						d_vec_posScreen.begin(),
 						d_vec_posClip.begin(),
-						d_vec_glyphSizeTarget.begin()
+						d_vec_glyphSizeTarget.begin(),
+						d_vec_glyphBrightTarget.begin()
 						)),
 						thrust::make_zip_iterator(
 						thrust::make_tuple(
 						d_vec_posScreen.end(),
 						d_vec_posClip.end(),
-						d_vec_glyphSizeTarget.end()
+						d_vec_glyphSizeTarget.end(),
+						d_vec_glyphBrightTarget.end()
 						)),
 						functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, l->sideSize));
 					break;
@@ -505,23 +512,30 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 	thrust::copy(ret, ret + size, d_vec_posCur.begin());
 	thrust::device_vector<float> d_vec_glyphSizeScale(size);
 	thrust::copy(glyphSizeScale, glyphSizeScale + size, d_vec_glyphSizeScale.begin());
-
+	thrust::device_vector<float> d_vec_glyphBright(size);
+	thrust::copy(glyphBright, glyphBright + size, d_vec_glyphBright.begin());
+	
 	thrust::for_each(
 		thrust::make_zip_iterator(
 		thrust::make_tuple(
 		d_vec_posCur.begin(),
 		d_vec_posTarget.begin(), 
 		d_vec_glyphSizeScale.begin(),
-		d_vec_glyphSizeTarget.begin()
+		d_vec_glyphSizeTarget.begin(),
+		d_vec_glyphBright.begin(),
+		d_vec_glyphBrightTarget.begin()
 		)),
 		thrust::make_zip_iterator(
 		thrust::make_tuple(
 		d_vec_posCur.end(),
 		d_vec_posTarget.end(),
 		d_vec_glyphSizeScale.end(),
-		d_vec_glyphSizeTarget.end()
+		d_vec_glyphSizeTarget.end(),
+		d_vec_glyphBright.end(),
+		d_vec_glyphBrightTarget.end()
 		)),
 		functor_ApproachTarget());
 	thrust::copy(d_vec_posCur.begin(), d_vec_posCur.end(), ret);
 	thrust::copy(d_vec_glyphSizeScale.begin(), d_vec_glyphSizeScale.end(), glyphSizeScale);
+	thrust::copy(d_vec_glyphBright.begin(), d_vec_glyphBright.end(), glyphBright);
 }

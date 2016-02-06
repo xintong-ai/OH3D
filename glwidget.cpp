@@ -212,7 +212,7 @@ void GLWidget::wheelEvent(QWheelEvent * event)
 			doTransform = false;
 	}
 	if (doTransform){
-		transScale *= exp(event->delta() * -0.001);
+		transScale *= exp(event->delta() * -0.0002);
 	}
 	update();
 }
