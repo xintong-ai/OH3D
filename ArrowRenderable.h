@@ -11,6 +11,9 @@ class ArrowRenderable :public GlyphRenderable
 {
 	std::vector<float3> vecs;
 	std::vector<float> val; //used for coloring particles
+	std::vector<float3> cols;//used for coloring particles
+
+
 	float lMax, lMin;
 	std::vector<QMatrix4x4> rotations;
 

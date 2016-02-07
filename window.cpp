@@ -103,13 +103,13 @@ Window::Window()
 	}
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
 		reader = std::make_unique<VecReader>
-			//("D:/Data/VectorData/15plume3d421.vec");
-			("D:/Data/VectorData/UVWf01.vec");
+			("D:/Data/VectorData/15plume3d421.vec");
+			//("D:/Data/VectorData/UVWf01.vec");
 		std::vector<float4> pos;
 		std::vector<float3> vec;
 		std::vector<float> val;
 		((VecReader*)reader.get())->GetSamples(pos, vec, val);
-
+		std::cout << "number of sampled glyphs: " << pos.size() << std::endl;
 		glyphRenderable = std::make_unique<ArrowRenderable>(pos, vec, val);
 	}
 
