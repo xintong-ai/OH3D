@@ -15,6 +15,7 @@
 #include "glwidget.h"
 #include "helper_math.h"
 #include "GLArrow.h"
+#include "ColorGradient.h"
 
 using namespace std;
 
@@ -62,6 +63,13 @@ GlyphRenderable(_pos)
 		}
 	}
 
+	ColorGradient cg;
+	cols.resize(pos.size());
+	for (int i = 0; i < pos.size(); i++) {
+		float valRate = (val[i] - lMin) / (lMax - lMin);
+		cg.getColorAtValue(valRate, cols[i].x, cols[i].y, cols[i].z);
+	}
+
 }
 
 
@@ -99,7 +107,10 @@ void ArrowRenderable::LoadShaders()
 			eyeCoords = ModelViewMatrix * VertexPosition;
 			tnorm = normalize(NormalMatrix * /*vec3(VertexPosition) + 0.001 * */VertexNormal);
 			//gl_Position = MVP * (VertexPosition + vec4(Transform, 0.0));
-			gl_Position = MVP * vec4(vec3(DivZ(SQRotMatrix * VertexPosition))*scale + Transform, 1.0);
+			if (scale<1)
+				gl_Position = MVP * vec4(vec3(DivZ(SQRotMatrix * (VertexPosition*vec4(scale, scale, scale, 1.0)))) + Transform, 1.0);
+			else
+				gl_Position = MVP * vec4(vec3(DivZ(SQRotMatrix * (VertexPosition*vec4(1.0, 1.0, scale, 1.0)))) + Transform, 1.0);
 			fragColor = VertexColor;
 		}
 	);
@@ -121,7 +132,7 @@ void ArrowRenderable::LoadShaders()
 			vec3 s = normalize(vec3(LightPosition - position));
 			vec3 v = normalize(-position.xyz);
 			vec3 r = reflect(-s, normal);
-			vec3 ambient = a*0.1 + vec3(fragColor)*0.9;// Ka * 0.8;
+			vec3 ambient = a + vec3(fragColor)*0.00001;// Ka * 0.8;
 			float sDotN = max(dot(s, normal), 0.0);
 			vec3 diffuse = Kd * sDotN;
 			vec3 spec = vec3(0.0);
@@ -230,7 +241,7 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 		//float cosX = dot(vec, make_float3(1, 0, 0));
 		//float cosY = dot(vec, make_float3(0, 1, 0));
 		//qgl->glUniform3f(glProg->uniform("Ka"), (cosY + 1) / 2, (cosX + 1) / 2, 1 - (cosX + 1) / 2);
-		qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
+		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
@@ -243,6 +254,8 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 		
 		float maxSize = 8;
 		qgl->glUniform1f(glProg->uniform("scale"), val[i] / lMax * maxSize);
+
+		qgl->glUniform3fv(glProg->uniform("Ka"), 1, &cols[i].x);
 
 		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());
 		m_vao->release();
