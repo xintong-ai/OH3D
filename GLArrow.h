@@ -17,6 +17,7 @@ public:
 	//paramteres
 	float range = 0.5; //[-range,range]
 	float width = 0.25; //[-width, width] for rod. tip width is doubled 
+	float ratioTipRod = 3;
 	float rodRatio = 0.5;
 	float tipRatio = 1 - rodRatio;
 	float3 orientation = make_float3(0, 0, 1);
