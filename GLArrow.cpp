@@ -32,12 +32,12 @@ GLArrow::GLArrow()
 		grids.push_back(make_float4(x2, y2, z1, 1.0));
 		grids.push_back(make_float4(x1, y1, z1, 1.0));
 		grids.push_back(make_float4(x2, y2, z1, 1.0));
-		grids.push_back(make_float4(x2 * 2, y2 * 2, z1, 1.0));
+		grids.push_back(make_float4(x2 * ratioTipRod, y2 * ratioTipRod, z1, 1.0));
 		grids.push_back(make_float4(x1, y1, z1, 1.0));
-		grids.push_back(make_float4(x1 * 2, y1 * 2, z1, 1.0));
-		grids.push_back(make_float4(x2 * 2, y2 * 2, z1, 1.0));
-		grids.push_back(make_float4(x1 * 2, y1 * 2, z1, 1.0));
-		grids.push_back(make_float4(x2 * 2, y2 * 2, z1, 1.0));
+		grids.push_back(make_float4(x1 * ratioTipRod, y1 * ratioTipRod, z1, 1.0));
+		grids.push_back(make_float4(x2 * ratioTipRod, y2 * ratioTipRod, z1, 1.0));
+		grids.push_back(make_float4(x1 * ratioTipRod, y1 * ratioTipRod, z1, 1.0));
+		grids.push_back(make_float4(x2 * ratioTipRod, y2 * ratioTipRod, z1, 1.0));
 		grids.push_back(make_float4(0, 0, z2, 1.0));
 
 		float4 color0 = make_float4(0.0, 0.0, 1.0, 1.0);
@@ -78,7 +78,7 @@ GLArrow::GLArrow()
 		normals.push_back(make_float3(0, 0, -1));
 		normals.push_back(make_float3(0, 0, -1));
 		normals.push_back(make_float3(0, 0, -1));
-		float3 normalTipSurface = normalize(cross(make_float3(2 * x2 - 2 * x1, 2 * y2 - 2 * y1, 0), make_float3(-2 * x1, -2 * x2, z2 - z1)));
+		float3 normalTipSurface = normalize(cross(make_float3(ratioTipRod * x2 - ratioTipRod * x1, ratioTipRod * y2 - ratioTipRod * y1, 0), make_float3(-ratioTipRod * x1, -ratioTipRod * x2, z2 - z1)));
 		normals.push_back(normalTipSurface);
 		normals.push_back(normalTipSurface);
 		normals.push_back(normalTipSurface);
