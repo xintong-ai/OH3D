@@ -89,7 +89,6 @@ void SphereRenderable::LoadShaders()
 	glProg->addUniform("Kd");
 	glProg->addUniform("Ks");
 	glProg->addUniform("Shininess");
-	glProg->addUniform("Bright");
 
 	glProg->addUniform("ModelViewMatrix");
 	glProg->addUniform("NormalMatrix");

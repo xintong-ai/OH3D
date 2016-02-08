@@ -76,10 +76,14 @@ struct functor_Displace
 			if (newfocusRatio > 1)
 				newfocusRatio = 1;
 			ret = DisplaceCircleLens(lensX, lensY, circleR * newfocusRatio / focusRatio, screenPos, glyphSize, newfocusRatio);
+			if ((lensD - clipPos.z) > 0.001 
+				&& length(make_float2(lensX, lensY) - ret) < (circleR / focusRatio)) {
+				float2 dir = screenPos - make_float2(lensX, lensY);
+				ret = normalize(dir) * circleR / focusRatio + make_float2(lensX, lensY);
+			}
 			thrust::get<2>(t) = glyphSize;
-		}
-		else if (length(make_float2(lensX, lensY) - ret) < circleR){
-			brightness = clamp(1.0f - 300 * abs(clipPos.z - lensD), 0.0f, 1.0f);
+		}else if (length(make_float2(lensX, lensY) - ret) < (circleR / focusRatio)){
+			brightness = clamp(1.3f - 300 * abs(clipPos.z - lensD), 0.1f, 1.0f);
 		}
 		thrust::get<0>(t) = ret;
 		thrust::get<3>(t) = brightness;

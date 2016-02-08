@@ -198,7 +198,7 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 		if (l->PointInsideLens(x, y)) {
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
-			l->ChangeClipDepth(delta*0.1, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
 		}
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
