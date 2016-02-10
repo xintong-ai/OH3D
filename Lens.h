@@ -3,6 +3,8 @@
 #include <vector_types.h>
 #include <helper_math.h>
 #include <vector>
+
+#include <iostream>
 using namespace std;
 
 enum LENS_TYPE{
@@ -10,6 +12,7 @@ enum LENS_TYPE{
 	TYPE_LINE,
 	TYPE_POLYLINE,
 	TYPE_CURVE,
+	TYPE_CURVEB
 };
 
 struct PolyLineLensCtrlPoints
@@ -28,7 +31,7 @@ struct CurveLensCtrlPoints
 	float2 keyPoints[200];
 	int keyPointIds[200];
 	float2 normals[200];
-	float ratio;//ratio of focus region and transition region
+	float focusRatio;//ratio of focus region and transition region
 };
 
 struct Lens
@@ -50,6 +53,7 @@ struct Lens
 	virtual bool PointInsideLens(int x, int y) = 0;
 	virtual std::vector<float2> GetContour() = 0;
 	virtual std::vector<float2> GetOuterContour() = 0;
+	virtual std::vector<float2> GetExtraLensRendering() = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
 };
@@ -86,7 +90,10 @@ struct CircleLens :public Lens
 		return GetContourTemplate(radius / focusRatio);
 	}
 
-
+	std::vector<float2> GetExtraLensRendering(){
+		vector<float2> res(0);
+		return res;
+	}
 };
 
 
@@ -183,6 +190,11 @@ struct LineLens :public Lens
 		}
 		
 		return ret;
+	}
+
+	std::vector<float2> GetExtraLensRendering(){
+		vector<float2> res(0);
+		return res;
 	}
 };
 
@@ -437,8 +449,6 @@ public:
 
 	bool isConstructing;
 
-	float ratio = 0.5;
-
 	CurveLensCtrlPoints curveLensCtrlPoints;
 
 	CurveLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
@@ -446,7 +456,7 @@ public:
 		isConstructing = true;
 
 		width = _w;
-
+		focusRatio = 0.5;
 		numCtrlPoints = 0;
 		type = LENS_TYPE::TYPE_CURVE;
 	};
@@ -485,7 +495,7 @@ public:
 			}
 
 			//compute curveLensCtrlPoints
-			curveLensCtrlPoints.ratio = ratio;
+			curveLensCtrlPoints.focusRatio = focusRatio;
 			curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
 			for (int i = 0; i < numCtrlPoints; i++){
 				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
@@ -525,8 +535,8 @@ public:
 				else{
 					float2 candiPos = center + ctrlPoints[ii] + normal*width;
 					float2 candiNeg = center + ctrlPoints[ii] - normal*width;
-					float2 candiPosTransitionRegion = center + ctrlPoints[ii] + normal*width / ratio;
-					float2 candiNegTransitionRegion = center + ctrlPoints[ii] - normal*width / ratio;
+					float2 candiPosTransitionRegion = center + ctrlPoints[ii] + normal*width / focusRatio;
+					float2 candiNegTransitionRegion = center + ctrlPoints[ii] - normal*width / focusRatio;
 
 					if (!intersect(center + ctrlPoints[lastValidID], 2 * sidePointsPos[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
 						center + ctrlPoints[ii], candiPosTransitionRegion)
@@ -590,14 +600,8 @@ public:
 		return !segmentNotFound;
 	}
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
-		return ret;
-	}
-
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
-
 
 		if (!isConstructing && numCtrlPoints >= 3) {
 			std::vector<float2> sidePointsPos, sidePointsNeg;
@@ -618,6 +622,27 @@ public:
 		return ret;
 	}
 
+	std::vector<float2> GetOuterContour() {
+		std::vector<float2> ret;
+
+		if (!isConstructing && numCtrlPoints >= 3) {
+			std::vector<float2> sidePointsPos, sidePointsNeg;
+
+			float2 center = make_float2(x, y);
+
+			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
+			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
+			float2 * normals = curveLensCtrlPoints.normals;
+
+			ret.resize(2 * numKeyPoints);
+			for (int jj = 0; jj < numKeyPoints; jj++){
+				ret[jj] = center + keyPoints[jj] + normals[jj] * width / focusRatio;
+				ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width / focusRatio;;
+			}
+		}
+
+		return ret;
+	}
 
 	std::vector<float2> GetExtraLensRendering(){
 		std::vector<float2> ret;
@@ -642,6 +667,258 @@ public:
 	bool intersect(float2 A, float2 B, float2 C, float2 D)
 	{
 		return (ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D));
+	}
+
+	void UpdateTransferredData()
+	{
+		//!!! may need to be more sophisticate
+		curveLensCtrlPoints.focusRatio = focusRatio;
+	}
+};
+
+
+struct CurveBLens :public Lens
+{
+#define numCtrlPointsLimit 500
+#define distanceThr 1
+#define distanceThrCount 10
+
+public:
+
+	int width;
+	int numCtrlPoints;
+	std::vector<float2> ctrlPoints;
+	std::vector<float2> ctrlPointsAbs;
+
+	bool isConstructing;
+
+	CurveLensCtrlPoints curveLensCtrlPoints;
+
+	CurveBLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
+
+		isConstructing = true;
+
+		width = _w;
+		focusRatio = 0.5;
+		numCtrlPoints = 0;
+		type = LENS_TYPE::TYPE_CURVEB;
+	};
+
+	void AddCtrlPoint(int _x, int _y){
+
+		if (numCtrlPoints < numCtrlPointsLimit) {
+
+			//first check if the candidate point is not too close to previous points
+			int tt = max(0, numCtrlPoints - distanceThrCount);
+			bool notFoundTooClose = true;
+			for (int i = numCtrlPoints - 1; i >= tt; i--){
+				if (length(ctrlPointsAbs[i] - make_float2(_x, _y)) < distanceThr)
+					notFoundTooClose = false;
+			}
+			if (notFoundTooClose) {
+				ctrlPointsAbs.push_back(make_float2(_x, _y));
+				numCtrlPoints++;
+			}
+		}
+	}
+
+	void FinishConstructing(){
+		if (numCtrlPoints >= 3){
+			isConstructing = false;
+			/*
+			float sumx = 0, sumy = 0;
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
+			}
+			x = sumx / numCtrlPoints, y = sumy / numCtrlPoints;
+			ctrlPoints.resize(numCtrlPoints);
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ctrlPoints[ii].x = ctrlPointsAbs[ii].x - x;
+				ctrlPoints[ii].y = ctrlPointsAbs[ii].y - y;
+			}
+
+			//compute curveLensCtrlPoints
+			curveLensCtrlPoints.focusRatio = focusRatio;
+			curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
+			for (int i = 0; i < numCtrlPoints; i++){
+				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
+			}
+
+			std::vector<float2> sidePointsPos, sidePointsNeg;
+
+			int numKeyPoints = 0;
+
+			float2 center = make_float2(x, y);
+
+			int lastValidID = 0;
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				float2 dir; //tangent
+				if (ii == numCtrlPoints - 1)
+					dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
+				else if (ii == 0)
+					dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
+				else
+					dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
+
+				float2 normal = make_float2(-dir.y, dir.x);
+
+				if (ii == 0){
+					sidePointsPos.push_back(center + ctrlPoints[0] + normal*width);
+					sidePointsNeg.push_back(center + ctrlPoints[0] - normal*width);
+
+					curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
+					lastValidID = 0;
+					curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
+					curveLensCtrlPoints.normals[numKeyPoints] = normal;
+					numKeyPoints++;
+				}
+				//else if (ii == numCtrlPoints - 1){
+
+				//}
+				else{
+					float2 candiPos = center + ctrlPoints[ii] + normal*width;
+					float2 candiNeg = center + ctrlPoints[ii] - normal*width;
+					float2 candiPosTransitionRegion = center + ctrlPoints[ii] + normal*width / focusRatio;
+					float2 candiNegTransitionRegion = center + ctrlPoints[ii] - normal*width / focusRatio;
+
+					if (!intersect(center + ctrlPoints[lastValidID], 2 * sidePointsPos[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
+						center + ctrlPoints[ii], candiPosTransitionRegion)
+						&& !intersect(center + ctrlPoints[lastValidID], 2 * sidePointsNeg[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
+						center + ctrlPoints[ii], candiNegTransitionRegion)){
+						sidePointsPos.push_back(candiPos);
+						sidePointsNeg.push_back(candiNeg);
+						curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
+						lastValidID = ii;
+						curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
+						curveLensCtrlPoints.normals[numKeyPoints] = normal;
+						numKeyPoints++;
+					}
+				}
+			}
+
+			curveLensCtrlPoints.numKeyPoints = numKeyPoints;
+
+			*/
+		}
+	}
+
+	bool PointInsideLens(int _x, int _y)
+	{
+		if (isConstructing)
+			return true;
+		return true;
+
+		float2 screenPos = make_float2(_x, _y);
+		int numCtrlPoints = curveLensCtrlPoints.numCtrlPoints;
+		float2* ctrlPoints = curveLensCtrlPoints.ctrlPoints;
+
+		float2* normals = curveLensCtrlPoints.normals;
+		int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
+		float2* keyPoints = curveLensCtrlPoints.keyPoints;
+		int* keyPointIds = curveLensCtrlPoints.keyPointIds;
+
+		bool segmentNotFound = true;
+		int keySegmentId = -1;
+		for (int ii = 0; ii < numKeyPoints - 1 && segmentNotFound; ii++) {
+			float2 center = make_float2(x, y);
+			float2 toPoint = screenPos - (center + keyPoints[ii]);
+			float2 dir = normalize(keyPoints[ii + 1] - keyPoints[ii]);
+			float2 minorDir = make_float2(-dir.y, dir.x);
+			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
+			if (abs(disMinor) < width)	{
+				float2 ctrlPointAbsolute1 = center + keyPoints[ii];
+				float2 ctrlPointAbsolute2 = center + keyPoints[ii + 1];
+
+				//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
+				//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
+
+				if (((screenPos.x - ctrlPointAbsolute1.x)*normals[ii].y - (screenPos.y - ctrlPointAbsolute1.y)*normals[ii].x)
+					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normals[ii].y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normals[ii].x)
+					>= 0) {
+					if (((screenPos.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (screenPos.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
+						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
+						>= 0) {
+						segmentNotFound = false;
+					}
+				}
+			}
+		}
+		return !segmentNotFound;
+	}
+
+	std::vector<float2> GetContour(){
+		std::vector<float2> ret;
+		return ret;
+		if (!isConstructing && numCtrlPoints >= 3) {
+			std::vector<float2> sidePointsPos, sidePointsNeg;
+
+			float2 center = make_float2(x, y);
+
+			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
+			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
+			float2 * normals = curveLensCtrlPoints.normals;
+
+			ret.resize(2 * numKeyPoints);
+			for (int jj = 0; jj < numKeyPoints; jj++){
+				ret[jj] = center + keyPoints[jj] + normals[jj] * width;
+				ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width;
+			}
+		}
+
+		return ret;
+	}
+
+	std::vector<float2> GetOuterContour() {
+		std::vector<float2> ret;
+		return ret;
+		if (!isConstructing && numCtrlPoints >= 3) {
+			std::vector<float2> sidePointsPos, sidePointsNeg;
+
+			float2 center = make_float2(x, y);
+
+			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
+			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
+			float2 * normals = curveLensCtrlPoints.normals;
+
+			ret.resize(2 * numKeyPoints);
+			for (int jj = 0; jj < numKeyPoints; jj++){
+				ret[jj] = center + keyPoints[jj] + normals[jj] * width / focusRatio;
+				ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width / focusRatio;;
+			}
+		}
+
+		return ret;
+	}
+
+	std::vector<float2> GetExtraLensRendering(){
+		std::vector<float2> ret;
+		if (isConstructing){
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ret.push_back(make_float2(ctrlPointsAbs[ii].x, ctrlPointsAbs[ii].y));
+			}
+		}
+		else{
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
+			}
+		}
+		return ret;
+	}
+
+	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
+	{
+		return (C.y - A.y)*(B.x - A.x) >(B.y - A.y)*(C.x - A.x);
+	}
+
+	bool intersect(float2 A, float2 B, float2 C, float2 D)
+	{
+		return (ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D));
+	}
+
+	void UpdateTransferredData()
+	{
+		//!!! may need to be more sophisticate
+		curveLensCtrlPoints.focusRatio = focusRatio;
 	}
 };
 

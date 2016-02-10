@@ -21,6 +21,7 @@ public:
 	void AddLineLens();
 	void AddPolyLineLens();
 	void AddCurveLens();
+	void AddCurveBLens();
 
 	void mousePress(int x, int y, int modifier) override;
 	void mouseRelease(int x, int y, int modifier) override;
