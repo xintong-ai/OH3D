@@ -12,6 +12,7 @@ protected:
 	std::vector<float4> pos;
 	std::shared_ptr<Displace> displace;
 	std::vector<float> glyphSizeScale;
+	std::vector<float> glyphBright;
 	float glyphSizeAdjust = 0.5;
 
 	void ComputeDisplace();

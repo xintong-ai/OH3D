@@ -75,6 +75,11 @@ private:
 	//QPushButton* CreateRegularButton(const char* name);
 	//QSlider* CreateSliceSlider(TexPlaneRenderable* renderable);
 
+
+	QPushButton *addCurveBLensBtn;
+	private slots:
+	void AddCurveBLens();
+
 private slots:
 	void AddLens();
 	void AddLineLens();

@@ -125,6 +125,8 @@ void ArrowRenderable::LoadShaders()
 		in vec4 eyeCoords;
 		in vec4 fragColor;
 
+		uniform float Bright;
+
 		smooth in vec3 tnorm;
 		layout(location = 0) out vec4 FragColor;
 
@@ -143,7 +145,8 @@ void ArrowRenderable::LoadShaders()
 		}
 
 		void main() {
-			FragColor = vec4(phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+
+			FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
 		}
 	);
 
@@ -164,6 +167,8 @@ void ArrowRenderable::LoadShaders()
 	glProg->addUniform("ProjectionMatrix");
 	glProg->addUniform("SQRotMatrix");
 	glProg->addUniform("scale");
+
+	glProg->addUniform("Bright");
 
 
 	glProg->addUniform("Transform");
@@ -253,6 +258,8 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 		qgl->glUniformMatrix4fv(glProg->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
 		
 		float maxSize = 8;
+
+		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
 		qgl->glUniform1f(glProg->uniform("scale"), val[i] / lMax * maxSize);
 
 		qgl->glUniform3fv(glProg->uniform("Ka"), 1, &cols[i].x);

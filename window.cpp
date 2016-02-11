@@ -72,9 +72,8 @@ Window::Window()
 	//openGL->AddRenderable("glyphs", glyphRenderable);
 	std::unique_ptr<Reader> reader;
 
-	const DATA_TYPE dataType = DATA_TYPE::TYPE_TENSOR;//DATA_TYPE::TYPE_TENSOR; //
 
-
+	const DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE;//DATA_TYPE::TYPE_TENSOR; //
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
 		reader = std::make_unique<ParticleReader>
 			("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
@@ -104,6 +103,8 @@ Window::Window()
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
 		reader = std::make_unique<VecReader>
 			("D:/Data/VectorData/15plume3d421.vec");
+			//("D:/Data/VectorData/UVWf01.vec");
+			//("D:/onedrive/data/plume/15plume3d421-126x126x512.vec");
 			//("D:/Data/VectorData/UVWf01.vec");
 		std::vector<float4> pos;
 		std::vector<float3> vec;
@@ -136,7 +137,7 @@ Window::Window()
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
 	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
-	addCurveLensBtn = new QPushButton("Add Curve Line Lens");
+	addCurveLensBtn = new QPushButton("Add Curve Lens");
 	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 	//addThingsLayout->addWidget(addLensBtn);
@@ -193,6 +194,12 @@ Window::Window()
 	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
 	
+
+
+
+	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
+	controlLayout->addWidget(addCurveBLensBtn);
+	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
 
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -292,6 +299,11 @@ void Window::AddPolyLineLens()
 void Window::AddCurveLens()
 {
 	lensRenderable->AddCurveLens();
+}
+
+void Window::AddCurveBLens()
+{
+	lensRenderable->AddCurveBLens();
 }
 
 //void Window::SlotSliceOrieChanged(bool clicked)

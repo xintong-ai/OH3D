@@ -58,7 +58,8 @@ void SphereRenderable::LoadShaders()
 	in vec4 eyeCoords;
 	smooth in vec3 tnorm;
 	layout(location = 0) out vec4 FragColor;
-	uniform float Scale;
+	uniform float Bright;
+
 
 	vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
 		vec3 s = normalize(vec3(LightPosition - position));
@@ -75,7 +76,7 @@ void SphereRenderable::LoadShaders()
 	}
 
 	void main() {
-		FragColor = vec4(phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
 	}
 	);
 
@@ -95,6 +96,7 @@ void SphereRenderable::LoadShaders()
 
 	glProg->addUniform("Transform");
 	glProg->addUniform("Scale");
+	glProg->addUniform("Bright");
 }
 
 void SphereRenderable::init()
@@ -150,6 +152,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &shift.x);
 		qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
 		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());

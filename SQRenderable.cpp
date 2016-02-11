@@ -61,6 +61,7 @@ void SQRenderable::LoadShaders()
 	smooth in vec3 tnorm;
 	layout(location = 0) out vec4 FragColor;
 	uniform float Scale;
+	uniform float Bright;
 
 	vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
 		vec3 s = normalize(vec3(LightPosition - position));
@@ -77,7 +78,7 @@ void SQRenderable::LoadShaders()
 	}
 
 	void main() {
-		FragColor = vec4(phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
 	}
 	);
 
@@ -100,6 +101,7 @@ void SQRenderable::LoadShaders()
 
 	glProg->addUniform("Transform");
 	glProg->addUniform("Scale");
+	glProg->addUniform("Bright");
 }
 
 void SQRenderable::init()
@@ -159,6 +161,7 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 1);
+		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &pos[i].x);
 		qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
 		//the data() returns array in column major, so there is no need to do transpose.

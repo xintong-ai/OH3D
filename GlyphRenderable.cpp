@@ -11,7 +11,7 @@ void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
 	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0]);
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0]);
 }
 
 
@@ -21,6 +21,7 @@ GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 	displace = std::make_shared<Displace>();
 	displace->LoadOrig(&pos[0], pos.size());
 	glyphSizeScale.assign(pos.size(), 1.0f);
+	glyphBright.assign(pos.size(), 1.0f);
 }
 
 void GlyphRenderable::RecomputeTarget()
