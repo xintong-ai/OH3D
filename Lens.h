@@ -848,7 +848,7 @@ public:
 
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
-
+		return ret;
 		if (!isConstructing && numCtrlPoints >= 3) {
 			float2 center = make_float2(x, y);
 
@@ -891,7 +891,40 @@ public:
 		return ret;
 	}
 
+
 	std::vector<float2> GetOuterContour() {
+		std::vector<float2> ret;
+		
+		if (!isConstructing && numCtrlPoints >= 3) {
+			std::vector<float2> sidePointsPos, sidePointsNeg;
+			float2 center = make_float2(x, y);
+
+			for (int ii = 0; ii < numCtrlPoints; ii++){
+
+				float2 dir; //tangent
+				if (ii == numCtrlPoints - 1)
+					dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
+				else if (ii == 0)
+					dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
+				else
+					dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
+				float2 normal = make_float2(-dir.y, dir.x);
+
+				sidePointsPos.push_back(center + ctrlPoints[ii] + normal * width *1.1);
+				sidePointsNeg.push_back(center + ctrlPoints[ii] - normal * width *1.1);
+			}
+
+
+			std::vector<float2> posBezierPoints = BezierSmaple(sidePointsPos);
+			std::vector<float2> negBezierPoints = BezierSmaple(sidePointsNeg);
+			std::reverse(negBezierPoints.begin(), negBezierPoints.end());
+			ret.insert(ret.begin(), posBezierPoints.begin(), posBezierPoints.end());
+			ret.insert(ret.end(), negBezierPoints.begin(), negBezierPoints.end());
+		}
+		return ret;
+	}
+
+	std::vector<float2> GetOuterContourold() {
 		std::vector<float2> ret;
 		return ret;
 		if (!isConstructing && numCtrlPoints >= 3) {
@@ -928,6 +961,26 @@ public:
 		return ret;
 	}
 
+	std::vector<float2> GetExtraLensRendering2(){
+		std::vector<float2> ret;
+		if (isConstructing){
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ret.push_back(make_float2(ctrlPointsAbs[ii].x, ctrlPointsAbs[ii].y));
+			}
+		}
+		else{
+			float2 center = make_float2(x, y);
+
+			
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ctrlPointsAbs[ii] = ctrlPoints[ii] + center;
+			}
+			ret = BezierSmaple(ctrlPointsAbs);
+		}
+		return ret;
+	}
+
+
 	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
 	{
 		return (C.y - A.y)*(B.x - A.x) >(B.y - A.y)*(C.x - A.x);
@@ -943,6 +996,42 @@ public:
 		//!!! may need to be more sophisticate
 		curveLensCtrlPoints.focusRatio = focusRatio;
 	}
+
+
+
+	vector<float2> BezierSmaple(vector<float2> p)
+	{
+		vector<float2> res;
+		if (p.size() >= 2){
+#define bezierSampleAccuracyRate 1 
+			int n = p.size() - 1;
+
+			double *combinationValue = new double[n + 1];
+			for (int i = 0; i <= n/2; i++){
+				double cc = 1; //compute n!/i!/(n-i)! = ((n-i+1)*...*n)/(1*2*...*i)
+				for (int j = i; j >=1; j--){
+					cc = cc*(n + j - i) / j;
+				}
+				combinationValue[i] = cc;
+			}
+			for (int i = n/2+1; i <= n; i++){
+				combinationValue[i] = combinationValue[n-i];
+			}
+
+			for (int ui = 0; ui <= n*bezierSampleAccuracyRate; ui++){
+				float u = ui*1.0 / (n*bezierSampleAccuracyRate);
+				float2 pu = make_float2(0, 0);
+				for (int j = 0; j <= n; j++){
+					pu = pu + combinationValue[j] * pow(u, j) * pow(1 - u, n - j) * p[j];
+				}
+				res.push_back(pu);
+			}
+
+			delete combinationValue;
+		}
+		return res;
+	}
+
 };
 
 #endif

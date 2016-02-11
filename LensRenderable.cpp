@@ -42,13 +42,43 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glColor3f(1.0f, 0.2f, 0.2f);
 
 		}
-		else if (l->type == LENS_TYPE::TYPE_CURVE || l->type == LENS_TYPE::TYPE_CURVEB) {
+		else if (l->type == LENS_TYPE::TYPE_CURVE) {
 			glColor3f(0.2f, 1.0f, 0.2f);
 			std::vector<float2> lensExtraRendering = l->GetExtraLensRendering();
 			glBegin(GL_LINE_STRIP);
 			for (auto v : lensExtraRendering)
 				glVertex2f(v.x, v.y);
 			glEnd();
+
+			glColor3f(1.0f, 0.2f, 0.2f);
+			std::vector<float2> lensContour = l->GetContour();
+			glBegin(GL_LINE_LOOP);
+			for (auto v : lensContour)
+				glVertex2f(v.x, v.y);
+			glEnd();
+
+			glColor3f(0.2f, 0.8f, 0.8f);
+			std::vector<float2> lensOuterContour = l->GetOuterContour();
+			glBegin(GL_LINE_LOOP);
+			for (auto v : lensOuterContour)
+				glVertex2f(v.x, v.y);
+			glEnd();
+		}
+		else if (l->type == LENS_TYPE::TYPE_CURVEB) {
+			glColor3f(0.2f, 1.0f, 0.2f);
+			std::vector<float2> lensExtraRendering = l->GetExtraLensRendering();
+			glBegin(GL_LINE_STRIP);
+			for (auto v : lensExtraRendering)
+				glVertex2f(v.x, v.y);
+			glEnd();
+
+			glColor3f(0.9f, 0.9f, 0.2f);
+			std::vector<float2> lensExtraRendering2 = ((CurveBLens *)l)->GetExtraLensRendering2();
+			glBegin(GL_LINE_STRIP);
+			for (auto v : lensExtraRendering2)
+				glVertex2f(v.x, v.y);
+			glEnd();
+
 
 			glColor3f(1.0f, 0.2f, 0.2f);
 			std::vector<float2> lensContour = l->GetContour();
