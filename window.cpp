@@ -73,7 +73,7 @@ Window::Window()
 	std::unique_ptr<Reader> reader;
 
 
-	const DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE;//DATA_TYPE::TYPE_TENSOR; //
+	const DATA_TYPE dataType = DATA_TYPE::TYPE_VECTOR;//DATA_TYPE::TYPE_TENSOR; //
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
 		reader = std::make_unique<ParticleReader>
 			("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");

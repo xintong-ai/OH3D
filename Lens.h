@@ -445,7 +445,7 @@ public:
 	int width;
 	int numCtrlPoints;
 	std::vector<float2> ctrlPoints;
-	std::vector<float2> ctrlPointsAbs;
+	std::vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
 	bool isConstructing;
 
@@ -688,7 +688,7 @@ public:
 	int width;
 	int numCtrlPoints;
 	std::vector<float2> ctrlPoints;
-	std::vector<float2> ctrlPointsAbs;
+	std::vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
 	bool isConstructing;
 
@@ -725,7 +725,7 @@ public:
 	void FinishConstructing(){
 		if (numCtrlPoints >= 3){
 			isConstructing = false;
-			/*
+			
 			float sumx = 0, sumy = 0;
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
@@ -743,7 +743,7 @@ public:
 			for (int i = 0; i < numCtrlPoints; i++){
 				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
 			}
-
+			/*
 			std::vector<float2> sidePointsPos, sidePointsNeg;
 
 			int numKeyPoints = 0;
@@ -848,8 +848,31 @@ public:
 
 	std::vector<float2> GetContour(){
 		std::vector<float2> ret;
-		return ret;
+
 		if (!isConstructing && numCtrlPoints >= 3) {
+			float2 center = make_float2(x, y);
+
+			ret.resize(2 * numCtrlPoints);
+			for (int ii = 0; ii < numCtrlPoints; ii++){
+
+				float2 dir; //tangent
+				if (ii == numCtrlPoints - 1)
+					dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
+				else if (ii == 0)
+					dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
+				else
+					dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
+				float2 normal = make_float2(-dir.y, dir.x);
+
+				ret[ii] = center + ctrlPoints[ii] + normal * width;
+				ret[2 * numCtrlPoints - 1 - ii] = center + ctrlPoints[ii] - normal * width;
+			}
+
+			
+		}
+
+
+/*		if (!isConstructing && numCtrlPoints >= 3) {
 			std::vector<float2> sidePointsPos, sidePointsNeg;
 
 			float2 center = make_float2(x, y);
@@ -864,7 +887,7 @@ public:
 				ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width;
 			}
 		}
-
+		*/
 		return ret;
 	}
 
