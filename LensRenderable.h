@@ -31,5 +31,7 @@ public slots:
 	void SlotFocusSizeChanged(int v);
 	void SlotSideSizeChanged(int v);
 	void SlotDelLens();
+
+	void RefineLensCenter();
 };
 #endif

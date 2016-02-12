@@ -201,6 +201,10 @@ Window::Window()
 	controlLayout->addWidget(addCurveBLensBtn);
 	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
 
+	refineLensCenterBtn = new QPushButton("Refine Lens Center Line");
+	controlLayout->addWidget(refineLensCenterBtn);
+	connect(refineLensCenterBtn, SIGNAL(clicked()), this, SLOT(RefineLensCenter()));
+
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioZ, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -304,6 +308,11 @@ void Window::AddCurveLens()
 void Window::AddCurveBLens()
 {
 	lensRenderable->AddCurveBLens();
+}
+
+void Window::RefineLensCenter()
+{
+	lensRenderable->RefineLensCenter();
 }
 
 //void Window::SlotSliceOrieChanged(bool clicked)
