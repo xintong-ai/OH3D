@@ -63,9 +63,9 @@ void VecReader::GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec,
 
 
 	//for plume
-	float lengthThrLow = 0.2;
-	float lengthThrHigh = 1;
-	for (int k = size[2]*6/10; k < size[2]*9/10; k+=4){
+	float lengthThrLow = 0.1;
+	float lengthThrHigh = 1.2;
+	for (int k = size[2] * 0.4; k < size[2] * 0.6; k += 4){
 		for (int j = 0; j < size[1]; j+=4) {
 			for (int i = 0; i < size[0]; i += 4){
 				int idx = k * size[0] * size[1] + j * size[0] + i;

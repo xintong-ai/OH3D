@@ -1,0 +1,2 @@
+DATA_TYPE=TYPE_VECTOR
+DATA_PATH=D:/onedrive/data/plume/15plume3d421-126x126x512.vec

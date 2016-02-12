@@ -20,6 +20,7 @@ class QRadioButton;
 class QTimer;
 class LensRenderable;
 class GridRenderable;
+class VRWidget;
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
@@ -29,6 +30,7 @@ public:
 
 private:
     std::unique_ptr<GLWidget> openGL;
+	std::unique_ptr<VRWidget> vrWidget;
 	//QSlider* sliceSlider;
 	//QSlider* heightScaleSlider;
 	//QSlider* sizeScaleSlider;

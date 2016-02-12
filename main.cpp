@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 	QApplication app(argc, argv);
 
 	Window win;
-	//    win.setWindowState(win.windowState() ^ Qt::WindowFullScreen);
+	//win.setWindowState(Qt::WindowFullScreen);
 
 	win.show();
 
