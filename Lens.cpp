@@ -41,83 +41,71 @@ void CurveBLens::FinishConstructing(){
 			sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
 		}
 		x = sumx / numCtrlPoints, y = sumy / numCtrlPoints;
+		//record the original input control points
+		float2 center = make_float2(x, y);
 		ctrlPoints.resize(numCtrlPoints);
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			ctrlPoints[ii].x = ctrlPointsAbs[ii].x - x;
-			ctrlPoints[ii].y = ctrlPointsAbs[ii].y - y;
+			ctrlPoints[ii] = ctrlPointsAbs[ii] - center;
 		}
 
-		//compute curveLensCtrlPoints
-		curveLensCtrlPoints.focusRatio = focusRatio;
-		curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
-		for (int i = 0; i < numCtrlPoints; i++){
-			curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
-		}
-
-		float2 center = make_float2(x, y);
-		vector<float2> BezierSmapleAbs = BezierSmaple(ctrlPointsAbs);
-		BezierCtrlPoints.resize(numCtrlPoints);
+		//refine the control points shape and reduce the number, by the Bezier Curve
+		vector<float2> BezierSmapleOri = BezierSmaple(ctrlPoints);
+		numCtrlPoints = numCtrlPoints / 2;
+		rationalCtrlPoints.resize(numCtrlPoints);
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			BezierCtrlPoints[ii] = BezierSmapleAbs[ii] - center;
+			rationalCtrlPoints[ii] = BezierSmapleOri[ii * 2];
 		}
-		isConstructing = false;
 
-		/*
-		std::vector<float2> sidePointsPos, sidePointsNeg;
+		//compute the BezierPoints used to draw the curve
+		BezierPoints = BezierSmaple(rationalCtrlPoints);
 
-		int numKeyPoints = 0;
 
-		float2 center = make_float2(x, y);
-
-		int lastValidID = 0;
-		for (int ii = 0; ii < numCtrlPoints; ii++) {
-		float2 dir; //tangent
-		if (ii == numCtrlPoints - 1)
-		dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
-		else if (ii == 0)
-		dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
-		else
-		dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
-
-		float2 normal = make_float2(-dir.y, dir.x);
-
-		if (ii == 0){
-		sidePointsPos.push_back(center + ctrlPoints[0] + normal*width);
-		sidePointsNeg.push_back(center + ctrlPoints[0] - normal*width);
-
-		curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
-		lastValidID = 0;
-		curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
-		curveLensCtrlPoints.normals[numKeyPoints] = normal;
-		numKeyPoints++;
-		}
-		//else if (ii == numCtrlPoints - 1){
-
+		////compute curveLensCtrlPoints
+		//curveLensCtrlPoints.focusRatio = focusRatio;
+		//curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
+		//for (int i = 0; i < numCtrlPoints; i++){
+		//	curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
 		//}
-		else{
-		float2 candiPos = center + ctrlPoints[ii] + normal*width;
-		float2 candiNeg = center + ctrlPoints[ii] - normal*width;
-		float2 candiPosTransitionRegion = center + ctrlPoints[ii] + normal*width / focusRatio;
-		float2 candiNegTransitionRegion = center + ctrlPoints[ii] - normal*width / focusRatio;
+		
 
-		if (!intersect(center + ctrlPoints[lastValidID], 2 * sidePointsPos[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
-		center + ctrlPoints[ii], candiPosTransitionRegion)
-		&& !intersect(center + ctrlPoints[lastValidID], 2 * sidePointsNeg[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
-		center + ctrlPoints[ii], candiNegTransitionRegion)){
-		sidePointsPos.push_back(candiPos);
-		sidePointsNeg.push_back(candiNeg);
-		curveLensCtrlPoints.keyPoints[numKeyPoints] = ctrlPoints[ii];
-		lastValidID = ii;
-		curveLensCtrlPoints.keyPointIds[numKeyPoints] = lastValidID;
-		curveLensCtrlPoints.normals[numKeyPoints] = normal;
-		numKeyPoints++;
-		}
-		}
+
+
+
+
+
+		//compute posOffsetCtrlPoints
+		int n = rationalCtrlPoints.size();
+		float2 normal;
+		float2 dir;
+
+		dir = normalize(rationalCtrlPoints[1] - rationalCtrlPoints[0]);
+		normal = make_float2(-dir.y, dir.x);
+		posOffsetCtrlPoints.push_back(rationalCtrlPoints[0] + normal*width);
+		negOffsetCtrlPoints.push_back(rationalCtrlPoints[0] - normal*width);
+
+		for (int i = 1; i < n - 1; i++){
+			dir = normalize(rationalCtrlPoints[i] - rationalCtrlPoints[i - 1]);
+			normal = make_float2(-dir.y, dir.x);
+			float2 dir2 = normalize(rationalCtrlPoints[i + 1] - rationalCtrlPoints[i]);
+			float2 normal2 = make_float2(-dir.y, dir.x);
+			float2 posCtrlPoint;
+			intersectPoint(rationalCtrlPoints[i - 1] + normal*width, rationalCtrlPoints[i] + normal*width, rationalCtrlPoints[i] + normal2*width, rationalCtrlPoints[i + 1] + normal2*width, posCtrlPoint);
+			posOffsetCtrlPoints.push_back(posCtrlPoint);
+
+			float2 negCtrlPoint;
+			intersectPoint(rationalCtrlPoints[i - 1] - normal*width, rationalCtrlPoints[i] - normal*width, rationalCtrlPoints[i] - normal2*width, rationalCtrlPoints[i + 1] - normal2*width, negCtrlPoint);
+			negOffsetCtrlPoints.push_back(negCtrlPoint);
 		}
 
-		curveLensCtrlPoints.numKeyPoints = numKeyPoints;
+		dir = normalize(rationalCtrlPoints[n - 1] - rationalCtrlPoints[n - 2]);
+		normal = make_float2(-dir.y, dir.x);
+		posOffsetCtrlPoints.push_back(rationalCtrlPoints[n - 1] + normal*width);
+		negOffsetCtrlPoints.push_back(rationalCtrlPoints[n - 1] - normal*width);
+		
+		posOffsetBezierPoints = BezierSmaple(posOffsetCtrlPoints);
+		negOffsetBezierPoints = BezierSmaple(negOffsetCtrlPoints);
 
-		*/
+		isConstructing = false;
 	}
 }
 
@@ -125,52 +113,29 @@ void CurveBLens::FinishConstructing(){
 
 std::vector<float2> CurveBLens::GetContour(){
 	std::vector<float2> ret;
-	return ret;
-	if (!isConstructing && numCtrlPoints >= 3) {
+	if (posOffsetBezierPoints.size()>2){
+	//if (!isConstructing && numCtrlPoints >= 3) {
 		float2 center = make_float2(x, y);
-
-		ret.resize(2 * numCtrlPoints);
-		for (int ii = 0; ii < numCtrlPoints; ii++){
-
-			float2 dir; //tangent
-			if (ii == numCtrlPoints - 1)
-				dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
-			else if (ii == 0)
-				dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
-			else
-				dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
-			float2 normal = make_float2(-dir.y, dir.x);
-
-			ret[ii] = center + ctrlPoints[ii] + normal * width;
-			ret[2 * numCtrlPoints - 1 - ii] = center + ctrlPoints[ii] - normal * width;
+		int n = posOffsetBezierPoints.size();
+		for (int ii = 0; ii < n; ii++){
+			ret.push_back(posOffsetBezierPoints[ii] + center);
 		}
-
+		std::vector<float2> rettemp;
+		int m = negOffsetBezierPoints.size();
+		for (int ii = 0; ii < m; ii++){
+			rettemp.push_back(negOffsetBezierPoints[ii] + center);
+		}
+		
+		std::reverse(rettemp.begin(), rettemp.end());
+		ret.insert(ret.end(), rettemp.begin(), rettemp.end());
 
 	}
-
-
-	/*		if (!isConstructing && numCtrlPoints >= 3) {
-	std::vector<float2> sidePointsPos, sidePointsNeg;
-
-	float2 center = make_float2(x, y);
-
-	int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
-	float2 * keyPoints = curveLensCtrlPoints.keyPoints;
-	float2 * normals = curveLensCtrlPoints.normals;
-
-	ret.resize(2 * numKeyPoints);
-	for (int jj = 0; jj < numKeyPoints; jj++){
-	ret[jj] = center + keyPoints[jj] + normals[jj] * width;
-	ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width;
-	}
-	}
-	*/
 	return ret;
 }
 
 
 std::vector<float2> CurveBLens::GetOuterContour() {
-	std::vector<float2> ret;
+	std::vector<float2> ret; return ret;
 
 	if (!isConstructing && numCtrlPoints >= 3) {
 		std::vector<float2> sidePointsPos, sidePointsNeg;
@@ -187,8 +152,8 @@ std::vector<float2> CurveBLens::GetOuterContour() {
 				dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
 			float2 normal = make_float2(-dir.y, dir.x);
 
-			sidePointsPos.push_back(center + ctrlPoints[ii] + normal * width *1.1);
-			sidePointsNeg.push_back(center + ctrlPoints[ii] - normal * width *1.1);
+			sidePointsPos.push_back(center + ctrlPoints[ii] + normal * width);
+			sidePointsNeg.push_back(center + ctrlPoints[ii] - normal * width);
 		}
 
 
@@ -201,27 +166,6 @@ std::vector<float2> CurveBLens::GetOuterContour() {
 	return ret;
 }
 
-std::vector<float2> CurveBLens::GetOuterContourold() {
-	std::vector<float2> ret;
-	return ret;
-	if (!isConstructing && numCtrlPoints >= 3) {
-		std::vector<float2> sidePointsPos, sidePointsNeg;
-
-		float2 center = make_float2(x, y);
-
-		int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
-		float2 * keyPoints = curveLensCtrlPoints.keyPoints;
-		float2 * normals = curveLensCtrlPoints.normals;
-
-		ret.resize(2 * numKeyPoints);
-		for (int jj = 0; jj < numKeyPoints; jj++){
-			ret[jj] = center + keyPoints[jj] + normals[jj] * width / focusRatio;
-			ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width / focusRatio;;
-		}
-	}
-
-	return ret;
-}
 
 std::vector<float2> CurveBLens::GetExtraLensRendering(){
 	std::vector<float2> ret;
@@ -231,8 +175,10 @@ std::vector<float2> CurveBLens::GetExtraLensRendering(){
 		}
 	}
 	else{
-		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
+		float2 center = make_float2(x, y);
+		int n = ctrlPoints.size();
+		for (int ii = 0; ii < n; ii++) {
+			ret.push_back(ctrlPoints[ii] + center);
 		}
 	}
 	return ret;
@@ -246,16 +192,10 @@ std::vector<float2> CurveBLens::GetExtraLensRendering2(){
 		}
 	}
 	else{
-		//float2 center = make_float2(x, y);
-		//for (int ii = 0; ii < numCtrlPoints; ii++) {
-		//	ctrlPointsAbs[ii] = ctrlPoints[ii] + center;
-		//}
-		//ret = BezierSmaple(ctrlPointsAbs);
-
 		float2 center = make_float2(x, y);
-		int n = BezierCtrlPoints.size();
+		int n = BezierPoints.size();
 		for (int ii = 0; ii < n; ii++) {
-			ret.push_back(BezierCtrlPoints[ii] + center);
+			ret.push_back(BezierPoints[ii] + center);
 		}
 	}
 	return ret;
@@ -263,31 +203,69 @@ std::vector<float2> CurveBLens::GetExtraLensRendering2(){
 
 void CurveBLens::RefineLensCenter()
 {
-	BezierPosOffset;
-	std::vector<float2> BezierNegPoints
+	//currently process the positive one first
+	int n = rationalCtrlPoints.size();//may contain more number than numCtrlPoints
+	if (n < 2)
+		return;
+	if (posOffsetBezierPoints.size() != n)
+	{
+		cout << "error! " << endl;
+		return;
+	}
 
+	bool justSplitted = false;
 
-	int n = BezierCtrlPoints.size();//may contain more number than numCtrlPoints
-	if (n>1){
-		vector<float2> newBezierPosOffset;
+	vector<float2> newRationalCtrlPoints;
+	bool convergedPos = true;
+	float thr = 0.15;
+	for (int i = 0; i < n; i++){
+		if (length(rationalCtrlPoints[i] - posOffsetBezierPoints[i]) < width*(1 + thr)){
+			newRationalCtrlPoints.push_back(rationalCtrlPoints[i]);
+			justSplitted = true;
+		}
+		else{
+			if (i>0 && !justSplitted){
+				newRationalCtrlPoints.push_back((rationalCtrlPoints[i] + rationalCtrlPoints[i - 1]) / 2);
+			}
+			newRationalCtrlPoints.push_back(rationalCtrlPoints[i]);
+			if (i < n - 1){
+				newRationalCtrlPoints.push_back((rationalCtrlPoints[i] + rationalCtrlPoints[i + 1]) / 2);
+			}
+			convergedPos = false;
+			justSplitted = false;
+		}
+	}
+	if (!convergedPos){
+		cout << "Did once! from " << n << " to " << newRationalCtrlPoints.size()<< endl;
+
+		rationalCtrlPoints = newRationalCtrlPoints;
+		posOffsetCtrlPoints.clear();
+		//compute posOffsetCtrlPoints
+		int n = rationalCtrlPoints.size();
 		float2 normal;
+		float2 dir;
 
-		float2 dir; //tangent
-
-		dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
+		dir = normalize(rationalCtrlPoints[1] - rationalCtrlPoints[0]);
 		normal = make_float2(-dir.y, dir.x);
+		posOffsetCtrlPoints.push_back(rationalCtrlPoints[0] + normal*width);
 
-		newBezierPosOffset.push_back(BezierCtrlPoints[0] + normal*width);
-
-		for (int i = 1; i < n-1; i++){
-			dir = normalize(ctrlPoints[i] - ctrlPoints[i - 1]);
+		for (int i = 1; i < n - 1; i++){
+			dir = normalize(rationalCtrlPoints[i] - rationalCtrlPoints[i - 1]);
 			normal = make_float2(-dir.y, dir.x);
-			float2 dir2 = normalize(ctrlPoints[i + 1] - ctrlPoints[i]);
+			float2 dir2 = normalize(rationalCtrlPoints[i + 1] - rationalCtrlPoints[i]);
 			float2 normal2 = make_float2(-dir.y, dir.x);
-
+			float2 posCtrlPoint;
+			intersectPoint(rationalCtrlPoints[i - 1] + normal*width, rationalCtrlPoints[i] + normal*width, rationalCtrlPoints[i] + normal2*width, rationalCtrlPoints[i + 1] + normal2*width, posCtrlPoint);
+			posOffsetCtrlPoints.push_back(posCtrlPoint);
 		}
 
+		dir = normalize(rationalCtrlPoints[n - 1] - rationalCtrlPoints[n - 2]);
+		normal = make_float2(-dir.y, dir.x);
+		posOffsetCtrlPoints.push_back(rationalCtrlPoints[n - 1] + normal*width);
 
-		cout << "did once" << endl;
+		posOffsetBezierPoints = BezierSmaple(posOffsetCtrlPoints);
+	}
+	else{
+		cout << "converged!" << endl;
 	}
 }

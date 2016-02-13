@@ -687,14 +687,17 @@ public:
 
 	int width;
 	int numCtrlPoints;
-	std::vector<float2> ctrlPoints;
+	std::vector<float2> ctrlPoints; //used during constructing
 	std::vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
+	std::vector<float2> BezierPoints; //sampled points on the curve for drawing
 
-	std::vector<float2> BezierCtrlPoints; //may contain more number than numCtrlPoints
+	std::vector<float2> rationalCtrlPoints; //may contain more number than numCtrlPoints
+	std::vector<float2> posOffsetCtrlPoints;
+	std::vector<float2> negOffsetCtrlPoints;
 
-	std::vector<float2> BezierPosOffset;
-	std::vector<float2> BezierNegOffset;
+	std::vector<float2> posOffsetBezierPoints;
+	std::vector<float2> negOffsetBezierPoints;
 
 	bool isConstructing;
 
