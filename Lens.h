@@ -51,9 +51,9 @@ struct Lens
 		x = _x; y = _y; c = _c; focusRatio = _focusRatio; sideSize = _sideSize;
 	}
 	virtual bool PointInsideLens(int x, int y) = 0;
-	virtual std::vector<float2> GetContour() = 0;
-	virtual std::vector<float2> GetOuterContour() = 0;
-	virtual std::vector<float2> GetExtraLensRendering() = 0;
+	virtual vector<float2> GetContour() = 0;
+	virtual vector<float2> GetOuterContour() = 0;
+	virtual vector<float2> GetExtraLensRendering() = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
 };
@@ -67,8 +67,8 @@ struct CircleLens :public Lens
 		return dis < radius;
 	}
 
-	std::vector<float2> GetContourTemplate(int rr) {
-		std::vector<float2> ret;
+	vector<float2> GetContourTemplate(int rr) {
+		vector<float2> ret;
 		const int num_segments = 32;
 		for (int ii = 0; ii < num_segments; ii++)
 		{
@@ -82,15 +82,15 @@ struct CircleLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetContour() {
+	vector<float2> GetContour() {
 		return GetContourTemplate(radius);
 	}
 
-	std::vector<float2> GetOuterContour() {
+	vector<float2> GetOuterContour() {
 		return GetContourTemplate(radius / focusRatio);
 	}
 
-	std::vector<float2> GetExtraLensRendering(){
+	vector<float2> GetExtraLensRendering(){
 		vector<float2> res(0);
 		return res;
 	}
@@ -141,19 +141,19 @@ struct LineLens :public Lens
 		return false;
 	}
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
+	vector<float2> GetOuterContour() {
+		vector<float2> ret;
 		return ret;
 	}
 
-	std::vector<float2> GetContour() {
+	vector<float2> GetContour() {
 		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
 		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
 		float sigmoidCutOff = 0.4f; // assuming the sigmoid function value is constant when input is larger than sigmoidCutOff
 
 		float2 minorDirection = make_float2(-direction.y, direction.x);
 
-		std::vector<float2> ret;
+		vector<float2> ret;
 
 		const int num_segments = 20;
 		for (int ii = 0; ii < num_segments; ii++)
@@ -192,7 +192,7 @@ struct LineLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetExtraLensRendering(){
+	vector<float2> GetExtraLensRendering(){
 		vector<float2> res(0);
 		return res;
 	}
@@ -207,9 +207,9 @@ struct PolyLineLens :public Lens
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
-	std::vector<float2> ctrlPoints;
-	std::vector<float2> dirs;
-	std::vector<float2> angleBisectors;
+	vector<float2> ctrlPoints;
+	vector<float2> dirs;
+	vector<float2> angleBisectors;
 
 	//used for transfering data to GPU
 	PolyLineLensCtrlPoints polyLineLensCtrlPoints;
@@ -234,8 +234,8 @@ struct PolyLineLens :public Lens
 		type = LENS_TYPE::TYPE_POLYLINE;
 	};
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
+	vector<float2> GetOuterContour() {
+		vector<float2> ret;
 		return ret;
 	}
 
@@ -388,8 +388,8 @@ struct PolyLineLens :public Lens
 		return !segmentNotFound;
 	}
 
-	std::vector<float2> GetContour(){
-		std::vector<float2> ret;
+	vector<float2> GetContour(){
+		vector<float2> ret;
 		if (numCtrlPoints == 1){
 			float2 center = make_float2(x, y);
 
@@ -419,8 +419,8 @@ struct PolyLineLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetExtraLensRendering(){
-		std::vector<float2> ret;
+	vector<float2> GetExtraLensRendering(){
+		vector<float2> ret;
 
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
@@ -444,8 +444,8 @@ public:
 
 	int width;
 	int numCtrlPoints;
-	std::vector<float2> ctrlPoints;
-	std::vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
+	vector<float2> ctrlPoints;
+	vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
 	bool isConstructing;
 
@@ -501,7 +501,7 @@ public:
 				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
 			}
 
-			std::vector<float2> sidePointsPos, sidePointsNeg;
+			vector<float2> sidePointsPos, sidePointsNeg;
 
 			int numKeyPoints = 0;
 
@@ -600,11 +600,11 @@ public:
 		return !segmentNotFound;
 	}
 
-	std::vector<float2> GetContour(){
-		std::vector<float2> ret;
+	vector<float2> GetContour(){
+		vector<float2> ret;
 
 		if (!isConstructing && numCtrlPoints >= 3) {
-			std::vector<float2> sidePointsPos, sidePointsNeg;
+			vector<float2> sidePointsPos, sidePointsNeg;
 
 			float2 center = make_float2(x, y);
 
@@ -622,11 +622,11 @@ public:
 		return ret;
 	}
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
+	vector<float2> GetOuterContour() {
+		vector<float2> ret;
 
 		if (!isConstructing && numCtrlPoints >= 3) {
-			std::vector<float2> sidePointsPos, sidePointsNeg;
+			vector<float2> sidePointsPos, sidePointsNeg;
 
 			float2 center = make_float2(x, y);
 
@@ -644,8 +644,8 @@ public:
 		return ret;
 	}
 
-	std::vector<float2> GetExtraLensRendering(){
-		std::vector<float2> ret;
+	vector<float2> GetExtraLensRendering(){
+		vector<float2> ret;
 		if (isConstructing){
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				ret.push_back(make_float2(ctrlPointsAbs[ii].x, ctrlPointsAbs[ii].y));
@@ -687,17 +687,18 @@ public:
 
 	int width;
 	int numCtrlPoints;
-	std::vector<float2> ctrlPoints; //used during constructing
-	std::vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
+	vector<float2> ctrlPoints; //used during constructing
+	vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
-	std::vector<float2> BezierPoints; //sampled points on the curve for drawing
 
-	std::vector<float2> rationalCtrlPoints; //may contain more number than numCtrlPoints
-	std::vector<float2> posOffsetCtrlPoints;
-	std::vector<float2> negOffsetCtrlPoints;
+	vector<float2> rationalCtrlPoints; //may contain more number than numCtrlPoints, used for refining
+	vector<float2> BezierPoints; //sampled points on the curve for drawing
 
-	std::vector<float2> posOffsetBezierPoints;
-	std::vector<float2> negOffsetBezierPoints;
+
+	vector<float2> posOffsetCtrlPoints;
+	vector<float2> negOffsetCtrlPoints;
+	vector<float2> posOffsetBezierPoints;
+	vector<float2> negOffsetBezierPoints;
 
 	bool isConstructing;
 
@@ -778,14 +779,15 @@ public:
 	}
 
 	void FinishConstructing();
-	std::vector<float2> GetContour();
-	std::vector<float2> GetOuterContour();
-	std::vector<float2> GetOuterContourold();
-	std::vector<float2> GetExtraLensRendering();
-	std::vector<float2> GetExtraLensRendering2();
+	vector<float2> GetContour();
+	vector<float2> GetOuterContour();
+	vector<float2> GetOuterContourold();
+	vector<float2> GetExtraLensRendering();
+	vector<float2> GetExtraLensRendering2();
 
-
+	vector<float2> removeSelfIntersection(vector<float2> p, bool isDuplicating);
 	void RefineLensCenter();
+	void RefineLensBoundary();
 
 	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
 	{

@@ -33,5 +33,6 @@ public slots:
 	void SlotDelLens();
 
 	void RefineLensCenter();
+	void RefineLensBoundary();
 };
 #endif

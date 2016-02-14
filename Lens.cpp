@@ -36,42 +36,38 @@ void Lens::ChangeClipDepth(int v, float* mv, float* pj)
 void CurveBLens::FinishConstructing(){
 	if (numCtrlPoints >= 3){
 
+		cout << "numCtrlPoints: " << numCtrlPoints << endl;
+		//remove self intersection
+		ctrlPointsAbs = removeSelfIntersection(ctrlPointsAbs, false);
+		numCtrlPoints = ctrlPointsAbs.size();
+
+		//compute center and relative positions
 		float sumx = 0, sumy = 0;
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
 		}
 		x = sumx / numCtrlPoints, y = sumy / numCtrlPoints;
-		//record the original input control points
 		float2 center = make_float2(x, y);
 		ctrlPoints.resize(numCtrlPoints);
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			ctrlPoints[ii] = ctrlPointsAbs[ii] - center;
 		}
 
-		//refine the control points shape and reduce the number, by the Bezier Curve
-		vector<float2> BezierSmapleOri = BezierSmaple(ctrlPoints);
-		numCtrlPoints = numCtrlPoints / 2;
-		rationalCtrlPoints.resize(numCtrlPoints);
-		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			rationalCtrlPoints[ii] = BezierSmapleOri[ii * 2];
+		//optional: refine the control points shape and reduce the number, by the Bezier Curve
+		if (0){
+			vector<float2> BezierSmapleOri = BezierSmaple(ctrlPoints);
+			numCtrlPoints = numCtrlPoints / 2;
+			ctrlPoints.resize(numCtrlPoints);
+			for (int ii = 0; ii < numCtrlPoints; ii++) {
+				ctrlPoints[ii] = BezierSmapleOri[ii * 2];
+			}
 		}
 
+		//use another array to store the control points, since it might be changed later to refine the offset
+		rationalCtrlPoints = ctrlPoints;
+
 		//compute the BezierPoints used to draw the curve
-		BezierPoints = BezierSmaple(rationalCtrlPoints);
-
-
-		////compute curveLensCtrlPoints
-		//curveLensCtrlPoints.focusRatio = focusRatio;
-		//curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
-		//for (int i = 0; i < numCtrlPoints; i++){
-		//	curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
-		//}
-		
-
-
-
-
-
+		BezierPoints = BezierSmaple(ctrlPoints);
 
 		//compute posOffsetCtrlPoints
 		int n = rationalCtrlPoints.size();
@@ -104,6 +100,17 @@ void CurveBLens::FinishConstructing(){
 		
 		posOffsetBezierPoints = BezierSmaple(posOffsetCtrlPoints);
 		negOffsetBezierPoints = BezierSmaple(negOffsetCtrlPoints);
+
+
+		////do it later: compute curveLensCtrlPoints
+		if (0){
+			curveLensCtrlPoints.focusRatio = focusRatio;
+			curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
+			for (int i = 0; i < numCtrlPoints; i++){
+				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
+			}
+		}
+
 
 		isConstructing = false;
 	}
@@ -217,27 +224,29 @@ void CurveBLens::RefineLensCenter()
 
 	vector<float2> newRationalCtrlPoints;
 	bool convergedPos = true;
-	float thr = 0.15;
+	float thr = 0.05;
 	for (int i = 0; i < n; i++){
-		if (length(rationalCtrlPoints[i] - posOffsetBezierPoints[i]) < width*(1 + thr)){
+		//may need to be improved !!!
+		if (abs(length(BezierPoints[i] - posOffsetBezierPoints[i]) - width)<width*thr){
 			newRationalCtrlPoints.push_back(rationalCtrlPoints[i]);
 			justSplitted = true;
 		}
-		else{
+		else{/*
 			if (i>0 && !justSplitted){
 				newRationalCtrlPoints.push_back((rationalCtrlPoints[i] + rationalCtrlPoints[i - 1]) / 2);
 			}
-			newRationalCtrlPoints.push_back(rationalCtrlPoints[i]);
+			//newRationalCtrlPoints.push_back(rationalCtrlPoints[i]);
 			if (i < n - 1){
 				newRationalCtrlPoints.push_back((rationalCtrlPoints[i] + rationalCtrlPoints[i + 1]) / 2);
-			}
+			}*/
+			newRationalCtrlPoints.push_back(((rationalCtrlPoints[i] + rationalCtrlPoints[i - 1]) / 2 + (rationalCtrlPoints[i] + rationalCtrlPoints[i + 1]) / 2) / 2);
 			convergedPos = false;
 			justSplitted = false;
 		}
 	}
 	if (!convergedPos){
 		cout << "Did once! from " << n << " to " << newRationalCtrlPoints.size()<< endl;
-
+		rationalCtrlPoints.clear();
 		rationalCtrlPoints = newRationalCtrlPoints;
 		posOffsetCtrlPoints.clear();
 		//compute posOffsetCtrlPoints
@@ -268,4 +277,70 @@ void CurveBLens::RefineLensCenter()
 	else{
 		cout << "converged!" << endl;
 	}
+}
+
+
+void CurveBLens::RefineLensBoundary()
+{
+	posOffsetCtrlPoints = removeSelfIntersection(posOffsetCtrlPoints, true);
+	negOffsetCtrlPoints = removeSelfIntersection(negOffsetCtrlPoints, true);
+
+	posOffsetBezierPoints = BezierSmaple(posOffsetCtrlPoints);
+	negOffsetBezierPoints = BezierSmaple(negOffsetCtrlPoints);
+}
+
+vector<float2> CurveBLens::removeSelfIntersection(vector<float2> p, bool isDuplicating)
+{
+	int n = p.size();
+	bool *skipped = new bool[n];
+	float2 *itsPoints = new float2[n];
+
+	for (int i = 0; i < n; i++){
+		skipped[i] = false;
+	}
+	for (int i = 2; i < n-1; i++){
+		bool notFoundIntersect = true;
+		for (int j = 0; j < i - 1 && notFoundIntersect; j++){
+			if (!skipped[j]){
+				/// !!! NOTE: only valid for one round of refine. since the improved ctrl points has multiplicates of the intersected points, it will cause the if condition be naturally satisfied !!!
+				if (intersect(p[j], p[j + 1], p[i], p[i + 1])){
+					float2 intersectP;
+					intersectPoint(p[j], p[j + 1], p[i], p[i + 1], intersectP);
+					for (int k = j; k <= i; k++){
+						skipped[k] = true;
+						itsPoints[k] = intersectP;
+						notFoundIntersect = false;
+					}
+				}
+			}
+		}
+	}
+	vector<float2> newp;
+	newp.push_back(p[0]);
+	if (isDuplicating){
+		for (int i = 0; i < n-1; i++){
+			if (!skipped[i]){
+				newp.push_back(p[i+1]);
+			}
+			else{
+				newp.push_back(itsPoints[i]);
+			}
+		}
+	}
+	else{
+		bool lastSegSkipped = false;
+		for (int i = 0; i < n-1; i++){
+			if (!skipped[i]){
+				newp.push_back(p[i+1]);
+				lastSegSkipped = false;
+			}
+			else{
+				if (!lastSegSkipped){
+					newp.push_back(itsPoints[i]);
+					lastSegSkipped = true;
+				}
+			}
+		}
+	}
+	return newp;
 }

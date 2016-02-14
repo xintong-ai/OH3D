@@ -45,7 +45,7 @@ private:
 	QPushButton* addCurveLensBtn;
 	std::unique_ptr<QPushButton> delLensBtn;
 	QPushButton* refineLensCenterBtn;
-
+	QPushButton*refineBoundaryBtn;
 	//GlyphRenderable* glyphRenderable;
 	//LensRenderable* lensRenderable;
 	//GridRenderable* gridRenderable;
@@ -88,7 +88,7 @@ private slots:
 	void AddCurveLens();
 
 	void RefineLensCenter();
-
+	void RefineLensBoundary();
 //void SlotSliceOrieChanged(bool clicked);
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);
