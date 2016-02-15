@@ -15,12 +15,11 @@ class SQRenderable :public GlyphRenderable
 	std::vector<unsigned int> indices;
 	std::vector<int> nIndices;
 	std::vector<QMatrix4x4> rotations;
-	void LoadShaders();
 
 	unsigned int vbo_vert;
 	unsigned int vbo_indices;
 	unsigned int vbo_normals;
-	std::unique_ptr<ShaderProgram> glProg;
+	//std::unique_ptr<ShaderProgram> glProg;
 	std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
 
 public:
@@ -28,6 +27,8 @@ public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
+protected:
+	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
 };
 
 #endif //SQ_RENDERABLE_H

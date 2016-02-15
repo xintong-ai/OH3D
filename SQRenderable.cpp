@@ -15,7 +15,7 @@
 #include "glwidget.h"
 using namespace std;
 
-void SQRenderable::LoadShaders()
+void SQRenderable::LoadShaders(ShaderProgram*& shaderProg) 
 {
 
 #define GLSL(shader) "#version 440\n" #shader
@@ -82,31 +82,31 @@ void SQRenderable::LoadShaders()
 	}
 	);
 
-	glProg = std::make_unique<ShaderProgram>();
-	glProg->initFromStrings(vertexVS, vertexFS);
+	shaderProg = new ShaderProgram;
+	shaderProg->initFromStrings(vertexVS, vertexFS);
 
-	glProg->addAttribute("VertexPosition");
-	glProg->addAttribute("VertexNormal");
-	glProg->addUniform("LightPosition");
-	glProg->addUniform("Ka");
-	glProg->addUniform("Kd");
-	glProg->addUniform("Ks");
-	glProg->addUniform("Shininess");
+	shaderProg->addAttribute("VertexPosition");
+	shaderProg->addAttribute("VertexNormal");
+	shaderProg->addUniform("LightPosition");
+	shaderProg->addUniform("Ka");
+	shaderProg->addUniform("Kd");
+	shaderProg->addUniform("Ks");
+	shaderProg->addUniform("Shininess");
 
-	glProg->addUniform("ModelViewMatrix");
-	glProg->addUniform("NormalMatrix");
-	glProg->addUniform("ProjectionMatrix");
-	glProg->addUniform("SQRotMatrix");
+	shaderProg->addUniform("ModelViewMatrix");
+	shaderProg->addUniform("NormalMatrix");
+	shaderProg->addUniform("ProjectionMatrix");
+	shaderProg->addUniform("SQRotMatrix");
 	
 
-	glProg->addUniform("Transform");
-	glProg->addUniform("Scale");
-	glProg->addUniform("Bright");
+	shaderProg->addUniform("Transform");
+	shaderProg->addUniform("Scale");
+	shaderProg->addUniform("Bright");
 }
 
 void SQRenderable::init()
 {
-	LoadShaders();
+	LoadShaders(glProg);
 	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	m_vao->create();
 

@@ -14,6 +14,7 @@
 #include "ArrowRenderable.h"
 #include "DataMgr.h"
 #include "VRWidget.h"
+#include "VRGlyphRenderable.h"
 
 enum DATA_TYPE
 {
@@ -45,7 +46,7 @@ Window::Window()
 	/********GL widget******/
 	openGL = std::make_unique<GLWidget>();
 	vrWidget = std::make_unique<VRWidget>(openGL.get());
-	vrWidget->setWindowFlags(Qt::Window);
+	//vrWidget->setWindowFlags(Qt::Window);
 	//vrWidget->setWindowState(Qt::WindowFullScreen);
 	//openGL->setWindowState(Qt::WindowFullScreen);
 	QSurfaceFormat format;
@@ -112,7 +113,8 @@ Window::Window()
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
 
-	//vrWidget->AddRenderable("glyph", glyphRenderable.get());
+	vrGlyphRenderable = std::make_unique<VRGlyphRenderable>(glyphRenderable.get());
+	vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 
@@ -248,7 +250,8 @@ Window::Window()
 
 	//interactLayout->addWidget(animationCheck);
 	//controlLayout->addStretch();
-	mainLayout->addWidget(openGL.get(),3);
+	mainLayout->addWidget(openGL.get(), 3);
+	mainLayout->addWidget(vrWidget.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
 }
@@ -292,6 +295,6 @@ Window::~Window() {
 
 void Window::init()
 {
-	vrWidget->show();
+	//vrWidget->show();
 }
 

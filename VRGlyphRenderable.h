@@ -5,11 +5,13 @@
 #include "Renderable.h"
 #include <memory>
 class GlyphRenderable;
+class ShaderProgram;
 class VRGlyphRenderable : public Renderable
 {
 	Q_OBJECT
 	
 	GlyphRenderable* glyphRenderable;
+	ShaderProgram* glProg;
 protected:
 	std::vector<float> glyphBright;
 	void init() override;

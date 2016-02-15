@@ -148,6 +148,7 @@ void VRWidget::resizeGL(int w, int h)
 	if (!initialized) {
 		//make init here because the window size is not updated in InitiateGL()
 		//makeCurrent();
+		makeCurrent();
 		for (auto renderer : renderers)
 			renderer.second->init();
 		initialized = true;

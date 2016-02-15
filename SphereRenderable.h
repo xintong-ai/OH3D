@@ -21,10 +21,11 @@ private:
 	std::vector<float> val;// = nullptr;
 	std::vector<float3> sphereColor;
 	void GenVertexBuffer(int nv, float* vertex);
-	void LoadShaders();
+	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
+	//void LoadShaders();
 	unsigned int vbo_vert;
 	std::unique_ptr<GLSphere> glyphMesh;
-	std::unique_ptr<ShaderProgram> glProg;
+	//std::unique_ptr<ShaderProgram> glProg;
 
 	std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
 	bool updated = false;

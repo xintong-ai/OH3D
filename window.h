@@ -21,6 +21,7 @@ class QTimer;
 class LensRenderable;
 class GridRenderable;
 class VRWidget;
+class VRGlyphRenderable;
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
@@ -56,7 +57,8 @@ private:
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;
-	//QPushButton* addNodeBtn;
+	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
+		//QPushButton* addNodeBtn;
 	//QPushButton* viewBtn;
 	//QSlider* xSlider;
 	//QSlider* ySlider;

@@ -21,7 +21,7 @@
 #include <helper_math.h>
 #include <ColorGradient.h>
 
-void SphereRenderable::LoadShaders()
+void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
 #define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
@@ -80,28 +80,28 @@ void SphereRenderable::LoadShaders()
 	}
 	);
 
-	glProg = std::make_unique<ShaderProgram>();
-	glProg->initFromStrings(vertexVS, vertexFS);
+	shaderProg = new ShaderProgram;
+	shaderProg->initFromStrings(vertexVS, vertexFS);
 
-	glProg->addAttribute("VertexPosition");
-	glProg->addUniform("LightPosition");
-	glProg->addUniform("Ka");
-	glProg->addUniform("Kd");
-	glProg->addUniform("Ks");
-	glProg->addUniform("Shininess");
+	shaderProg->addAttribute("VertexPosition");
+	shaderProg->addUniform("LightPosition");
+	shaderProg->addUniform("Ka");
+	shaderProg->addUniform("Kd");
+	shaderProg->addUniform("Ks");
+	shaderProg->addUniform("Shininess");
 
-	glProg->addUniform("ModelViewMatrix");
-	glProg->addUniform("NormalMatrix");
-	glProg->addUniform("ProjectionMatrix");
+	shaderProg->addUniform("ModelViewMatrix");
+	shaderProg->addUniform("NormalMatrix");
+	shaderProg->addUniform("ProjectionMatrix");
 
-	glProg->addUniform("Transform");
-	glProg->addUniform("Scale");
-	glProg->addUniform("Bright");
+	shaderProg->addUniform("Transform");
+	shaderProg->addUniform("Scale");
+	shaderProg->addUniform("Bright");
 }
 
 void SphereRenderable::init()
 {
-	LoadShaders();
+	LoadShaders(glProg);
 	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	m_vao->create();
 
