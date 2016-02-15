@@ -25,12 +25,12 @@
 //class Rotation;
 class StopWatchInterface;
 class Renderable;
-
+class GLWidget;
 class VRWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
 	Q_OBJECT
 public:
-	explicit VRWidget(QWidget *parent = 0);
+	explicit VRWidget(GLWidget* _mainGLWidget, QWidget *parent = 0);
 	~VRWidget();
 
 	QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -110,6 +110,7 @@ private:
 	std::map<std::string, Renderable*> renderers;
 
 	bool initialized = false;
+	GLWidget* mainGLWidget;
 	//bool pinching = false;
 	////mark whether there is any pinching gesture in this sequence of gestures.
 	//// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.

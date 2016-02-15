@@ -44,9 +44,8 @@ Window::Window()
 
 	/********GL widget******/
 	openGL = std::make_unique<GLWidget>();
-	vrWidget = std::make_unique<VRWidget>();
+	vrWidget = std::make_unique<VRWidget>(openGL.get());
 	vrWidget->setWindowFlags(Qt::Window);
-	vrWidget->show();
 	//vrWidget->setWindowState(Qt::WindowFullScreen);
 	//openGL->setWindowState(Qt::WindowFullScreen);
 	QSurfaceFormat format;
@@ -113,6 +112,7 @@ Window::Window()
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
 
+	//vrWidget->AddRenderable("glyph", glyphRenderable.get());
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 
@@ -289,3 +289,9 @@ void Window::SlotToggleGrid(bool b)
 
 Window::~Window() {
 }
+
+void Window::init()
+{
+	vrWidget->show();
+}
+

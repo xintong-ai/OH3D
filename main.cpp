@@ -41,12 +41,14 @@
 
 int main(int argc, char **argv)
 {
+	//QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 	QApplication app(argc, argv);
+	//app.setAttribute(Qt::AA_ShareOpenGLContexts);
 
 	Window win;
-	//win.setWindowState(Qt::WindowFullScreen);
-
 	win.show();
+	win.init();
+	//win.setWindowState(Qt::WindowFullScreen);
 
 	return app.exec();
 }

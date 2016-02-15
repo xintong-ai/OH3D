@@ -176,11 +176,13 @@ void ArrowRenderable::LoadShaders()
 
 void ArrowRenderable::init()
 {
+	if (initialized)
+		return;
 	LoadShaders();
-	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
-	m_vao->create();
+	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
+	//m_vao->create();
 
-	m_vao->bind();
+	//m_vao->bind();
 
 
 	qgl->glGenBuffers(1, &vbo_vert);
@@ -211,28 +213,27 @@ void ArrowRenderable::init()
 	qgl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)* glyphMesh->GetNumIndices(), glyphMesh->GetIndices(), GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	m_vao->release();
+	//m_vao->release();
+	initialized = true;
 }
 
-void ArrowRenderable::draw(float modelview[16], float projection[16])
+void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[16])
 {
-	if (!visible)
-		return;
-
-	RecordMatrix(modelview, projection);
-	ComputeDisplace();
-
-	glMatrixMode(GL_MODELVIEW);
-
 	int firstVertex = 0;
 	int firstIndex = 0;
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexColor"));
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
 	for (int i = 0; i < pos.size(); i++) {
-		
+
 		float4 shift = pos[i];
 
-		glProg->use();
-		m_vao->bind();
+		//m_vao->bind();
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -253,7 +254,7 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 		//qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * rotations[i]).normalMatrix().data());
 		qgl->glUniformMatrix4fv(glProg->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
-		
+
 		float maxSize = 8;
 		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
 		qgl->glUniform1f(glProg->uniform("scale"), val[i] / lMax * maxSize);
@@ -261,10 +262,25 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 		qgl->glUniform3fv(glProg->uniform("Ka"), 1, &cols[i].x);
 
 		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());
-		m_vao->release();
-		glProg->disable();
-		glPopMatrix();
+		//m_vao->release();
+		//glPopMatrix(); 
 	}
+}
+
+
+void ArrowRenderable::draw(float modelview[16], float projection[16])
+{
+	if (!visible)
+		return;
+
+  	RecordMatrix(modelview, projection);
+	//if(displaceOn)	ComputeDisplace();
+	glProg->use();
+
+	glMatrixMode(GL_MODELVIEW);
+	DrawWithoutProgram(modelview, projection);
+
+	glProg->disable();
 }
 void ArrowRenderable::UpdateData()
 {

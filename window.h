@@ -27,6 +27,7 @@ class Window : public QWidget
 public:
     Window();
     ~Window();
+	void init();
 
 private:
     std::unique_ptr<GLWidget> openGL;

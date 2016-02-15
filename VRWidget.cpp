@@ -8,10 +8,13 @@
 #include <Renderable.h>
 #include <Trackball.h>
 #include <Rotation.h>
+#include <glwidget.h>
+#include <GlyphRenderable.h>
 
-VRWidget::VRWidget(QWidget *parent)
+VRWidget::VRWidget(GLWidget* _mainGLWidget, QWidget *parent)
 	: QOpenGLWidget(parent)
 	, m_frame(0)
+	, mainGLWidget(_mainGLWidget)
 {
 	setFocusPolicy(Qt::StrongFocus);
 	sdkCreateTimer(&timer);
@@ -19,9 +22,9 @@ VRWidget::VRWidget(QWidget *parent)
 	//trackball = new Trackball();
 	//rot = new Rotation();
 
-	QTimer *aTimer = new QTimer;
-	connect(aTimer, SIGNAL(timeout()), SLOT(animate()));
-	aTimer->start(30);
+	//QTimer *aTimer = new QTimer;
+	//connect(aTimer, SIGNAL(timeout()), SLOT(animate()));
+	//aTimer->start(30);
 
 	//transRot.setToIdentity();
 
@@ -53,6 +56,9 @@ QSize VRWidget::sizeHint() const
 
 void VRWidget::initializeGL()
 {
+	//QOpenGLContext* a = mainGLWidget->context();
+	//QOpenGLContext* b = this->context();
+	//this->context()->setShareContext(mainGLWidget->context());
 	initializeOpenGLFunctions();
 	sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -88,6 +94,7 @@ void VRWidget::TimerEnd()
 
 void VRWidget::paintGL() {
 	/****transform the view direction*****/
+	//wglMakeCurrent();
 	TimerStart();
 	//glMatrixMode(GL_MODELVIEW);
 	//glLoadIdentity();
@@ -105,15 +112,21 @@ void VRWidget::paintGL() {
 
 	GLfloat modelview[16];
 	GLfloat projection[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
-	glGetFloatv(GL_PROJECTION_MATRIX, projection);
-
+	//glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
+	//glGetFloatv(GL_PROJECTION_MATRIX, projection);
+	mainGLWidget->GetModelview(modelview);
+	mainGLWidget->GetProjection(projection);
+	//glViewport(0, 0, (GLint)width, (GLint)height);
+	makeCurrent();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
 	for (auto renderer : renderers)
 		renderer.second->draw(modelview, projection);
 
 	TimerEnd();
 }
+//void Perspective(float fovyInDegrees, float aspectRatio,
+//	float znear, float zfar);
 //
 //void Perspective(float fovyInDegrees, float aspectRatio,
 //	float znear, float zfar)

@@ -8,6 +8,7 @@
 #include <Renderable.h>
 #include <Trackball.h>
 #include <Rotation.h>
+#include <GlyphRenderable.h>
 
 GLWidget::GLWidget(QWidget *parent)
     : QOpenGLWidget(parent)
@@ -88,7 +89,8 @@ void GLWidget::TimerEnd()
 
 void GLWidget::paintGL() {
     /****transform the view direction*****/
-    TimerStart();
+	makeCurrent();
+	TimerStart();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -103,12 +105,13 @@ void GLWidget::paintGL() {
     glScalef(scale, scale, scale);
 	glTranslatef(-dataCenter.x, -dataCenter.y, -dataCenter.z);
 
-    GLfloat modelview[16];
-    GLfloat projection[16];
+
     glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
     glGetFloatv(GL_PROJECTION_MATRIX, projection);
-
+	//glViewport(0, 0, (GLint)width, (GLint)height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(true);
 	for (auto renderer : renderers)
 		renderer.second->draw(modelview, projection);
 
@@ -134,7 +137,7 @@ void GLWidget::resizeGL(int w, int h)
 
     if(!initialized) {
         //make init here because the window size is not updated in InitiateGL()
-		//makeCurrent();
+		makeCurrent();
 		for (auto renderer:renderers)
 			renderer.second->init();
         initialized = true;

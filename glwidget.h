@@ -58,6 +58,9 @@ public:
 
 	void SetInteractMode(INTERACT_MODE v) { interactMode = v; }
 
+	void GetModelview(float* m){ for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
+	void GetProjection(float* m){ for (int i = 0; i < 16; i++) m[i] = projection[i]; }
+
 
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
@@ -119,6 +122,9 @@ private:
 
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
+
+	GLfloat modelview[16];
+	GLfloat projection[16];
 
 private slots:
 	void animate();
