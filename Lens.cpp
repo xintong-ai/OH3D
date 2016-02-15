@@ -211,46 +211,56 @@ std::vector<float2> CurveBLens::GetExtraLensRendering2(){
 void CurveBLens::RefineLensCenter()
 {
 	//currently process the positive one first
-	int n = rationalCtrlPoints.size();//may contain more number than numCtrlPoints
-	if (n < 2)
+	if (rationalCtrlPoints.size() < 2)
 		return;
-	if (posOffsetBezierPoints.size() != n)
+	if (posOffsetBezierPoints.size() != rationalCtrlPoints.size())
 	{
 		cout << "error! " << endl;
+		cout << "rationalCtrlPoints size: " << rationalCtrlPoints.size() << "; posOffsetBezierPoints size: " << posOffsetBezierPoints.size() << endl;
 		return;
 	}
 
-	bool justSplitted = false;
+	int numberPosBezierPart = pow(2, refinedRound);
 
-	vector<float2> newRationalCtrlPoints;
+
+	//vector<float2> newRationalCtrlPoints;
 	bool convergedPos = true;
 	float thr = 0.05;
-	for (int i = 0; i < n; i++){
+	int oriN = BezierPoints.size();
+	int posOBPsize = posOffsetBezierPoints.size();
+	for (int i = 0; i < oriN; i++){
 		//may need to be improved !!!
-		if (abs(length(BezierPoints[i] - posOffsetBezierPoints[i]) - width)<width*thr){
-			newRationalCtrlPoints.push_back(rationalCtrlPoints[i]);
-			justSplitted = true;
-		}
-		else{/*
-			if (i>0 && !justSplitted){
-				newRationalCtrlPoints.push_back((rationalCtrlPoints[i] + rationalCtrlPoints[i - 1]) / 2);
-			}
+		if (abs(length(BezierPoints[i] - posOffsetBezierPoints[round(i *1.0/ (oriN - 1)*(posOBPsize-1))]) - width)<width*thr){
 			//newRationalCtrlPoints.push_back(rationalCtrlPoints[i]);
-			if (i < n - 1){
-				newRationalCtrlPoints.push_back((rationalCtrlPoints[i] + rationalCtrlPoints[i + 1]) / 2);
-			}*/
-			newRationalCtrlPoints.push_back(((rationalCtrlPoints[i] + rationalCtrlPoints[i - 1]) / 2 + (rationalCtrlPoints[i] + rationalCtrlPoints[i + 1]) / 2) / 2);
+		}
+		else{
 			convergedPos = false;
-			justSplitted = false;
 		}
 	}
 	if (!convergedPos){
-		cout << "Did once! from " << n << " to " << newRationalCtrlPoints.size()<< endl;
-		rationalCtrlPoints.clear();
-		rationalCtrlPoints = newRationalCtrlPoints;
+		//cout << "Did once! from " << n << " to " << newRationalCtrlPoints.size()<< endl;
+		cout << "Did once! from " << rationalCtrlPoints.size() << endl;
+
+		int m = rationalCtrlPoints.size();
+
+		vector<float2> newRCP;
+		for (int i = 0; i < numberPosBezierPart; i++){
+			vector<float2> curPart(
+				rationalCtrlPoints.begin() + (m - 1) / numberPosBezierPart*i,
+				rationalCtrlPoints.begin() + (m - 1) / numberPosBezierPart*(i + 1) + 1);
+			vector<float2> refinedCurPart = BezierSubdivide(curPart, 1, 0.5);
+			if (i == 0)
+				newRCP.insert(newRCP.end(), refinedCurPart.begin(), refinedCurPart.end());
+			else
+				newRCP.insert(newRCP.end(), refinedCurPart.begin() + 1, refinedCurPart.end());
+
+		}
+		rationalCtrlPoints = newRCP;
+		refinedRound++;
+		//rationalCtrlPoints = newRationalCtrlPoints;
 		posOffsetCtrlPoints.clear();
 		//compute posOffsetCtrlPoints
-		int n = rationalCtrlPoints.size();
+		int newM = rationalCtrlPoints.size();
 		float2 normal;
 		float2 dir;
 
@@ -258,7 +268,7 @@ void CurveBLens::RefineLensCenter()
 		normal = make_float2(-dir.y, dir.x);
 		posOffsetCtrlPoints.push_back(rationalCtrlPoints[0] + normal*width);
 
-		for (int i = 1; i < n - 1; i++){
+		for (int i = 1; i < newM - 1; i++){
 			dir = normalize(rationalCtrlPoints[i] - rationalCtrlPoints[i - 1]);
 			normal = make_float2(-dir.y, dir.x);
 			float2 dir2 = normalize(rationalCtrlPoints[i + 1] - rationalCtrlPoints[i]);
@@ -268,11 +278,24 @@ void CurveBLens::RefineLensCenter()
 			posOffsetCtrlPoints.push_back(posCtrlPoint);
 		}
 
-		dir = normalize(rationalCtrlPoints[n - 1] - rationalCtrlPoints[n - 2]);
+		dir = normalize(rationalCtrlPoints[newM - 1] - rationalCtrlPoints[newM - 2]);
 		normal = make_float2(-dir.y, dir.x);
-		posOffsetCtrlPoints.push_back(rationalCtrlPoints[n - 1] + normal*width);
+		posOffsetCtrlPoints.push_back(rationalCtrlPoints[newM - 1] + normal*width);
 
-		posOffsetBezierPoints = BezierSmaple(posOffsetCtrlPoints);
+		//posOffsetBezierPoints = BezierSmaple(posOffsetCtrlPoints);
+		int numberPosBezierPart = pow(2, refinedRound);
+		posOffsetBezierPoints.clear();
+		for (int i = 0; i < numberPosBezierPart; i++){
+			vector<float2> curPart(
+				posOffsetCtrlPoints.begin() + (newM - 1) / numberPosBezierPart*i,
+				posOffsetCtrlPoints.begin() + (newM - 1) / numberPosBezierPart*(i + 1) + 1);
+			vector<float2> curBezierPart = BezierSmaple(curPart);
+			if (i == 0)
+				posOffsetBezierPoints.insert(posOffsetBezierPoints.end(), curBezierPart.begin(), curBezierPart.end());
+			else
+				posOffsetBezierPoints.insert(posOffsetBezierPoints.end(), curBezierPart.begin() + 1, curBezierPart.end());
+
+		}
 	}
 	else{
 		cout << "converged!" << endl;
@@ -343,4 +366,89 @@ vector<float2> CurveBLens::removeSelfIntersection(vector<float2> p, bool isDupli
 		}
 	}
 	return newp;
+}
+
+
+vector<float2> CurveBLens::BezierOneSubdivide(vector<float2> p, vector<float2> poly1, vector<float2> poly2, float u)
+{
+	vector<float2> res;
+	int n = p.size();
+	if (n == 1)
+	{
+		res.insert(res.begin(), poly1.begin(), poly1.end());
+		res.insert(res.end(), p[0]);
+		res.insert(res.end(), poly2.begin(), poly2.end());
+	}
+	else if (p.size() > 1){
+		poly1.push_back(p[0]);
+		vector<float2> newpoly2;
+		newpoly2.push_back(p[n - 1]);
+		newpoly2.insert(newpoly2.end(), poly2.begin(), poly2.end());
+
+		vector<float2> newp;
+		for (int i = 0; i < n - 1; i++) {
+			newp.push_back(p[i] + u*(p[i + 1] - p[i]));
+		}
+		res = BezierOneSubdivide(newp, poly1, newpoly2, u);
+
+	}
+	return res;
+
+}
+
+vector<float2> CurveBLens::BezierSubdivide(vector<float2> p, int m, float u)
+{
+	vector<float2> res;
+	if (m == 1) {
+		vector<float2> poly1(0), poly2(0);
+		res = BezierOneSubdivide(p, poly1, poly2, u);
+	}
+	else {
+		vector<float2> poly1(0), poly2(0);
+		vector<float2> doubledp = BezierOneSubdivide(p, poly1, poly2, u);
+
+		int n = (doubledp.size() + 1) / 2;
+		vector<float2> newpLeft(doubledp.begin(), doubledp.begin() + n);
+		vector<float2> newpRight(doubledp.begin() + n - 1, doubledp.end());
+
+		vector<float2> respLeft = BezierSubdivide(newpLeft, m - 1, u);
+		vector<float2> respRight = BezierSubdivide(newpRight, m - 1, u);
+
+		res.insert(res.begin(), respLeft.begin(), respLeft.end());
+		res.insert(res.end(), respRight.begin() + 1, respRight.end());
+	}
+	return res;
+}
+
+vector<float2> CurveBLens::BezierSmaple(vector<float2> p)
+{
+	vector<float2> res;
+	if (p.size() >= 2){
+#define bezierSampleAccuracyRate 1 
+		int n = p.size() - 1;
+
+		double *combinationValue = new double[n + 1];
+		for (int i = 0; i <= n / 2; i++){
+			double cc = 1; //compute n!/i!/(n-i)! = ((n-i+1)*...*n)/(1*2*...*i)
+			for (int j = i; j >= 1; j--){
+				cc = cc*(n + j - i) / j;
+			}
+			combinationValue[i] = cc;
+		}
+		for (int i = n / 2 + 1; i <= n; i++){
+			combinationValue[i] = combinationValue[n - i];
+		}
+
+		for (int ui = 0; ui <= n*bezierSampleAccuracyRate; ui++){
+			float u = ui*1.0 / (n*bezierSampleAccuracyRate);
+			float2 pu = make_float2(0, 0);
+			for (int j = 0; j <= n; j++){
+				pu = pu + combinationValue[j] * pow(u, j) * pow(1 - u, n - j) * p[j];
+			}
+			res.push_back(pu);
+		}
+
+		delete combinationValue;
+	}
+	return res;
 }

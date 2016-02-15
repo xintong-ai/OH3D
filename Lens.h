@@ -787,6 +787,7 @@ public:
 
 	vector<float2> removeSelfIntersection(vector<float2> p, bool isDuplicating);
 	void RefineLensCenter();
+	int refinedRound = 0;
 	void RefineLensBoundary();
 
 	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
@@ -821,40 +822,9 @@ public:
 		curveLensCtrlPoints.focusRatio = focusRatio;
 	}
 
-
-
-	vector<float2> BezierSmaple(vector<float2> p)
-	{
-		vector<float2> res;
-		if (p.size() >= 2){
-#define bezierSampleAccuracyRate 1 
-			int n = p.size() - 1;
-
-			double *combinationValue = new double[n + 1];
-			for (int i = 0; i <= n/2; i++){
-				double cc = 1; //compute n!/i!/(n-i)! = ((n-i+1)*...*n)/(1*2*...*i)
-				for (int j = i; j >=1; j--){
-					cc = cc*(n + j - i) / j;
-				}
-				combinationValue[i] = cc;
-			}
-			for (int i = n/2+1; i <= n; i++){
-				combinationValue[i] = combinationValue[n-i];
-			}
-
-			for (int ui = 0; ui <= n*bezierSampleAccuracyRate; ui++){
-				float u = ui*1.0 / (n*bezierSampleAccuracyRate);
-				float2 pu = make_float2(0, 0);
-				for (int j = 0; j <= n; j++){
-					pu = pu + combinationValue[j] * pow(u, j) * pow(1 - u, n - j) * p[j];
-				}
-				res.push_back(pu);
-			}
-
-			delete combinationValue;
-		}
-		return res;
-	}
+	vector<float2> BezierOneSubdivide(vector<float2> p, vector<float2> poly1, vector<float2> poly2, float u);
+	vector<float2> BezierSubdivide(vector<float2> p, int m, float u);
+	vector<float2> BezierSmaple(vector<float2> p);
 
 };
 
