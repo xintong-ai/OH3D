@@ -46,7 +46,7 @@ Window::Window()
 	/********GL widget******/
 	openGL = std::make_unique<GLWidget>();
 	vrWidget = std::make_unique<VRWidget>(openGL.get());
-	//vrWidget->setWindowFlags(Qt::Window);
+	vrWidget->setWindowFlags(Qt::Window);
 	//vrWidget->setWindowState(Qt::WindowFullScreen);
 	//openGL->setWindowState(Qt::WindowFullScreen);
 	QSurfaceFormat format;

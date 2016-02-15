@@ -16,6 +16,7 @@ VRWidget::VRWidget(GLWidget* _mainGLWidget, QWidget *parent)
 	, m_frame(0)
 	, mainGLWidget(_mainGLWidget)
 {
+	glColor3d(0.1, 1,1);
 	setFocusPolicy(Qt::StrongFocus);
 	sdkCreateTimer(&timer);
 
@@ -59,7 +60,10 @@ void VRWidget::initializeGL()
 	//QOpenGLContext* a = mainGLWidget->context();
 	//QOpenGLContext* b = this->context();
 	//this->context()->setShareContext(mainGLWidget->context());
+	glColor3d(0.2, 1, 1);
+	makeCurrent();
 	initializeOpenGLFunctions();
+	glColor3d(0.3, 1,1);
 	sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);

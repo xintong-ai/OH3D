@@ -54,7 +54,8 @@ QSize GLWidget::sizeHint() const
 
 void GLWidget::initializeGL()
 {
-    initializeOpenGLFunctions();
+	makeCurrent();
+	initializeOpenGLFunctions();
     sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);

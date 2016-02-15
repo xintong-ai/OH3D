@@ -12,6 +12,7 @@
 #include "ShaderProgram.h"
 void VRGlyphRenderable::init()
 {
+	glProg = new ShaderProgram;
 	glyphRenderable->LoadShaders(glProg);
 }
 
@@ -23,6 +24,7 @@ void VRGlyphRenderable::draw(float modelview[16], float projection[16])
 	glColor3d(1, 1, 1);
 	glMatrixMode(GL_MODELVIEW);
 	glProg->use();
+	glColor3d(1, 0.3, 1);
 	glyphRenderable->DrawWithoutProgram(modelview, projection, QOpenGLContext::currentContext(), glProg);
 	glProg->disable();
 }

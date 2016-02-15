@@ -148,7 +148,6 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		}
 	);
 
-	shaderProg = new ShaderProgram;
 	shaderProg->initFromStrings(vertexVS, vertexFS);
 
 	shaderProg->addAttribute("VertexPosition");
@@ -175,6 +174,7 @@ void ArrowRenderable::init()
 {
 	if (initialized)
 		return;
+	glProg = new ShaderProgram;
 	LoadShaders(glProg);
 	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	//m_vao->create();
@@ -220,14 +220,17 @@ void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 	int firstVertex = 0;
 	int firstIndex = 0;
 	ctx->functions()->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	ctx->functions()->glVertexAttribPointer(sp->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
 	ctx->functions()->glEnableVertexAttribArray(sp->attribute("VertexPosition"));
-	//ctx->functions()->glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
-	//ctx->functions()->glEnableVertexAttribArray(sp->attribute("VertexNormal"));
-	//ctx->functions()->glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
-	//ctx->functions()->glEnableVertexAttribArray(sp->attribute("VertexColor"));
-	//ctx->functions()->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
+	ctx->functions()->glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
+	ctx->functions()->glVertexAttribPointer(sp->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	ctx->functions()->glEnableVertexAttribArray(sp->attribute("VertexNormal"));
+	ctx->functions()->glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
+	ctx->functions()->glVertexAttribPointer(sp->attribute("VertexColor"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
+	ctx->functions()->glEnableVertexAttribArray(sp->attribute("VertexColor"));
+	ctx->functions()->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
-	for (int i = 0; i < 1/*pos.size()*/; i++) {
+	for (int i = 0; i < pos.size(); i++) {
 
 		float4 shift = pos[i];
 
