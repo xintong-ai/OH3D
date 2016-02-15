@@ -10,12 +10,12 @@ void LensRenderable::init()
 void LensRenderable::UpdateData() {
 }
 
-void LensRenderable::RefineLensCenter(){
+void LensRenderable::adjustOffset(){
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
 
 		if (l->type == LENS_TYPE::TYPE_CURVEB) {
-			((CurveBLens*)l)->RefineLensCenter();
+			((CurveBLens*)l)->adjustOffset();
 
 		}
 	}
@@ -115,28 +115,50 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			for (auto v : lensContour)
 				glVertex2f(v.x, v.y);
 			glEnd();
-			//glBegin(GL_POINTS);
-			//for (auto v : lensContour)
-			//	glVertex2f(v.x, v.y);
-			//glEnd();
 
-			//vector<float2> pp = ((CurveBLens *)l)->posOffsetCtrlPoints;
-			//vector<float2> nn = ((CurveBLens *)l)->negOffsetCtrlPoints;
-			//float2 center = make_float2(((CurveBLens *)l)->x, ((CurveBLens *)l)->y);
-			//for (int ii = 0; ii < pp.size(); ii++){
-			//	pp[ii] = pp[ii] + center;
-			//}
-			//for (int ii = 0; ii < nn.size(); ii++){
-			//	nn[ii] = nn[ii] + center;
-			//}
-			//glColor3f(0.2f, 0.8f, 0.8f);
-			//glPointSize(3.0);
-			//glBegin(GL_POINTS);
-			//for (auto v : pp)
-			//	glVertex2f(v.x, v.y);
-			////for (auto v : nn)
-			////	glVertex2f(v.x, v.y);
-			//glEnd();
+
+			vector<float2> pp = ((CurveBLens *)l)->posOffsetCtrlPoints;
+			vector<float2> nn = ((CurveBLens *)l)->negOffsetCtrlPoints;
+			
+			vector<float2> pb = ((CurveBLens *)l)->posOffsetBezierPoints;
+			vector<float2> nb = ((CurveBLens *)l)->negOffsetBezierPoints;
+			vector<float2> subp = ((CurveBLens *)l)->subCtrlPointsPos;
+			vector<float2> subn = ((CurveBLens *)l)->subCtrlPointsNeg;
+
+			float2 center = make_float2(((CurveBLens *)l)->x, ((CurveBLens *)l)->y);
+			for (int ii = 0; ii < pp.size(); ii++){
+				pp[ii] = pp[ii] + center;
+				pb[ii] = pb[ii] + center;
+				subp[ii] = subp[ii] + center;
+			}
+			for (int ii = 0; ii < nn.size(); ii++){
+				nn[ii] = nn[ii] + center;
+				nb[ii] = nb[ii] + center;
+				subn[ii] = subn[ii] + center;
+			}
+			glColor3f(0.2f, 0.8f, 0.8f);
+			glPointSize(3.0);
+			glBegin(GL_POINTS);
+			for (auto v : pp)
+				glVertex2f(v.x, v.y);
+			for (auto v : nn)
+				glVertex2f(v.x, v.y);
+			glEnd();
+
+			glColor3f(0.2f, 0.2f, 0.8f);
+			glBegin(GL_LINES);
+			for (int ii = 0; ii < pp.size(); ii++){
+				glVertex2f(pb[ii].x, pb[ii].y);
+				glVertex2f(subp[ii].x, subp[ii].y);
+			}
+			for (int ii = 0; ii < nn.size(); ii++){
+				glVertex2f(nb[ii].x, nb[ii].y);
+				glVertex2f(subn[ii].x, subn[ii].y);
+			}
+			glEnd();
+
+
+
 
 			//glColor3f(0.2f, 0.8f, 0.8f);
 			//std::vector<float2> lensOuterContour = l->GetOuterContour();

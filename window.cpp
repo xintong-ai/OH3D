@@ -201,9 +201,9 @@ Window::Window()
 	controlLayout->addWidget(addCurveBLensBtn);
 	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
 
-	refineLensCenterBtn = new QPushButton("Refine Lens Center Line");
-	controlLayout->addWidget(refineLensCenterBtn);
-	connect(refineLensCenterBtn, SIGNAL(clicked()), this, SLOT(RefineLensCenter()));
+	adjustOffsetBtn = new QPushButton("Adjust Offset");
+	controlLayout->addWidget(adjustOffsetBtn);
+	connect(adjustOffsetBtn, SIGNAL(clicked()), this, SLOT(adjustOffset()));
 
 	refineBoundaryBtn = new QPushButton("Refine Lens Boundary Line");
 	controlLayout->addWidget(refineBoundaryBtn);
@@ -314,9 +314,9 @@ void Window::AddCurveBLens()
 	lensRenderable->AddCurveBLens();
 }
 
-void Window::RefineLensCenter()
+void Window::adjustOffset()
 {
-	lensRenderable->RefineLensCenter();
+	lensRenderable->adjustOffset();
 }
 
 void Window::RefineLensBoundary()

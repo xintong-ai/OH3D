@@ -34,6 +34,25 @@ struct CurveLensCtrlPoints
 	float focusRatio;//ratio of focus region and transition region
 };
 
+
+struct CurveBLensInfo
+{
+	int numBCurvePoints;
+	float2 BCurvePoints[100];
+
+	int numPosPoints;
+	float2 posOffsetCtrlPoints[800];
+	float2 posOffsetBezierPoints[800];
+	int numNegPoints;
+	float2 negOffsetCtrlPoints[800];
+	float2 negOffsetBezierPoints[800];
+
+	int x, y; //screen location
+	float width;
+	float focusRatio;//ratio of focus region and transition region
+};
+
+
 struct Lens
 {
 	LENS_TYPE type;
@@ -679,19 +698,19 @@ public:
 
 class CurveBLens :public Lens
 {
-#define numCtrlPointsLimit 500
-#define distanceThr 1
+#define numCtrlPointsLimit 100
+#define distanceThr 2
 #define distanceThrCount 10
+
+#define refineIterationLimit 3
 
 public:
 
-	int width;
+	float width;
 	int numCtrlPoints;
 	vector<float2> ctrlPoints; //used during constructing
 	vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
-
-	vector<float2> rationalCtrlPoints; //may contain more number than numCtrlPoints, used for refining
 	vector<float2> BezierPoints; //sampled points on the curve for drawing
 
 
@@ -786,9 +805,18 @@ public:
 	vector<float2> GetExtraLensRendering2();
 
 	vector<float2> removeSelfIntersection(vector<float2> p, bool isDuplicating);
-	void RefineLensCenter();
-	int refinedRound = 0;
+	bool adjustOffset();
+	int refinedRoundPos;
+	int refinedRoundNeg;
 	void RefineLensBoundary();
+	vector<float2> subCtrlPointsPos; //may contain more number than numCtrlPoints, used for refining
+	vector<float2> subCtrlPointsNeg; //may contain more number than numCtrlPoints, used for refining
+
+	void offsetControlPointsPos();
+	void offsetControlPointsNeg();
+
+	void computeBoundaryPos();
+	void computeBoundaryNeg();
 
 	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
 	{
@@ -797,6 +825,10 @@ public:
 
 	bool intersect(float2 A, float2 B, float2 C, float2 D) //whether segment AB and segmnent CD is intersected
 	{
+		float lengthThr = 0.00001;
+		if (length(A - B) < lengthThr || length(C - D) < lengthThr || length(A - C) < lengthThr ||
+			length(A - D) < lengthThr || length(C - B) < lengthThr || length(D - B) < lengthThr)
+			return false;
 		return (ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D));
 	}
 
@@ -826,6 +858,8 @@ public:
 	vector<float2> BezierSubdivide(vector<float2> p, int m, float u);
 	vector<float2> BezierSmaple(vector<float2> p);
 
+	vector<float2> BSplineSubdivide(vector<float2> p, int m, float u);
+	vector<float2> BSplineOneSubdivide(vector<float2> p, int m, float u);
 };
 
 #endif
