@@ -26,7 +26,7 @@ class ArrowRenderable :public GlyphRenderable
 	unsigned int vbo_indices;
 	unsigned int vbo_colors;
 	unsigned int vbo_normals;
-	std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
+	//std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
 	std::unique_ptr<GLArrow> glyphMesh;
 
 	bool initialized = false;
@@ -37,7 +37,7 @@ public:
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
 protected:
-	virtual void DrawWithoutProgram(float modelview[16], float projection[16], QOpenGLContext* ctx, ShaderProgram* sp) override;
+	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
 };
 

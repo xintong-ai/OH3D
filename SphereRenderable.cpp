@@ -102,8 +102,8 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 void SphereRenderable::init()
 {
 	LoadShaders(glProg);
-	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
-	m_vao->create();
+	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
+	//m_vao->create();
 
 	glyphMesh = std::make_unique<GLSphere>(1, 8);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -117,19 +117,11 @@ void SphereRenderable::UpdateData()
 {
 }
 
-void SphereRenderable::draw(float modelview[16], float projection[16])
+void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
-	if (!updated) {
-		UpdateData();
-		updated = true;
-	}
-	if (!visible)
-		return;
-
-	RecordMatrix(modelview, projection);
-	ComputeDisplace();
-
-	glMatrixMode(GL_MODELVIEW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 
 	for (int i = 0; i < pos.size(); i++) {
 		glPushMatrix();
@@ -139,8 +131,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 		//std::cout << sphereSize[i] << " ";
 
-		glProg->use();
-		m_vao->bind();
+		//m_vao->bind();
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -159,16 +150,33 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 		glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
 		//glDrawElements(GL_TRIANGLES, glyphMesh->numElements, GL_UNSIGNED_INT, glyphMesh->indices);
-		m_vao->release();
-		glProg->disable();
+		//m_vao->release();
 		glPopMatrix();
 	}
+
+}
+
+void SphereRenderable::draw(float modelview[16], float projection[16])
+{
+	if (!updated) {
+		UpdateData();
+		updated = true;
+	}
+	if (!visible)
+		return;
+
+	RecordMatrix(modelview, projection);
+	ComputeDisplace();
+
+	glProg->use();
+	DrawWithoutProgram(modelview, projection, glProg);
+	glProg->disable();
 }
 
 
 void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 {
-	m_vao->bind();
+	//m_vao->bind();
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
@@ -177,7 +185,7 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 
-	m_vao->release();
+	//m_vao->release();
 }
 
 SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val)

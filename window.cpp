@@ -47,6 +47,8 @@ Window::Window()
 	openGL = std::make_unique<GLWidget>();
 	vrWidget = std::make_unique<VRWidget>(openGL.get());
 	vrWidget->setWindowFlags(Qt::Window);
+	openGL->SetVRWidget(vrWidget.get());
+	//vrWidget->context()->setShareContext(openGL->context());
 	//vrWidget->setWindowState(Qt::WindowFullScreen);
 	//openGL->setWindowState(Qt::WindowFullScreen);
 	QSurfaceFormat format;
@@ -70,20 +72,13 @@ Window::Window()
 	}
 	const std::string dataPath = dataMgr.GetConfig("DATA_PATH");
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
-		//reader = std::make_unique<ParticleReader>
-		//	("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
 		reader = std::make_unique<ParticleReader>(dataPath.c_str());
-		//"D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu"
-
 		glyphRenderable = std::make_unique<SphereRenderable>(
 			((ParticleReader*)reader.get())->GetPos(),
 			((ParticleReader*)reader.get())->GetVal());
 	}
 	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
-		//reader = std::make_unique<DTIVolumeReader>
-		//	("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
 		reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
-//			("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
 		std::vector<float4> pos;
 		std::vector<float> val;
 		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
@@ -91,8 +86,6 @@ Window::Window()
 	}
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
 		reader = std::make_unique<VecReader>(dataPath.c_str());
-			//("D:/onedrive/data/plume/15plume3d421-126x126x512.vec");
-			//("D:/Data/VectorData/UVWf01.vec");
 		std::vector<float4> pos;
 		std::vector<float3> vec;
 		std::vector<float> val;
@@ -251,7 +244,7 @@ Window::Window()
 	//interactLayout->addWidget(animationCheck);
 	//controlLayout->addStretch();
 	mainLayout->addWidget(openGL.get(), 3);
-	mainLayout->addWidget(vrWidget.get(), 3);
+	//mainLayout->addWidget(vrWidget.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
 }
@@ -295,6 +288,6 @@ Window::~Window() {
 
 void Window::init()
 {
-	//vrWidget->show();
+	vrWidget->show();
 }
 

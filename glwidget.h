@@ -25,6 +25,7 @@ class Trackball;
 class Rotation;
 class StopWatchInterface;
 class Renderable;
+class VRWidget;
 
 class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
@@ -61,7 +62,7 @@ public:
 	void GetModelview(float* m){ for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
 	void GetProjection(float* m){ for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 
-
+	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;
@@ -77,6 +78,7 @@ protected:
 
 
 private:
+	VRWidget* vrWidget = nullptr;
     void computeFPS();
 
     void TimerStart();

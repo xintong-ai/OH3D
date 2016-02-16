@@ -25,6 +25,6 @@ void VRGlyphRenderable::draw(float modelview[16], float projection[16])
 	glMatrixMode(GL_MODELVIEW);
 	glProg->use();
 	glColor3d(1, 0.3, 1);
-	glyphRenderable->DrawWithoutProgram(modelview, projection, QOpenGLContext::currentContext(), glProg);
+	glyphRenderable->DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
 }

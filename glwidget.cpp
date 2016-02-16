@@ -9,6 +9,7 @@
 #include <Trackball.h>
 #include <Rotation.h>
 #include <GlyphRenderable.h>
+#include <VRWidget.h>
 
 GLWidget::GLWidget(QWidget *parent)
     : QOpenGLWidget(parent)
@@ -117,6 +118,7 @@ void GLWidget::paintGL() {
 		renderer.second->draw(modelview, projection);
 
     TimerEnd();
+	vrWidget->UpdateGL();
 }
 
 void Perspective(float fovyInDegrees, float aspectRatio,

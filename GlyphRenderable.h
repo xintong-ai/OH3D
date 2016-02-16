@@ -15,18 +15,19 @@ protected:
 	std::vector<float> glyphSizeScale;
 	std::vector<float> glyphBright;
 	float glyphSizeAdjust = 0.5;
-	ShaderProgram* glProg;
+	ShaderProgram* glProg = nullptr;
 	//bool displaceOn = true;
 	void ComputeDisplace();
-	GlyphRenderable(std::vector<float4>& _pos);
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
+	GlyphRenderable(std::vector<float4>& _pos);
 
 public:
+	~GlyphRenderable();
 	void RecomputeTarget();
 	void DisplacePoints(std::vector<float2>& pts);
-	virtual void LoadShaders(ShaderProgram*& shaderProg){}
-	virtual void DrawWithoutProgram(float modelview[16], float projection[16], QOpenGLContext* ctx, ShaderProgram* sp) {}
+	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
+	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
 	//void SetDispalceOn(bool b) { displaceOn = b; }
 public slots:
 	void SlotGlyphSizeAdjustChanged(int v);
