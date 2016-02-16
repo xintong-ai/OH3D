@@ -264,8 +264,8 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 	//if (!initialized)
 	//	return;
 
-	glColor3d(1, 1, 0.5);
 	RecordMatrix(modelview, projection);
+	ComputeDisplace();
 
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);

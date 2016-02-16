@@ -11,6 +11,7 @@
 #include <GlyphRenderable.h>
 #include <VRWidget.h>
 
+
 GLWidget::GLWidget(QWidget *parent)
     : QOpenGLWidget(parent)
     , m_frame(0)
@@ -28,7 +29,9 @@ GLWidget::GLWidget(QWidget *parent)
     transRot.setToIdentity();
 
 	grabGesture(Qt::PinchGesture);
+
 }
+
 
 void GLWidget::AddRenderable(const char* name, void* r)
 {

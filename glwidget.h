@@ -7,6 +7,7 @@
 #include <QOpenGLWidget>
 #include <vector_types.h>
 #include <vector_functions.h>
+
 enum INTERACT_MODE{
 	//	DRAG_LENS_EDGE,
 	//	DRAG_LENS_TWO_ENDS,

@@ -16,6 +16,10 @@
 #include "VRWidget.h"
 #include "VRGlyphRenderable.h"
 
+
+#include <LeapListener.h>
+#include <Leap.h>
+
 enum DATA_TYPE
 {
 	TYPE_PARTICLE,
@@ -135,6 +139,12 @@ Window::Window()
 	QSlider* glyphSizeAdjustSlider = CreateSlider();
 	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotGlyphSizeAdjustChanged(int)));
 
+	listener = new LeapListener();
+	controller = new Leap::Controller();
+	controller->addListener(*listener);
+
+	connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
+		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 
 
 	//radioX = new QRadioButton(tr("&X"));
@@ -291,3 +301,9 @@ void Window::init()
 	vrWidget->show();
 }
 
+
+void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
+{
+	std::cout << thumbTip.x() << "," << thumbTip.y() << "," << thumbTip.z() << std::endl;
+	lensRenderable->SlotLensCenterChanged(make_float3(thumbTip.x(), thumbTip.y(), thumbTip.z()));
+}

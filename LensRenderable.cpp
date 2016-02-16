@@ -232,3 +232,24 @@ void LensRenderable::SlotDelLens()
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }
+
+void LensRenderable::SlotLensCenterChanged(float3 p)
+{
+	if (lenses.size() > 0){
+		//lenses.back()->c = p;
+		int2 winSize = actor->GetWindowSize();
+		float3 pScreen;
+		pScreen.x = (p.x + 117.5) / 235.0 * winSize.x;
+		pScreen.y = (p.y - 82.5) / 235.0 * winSize.y;
+		const float aa = 0.005;
+		pScreen.z = clamp(aa *(1 - (p.y + 50) / 100.0), 0, 1);
+		//pScreen.z = clamp(aa *(1 - (p.y + 73.5) / 147), 0, 1);
+		lenses.back()->c.z = pScreen.z;
+		lenses.back()->x = pScreen.x;
+		lenses.back()->y = pScreen.y;
+		//interaction box
+		//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		actor->UpdateGL();
+	}
+}
