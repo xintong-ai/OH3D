@@ -83,8 +83,24 @@ void CurveBLens::FinishConstructing(){
 			}
 		}
 
-		//compute the BezierPoints used to draw the curve
+		//compute the BezierPoints used to draw the curve, as well as the normals
 		BezierPoints = BezierSmaple(ctrlPoints);
+		vector<float2> Q;
+		vector<float> us;
+		int numBP = BezierPoints.size();
+		for (int i = 0; i < numBP - 1; i++){
+			Q.push_back((BezierPoints[i + 1] - BezierPoints[i])*numBP);
+		}
+		for (int i = 0; i < numBP; i++){
+			us.push_back(i*1.0 / (numBP-1));
+		}
+		vector<float2> BezierTangets;
+		//see: http://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/Bezier/bezier-der.html
+		BezierTangets = BezierSmaple(Q,us);
+		for (int i = 0; i < numBP; i++){
+			BezierNormals.push_back(make_float2(-BezierTangets[i].y, BezierTangets[i].x));
+		}
+		
 		//BezierPoints = BSplineSubdivide(ctrlPoints,4,0.5);
 
 		//compute the boundary
@@ -109,14 +125,30 @@ void CurveBLens::FinishConstructing(){
 		computeBoundaryNeg();
 
 		////do it later: compute curveLensCtrlPoints
-		if (0){
-			curveLensCtrlPoints.focusRatio = focusRatio;
-			curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
-			for (int i = 0; i < numCtrlPoints; i++){
-				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
+		if (1){
+			curveBLensInfo.x = x;
+			curveBLensInfo.y = y;
+			curveBLensInfo.width = width;
+			curveBLensInfo.focusRatio = focusRatio;
+
+			curveBLensInfo.numBezierPoints = BezierPoints.size();
+			for (int i = 0; i < BezierPoints.size(); i++){
+				curveBLensInfo.BezierPoints[i] = BezierPoints[i];
+				curveBLensInfo.BezierNormals[i] = BezierNormals[i];		
+			}
+
+			curveBLensInfo.numPosPoints = subCtrlPointsPos.size();
+			for (int i = 0; i < subCtrlPointsPos.size(); i++){
+				curveBLensInfo.subCtrlPointsPos[i] = subCtrlPointsPos[i];
+				curveBLensInfo.posOffsetCtrlPoints[i] = posOffsetCtrlPoints[i];
+			}
+
+			curveBLensInfo.numNegPoints = subCtrlPointsNeg.size();
+			for (int i = 0; i < subCtrlPointsNeg.size(); i++){
+				curveBLensInfo.subCtrlPointsNeg[i] = subCtrlPointsNeg[i];
+				curveBLensInfo.negOffsetCtrlPoints[i] = negOffsetCtrlPoints[i];
 			}
 		}
-
 
 		isConstructing = false;
 	}
@@ -132,7 +164,7 @@ void CurveBLens::offsetControlPointsPos()
 
 	dir = normalize(subCtrlPointsPos[1] - subCtrlPointsPos[0]);
 	normal = make_float2(-dir.y, dir.x);
-	posOffsetCtrlPoints.push_back(subCtrlPointsPos[0] + normal*width);
+	posOffsetCtrlPoints.push_back(subCtrlPointsPos[0] + normal*outerWidth);
 
 	for (int i = 1; i < np - 1; i++){
 		dir = normalize(subCtrlPointsPos[i] - subCtrlPointsPos[i - 1]);
@@ -140,13 +172,13 @@ void CurveBLens::offsetControlPointsPos()
 		float2 dir2 = normalize(subCtrlPointsPos[i + 1] - subCtrlPointsPos[i]);
 		float2 normal2 = make_float2(-dir.y, dir.x);
 		float2 posCtrlPoint;
-		intersectPoint(subCtrlPointsPos[i - 1] + normal*width, subCtrlPointsPos[i] + normal*width, subCtrlPointsPos[i] + normal2*width, subCtrlPointsPos[i + 1] + normal2*width, posCtrlPoint);
+		intersectPoint(subCtrlPointsPos[i - 1] + normal*outerWidth, subCtrlPointsPos[i] + normal*outerWidth, subCtrlPointsPos[i] + normal2*outerWidth, subCtrlPointsPos[i + 1] + normal2*outerWidth, posCtrlPoint);
 		posOffsetCtrlPoints.push_back(posCtrlPoint);
 	}
 
 	dir = normalize(subCtrlPointsPos[np - 1] - subCtrlPointsPos[np - 2]);
 	normal = make_float2(-dir.y, dir.x);
-	posOffsetCtrlPoints.push_back(subCtrlPointsPos[np - 1] + normal*width);
+	posOffsetCtrlPoints.push_back(subCtrlPointsPos[np - 1] + normal*outerWidth);
 }
 
 void CurveBLens::offsetControlPointsNeg()
@@ -159,7 +191,7 @@ void CurveBLens::offsetControlPointsNeg()
 
 	dir = normalize(subCtrlPointsNeg[1] - subCtrlPointsNeg[0]);
 	normal = make_float2(-dir.y, dir.x);
-	negOffsetCtrlPoints.push_back(subCtrlPointsNeg[0] - normal*width);
+	negOffsetCtrlPoints.push_back(subCtrlPointsNeg[0] - normal*outerWidth);
 
 	for (int i = 1; i < nn - 1; i++){
 		dir = normalize(subCtrlPointsNeg[i] - subCtrlPointsNeg[i - 1]);
@@ -168,13 +200,13 @@ void CurveBLens::offsetControlPointsNeg()
 		float2 normal2 = make_float2(-dir.y, dir.x);
 
 		float2 negCtrlPoint;
-		intersectPoint(subCtrlPointsNeg[i - 1] - normal*width, subCtrlPointsNeg[i] - normal*width, subCtrlPointsNeg[i] - normal2*width, subCtrlPointsNeg[i + 1] - normal2*width, negCtrlPoint);
+		intersectPoint(subCtrlPointsNeg[i - 1] - normal*outerWidth, subCtrlPointsNeg[i] - normal*outerWidth, subCtrlPointsNeg[i] - normal2*outerWidth, subCtrlPointsNeg[i + 1] - normal2*outerWidth, negCtrlPoint);
 		negOffsetCtrlPoints.push_back(negCtrlPoint);
 	}
 
 	dir = normalize(subCtrlPointsNeg[nn - 1] - subCtrlPointsNeg[nn - 2]);
 	normal = make_float2(-dir.y, dir.x);
-	negOffsetCtrlPoints.push_back(subCtrlPointsNeg[nn - 1] - normal*width);
+	negOffsetCtrlPoints.push_back(subCtrlPointsNeg[nn - 1] - normal*outerWidth);
 
 }
 
@@ -220,13 +252,15 @@ std::vector<float2> CurveBLens::GetContour(){
 	//if (!isConstructing && numCtrlPoints >= 3) {
 		float2 center = make_float2(x, y);
 		int n = posOffsetBezierPoints.size();
+
+		//!!! probably can be more precise !!!
 		for (int ii = 0; ii < n; ii++){
-			ret.push_back(posOffsetBezierPoints[ii] + center);
+			ret.push_back((subCtrlPointsPos[ii]+ posOffsetBezierPoints[ii])/2.0 + center);
 		}
 		std::vector<float2> rettemp;
 		int m = negOffsetBezierPoints.size();
 		for (int ii = 0; ii < m; ii++){
-			rettemp.push_back(negOffsetBezierPoints[ii] + center);
+			rettemp.push_back((subCtrlPointsNeg[ii]+ negOffsetBezierPoints[ii])/2.0 + center);
 		}
 		
 		std::reverse(rettemp.begin(), rettemp.end());
@@ -238,33 +272,23 @@ std::vector<float2> CurveBLens::GetContour(){
 
 
 std::vector<float2> CurveBLens::GetOuterContour() {
-	std::vector<float2> ret; return ret;
-
-	if (!isConstructing && numCtrlPoints >= 3) {
-		std::vector<float2> sidePointsPos, sidePointsNeg;
+	std::vector<float2> ret;
+	if (posOffsetBezierPoints.size()>2){
+		//if (!isConstructing && numCtrlPoints >= 3) {
 		float2 center = make_float2(x, y);
-
-		for (int ii = 0; ii < numCtrlPoints; ii++){
-
-			float2 dir; //tangent
-			if (ii == numCtrlPoints - 1)
-				dir = normalize(ctrlPoints[numCtrlPoints - 1] - ctrlPoints[numCtrlPoints - 2]);
-			else if (ii == 0)
-				dir = normalize(ctrlPoints[1] - ctrlPoints[0]);
-			else
-				dir = normalize((ctrlPoints[ii + 1] - ctrlPoints[ii - 1]) / 2);
-			float2 normal = make_float2(-dir.y, dir.x);
-
-			sidePointsPos.push_back(center + ctrlPoints[ii] + normal * width);
-			sidePointsNeg.push_back(center + ctrlPoints[ii] - normal * width);
+		int n = posOffsetBezierPoints.size();
+		for (int ii = 0; ii < n; ii++){
+			ret.push_back(posOffsetBezierPoints[ii] + center);
+		}
+		std::vector<float2> rettemp;
+		int m = negOffsetBezierPoints.size();
+		for (int ii = 0; ii < m; ii++){
+			rettemp.push_back(negOffsetBezierPoints[ii] + center);
 		}
 
+		std::reverse(rettemp.begin(), rettemp.end());
+		ret.insert(ret.end(), rettemp.begin(), rettemp.end());
 
-		std::vector<float2> posBezierPoints = BezierSmaple(sidePointsPos);
-		std::vector<float2> negBezierPoints = BezierSmaple(sidePointsNeg);
-		std::reverse(negBezierPoints.begin(), negBezierPoints.end());
-		ret.insert(ret.begin(), posBezierPoints.begin(), posBezierPoints.end());
-		ret.insert(ret.end(), negBezierPoints.begin(), negBezierPoints.end());
 	}
 	return ret;
 }
@@ -318,7 +342,7 @@ bool CurveBLens::adjustOffset()
 		int posOBPsize = posOffsetBezierPoints.size();
 		for (int i = 0; i < oriN; i++){
 			//may need to be improved !!!
-			if (abs(length(BezierPoints[i] - posOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(posOBPsize - 1))]) - width) < width*offsetDisThr){
+			if (abs(length(BezierPoints[i] - posOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(posOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
 				//newRationalCtrlPoints.push_back(subCtrlPointsPos[i]);
 			}
 			else{
@@ -361,7 +385,7 @@ bool CurveBLens::adjustOffset()
 		int negOBPsize = negOffsetBezierPoints.size();
 		for (int i = 0; i < oriN; i++){
 			//may need to be improved !!!
-			if (abs(length(BezierPoints[i] - negOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(negOBPsize - 1))]) - width) < width*offsetDisThr){
+			if (abs(length(BezierPoints[i] - negOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(negOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
 				//newRationalCtrlPoints.push_back(subCtrlPointsPos[i]);
 			}
 			else{
@@ -568,6 +592,41 @@ vector<float2> CurveBLens::BezierSmaple(vector<float2> p)
 	return res;
 }
 
+vector<float2> CurveBLens::BezierSmaple(vector<float2> p, vector<float> us)//for computing the tangent
+{
+	vector<float2> res;
+	if (p.size() >= 2){
+		int n = p.size() - 1;
+
+		double *combinationValue = new double[n + 1];
+		for (int i = 0; i <= n / 2; i++){
+			double cc = 1; //compute n!/i!/(n-i)! = ((n-i+1)*...*n)/(1*2*...*i)
+			for (int j = i; j >= 1; j--){
+				cc = cc*(n + j - i) / j;
+			}
+			combinationValue[i] = cc;
+		}
+		for (int i = n / 2 + 1; i <= n; i++){
+			combinationValue[i] = combinationValue[n - i];
+		}
+		
+		//for (int ui = 0; ui <= n*bezierSampleAccuracyRate; ui++){
+			//float u = ui*1.0 / (n*bezierSampleAccuracyRate);
+
+		for (int ui = 0; ui <us.size(); ui++){
+			float u = us[ui];
+			float2 pu = make_float2(0, 0);
+			for (int j = 0; j <= n; j++){
+				pu = pu + combinationValue[j] * pow(u, j) * pow(1 - u, n - j) * p[j];
+			}
+			res.push_back(pu);
+		}
+
+		delete combinationValue;
+	}
+	return res;
+}
+
 vector<float2> CurveBLens::BSplineOneSubdivide(vector<float2> p, int m, float u)
 {
 	vector<float2> res;
@@ -617,4 +676,95 @@ vector<float2> CurveBLens::BSplineSubdivide(vector<float2> p, int m, float u)
 		}
 	}
 	return res;
+}
+
+
+bool CurveBLens::PointInsideLens(int _x, int _y)
+{
+	if (isConstructing)
+		return true;
+	float2 screenCoord = make_float2(_x, _y);
+
+	float2 center = make_float2(x, y);
+
+	int numPosPoints = subCtrlPointsPos.size();
+	int numNegPoints = subCtrlPointsNeg.size();
+
+	//possible difference of the numPosPoints and numNegPoints makes the positive half and the negative half region do npt cover the whole lens region, according to current method
+#define DifResAdjust 0.05
+
+	{
+		//float2* normals = curveLensCtrlPoints.normals;
+		int numPosCP = subCtrlPointsPos.size();
+		//float2* keyPoints = curveLensCtrlPoints.keyPoints;
+
+		bool segmentNotFoundPos = true;
+		int keySegmentId = -1;
+		for (int ii = 0; ii < numPosCP - 1 && segmentNotFoundPos; ii++) {
+			float2 toPoint = screenCoord - (center + subCtrlPointsPos[ii]);
+			float2 dir = normalize(subCtrlPointsPos[ii + 1] - subCtrlPointsPos[ii]);
+			float2 minorDir = make_float2(-dir.y, dir.x);
+			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
+			if (disMinor < width && (disMinor >= 0 || (numPosPoints<numNegPoints && disMinor >= -width/focusRatio*DifResAdjust))){
+			//if (disMinor >= 0 && disMinor < width){
+				float2 ctrlPointAbsolute1 = center + subCtrlPointsPos[ii];
+				float2 ctrlPointAbsolute2 = center + subCtrlPointsPos[ii + 1];
+
+				float2 normal1 = normalize(posOffsetCtrlPoints[ii] - subCtrlPointsPos[ii]);
+				float2 normal2 = normalize(posOffsetCtrlPoints[ii + 1] - subCtrlPointsPos[ii + 1]);
+
+				//first check if screenCoord and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
+				//then check if screenCoord and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
+
+				if (((screenCoord.x - ctrlPointAbsolute1.x)*normal1.y - (screenCoord.y - ctrlPointAbsolute1.y)*normal1.x)
+					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normal1.y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normal1.x)
+					>= 0) {
+					if (((screenCoord.x - ctrlPointAbsolute2.x)*normal2.y - (screenCoord.y - ctrlPointAbsolute2.y)*normal2.x)
+						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normal2.y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normal2.x)
+						>= 0) {
+						segmentNotFoundPos = false;
+					}
+				}
+			}
+		}
+
+		if (!segmentNotFoundPos)
+			return true;
+	}
+
+	{
+		int numNegCP = subCtrlPointsNeg.size();
+
+		bool segmentNotFoundNeg = true;
+		int keySegmentId = -1;
+		for (int ii = 0; ii < numNegCP - 1 && segmentNotFoundNeg; ii++) {
+			float2 toPoint = screenCoord - (center + subCtrlPointsNeg[ii]);
+			float2 dir = normalize(subCtrlPointsNeg[ii + 1] - subCtrlPointsNeg[ii]);
+			float2 minorDir = make_float2(-dir.y, dir.x);
+			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
+			if (disMinor >-width && (disMinor <= 0 || (numPosPoints>numNegPoints && disMinor <= width/focusRatio*DifResAdjust))){
+				//if (disMinor <= 0 && disMinor >- width){
+				float2 ctrlPointAbsolute1 = center + subCtrlPointsNeg[ii];
+				float2 ctrlPointAbsolute2 = center + subCtrlPointsNeg[ii + 1];
+
+				float2 normal1 = normalize(negOffsetCtrlPoints[ii] - subCtrlPointsNeg[ii]);
+				float2 normal2 = normalize(negOffsetCtrlPoints[ii + 1] - subCtrlPointsNeg[ii + 1]);
+
+				//first check if screenCoord and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
+				//then check if screenCoord and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
+
+				if (((screenCoord.x - ctrlPointAbsolute1.x)*normal1.y - (screenCoord.y - ctrlPointAbsolute1.y)*normal1.x)
+					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normal1.y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normal1.x)
+					>= 0) {
+					if (((screenCoord.x - ctrlPointAbsolute2.x)*normal2.y - (screenCoord.y - ctrlPointAbsolute2.y)*normal2.x)
+						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normal2.y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normal2.x)
+						>= 0) {
+						segmentNotFoundNeg = false;
+					}
+				}
+			}
+		}
+
+		return !segmentNotFoundNeg;
+	}
 }

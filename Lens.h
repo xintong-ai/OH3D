@@ -37,15 +37,16 @@ struct CurveLensCtrlPoints
 
 struct CurveBLensInfo
 {
-	int numBCurvePoints;
-	float2 BCurvePoints[100];
+	int numBezierPoints;
+	float2 BezierPoints[100];
+	float2 BezierNormals[100];
 
 	int numPosPoints;
+	float2 subCtrlPointsPos[800];
 	float2 posOffsetCtrlPoints[800];
-	float2 posOffsetBezierPoints[800];
 	int numNegPoints;
+	float2 subCtrlPointsNeg[800];
 	float2 negOffsetCtrlPoints[800];
-	float2 negOffsetBezierPoints[800];
 
 	int x, y; //screen location
 	float width;
@@ -707,12 +708,17 @@ class CurveBLens :public Lens
 public:
 
 	float width;
+	float outerWidth;
+
 	int numCtrlPoints;
 	vector<float2> ctrlPoints; //used during constructing
 	vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
 	vector<float2> BezierPoints; //sampled points on the curve for drawing
+	vector<float2> BezierNormals; //sampled points on the curve for drawing
 
+	vector<float2> subCtrlPointsPos; //may contain more number than numCtrlPoints, used for refining
+	vector<float2> subCtrlPointsNeg; //may contain more number than numCtrlPoints, used for refining
 
 	vector<float2> posOffsetCtrlPoints;
 	vector<float2> negOffsetCtrlPoints;
@@ -721,7 +727,7 @@ public:
 
 	bool isConstructing;
 
-	CurveLensCtrlPoints curveLensCtrlPoints;
+	CurveBLensInfo curveBLensInfo;
 
 	CurveBLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
 
@@ -729,6 +735,7 @@ public:
 
 		width = _w;
 		focusRatio = 0.5;
+		outerWidth = width / focusRatio;
 		numCtrlPoints = 0;
 		type = LENS_TYPE::TYPE_CURVEB;
 	};
@@ -753,49 +760,7 @@ public:
 
 	
 
-	bool PointInsideLens(int _x, int _y)
-	{
-		if (isConstructing)
-			return true;
-		return true;
-
-		float2 screenPos = make_float2(_x, _y);
-		int numCtrlPoints = curveLensCtrlPoints.numCtrlPoints;
-		float2* ctrlPoints = curveLensCtrlPoints.ctrlPoints;
-
-		float2* normals = curveLensCtrlPoints.normals;
-		int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
-		float2* keyPoints = curveLensCtrlPoints.keyPoints;
-		int* keyPointIds = curveLensCtrlPoints.keyPointIds;
-
-		bool segmentNotFound = true;
-		int keySegmentId = -1;
-		for (int ii = 0; ii < numKeyPoints - 1 && segmentNotFound; ii++) {
-			float2 center = make_float2(x, y);
-			float2 toPoint = screenPos - (center + keyPoints[ii]);
-			float2 dir = normalize(keyPoints[ii + 1] - keyPoints[ii]);
-			float2 minorDir = make_float2(-dir.y, dir.x);
-			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
-			if (abs(disMinor) < width)	{
-				float2 ctrlPointAbsolute1 = center + keyPoints[ii];
-				float2 ctrlPointAbsolute2 = center + keyPoints[ii + 1];
-
-				//first check if screenPos and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
-				//then check if screenPos and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
-
-				if (((screenPos.x - ctrlPointAbsolute1.x)*normals[ii].y - (screenPos.y - ctrlPointAbsolute1.y)*normals[ii].x)
-					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normals[ii].y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normals[ii].x)
-					>= 0) {
-					if (((screenPos.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (screenPos.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
-						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normals[ii + 1].y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normals[ii + 1].x)
-						>= 0) {
-						segmentNotFound = false;
-					}
-				}
-			}
-		}
-		return !segmentNotFound;
-	}
+	bool PointInsideLens(int _x, int _y);
 
 	void FinishConstructing();
 	vector<float2> GetContour();
@@ -809,8 +774,6 @@ public:
 	int refinedRoundPos;
 	int refinedRoundNeg;
 	void RefineLensBoundary();
-	vector<float2> subCtrlPointsPos; //may contain more number than numCtrlPoints, used for refining
-	vector<float2> subCtrlPointsNeg; //may contain more number than numCtrlPoints, used for refining
 
 	void offsetControlPointsPos();
 	void offsetControlPointsNeg();
@@ -851,12 +814,14 @@ public:
 	void UpdateTransferredData()
 	{
 		//!!! may need to be more sophisticate
-		curveLensCtrlPoints.focusRatio = focusRatio;
+		//curveLensCtrlPoints.focusRatio = focusRatio;
 	}
 
 	vector<float2> BezierOneSubdivide(vector<float2> p, vector<float2> poly1, vector<float2> poly2, float u);
 	vector<float2> BezierSubdivide(vector<float2> p, int m, float u);
 	vector<float2> BezierSmaple(vector<float2> p);
+	vector<float2> BezierSmaple(vector<float2> p, vector<float> us);//for computing the tangent
+
 
 	vector<float2> BSplineSubdivide(vector<float2> p, int m, float u);
 	vector<float2> BSplineOneSubdivide(vector<float2> p, int m, float u);
