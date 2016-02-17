@@ -51,6 +51,7 @@ struct Lens
 	virtual std::vector<float2> GetContour() = 0;
 	virtual std::vector<float2> GetOuterContour() = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
+	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
 };
 

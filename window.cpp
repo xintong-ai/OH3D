@@ -304,6 +304,6 @@ void Window::init()
 
 void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
 {
-	std::cout << thumbTip.x() << "," << thumbTip.y() << "," << thumbTip.z() << std::endl;
-	lensRenderable->SlotLensCenterChanged(make_float3(thumbTip.x(), thumbTip.y(), thumbTip.z()));
+	std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
+	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
 }

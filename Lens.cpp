@@ -11,6 +11,22 @@ float Lens::GetClipDepth(float* mv, float* pj)
 
 float4 Lens::GetCenter() { return make_float4(c.x, c.y, c.z, 1.0f); }
 
+void Lens::SetClipDepth(float d, float* mv, float* pj)
+{
+	matrix4x4 invModelview, invProjection;
+	invertMatrix(mv, &invModelview.v[0].x);
+	invertMatrix(pj, &invProjection.v[0].x);
+	float4 cenClip = Object2Clip(GetCenter(), mv, pj);
+	std::cout << "cenClip.z:" << cenClip.z << std::endl;
+	cenClip.z = d;
+//	float4 cenShiftClip = cenClip + make_float4(0, 0, -0.01, 0);
+	float4 cenShiftObj = Clip2ObjectGlobal(cenClip, &invModelview.v[0].x, &invProjection.v[0].x);
+	//float4 dir4 = cenShiftObj - GetCenter();// make_float3(dir_object.x, dir_object.y, dir_object.z);
+	//float3 dir3 = make_float3(dir4.x, dir4.y, dir4.z);
+	//dir3 = dir3 * (1.0f / length(dir3)) * v * (-0.05);
+	SetCenter(make_float3(cenShiftObj));
+}
+
 void Lens::ChangeClipDepth(int v, float* mv, float* pj)
 {
 	matrix4x4 invModelview, invProjection;

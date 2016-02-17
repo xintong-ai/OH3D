@@ -64,6 +64,8 @@ public:
 	void GetProjection(float* m){ for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
+
+	void GetDepthRange(float2& v){ v = depthRange; }
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;
@@ -86,6 +88,7 @@ private:
 
     void TimerEnd();
 
+	void UpdateDepthRange();
 
     QPointF pixelPosToViewPos(const QPointF& p);
 
@@ -128,6 +131,8 @@ private:
 
 	GLfloat modelview[16];
 	GLfloat projection[16];
+
+	float2 depthRange;
 
 private slots:
 	void animate();
