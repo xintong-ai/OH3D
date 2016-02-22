@@ -52,7 +52,8 @@ private:
 	QPushButton* addPolyLineLensBtn;
 	QPushButton* addCurveLensBtn;
 	std::unique_ptr<QPushButton> delLensBtn;
-
+	QPushButton* adjustOffsetBtn;
+	QPushButton*refineBoundaryBtn;
 	//GlyphRenderable* glyphRenderable;
 	//LensRenderable* lensRenderable;
 	//GridRenderable* gridRenderable;
@@ -87,11 +88,19 @@ private:
 	//QPushButton* CreateRegularButton(const char* name);
 	//QSlider* CreateSliceSlider(TexPlaneRenderable* renderable);
 
+
+	QPushButton *addCurveBLensBtn;
+	private slots:
+	void AddCurveBLens();
+
 private slots:
 	void AddLens();
 	void AddLineLens();
 	void AddPolyLineLens();
 	void AddCurveLens();
+
+	void adjustOffset();
+	void RefineLensBoundary();
 //void SlotSliceOrieChanged(bool clicked);
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);

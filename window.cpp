@@ -120,7 +120,7 @@ Window::Window()
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
 	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
-	addCurveLensBtn = new QPushButton("Add Curve Line Lens");
+	addCurveLensBtn = new QPushButton("Add Curve Lens");
 	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 
@@ -162,6 +162,11 @@ Window::Window()
 	controlLayout->addWidget(addLineLensBtn);
 	controlLayout->addWidget(addPolyLineLensBtn);
 	controlLayout->addWidget(addCurveLensBtn);
+
+	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
+	controlLayout->addWidget(addCurveBLensBtn);
+	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
+	
 	controlLayout->addWidget(delLensBtn.get());
 
 	controlLayout->addWidget(gridCheck);
@@ -181,6 +186,18 @@ Window::Window()
 	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
 	
+
+
+
+
+
+	adjustOffsetBtn = new QPushButton("Adjust Offset");
+	controlLayout->addWidget(adjustOffsetBtn);
+	connect(adjustOffsetBtn, SIGNAL(clicked()), this, SLOT(adjustOffset()));
+
+	refineBoundaryBtn = new QPushButton("Refine Lens Boundary Line");
+	controlLayout->addWidget(refineBoundaryBtn);
+	connect(refineBoundaryBtn, SIGNAL(clicked()), this, SLOT(RefineLensBoundary()));
 
 	//connect(radioX, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
 	//connect(radioY, SIGNAL(clicked(bool)), this, SLOT(SlotSliceOrieChanged(bool)));
@@ -279,6 +296,36 @@ void Window::AddCurveLens()
 	lensRenderable->AddCurveLens();
 }
 
+void Window::AddCurveBLens()
+{
+	lensRenderable->AddCurveBLens();
+}
+
+void Window::adjustOffset()
+{
+	lensRenderable->adjustOffset();
+}
+
+void Window::RefineLensBoundary()
+{
+	lensRenderable->RefineLensBoundary();
+}
+
+//void Window::SlotSliceOrieChanged(bool clicked)
+//{
+//	if (radioX->isChecked()){
+//		sliceSlider->setRange(0, cubemap->GetInnerDim(0)/*vecReader->GetVolumeDim().z*/ - 1);
+//		glyphRenderable->SlotSetSliceOrie(0);
+//	}	else if (radioY->isChecked()){
+//		sliceSlider->setRange(0, cubemap->GetInnerDim(1)/*vecReader->GetVolumeDim().z*/ - 1);
+//		glyphRenderable->SlotSetSliceOrie(1);
+//	}	else if (radioZ->isChecked()){
+//		sliceSlider->setRange(0, cubemap->GetInnerDim(2)/*vecReader->GetVolumeDim().z*/ - 1);
+//		glyphRenderable->SlotSetSliceOrie(2);
+//	}
+//	sliceSlider->setValue(0);
+//}
+//
 //void Window::animate()
 //{
 //	//int v = heightScaleSlider->value();

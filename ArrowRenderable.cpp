@@ -124,6 +124,7 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		uniform float Shininess;
 		in vec4 eyeCoords;
 		in vec4 fragColor;
+
 		uniform float Bright;
 
 		smooth in vec3 tnorm;
@@ -144,6 +145,7 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		}
 
 		void main() {
+
 			FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
 		}
 	);
@@ -244,6 +246,7 @@ void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 		//qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 		qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * rotations[i]).normalMatrix().data());
 		qgl->glUniformMatrix4fv(sp->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
+
 
 		float maxSize = 8;
 		qgl->glUniform1f(sp->uniform("Bright"), glyphBright[i]);

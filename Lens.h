@@ -3,6 +3,8 @@
 #include <vector_types.h>
 #include <helper_math.h>
 #include <vector>
+
+#include <iostream>
 using namespace std;
 
 enum LENS_TYPE{
@@ -10,6 +12,7 @@ enum LENS_TYPE{
 	TYPE_LINE,
 	TYPE_POLYLINE,
 	TYPE_CURVE,
+	TYPE_CURVEB
 };
 
 struct PolyLineLensCtrlPoints
@@ -28,8 +31,28 @@ struct CurveLensCtrlPoints
 	float2 keyPoints[200];
 	int keyPointIds[200];
 	float2 normals[200];
-	float ratio;//ratio of focus region and transition region
+	float focusRatio;//ratio of focus region and transition region
 };
+
+
+struct CurveBLensInfo
+{
+	int numBezierPoints;
+	float2 BezierPoints[25];
+	float2 BezierNormals[25];
+
+	int numPosPoints;
+	float2 subCtrlPointsPos[100];
+	float2 posOffsetCtrlPoints[100];
+	int numNegPoints;
+	float2 subCtrlPointsNeg[100];
+	float2 negOffsetCtrlPoints[100];
+
+	int x, y; //screen location
+	float width;
+	float focusRatio;//ratio of focus region and transition region
+};
+
 
 struct Lens
 {
@@ -48,8 +71,9 @@ struct Lens
 		x = _x; y = _y; c = _c; focusRatio = _focusRatio; sideSize = _sideSize;
 	}
 	virtual bool PointInsideLens(int x, int y) = 0;
-	virtual std::vector<float2> GetContour() = 0;
-	virtual std::vector<float2> GetOuterContour() = 0;
+	virtual vector<float2> GetContour() = 0;
+	virtual vector<float2> GetOuterContour() = 0;
+	virtual vector<float2> GetExtraLensRendering() = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
@@ -64,8 +88,8 @@ struct CircleLens :public Lens
 		return dis < radius;
 	}
 
-	std::vector<float2> GetContourTemplate(int rr) {
-		std::vector<float2> ret;
+	vector<float2> GetContourTemplate(int rr) {
+		vector<float2> ret;
 		const int num_segments = 32;
 		for (int ii = 0; ii < num_segments; ii++)
 		{
@@ -79,15 +103,18 @@ struct CircleLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetContour() {
+	vector<float2> GetContour() {
 		return GetContourTemplate(radius);
 	}
 
-	std::vector<float2> GetOuterContour() {
+	vector<float2> GetOuterContour() {
 		return GetContourTemplate(radius / focusRatio);
 	}
 
-
+	vector<float2> GetExtraLensRendering(){
+		vector<float2> res(0);
+		return res;
+	}
 };
 
 
@@ -135,19 +162,19 @@ struct LineLens :public Lens
 		return false;
 	}
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
+	vector<float2> GetOuterContour() {
+		vector<float2> ret;
 		return ret;
 	}
 
-	std::vector<float2> GetContour() {
+	vector<float2> GetContour() {
 		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
 		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
 		float sigmoidCutOff = 0.4f; // assuming the sigmoid function value is constant when input is larger than sigmoidCutOff
 
 		float2 minorDirection = make_float2(-direction.y, direction.x);
 
-		std::vector<float2> ret;
+		vector<float2> ret;
 
 		const int num_segments = 20;
 		for (int ii = 0; ii < num_segments; ii++)
@@ -185,6 +212,11 @@ struct LineLens :public Lens
 		
 		return ret;
 	}
+
+	vector<float2> GetExtraLensRendering(){
+		vector<float2> res(0);
+		return res;
+	}
 };
 
 struct PolyLineLens :public Lens
@@ -196,9 +228,9 @@ struct PolyLineLens :public Lens
 	float2 direction;
 	float lSemiMajor, lSemiMinor;
 
-	std::vector<float2> ctrlPoints;
-	std::vector<float2> dirs;
-	std::vector<float2> angleBisectors;
+	vector<float2> ctrlPoints;
+	vector<float2> dirs;
+	vector<float2> angleBisectors;
 
 	//used for transfering data to GPU
 	PolyLineLensCtrlPoints polyLineLensCtrlPoints;
@@ -223,8 +255,8 @@ struct PolyLineLens :public Lens
 		type = LENS_TYPE::TYPE_POLYLINE;
 	};
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
+	vector<float2> GetOuterContour() {
+		vector<float2> ret;
 		return ret;
 	}
 
@@ -377,8 +409,8 @@ struct PolyLineLens :public Lens
 		return !segmentNotFound;
 	}
 
-	std::vector<float2> GetContour(){
-		std::vector<float2> ret;
+	vector<float2> GetContour(){
+		vector<float2> ret;
 		if (numCtrlPoints == 1){
 			float2 center = make_float2(x, y);
 
@@ -408,8 +440,8 @@ struct PolyLineLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetExtraLensRendering(){
-		std::vector<float2> ret;
+	vector<float2> GetExtraLensRendering(){
+		vector<float2> ret;
 
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
@@ -433,12 +465,10 @@ public:
 
 	int width;
 	int numCtrlPoints;
-	std::vector<float2> ctrlPoints;
-	std::vector<float2> ctrlPointsAbs;
+	vector<float2> ctrlPoints;
+	vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
 	bool isConstructing;
-
-	float ratio = 0.5;
 
 	CurveLensCtrlPoints curveLensCtrlPoints;
 
@@ -447,7 +477,7 @@ public:
 		isConstructing = true;
 
 		width = _w;
-
+		focusRatio = 0.5;
 		numCtrlPoints = 0;
 		type = LENS_TYPE::TYPE_CURVE;
 	};
@@ -486,13 +516,13 @@ public:
 			}
 
 			//compute curveLensCtrlPoints
-			curveLensCtrlPoints.ratio = ratio;
+			curveLensCtrlPoints.focusRatio = focusRatio;
 			curveLensCtrlPoints.numCtrlPoints = numCtrlPoints;
 			for (int i = 0; i < numCtrlPoints; i++){
 				curveLensCtrlPoints.ctrlPoints[i] = ctrlPoints[i];
 			}
 
-			std::vector<float2> sidePointsPos, sidePointsNeg;
+			vector<float2> sidePointsPos, sidePointsNeg;
 
 			int numKeyPoints = 0;
 
@@ -526,8 +556,8 @@ public:
 				else{
 					float2 candiPos = center + ctrlPoints[ii] + normal*width;
 					float2 candiNeg = center + ctrlPoints[ii] - normal*width;
-					float2 candiPosTransitionRegion = center + ctrlPoints[ii] + normal*width / ratio;
-					float2 candiNegTransitionRegion = center + ctrlPoints[ii] - normal*width / ratio;
+					float2 candiPosTransitionRegion = center + ctrlPoints[ii] + normal*width / focusRatio;
+					float2 candiNegTransitionRegion = center + ctrlPoints[ii] - normal*width / focusRatio;
 
 					if (!intersect(center + ctrlPoints[lastValidID], 2 * sidePointsPos[numKeyPoints - 1] - (center + ctrlPoints[lastValidID]),
 						center + ctrlPoints[ii], candiPosTransitionRegion)
@@ -591,17 +621,11 @@ public:
 		return !segmentNotFound;
 	}
 
-	std::vector<float2> GetOuterContour() {
-		std::vector<float2> ret;
-		return ret;
-	}
-
-	std::vector<float2> GetContour(){
-		std::vector<float2> ret;
-
+	vector<float2> GetContour(){
+		vector<float2> ret;
 
 		if (!isConstructing && numCtrlPoints >= 3) {
-			std::vector<float2> sidePointsPos, sidePointsNeg;
+			vector<float2> sidePointsPos, sidePointsNeg;
 
 			float2 center = make_float2(x, y);
 
@@ -619,9 +643,30 @@ public:
 		return ret;
 	}
 
+	vector<float2> GetOuterContour() {
+		vector<float2> ret;
 
-	std::vector<float2> GetExtraLensRendering(){
-		std::vector<float2> ret;
+		if (!isConstructing && numCtrlPoints >= 3) {
+			vector<float2> sidePointsPos, sidePointsNeg;
+
+			float2 center = make_float2(x, y);
+
+			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
+			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
+			float2 * normals = curveLensCtrlPoints.normals;
+
+			ret.resize(2 * numKeyPoints);
+			for (int jj = 0; jj < numKeyPoints; jj++){
+				ret[jj] = center + keyPoints[jj] + normals[jj] * width / focusRatio;
+				ret[2 * numKeyPoints - 1 - jj] = center + keyPoints[jj] - normals[jj] * width / focusRatio;;
+			}
+		}
+
+		return ret;
+	}
+
+	vector<float2> GetExtraLensRendering(){
+		vector<float2> ret;
 		if (isConstructing){
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				ret.push_back(make_float2(ctrlPointsAbs[ii].x, ctrlPointsAbs[ii].y));
@@ -644,6 +689,143 @@ public:
 	{
 		return (ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D));
 	}
+
+	void UpdateTransferredData()
+	{
+		//!!! may need to be more sophisticate
+		curveLensCtrlPoints.focusRatio = focusRatio;
+	}
+};
+
+
+class CurveBLens :public Lens
+{
+#define numCtrlPointsLimit 25
+#define distanceThr 2
+#define distanceThrCount 10
+
+#define refineIterationLimit 2
+
+public:
+
+	float width;
+	float outerWidth;
+
+	int numCtrlPoints;
+	vector<float2> ctrlPoints; //used during constructing
+	vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
+
+	vector<float2> BezierPoints; //sampled points on the curve for drawing
+	vector<float2> BezierNormals; //sampled points on the curve for drawing
+
+	vector<float2> subCtrlPointsPos; //may contain more number than numCtrlPoints, used for refining
+	vector<float2> subCtrlPointsNeg; //may contain more number than numCtrlPoints, used for refining
+
+	vector<float2> posOffsetCtrlPoints;
+	vector<float2> negOffsetCtrlPoints;
+	vector<float2> posOffsetBezierPoints;
+	vector<float2> negOffsetBezierPoints;
+
+	bool isConstructing;
+
+	CurveBLensInfo curveBLensInfo;
+
+	CurveBLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
+
+		isConstructing = true;
+
+		width = _w;
+		focusRatio = 0.5;
+		outerWidth = width / focusRatio;
+		numCtrlPoints = 0;
+		type = LENS_TYPE::TYPE_CURVEB;
+	};
+
+	void AddCtrlPoint(int _x, int _y){
+
+		if (numCtrlPoints < numCtrlPointsLimit) {
+
+			//first check if the candidate point is not too close to previous points
+			int tt = max(0, numCtrlPoints - distanceThrCount);
+			bool notFoundTooClose = true;
+			for (int i = numCtrlPoints - 1; i >= tt; i--){
+				if (length(ctrlPointsAbs[i] - make_float2(_x, _y)) < distanceThr)
+					notFoundTooClose = false;
+			}
+			if (notFoundTooClose) {
+				ctrlPointsAbs.push_back(make_float2(_x, _y));
+				numCtrlPoints++;
+			}
+		}
+	}
+
+	
+
+	bool PointInsideLens(int _x, int _y);
+
+	void FinishConstructing();
+	vector<float2> GetContour();
+	vector<float2> GetOuterContour();
+	vector<float2> GetOuterContourold();
+	vector<float2> GetExtraLensRendering();
+	vector<float2> GetExtraLensRendering2();
+
+	vector<float2> removeSelfIntersection(vector<float2> p, bool isDuplicating);
+	bool adjustOffset();
+	int refinedRoundPos;
+	int refinedRoundNeg;
+	void RefineLensBoundary();
+
+	void offsetControlPointsPos();
+	void offsetControlPointsNeg();
+
+	void computeBoundaryPos();
+	void computeBoundaryNeg();
+
+	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
+	{
+		return (C.y - A.y)*(B.x - A.x) >(B.y - A.y)*(C.x - A.x);
+	}
+
+	bool intersect(float2 A, float2 B, float2 C, float2 D) //whether segment AB and segmnent CD is intersected
+	{
+		float lengthThr = 0.00001;
+		if (length(A - B) < lengthThr || length(C - D) < lengthThr || length(A - C) < lengthThr ||
+			length(A - D) < lengthThr || length(C - B) < lengthThr || length(D - B) < lengthThr)
+			return false;
+		return (ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D));
+	}
+
+	void intersectPoint(float2 p1, float2 p2, float2 p3, float2 p4, float2 &ret) //get the intersected point of line p1p2 and p3p4. return the result in P. if parallel, return the mid point of C and D
+		//source: http://stackoverflow.com/questions/4543506/algorithm-for-intersection-of-2-lines
+	{
+		//line p1p2: (x-p1.x)/(p2.x-p1.x) = (y-p1.y)/(p2.y-p1.y)
+		//change to form Ax + By = C
+		float A1 = p2.y - p1.y, B1 = -(p2.x - p1.x), C1 = p1.x*(p2.y - p1.y) - p1.y*(p2.x - p1.x);
+		float A2 = p4.y - p3.y, B2 = -(p4.x - p3.x), C2 = p3.x*(p4.y - p3.y) - p3.y*(p4.x - p3.x);
+		float delta = A1*B2 - A2*B1;
+		if (abs(delta) < 0.000001){
+			ret = (p2 + p3) / 2;
+		}
+		else{
+			ret = make_float2((B2*C1 - B1*C2) / delta, (A1*C2 - A2*C1) / delta);
+		}
+	}
+
+	void UpdateTransferredData()
+	{
+		//!!! may need to be more sophisticate
+		//curveLensCtrlPoints.focusRatio = focusRatio;
+	}
+
+	vector<float2> BezierOneSubdivide(vector<float2> p, vector<float2> poly1, vector<float2> poly2, float u);
+	vector<float2> BezierSubdivide(vector<float2> p, int m, float u);
+	vector<float2> BezierSmaple(vector<float2> p);
+	vector<float2> BezierSmaple(vector<float2> p, vector<float> us);//for computing the tangent
+
+
+	vector<float2> BSplineSubdivide(vector<float2> p, int m, float u);
+	vector<float2> BSplineOneSubdivide(vector<float2> p, int m, float u);
 };
 
 #endif

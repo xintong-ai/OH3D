@@ -21,6 +21,7 @@ public:
 	void AddLineLens();
 	void AddPolyLineLens();
 	void AddCurveLens();
+	void AddCurveBLens();
 
 	void mousePress(int x, int y, int modifier) override;
 	void mouseRelease(int x, int y, int modifier) override;
@@ -31,5 +32,7 @@ public slots:
 	void SlotSideSizeChanged(int v);
 	void SlotDelLens();
 	void SlotLensCenterChanged(float3 p);
+	void adjustOffset();
+	void RefineLensBoundary();
 };
 #endif
