@@ -7,6 +7,7 @@
 #include <QOpenGLWidget>
 #include <vector_types.h>
 #include <vector_functions.h>
+
 enum INTERACT_MODE{
 	//	DRAG_LENS_EDGE,
 	//	DRAG_LENS_TWO_ENDS,
@@ -25,6 +26,7 @@ class Trackball;
 class Rotation;
 class StopWatchInterface;
 class Renderable;
+class VRWidget;
 
 class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
@@ -58,7 +60,12 @@ public:
 
 	void SetInteractMode(INTERACT_MODE v) { interactMode = v; }
 
+	void GetModelview(float* m){ for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
+	void GetProjection(float* m){ for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 
+	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
+
+	void GetDepthRange(float2& v){ v = depthRange; }
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;
@@ -74,12 +81,14 @@ protected:
 
 
 private:
+	VRWidget* vrWidget = nullptr;
     void computeFPS();
 
     void TimerStart();
 
     void TimerEnd();
 
+	void UpdateDepthRange();
 
     QPointF pixelPosToViewPos(const QPointF& p);
 
@@ -119,6 +128,11 @@ private:
 
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
+
+	GLfloat modelview[16];
+	GLfloat projection[16];
+
+	float2 depthRange;
 
 private slots:
 	void animate();

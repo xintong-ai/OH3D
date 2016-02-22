@@ -24,6 +24,15 @@ GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 	glyphBright.assign(pos.size(), 1.0f);
 }
 
+GlyphRenderable::~GlyphRenderable()
+{ 
+	if (nullptr != glProg){
+		delete glProg;
+		glProg = nullptr;
+	}
+}
+
+
 void GlyphRenderable::RecomputeTarget()
 {
 	displace->RecomputeTarget();

@@ -38,15 +38,15 @@ struct CurveLensCtrlPoints
 struct CurveBLensInfo
 {
 	int numBezierPoints;
-	float2 BezierPoints[100];
-	float2 BezierNormals[100];
+	float2 BezierPoints[25];
+	float2 BezierNormals[25];
 
 	int numPosPoints;
-	float2 subCtrlPointsPos[800];
-	float2 posOffsetCtrlPoints[800];
+	float2 subCtrlPointsPos[100];
+	float2 posOffsetCtrlPoints[100];
 	int numNegPoints;
-	float2 subCtrlPointsNeg[800];
-	float2 negOffsetCtrlPoints[800];
+	float2 subCtrlPointsNeg[100];
+	float2 negOffsetCtrlPoints[100];
 
 	int x, y; //screen location
 	float width;
@@ -75,6 +75,7 @@ struct Lens
 	virtual vector<float2> GetOuterContour() = 0;
 	virtual vector<float2> GetExtraLensRendering() = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
+	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
 };
 
@@ -699,11 +700,11 @@ public:
 
 class CurveBLens :public Lens
 {
-#define numCtrlPointsLimit 100
+#define numCtrlPointsLimit 25
 #define distanceThr 2
 #define distanceThrCount 10
 
-#define refineIterationLimit 3
+#define refineIterationLimit 2
 
 public:
 

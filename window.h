@@ -20,15 +20,23 @@ class QRadioButton;
 class QTimer;
 class LensRenderable;
 class GridRenderable;
+class VRWidget;
+class VRGlyphRenderable;
+class LeapListener;
+namespace Leap{
+	class Controller;
+}
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
 public:
     Window();
     ~Window();
+	void init();
 
 private:
     std::unique_ptr<GLWidget> openGL;
+	std::unique_ptr<VRWidget> vrWidget;
 	//QSlider* sliceSlider;
 	//QSlider* heightScaleSlider;
 	//QSlider* sizeScaleSlider;
@@ -54,7 +62,11 @@ private:
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;
-	//QPushButton* addNodeBtn;
+	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
+
+	LeapListener* listener;
+	Leap::Controller* controller;
+		//QPushButton* addNodeBtn;
 	//QPushButton* viewBtn;
 	//QSlider* xSlider;
 	//QSlider* ySlider;
@@ -93,6 +105,7 @@ private slots:
 	//void animate();
 	//void SlotSetAnimation(bool doAnimation);
 	void SlotToggleGrid(bool b);
+	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
 
 	//void XSliderChanged(int i);
 	//void YSliderChanged(int i);

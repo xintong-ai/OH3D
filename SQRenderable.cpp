@@ -15,7 +15,7 @@
 #include "glwidget.h"
 using namespace std;
 
-void SQRenderable::LoadShaders()
+void SQRenderable::LoadShaders(ShaderProgram*& shaderProg) 
 {
 
 #define GLSL(shader) "#version 440\n" #shader
@@ -82,35 +82,35 @@ void SQRenderable::LoadShaders()
 	}
 	);
 
-	glProg = std::make_unique<ShaderProgram>();
-	glProg->initFromStrings(vertexVS, vertexFS);
+	shaderProg = new ShaderProgram;
+	shaderProg->initFromStrings(vertexVS, vertexFS);
 
-	glProg->addAttribute("VertexPosition");
-	glProg->addAttribute("VertexNormal");
-	glProg->addUniform("LightPosition");
-	glProg->addUniform("Ka");
-	glProg->addUniform("Kd");
-	glProg->addUniform("Ks");
-	glProg->addUniform("Shininess");
+	shaderProg->addAttribute("VertexPosition");
+	shaderProg->addAttribute("VertexNormal");
+	shaderProg->addUniform("LightPosition");
+	shaderProg->addUniform("Ka");
+	shaderProg->addUniform("Kd");
+	shaderProg->addUniform("Ks");
+	shaderProg->addUniform("Shininess");
 
-	glProg->addUniform("ModelViewMatrix");
-	glProg->addUniform("NormalMatrix");
-	glProg->addUniform("ProjectionMatrix");
-	glProg->addUniform("SQRotMatrix");
+	shaderProg->addUniform("ModelViewMatrix");
+	shaderProg->addUniform("NormalMatrix");
+	shaderProg->addUniform("ProjectionMatrix");
+	shaderProg->addUniform("SQRotMatrix");
 	
 
-	glProg->addUniform("Transform");
-	glProg->addUniform("Scale");
-	glProg->addUniform("Bright");
+	shaderProg->addUniform("Transform");
+	shaderProg->addUniform("Scale");
+	shaderProg->addUniform("Bright");
 }
 
 void SQRenderable::init()
 {
-	LoadShaders();
-	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
-	m_vao->create();
+	LoadShaders(glProg);
+	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
+	//m_vao->create();
 
-	m_vao->bind();
+	//m_vao->bind();
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
@@ -131,26 +131,28 @@ void SQRenderable::init()
 	qgl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), &indices[0], GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	m_vao->release();
+	//m_vao->release();
 }
 
-void SQRenderable::draw(float modelview[16], float projection[16])
+void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
-	if (!visible)
-		return;
 
-	RecordMatrix(modelview, projection);
-	ComputeDisplace();
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 
-	glMatrixMode(GL_MODELVIEW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
+
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
 	int firstVertex = 0;
 	int firstIndex = 0;
 
 	for (int i = 0; i < pos.size(); i++) {
 		glPushMatrix();
-		glProg->use();
-		m_vao->bind();
+		//m_vao->bind();
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -172,22 +174,35 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 		qgl->glUniformMatrix4fv(glProg->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
 
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 4, GL_FLOAT, 
+		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 4, GL_FLOAT,
 			GL_FALSE, sizeof(float4), (char*)NULL + firstVertex * sizeof(float4));
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
-		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, 
+		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT,
 			GL_TRUE, sizeof(float3), (char*)NULL + firstVertex * sizeof(float3));
 		qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
 		glDrawElements(GL_TRIANGLE_STRIP, nIndices[i], GL_UNSIGNED_INT, (char*)NULL + firstIndex * sizeof(unsigned int));
 
-		m_vao->release();
-		glProg->disable();
+		//m_vao->release();
 		glPopMatrix();
 
 		firstVertex += nVerts[i];
 		firstIndex += nIndices[i];
 	}
+}
+
+void SQRenderable::draw(float modelview[16], float projection[16])
+{
+	if (!visible)
+		return;
+
+	RecordMatrix(modelview, projection);
+	ComputeDisplace();
+
+	glProg->use();
+	DrawWithoutProgram(modelview, projection, glProg);
+	glProg->disable();
+
 }
 void SQRenderable::UpdateData()
 {

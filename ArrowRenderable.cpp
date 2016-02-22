@@ -73,7 +73,7 @@ GlyphRenderable(_pos)
 }
 
 
-void ArrowRenderable::LoadShaders()
+void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
 
 #define GLSL(shader) "#version 440\n" #shader
@@ -150,41 +150,34 @@ void ArrowRenderable::LoadShaders()
 		}
 	);
 
-	glProg = std::make_unique<ShaderProgram>();
-	glProg->initFromStrings(vertexVS, vertexFS);
+	shaderProg->initFromStrings(vertexVS, vertexFS);
 
-	glProg->addAttribute("VertexPosition");
-	glProg->addAttribute("VertexColor");
-	glProg->addAttribute("VertexNormal");
-	glProg->addUniform("LightPosition");
-	glProg->addUniform("Ka");
-	glProg->addUniform("Kd");
-	glProg->addUniform("Ks");
-	glProg->addUniform("Shininess");
+	shaderProg->addAttribute("VertexPosition");
+	shaderProg->addAttribute("VertexColor");
+	shaderProg->addAttribute("VertexNormal");
+	shaderProg->addUniform("LightPosition");
+	shaderProg->addUniform("Ka");
+	shaderProg->addUniform("Kd");
+	shaderProg->addUniform("Ks");
+	shaderProg->addUniform("Shininess");
 
-	glProg->addUniform("ModelViewMatrix");
-	glProg->addUniform("NormalMatrix");
-	glProg->addUniform("ProjectionMatrix");
-	glProg->addUniform("SQRotMatrix");
-	glProg->addUniform("scale");
-
-	glProg->addUniform("Bright");
-
-
-	glProg->addUniform("Transform");
-
+	shaderProg->addUniform("ModelViewMatrix");
+	shaderProg->addUniform("NormalMatrix");
+	shaderProg->addUniform("ProjectionMatrix");
+	shaderProg->addUniform("SQRotMatrix");
+	shaderProg->addUniform("scale");
+	shaderProg->addUniform("Bright");
+	shaderProg->addUniform("Transform");
 }
 
 
 
 void ArrowRenderable::init()
 {
-	LoadShaders();
-	m_vao = std::make_unique<QOpenGLVertexArrayObject>();
-	m_vao->create();
-
-	m_vao->bind();
-
+	if (initialized)
+		return;
+	glProg = new ShaderProgram;
+	LoadShaders(glProg);
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
@@ -200,7 +193,6 @@ void ArrowRenderable::init()
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
 
-
 	qgl->glGenBuffers(1, &vbo_colors);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
 	qgl->glVertexAttribPointer(glProg->attribute("VertexColor"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -208,67 +200,79 @@ void ArrowRenderable::init()
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexColor"));
 
-
 	qgl->glGenBuffers(1, &vbo_indices);
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 	qgl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)* glyphMesh->GetNumIndices(), glyphMesh->GetIndices(), GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	m_vao->release();
+	initialized = true;
 }
+
+void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
+{
+	int firstVertex = 0;
+	int firstIndex = 0;
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	qgl->glVertexAttribPointer(sp->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(sp->attribute("VertexPosition"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_normals);
+	qgl->glVertexAttribPointer(sp->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(sp->attribute("VertexNormal"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
+	qgl->glVertexAttribPointer(sp->attribute("VertexColor"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(sp->attribute("VertexColor"));
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
+
+	for (int i = 0; i < pos.size(); i++) {
+
+		float4 shift = pos[i];
+
+		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
+		q_modelview = q_modelview.transposed();
+		float3 cen = actor->DataCenter();
+		qgl->glUniform4f(sp->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
+
+		//float3 vec = vecs[i];
+		//float cosX = dot(vec, make_float3(1, 0, 0));
+		//float cosY = dot(vec, make_float3(0, 1, 0));
+		//qgl->glUniform3f(sp->uniform("Ka"), (cosY + 1) / 2, (cosX + 1) / 2, 1 - (cosX + 1) / 2);
+		//qgl->glUniform3f(sp->uniform("Ka"), 0.8f, 0.8f, 0.8f);
+		qgl->glUniform3f(sp->uniform("Kd"), 0.3f, 0.3f, 0.3f);
+		qgl->glUniform3f(sp->uniform("Ks"), 0.2f, 0.2f, 0.2f);
+		qgl->glUniform1f(sp->uniform("Shininess"), 5);
+		qgl->glUniform3fv(sp->uniform("Transform"), 1, &shift.x);
+		qgl->glUniformMatrix4fv(sp->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
+		qgl->glUniformMatrix4fv(sp->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
+		//qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
+		qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * rotations[i]).normalMatrix().data());
+		qgl->glUniformMatrix4fv(sp->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
+
+
+		float maxSize = 8;
+		qgl->glUniform1f(sp->uniform("Bright"), glyphBright[i]);
+		qgl->glUniform1f(sp->uniform("scale"), val[i] / lMax * maxSize);
+
+		qgl->glUniform3fv(sp->uniform("Ka"), 1, &cols[i].x);
+		glColor3f(1,1,0);
+		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());
+	}
+}
+
 
 void ArrowRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!visible)
 		return;
 
+	//if (!initialized)
+	//	return;
+
 	RecordMatrix(modelview, projection);
 	ComputeDisplace();
 
-	glMatrixMode(GL_MODELVIEW);
-
-	int firstVertex = 0;
-	int firstIndex = 0;
-
-	for (int i = 0; i < pos.size(); i++) {
-		
-		float4 shift = pos[i];
-
-		glProg->use();
-		m_vao->bind();
-
-		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
-		q_modelview = q_modelview.transposed();
-		float3 cen = actor->DataCenter();
-		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
-
-		//float3 vec = vecs[i];
-		//float cosX = dot(vec, make_float3(1, 0, 0));
-		//float cosY = dot(vec, make_float3(0, 1, 0));
-		//qgl->glUniform3f(glProg->uniform("Ka"), (cosY + 1) / 2, (cosX + 1) / 2, 1 - (cosX + 1) / 2);
-		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
-		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
-		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
-		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
-		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &shift.x);
-		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
-		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
-		//qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
-		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * rotations[i]).normalMatrix().data());
-		qgl->glUniformMatrix4fv(glProg->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
-		
-		float maxSize = 8;
-
-		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
-		qgl->glUniform1f(glProg->uniform("scale"), val[i] / lMax * maxSize);
-
-		qgl->glUniform3fv(glProg->uniform("Ka"), 1, &cols[i].x);
-
-		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());
-		m_vao->release();
-		glProg->disable();
-		glPopMatrix();
-	}
+	glProg->use();
+	DrawWithoutProgram(modelview, projection, glProg);
+	glProg->disable();
 }
 void ArrowRenderable::UpdateData()
 {

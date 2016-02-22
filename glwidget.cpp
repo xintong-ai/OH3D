@@ -8,6 +8,10 @@
 #include <Renderable.h>
 #include <Trackball.h>
 #include <Rotation.h>
+#include <GlyphRenderable.h>
+#include <VRWidget.h>
+#include <TransformFunc.h>
+
 
 GLWidget::GLWidget(QWidget *parent)
     : QOpenGLWidget(parent)
@@ -26,7 +30,9 @@ GLWidget::GLWidget(QWidget *parent)
     transRot.setToIdentity();
 
 	grabGesture(Qt::PinchGesture);
+
 }
+
 
 void GLWidget::AddRenderable(const char* name, void* r)
 {
@@ -53,7 +59,8 @@ QSize GLWidget::sizeHint() const
 
 void GLWidget::initializeGL()
 {
-    initializeOpenGLFunctions();
+	makeCurrent();
+	initializeOpenGLFunctions();
     sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
@@ -88,7 +95,8 @@ void GLWidget::TimerEnd()
 
 void GLWidget::paintGL() {
     /****transform the view direction*****/
-    TimerStart();
+	makeCurrent();
+	TimerStart();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -103,16 +111,18 @@ void GLWidget::paintGL() {
     glScalef(scale, scale, scale);
 	glTranslatef(-dataCenter.x, -dataCenter.y, -dataCenter.z);
 
-    GLfloat modelview[16];
-    GLfloat projection[16];
+
     glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
     glGetFloatv(GL_PROJECTION_MATRIX, projection);
-
+	//glViewport(0, 0, (GLint)width, (GLint)height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(true);
 	for (auto renderer : renderers)
 		renderer.second->draw(modelview, projection);
 
     TimerEnd();
+	vrWidget->UpdateGL();
 }
 
 void Perspective(float fovyInDegrees, float aspectRatio,
@@ -134,7 +144,7 @@ void GLWidget::resizeGL(int w, int h)
 
     if(!initialized) {
         //make init here because the window size is not updated in InitiateGL()
-		//makeCurrent();
+		makeCurrent();
 		for (auto renderer:renderers)
 			renderer.second->init();
         initialized = true;
@@ -201,6 +211,8 @@ void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 	QPoint posGL = pixelPosToGLPos(event->pos());
 	for (auto renderer : renderers)
 		renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+
+	UpdateDepthRange();
 }
 
 void GLWidget::wheelEvent(QWheelEvent * event)
@@ -213,6 +225,7 @@ void GLWidget::wheelEvent(QWheelEvent * event)
 	}
 	if (doTransform){
 		transScale *= exp(event->delta() * -0.001);
+		UpdateDepthRange();
 	}
 	update();
 }
@@ -316,4 +329,27 @@ void GLWidget::animate()
 float3 GLWidget::DataCenter()
 {
 	return (dataMin + dataMax) * 0.5;
+}
+
+void GLWidget::UpdateDepthRange()
+{
+	float4 p[8];
+	p[0] = make_float4(dataMin.x, dataMin.y, dataMin.z, 1.0f);
+	p[1] = make_float4(dataMin.x, dataMin.y, dataMax.z, 1.0f);
+	p[2] = make_float4(dataMin.x, dataMax.y, dataMin.z, 1.0f);
+	p[3] = make_float4(dataMin.x, dataMax.y, dataMax.z, 1.0f);
+	p[4] = make_float4(dataMax.x, dataMin.y, dataMin.z, 1.0f);
+	p[5] = make_float4(dataMax.x, dataMin.y, dataMax.z, 1.0f);
+	p[6] = make_float4(dataMax.x, dataMax.y, dataMin.z, 1.0f);
+	p[7] = make_float4(dataMax.x, dataMax.y, dataMax.z, 1.0f);
+
+	float4 pClip[8];
+	std::vector<float> clipDepths;
+	for (int i = 0; i < 8; i++) {
+		pClip[i] = Object2Clip(p[i], modelview, projection);
+		clipDepths.push_back(pClip[i].z);
+	}
+	depthRange.x = clamp(*std::min_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
+	depthRange.y = clamp(*std::max_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
+	std::cout << "depthRange: " << depthRange.x << "," << depthRange.y << std::endl;
 }

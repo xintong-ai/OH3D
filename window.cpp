@@ -12,6 +12,13 @@
 
 #include "VecReader.h"
 #include "ArrowRenderable.h"
+#include "DataMgr.h"
+#include "VRWidget.h"
+#include "VRGlyphRenderable.h"
+
+
+#include <LeapListener.h>
+#include <Leap.h>
 
 enum DATA_TYPE
 {
@@ -34,13 +41,20 @@ Window::Window()
     setWindowTitle(tr("Interactive Glyph Visualization"));
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
-	//DataMgr dataMgr;
+	DataMgr dataMgr;
+	
 	//QSizePolicy fixedPolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
 
 	//this->move(100, 100);
 
 	/********GL widget******/
 	openGL = std::make_unique<GLWidget>();
+	vrWidget = std::make_unique<VRWidget>(openGL.get());
+	vrWidget->setWindowFlags(Qt::Window);
+	openGL->SetVRWidget(vrWidget.get());
+	//vrWidget->context()->setShareContext(openGL->context());
+	//vrWidget->setWindowState(Qt::WindowFullScreen);
+	//openGL->setWindowState(Qt::WindowFullScreen);
 	QSurfaceFormat format;
     format.setDepthBufferSize(24);
     format.setStencilBufferSize(8);
@@ -48,64 +62,34 @@ Window::Window()
     format.setProfile(QSurfaceFormat::CoreProfile);
     openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
-	//VecReader* vecReader = new VecReader("D:/data/plume/15plume3d421-504x504x2048.vec");
-	//VecReader* vecReader = new VecReader("D:/OneDrive/data/plume/15plume3d421.vec");
-	//VecReader* vecReader = new VecReader("D:/OneDrive/data/nek/nek_512.vec");
-	//VecReader* vecReader = new VecReader("data/nek.vec");
-	
-	 
-	//VecReader* vecReader = new VecReader("E:/OSU-files/HaloWorkNew/vechist_data/15plume3d421.vec");
-	//VecReader* vecReader = new VecReader("D:/OneDrive/data/plume/15plume3d421-504x504x2048.vec");
-	//VecReader* vecReader = new VecReader("D:/OneDrive/data/isabel/UVWf01.vec");
-	//VecReader* vecReader = new VecReader("D:/OneDrive/data/tornado/1.vec");
-
-	//Streamline* streamline = new Streamline(vecReader->GetFileName().c_str());
-	//LineRenderable* lineRenderable = new LineRenderable(streamline);
-	//openGL->AddRenderable("streamlines", lineRenderable);
-
-	//cubemap = new Cubemap(vecReader);
-	//cubemap = new Cubemap("D:/Dropbox/hist/VecHist/python/crystal/data/universe_hist.bin");
-	//cubemap->GenCubeMap(55, 55, 300, 10, 10, 10);
-	//glyphRenderable = new GlyphRenderable(cubemap);
-	//int3 innerDim = cubemap->GetInnerDim();
-	//glyphRenderable->SetVolumeDim(innerDim.x, innerDim.y, innerDim.z);
-	//openGL->AddRenderable("glyphs", glyphRenderable);
 	std::unique_ptr<Reader> reader;
 
-
-	const DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE;//DATA_TYPE::TYPE_TENSOR; //
+	DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE; //DATA_TYPE::TYPE_VECTOR;//DATA_TYPE::TYPE_TENSOR; //
+	if ("TYPE_PARTICLE" == dataMgr.GetConfig("DATA_TYPE")){
+		dataType = DATA_TYPE::TYPE_PARTICLE;
+	}
+	else if ("TYPE_VECTOR" == dataMgr.GetConfig("DATA_TYPE")){
+		dataType = DATA_TYPE::TYPE_VECTOR;
+	}
+	else if ("TYPE_TENSOR" == dataMgr.GetConfig("DATA_TYPE")){
+		dataType = DATA_TYPE::TYPE_TENSOR;
+	}
+	const std::string dataPath = dataMgr.GetConfig("DATA_PATH");
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
-		reader = std::make_unique<ParticleReader>
-			("D:/Data/FPM/smoothinglength_0.44/run15/099.vtu");
-		//reader = std::make_unique<ParticleReader>
-		//	("D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu");
-
-		//ParticleReader* particleReader = new ParticleReader("D:/Data/VISContest2016/099.vtu");
-		//Displace* displace = new Displace();
+		reader = std::make_unique<ParticleReader>(dataPath.c_str());
 		glyphRenderable = std::make_unique<SphereRenderable>(
 			((ParticleReader*)reader.get())->GetPos(),
 			((ParticleReader*)reader.get())->GetVal());
 	}
 	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
-		reader = std::make_unique<DTIVolumeReader>
-			("D:/Data/dti-challenge-2015/patient1_dti/patient1_dti.nhdr");
-		//reader = std::make_unique<DTIVolumeReader>
-		//	("D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr");
+		reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
 		std::vector<float4> pos;
 		std::vector<float> val;
 		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
 		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-		//glyphRenderable = std::make_unique<SQRenderable>(
-		//	);
-		//	((ParticleReader*)reader.get())->GetPos(),
-		//	((ParticleReader*)reader.get())->GetVal());
 	}
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
-		reader = std::make_unique<VecReader>
-			("D:/Data/VectorData/15plume3d421.vec");
-			//("D:/Data/VectorData/UVWf01.vec");
-			//("D:/onedrive/data/plume/15plume3d421-126x126x512.vec");
-			//("D:/Data/VectorData/UVWf01.vec");
+		reader = std::make_unique<VecReader>(dataPath.c_str());
 		std::vector<float4> pos;
 		std::vector<float3> vec;
 		std::vector<float> val;
@@ -120,15 +104,14 @@ Window::Window()
 	lensRenderable = std::make_unique<LensRenderable>();
 
 	gridRenderable = std::make_unique<GridRenderable>(64);
-	//sphereRenderable->SetVolRange(posMin, posMax);
-	//BoxRenderable* bbox = new BoxRenderable(vol);// cubemap->GetInnerDim());
-	//bbox->SetVisibility(true);
 	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
 
+	vrGlyphRenderable = std::make_unique<VRGlyphRenderable>(glyphRenderable.get());
+	vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
 	///********controls******/
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 
@@ -140,8 +123,6 @@ Window::Window()
 	addCurveLensBtn = new QPushButton("Add Curve Lens");
 	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
-	//addThingsLayout->addWidget(addLensBtn);
-	//addThingsLayout->addWidget(addLineLensBtn);
 
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
@@ -158,6 +139,12 @@ Window::Window()
 	QSlider* glyphSizeAdjustSlider = CreateSlider();
 	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotGlyphSizeAdjustChanged(int)));
 
+	listener = new LeapListener();
+	controller = new Leap::Controller();
+	controller->addListener(*listener);
+
+	connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
+		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 
 
 	//radioX = new QRadioButton(tr("&X"));
@@ -283,18 +270,15 @@ Window::Window()
 
 	//interactLayout->addWidget(animationCheck);
 	//controlLayout->addStretch();
-	mainLayout->addWidget(openGL.get(),3);
+	mainLayout->addWidget(openGL.get(), 3);
+	//mainLayout->addWidget(vrWidget.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
 }
 
 void Window::AddLens()
 {
-	//sphereRenderable->AddCircleLens();
 	lensRenderable->AddCircleLens();
-	//openGL->AddLens();
-	//lensWidSlider->setValue(((GLLensTracer*)lensRenderable)->GetLensWidth() * 10);
-	//UpdateStatusLabel();
 }
 
 void Window::AddLineLens()
@@ -357,6 +341,16 @@ void Window::SlotToggleGrid(bool b)
 }
 
 Window::~Window() {
-	//TOOO:
-//	delete ;
+}
+
+void Window::init()
+{
+	vrWidget->show();
+}
+
+
+void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
+{
+	std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
+	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
 }

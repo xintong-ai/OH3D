@@ -373,3 +373,30 @@ void LensRenderable::SlotDelLens()
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }
+
+void LensRenderable::SlotLensCenterChanged(float3 p)
+{
+	if (lenses.size() > 0){
+		//lenses.back()->c = p;
+		int2 winSize = actor->GetWindowSize();
+		float3 pScreen;
+		pScreen.x = (p.x + 117.5) / 235.0 * winSize.x;
+		pScreen.y = (p.y - 82.5) / 235.0 * winSize.y;
+		const float aa = 0.02f;
+		float2 depthRange;
+		actor->GetDepthRange(depthRange);
+		//pScreen.z = clamp((1.0f - aa * , 0.0f, 1.0f);
+		std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
+		pScreen.z = depthRange.x + (depthRange.y - depthRange.x) * clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f);
+		std::cout << "depth:" << pScreen.z << std::endl;
+		lenses.back()->SetClipDepth(pScreen.z, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+		//pScreen.z = clamp(aa *(1 - (p.y + 73.5) / 147), 0, 1);
+		//lenses.back()->c.z = pScreen.z;
+		lenses.back()->x = pScreen.x;
+		lenses.back()->y = pScreen.y;
+		//interaction box
+		//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		actor->UpdateGL();
+	}
+}
