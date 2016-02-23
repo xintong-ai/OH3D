@@ -62,34 +62,51 @@ struct functor_Displace
 	int lensX, lensY, circleR;
 	float lensD;
 	float focusRatio;
-	float sideSize;
 	template<typename Tuple>
 	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
 		float2 screenPos = thrust::get<0>(t);
 		float4 clipPos = thrust::get<1>(t);
-		float2 ret = screenPos;
+		float2 newScreenPos = screenPos;
 		float brightness = 1.0f;
-		if (clipPos.z < lensD) {
-			float glyphSize = 1;
-			float focusRatioIncrease = (lensD - clipPos.z) * 32 * sideSize;
-			float newfocusRatio = focusRatio + focusRatioIncrease;
-			if (newfocusRatio > 1)
-				newfocusRatio = 1;
-			ret = DisplaceCircleLens(lensX, lensY, circleR * newfocusRatio / focusRatio, screenPos, glyphSize, newfocusRatio);
-			if ((lensD - clipPos.z) > 0.001 
-				&& length(make_float2(lensX, lensY) - ret) < (circleR / focusRatio)) {
-				float2 dir = screenPos - make_float2(lensX, lensY);
-				ret = normalize(dir) * circleR / focusRatio + make_float2(lensX, lensY);
-			}
-			thrust::get<2>(t) = glyphSize;
-		}else if (length(make_float2(lensX, lensY) - ret) < (circleR / focusRatio)){
-			brightness = clamp(1.3f - 300 * abs(clipPos.z - lensD), 0.1f, 1.0f);
+		float2 lensCen = make_float2(lensX, lensY);
+		float2 vec = screenPos - lensCen;
+		float dis2Cen = length(vec);
+		const float thickDisp = 0.003;
+		const float thickFocus = 0.003;
+		const float dark = 0.05;
+		float outerR = circleR / focusRatio;
+		int myCase = 0;
+		if (dis2Cen < outerR){
+			if ((lensD - clipPos.z) > thickDisp){
+				myCase = 1;//cutaway
+			} else if (clipPos.z < lensD){
+				myCase = 2;//displace
+			} else if (dis2Cen > circleR){
+				myCase = 3;//turn dark
+			} else if ((clipPos.z - lensD) > thickFocus) {
+				myCase = 4;//graduately turn dark
+			} 
 		}
-		thrust::get<0>(t) = ret;
+		float2 dir = normalize(vec);
+		switch (myCase){
+		case 1:
+			newScreenPos = dir * outerR + lensCen;
+			break;
+		case 2:
+			newScreenPos = lensCen + dir * G(dis2Cen / outerR, focusRatio) * outerR;
+			break;
+		case 3:
+			brightness = dark;
+			break;
+		case 4:
+			brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
+			break;
+		}
+		thrust::get<0>(t) = newScreenPos;
 		thrust::get<3>(t) = brightness;
 	}
-	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, float _sideSize)
-		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), sideSize(_sideSize){}
+	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio)
+		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio){}
 };
 
 struct functor_Displace_Line
@@ -614,7 +631,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							d_vec_glyphSizeTarget.end(),
 							d_vec_glyphBrightTarget.end()
 							)),
-							functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, l->sideSize));
+							functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio));
 						break;
 
 					}
@@ -626,54 +643,6 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							functor_Displace_Line(l->x, l->y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
 						break;
 					}
-					//case LENS_TYPE::TYPE_POLYLINE:
-					//{
-					//	PolyLineLens* l = (PolyLineLens*)lenses[i];
-					//	if (l->numCtrlPoints >= 2){
-					//		thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-					//			d_vec_posClip.begin(), d_vec_posScreen.begin(),
-					//			functor_Displace_PolyLine(l->x, l->y, l->width, l->polyLineLensCtrlPoints, l->direction, l->lSemiMajor, l->lSemiMinor, l->GetClipDepth(modelview, projection)));
-					//	}
-					//	else{
-					//		thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-					//			d_vec_posClip.begin(), d_vec_posScreen.begin(),
-					//			functor_Displace_NotFinish());
-					//	}
-					//	break;
-					//}
-					//case LENS_TYPE::TYPE_CURVE:
-					//{
-					//	CurveLens* l = (CurveLens*)lenses[i];
-					//	if (l->isConstructing){
-					//		thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-					//			d_vec_posClip.begin(), d_vec_posScreen.begin(),
-					//			functor_Displace_NotFinish());
-					//	}
-					//	else{
-					//		/*
-					//		thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-					//			d_vec_posClip.begin(), d_vec_posScreen.begin(),
-					//			functor_Displace_Curve(l->x, l->y, l->width, l->curveLensCtrlPoints, l->GetClipDepth(modelview, projection)));
-					//			*/
-					//		thrust::for_each(
-					//			thrust::make_zip_iterator(
-					//			thrust::make_tuple(
-					//			d_vec_posScreen.begin(),
-					//			d_vec_posClip.begin(),
-					//			d_vec_glyphSizeTarget.begin(),
-					//			d_vec_glyphBrightTarget.begin()
-					//			)),
-					//			thrust::make_zip_iterator(
-					//			thrust::make_tuple(
-					//			d_vec_posScreen.end(),
-					//			d_vec_posClip.end(),
-					//			d_vec_glyphSizeTarget.end(),
-					//			d_vec_glyphBrightTarget.end()
-					//			)),
-					//			functor_Displace_Curve(l->x, l->y, l->width, l->curveLensCtrlPoints, l->GetClipDepth(modelview, projection)));
-					//	}
-					//	break;
-					//}
 					case LENS_TYPE::TYPE_CURVEB:
 					{
 						CurveBLens* l = (CurveBLens*)lenses[i];

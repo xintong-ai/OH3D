@@ -60,15 +60,15 @@ struct Lens
 	float3 c; //center
 	int x, y; //screen location
 	float focusRatio;
-	float sideSize;
+	//float sideSize;
 	float4 GetCenter();// { return make_float4(c.x, c.y, c.z, 1.0f); }
 	void SetCenter(float3 _c){ c = _c; }
 	void SetFocusRatio(float _v){ focusRatio = _v; }
-	void SetSideSize(float _v){ sideSize = _v; }
+	//void SetSideSize(float _v){ sideSize = _v; }
 	float GetClipDepth(float* mv, float* pj);
-	Lens(int _x, int _y, float3 _c, float _focusRatio = 0.6, float _sideSize = 0.5) 
+	Lens(int _x, int _y, float3 _c, float _focusRatio = 0.6)//, float _sideSize = 0.5) 
 	{
-		x = _x; y = _y; c = _c; focusRatio = _focusRatio; sideSize = _sideSize;
+		x = _x; y = _y; c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;
 	}
 	virtual bool PointInsideLens(int x, int y) = 0;
 	virtual vector<float2> GetContour() = 0;
@@ -82,7 +82,7 @@ struct Lens
 struct CircleLens :public Lens
 {
 	float radius;
-	CircleLens(int _x, int _y, int _r, float3 _c, float _focusRatio = 0.5, float _sideSize = 0.5) : Lens(_x, _y, _c, _focusRatio, _sideSize){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
+	CircleLens(int _x, int _y, int _r, float3 _c, float _focusRatio = 0.5) : Lens(_x, _y, _c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
 	bool PointInsideLens(int _x, int _y) {
 		float dis = length(make_float2(_x, _y) - make_float2(x, y));
 		return dis < radius;
