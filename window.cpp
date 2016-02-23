@@ -130,8 +130,6 @@ Window::Window()
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
-	//controlLayout->addWidget(addPolyLineLensBtn);
-	//controlLayout->addWidget(addCurveLensBtn);
 	controlLayout->addWidget(addCurveBLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(gridCheck);

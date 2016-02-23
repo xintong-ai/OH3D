@@ -29,9 +29,9 @@ public:
 	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
 	//void SetDispalceOn(bool b) { displaceOn = b; }
+	float3 findClosetGlyph(float3 aim);
+
 public slots:
 	void SlotGlyphSizeAdjustChanged(int v);
-
-	float3 findClosetGlyph(float3 aim);
 };
 #endif

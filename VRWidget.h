@@ -16,7 +16,6 @@
 //	//CUT_LINE,
 //	//ADD_NODE,
 //	MODIFY_LENS,
-//	//	CUT_POLYLINE,
 //	//DRAW_ELLIPSE,
 //};
 
