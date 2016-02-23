@@ -58,7 +58,7 @@ struct Lens
 {
 	LENS_TYPE type;
 	float3 c; //center
-	int x, y; //screen location
+	//int x, y; //screen location
 	float focusRatio;
 	//float sideSize;
 	float4 GetCenter();// { return make_float4(c.x, c.y, c.z, 1.0f); }
@@ -66,14 +66,16 @@ struct Lens
 	void SetFocusRatio(float _v){ focusRatio = _v; }
 	//void SetSideSize(float _v){ sideSize = _v; }
 	float GetClipDepth(float* mv, float* pj);
-	Lens(int _x, int _y, float3 _c, float _focusRatio = 0.6)//, float _sideSize = 0.5) 
+	float2 GetScreenPos(float* mv, float* pj, int winW, int winH);
+	void SetScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);
+	Lens(float3 _c, float _focusRatio = 0.6)//, float _sideSize = 0.5) //int _x, int _y, 
 	{
-		x = _x; y = _y; c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;
+		c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;//x = _x; y = _y; 
 	}
-	virtual bool PointInsideLens(int x, int y) = 0;
-	virtual vector<float2> GetContour() = 0;
-	virtual vector<float2> GetOuterContour() = 0;
-	virtual vector<float2> GetExtraLensRendering() = 0;
+	virtual bool PointInsideLens(int x, int y, float* mv, float* pj, int winW, int winH) = 0;
+	virtual vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
+	virtual vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
+	virtual vector<float2> GetExtraLensRendering(float* mv, float* pj, int winW, int winH) = 0;
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
@@ -82,13 +84,14 @@ struct Lens
 struct CircleLens :public Lens
 {
 	float radius;
-	CircleLens(int _x, int _y, int _r, float3 _c, float _focusRatio = 0.5) : Lens(_x, _y, _c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
-	bool PointInsideLens(int _x, int _y) {
-		float dis = length(make_float2(_x, _y) - make_float2(x, y));
+	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
+	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
+		float2 center = GetScreenPos(mv, pj, winW, winH);
+		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < radius;
 	}
 
-	vector<float2> GetContourTemplate(int rr) {
+	vector<float2> GetContourTemplate(int rr, float* mv, float* pj, int winW, int winH) {
 		vector<float2> ret;
 		const int num_segments = 32;
 		for (int ii = 0; ii < num_segments; ii++)
@@ -97,21 +100,21 @@ struct CircleLens :public Lens
 
 			float ax = rr * cosf(theta);//calculate the x component 
 			float ay = rr * sinf(theta);//calculate the y component 
-
-			ret.push_back(make_float2(x + ax, y + ay));//output vertex 
+			float2 center = GetScreenPos(mv, pj, winW, winH);
+			ret.push_back(make_float2(center.x + ax, center.y + ay));//output vertex 
 		}
 		return ret;
 	}
 
-	vector<float2> GetContour() {
-		return GetContourTemplate(radius);
+	vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
+		return GetContourTemplate(radius, mv, pj, winW, winH);
 	}
 
-	vector<float2> GetOuterContour() {
-		return GetContourTemplate(radius / focusRatio);
+	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
+		return GetContourTemplate(radius / focusRatio, mv, pj, winW, winH);
 	}
 
-	vector<float2> GetExtraLensRendering(){
+	vector<float2> GetExtraLensRendering(float* mv, float* pj, int winW, int winH){
 		vector<float2> res(0);
 		return res;
 	}
@@ -124,7 +127,7 @@ struct LineLens :public Lens
 	float2 direction; //suppose normalized
 	float ratio; //the ratio of lSemiMajorAxis and lSemiMinorAxis
 
-	LineLens(int _x, int _y, int _r, float3 _c) : Lens(_x, _y, _c){ 
+	LineLens(int _r, float3 _c) : Lens(_c){ 
 		lSemiMajorAxis = _r;
 		ratio = 3.0f;
 		lSemiMinorAxis = lSemiMajorAxis / ratio;
@@ -133,19 +136,19 @@ struct LineLens :public Lens
 		type = LENS_TYPE::TYPE_LINE;
 	};
 
-	bool PointInsideLens(int _x, int _y) {
+	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
 		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
 
 		//dot product of (_x-x, _y-y) and direction
-
-		float2 toPoint = make_float2(_x - x, _y - y);
+		float2 center = GetScreenPos(mv, pj, winW, winH);
+		float2 toPoint = make_float2(_x - center.x, _y - center.y);
 		float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
 
 		if (abs(disMajor) < lSemiMajorAxis) {
 			float2 minorDirection = make_float2(-direction.y, direction.x);
 			//dot product of (_x-x, _y-y) and minorDirection
-			float disMinor = (_x - x)*minorDirection.x + (_y - y)*minorDirection.y;
+			float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
 			
 			float disMajorRatio = disMajor / lSemiMajorAxis;
 			float disSigmoid;
@@ -162,12 +165,12 @@ struct LineLens :public Lens
 		return false;
 	}
 
-	vector<float2> GetOuterContour() {
+	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
 		vector<float2> ret;
 		return ret;
 	}
 
-	vector<float2> GetContour() {
+	vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
 		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
 		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
 		float sigmoidCutOff = 0.4f; // assuming the sigmoid function value is constant when input is larger than sigmoidCutOff
@@ -181,7 +184,7 @@ struct LineLens :public Lens
 		{
 			float tt = -1.0f + sigmoidCutOff*ii / num_segments;
 
-			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+			ret.push_back(GetScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
 				+ (1 / (1 + exp(-40 * (tt + 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
 		}
 
@@ -189,7 +192,7 @@ struct LineLens :public Lens
 		{
 			float tt = 1.0f - sigmoidCutOff + sigmoidCutOff*ii / num_segments;
 
-			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+			ret.push_back(GetScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
 				+ (1 / (1 + exp(40 * (tt - 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
 		}
 
@@ -198,7 +201,7 @@ struct LineLens :public Lens
 		{
 			float tt = 1.0f - sigmoidCutOff*ii / num_segments;
 
-			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+			ret.push_back(GetScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
 				- (1 / (1 + exp(40 * (tt - 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
 		}
 
@@ -206,14 +209,14 @@ struct LineLens :public Lens
 		{
 			float tt = -1.0f + sigmoidCutOff - sigmoidCutOff*ii / num_segments;
 
-			ret.push_back(make_float2(x, y) + tt*lSemiMajorAxis*direction
+			ret.push_back(GetScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
 				- (1 / (1 + exp(-40 * (tt + 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
 		}
 		
 		return ret;
 	}
 
-	vector<float2> GetExtraLensRendering(){
+	vector<float2> GetExtraLensRendering(float* mv, float* pj, int winW, int winH){
 		vector<float2> res(0);
 		return res;
 	}
@@ -237,7 +240,7 @@ struct PolyLineLens :public Lens
 
 	bool isConstructing;
 
-	void FinishConstructing(){
+	void FinishConstructing(float* mv, float* pj, int winW, int winH){
 		if (numCtrlPoints >= 2){
 			computePCA();
 
@@ -245,7 +248,7 @@ struct PolyLineLens :public Lens
 		}
 	}
 
-	PolyLineLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
+	PolyLineLens(int _w, float3 _c) : Lens(_c){
 
 		isConstructing = true;
 
@@ -255,7 +258,7 @@ struct PolyLineLens :public Lens
 		type = LENS_TYPE::TYPE_POLYLINE;
 	};
 
-	vector<float2> GetOuterContour() {
+	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
 		vector<float2> ret;
 		return ret;
 	}
@@ -314,31 +317,33 @@ struct PolyLineLens :public Lens
 			lSemiMinor = lSemiMinor + max(lSemiMinor*0.1, 10.0);
 		}
 	}
-	void AddCtrlPoint(int _x, int _y){
+	void AddCtrlPoint(int _x, int _y, float* mv, float* pj, int winW, int winH){
 
 		if (numCtrlPoints == 0){
-			x = _x;
-			y = _y;
+			//x = _x;
+			//y = _y;
+			SetScreenPos(_x, _y, mv, pj, winW, winH);
 			ctrlPoints.push_back(make_float2(0, 0));
 			numCtrlPoints = 1;
 		}
 		else {
 			//do the process due to the relative position
-
-			float sumx = x*numCtrlPoints, sumy = y*numCtrlPoints;
+			float2 center = GetScreenPos(mv, pj, winW, winH);
+			float sumx = center.x*numCtrlPoints, sumy = center.y*numCtrlPoints;
 			sumx += _x, sumy += _y;  //sum of absolute position
 			float newx = sumx / (numCtrlPoints + 1), newy = sumy / (numCtrlPoints + 1);
 
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
-				ctrlPoints[ii].x = ctrlPoints[ii].x + x - newx;
-				ctrlPoints[ii].y = ctrlPoints[ii].y + y - newy;
+				ctrlPoints[ii].x = ctrlPoints[ii].x + center.x - newx;
+				ctrlPoints[ii].y = ctrlPoints[ii].y + center.y - newy;
 			}
 
 			ctrlPoints.push_back(make_float2(_x - newx, _y - newy));
 			numCtrlPoints++;
 
-			x = newx;
-			y = newy;
+			//x = newx;
+			//y = newy;
+			SetScreenPos(newx, newy, mv, pj, winW, winH);
 		}
 
 		dirs.resize(numCtrlPoints - 1);
@@ -376,11 +381,12 @@ struct PolyLineLens :public Lens
 		}
 	}
 
-	bool PointInsideLens(int _x, int _y)
+	//bool PointInsideLens(int _x, int _y)
+	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH)
 	{
 		bool segmentNotFound = true;
 		for (int ii = 0; ii < numCtrlPoints - 1 && segmentNotFound; ii++) {
-			float2 center = make_float2(x, y);
+			float2 center = GetScreenPos(mv, pj, winW, winH);
 			float2 screenPos = make_float2(_x, _y);
 			float2 toPoint = screenPos - (center + ctrlPoints[ii]);
 			float2 dir = dirs[ii];
@@ -409,10 +415,10 @@ struct PolyLineLens :public Lens
 		return !segmentNotFound;
 	}
 
-	vector<float2> GetContour(){
+	vector<float2> GetContour(float* mv, float* pj, int winW, int winH){
 		vector<float2> ret;
 		if (numCtrlPoints == 1){
-			float2 center = make_float2(x, y);
+			float2 center = GetScreenPos(mv, pj, winW, winH);
 
 			float2 rightUp = normalize(make_float2(1.0, 1.0));
 			float2 rightDown = normalize(make_float2(1.0, -1.0));
@@ -425,7 +431,7 @@ struct PolyLineLens :public Lens
 		}
 		else if (numCtrlPoints >= 2) {
 			ret.resize(2 * numCtrlPoints);
-			float2 center = make_float2(x, y);
+			float2 center = GetScreenPos(mv, pj, winW, winH);
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				float2 dir;
 				if (ii == numCtrlPoints - 1)
@@ -440,11 +446,12 @@ struct PolyLineLens :public Lens
 		return ret;
 	}
 
-	vector<float2> GetExtraLensRendering(){
+	vector<float2> GetExtraLensRendering(float* mv, float* pj, int winW, int winH){
 		vector<float2> ret;
+		float2 center = GetScreenPos(mv, pj, winW, winH);
 
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
+			ret.push_back(make_float2(ctrlPoints[ii].x + center.x, ctrlPoints[ii].y + center.y));
 		}
 
 		return ret;
@@ -472,7 +479,7 @@ public:
 
 	CurveLensCtrlPoints curveLensCtrlPoints;
 
-	CurveLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
+	CurveLens(int _w, float3 _c) : Lens(_c){
 
 		isConstructing = true;
 
@@ -500,7 +507,7 @@ public:
 		}
 	}
 
-	void FinishConstructing(){
+	void FinishConstructing(float* mv, float* pj, int winW, int winH){
 		if (numCtrlPoints >= 3){
 			isConstructing = false;
 
@@ -508,11 +515,12 @@ public:
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
 				sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
 			}
-			x = sumx / numCtrlPoints, y = sumy / numCtrlPoints;
+			SetScreenPos(sumx / numCtrlPoints, sumy / numCtrlPoints, mv, pj, winW, winH);
 			ctrlPoints.resize(numCtrlPoints);
+			float2 center = GetScreenPos(mv, pj, winW, winH);
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
-				ctrlPoints[ii].x = ctrlPointsAbs[ii].x - x;
-				ctrlPoints[ii].y = ctrlPointsAbs[ii].y - y;
+				ctrlPoints[ii].x = ctrlPointsAbs[ii].x - center.x;
+				ctrlPoints[ii].y = ctrlPointsAbs[ii].y - center.y;
 			}
 
 			//compute curveLensCtrlPoints
@@ -525,8 +533,6 @@ public:
 			vector<float2> sidePointsPos, sidePointsNeg;
 
 			int numKeyPoints = 0;
-
-			float2 center = make_float2(x, y);
 
 			int lastValidID = 0;
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -578,7 +584,7 @@ public:
 		}
 	}
 
-	bool PointInsideLens(int _x, int _y)
+	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH)
 	{
 		if (isConstructing)
 			return true;
@@ -595,7 +601,7 @@ public:
 		bool segmentNotFound = true;
 		int keySegmentId = -1;
 		for (int ii = 0; ii < numKeyPoints - 1 && segmentNotFound; ii++) {
-			float2 center = make_float2(x, y);
+			float2 center = GetScreenPos(mv, pj, winW, winH);
 			float2 toPoint = screenPos - (center + keyPoints[ii]);
 			float2 dir = normalize(keyPoints[ii + 1] - keyPoints[ii]);
 			float2 minorDir = make_float2(-dir.y, dir.x);
@@ -621,13 +627,13 @@ public:
 		return !segmentNotFound;
 	}
 
-	vector<float2> GetContour(){
+	vector<float2> GetContour(float* mv, float* pj, int winW, int winH){
 		vector<float2> ret;
 
 		if (!isConstructing && numCtrlPoints >= 3) {
 			vector<float2> sidePointsPos, sidePointsNeg;
 
-			float2 center = make_float2(x, y);
+			float2 center = GetScreenPos(mv, pj, winW, winH);
 
 			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
 			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
@@ -643,13 +649,13 @@ public:
 		return ret;
 	}
 
-	vector<float2> GetOuterContour() {
+	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
 		vector<float2> ret;
 
 		if (!isConstructing && numCtrlPoints >= 3) {
 			vector<float2> sidePointsPos, sidePointsNeg;
 
-			float2 center = make_float2(x, y);
+			float2 center = GetScreenPos(mv, pj, winW, winH);
 
 			int numKeyPoints = curveLensCtrlPoints.numKeyPoints;
 			float2 * keyPoints = curveLensCtrlPoints.keyPoints;
@@ -665,7 +671,7 @@ public:
 		return ret;
 	}
 
-	vector<float2> GetExtraLensRendering(){
+	vector<float2> GetExtraLensRendering(float* mv, float* pj, int winW, int winH){
 		vector<float2> ret;
 		if (isConstructing){
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -674,7 +680,8 @@ public:
 		}
 		else{
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
-				ret.push_back(make_float2(ctrlPoints[ii].x + x, ctrlPoints[ii].y + y));
+				float2 center = GetScreenPos(mv, pj, winW, winH);
+				ret.push_back(make_float2(ctrlPoints[ii].x + center.x, ctrlPoints[ii].y + center.y));
 			}
 		}
 		return ret;
@@ -730,7 +737,7 @@ public:
 
 	CurveBLensInfo curveBLensInfo;
 
-	CurveBLens(int _x, int _y, int _w, float3 _c) : Lens(_x, _y, _c){
+	CurveBLens(int _w, float3 _c) : Lens(_c){
 
 		isConstructing = true;
 
@@ -761,14 +768,14 @@ public:
 
 	
 
-	bool PointInsideLens(int _x, int _y);
+	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
-	void FinishConstructing();
-	vector<float2> GetContour();
-	vector<float2> GetOuterContour();
+	void FinishConstructing(float* mv, float* pj, int winW, int winH);
+	vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
+	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
 	vector<float2> GetOuterContourold();
-	vector<float2> GetExtraLensRendering();
-	vector<float2> GetExtraLensRendering2();
+	vector<float2> GetExtraLensRendering(float* mv, float* pj, int winW, int winH);
+	vector<float2> GetExtraLensRendering2(float* mv, float* pj, int winW, int winH);
 
 	vector<float2> removeSelfIntersection(vector<float2> p, bool isDuplicating);
 	bool adjustOffset();
