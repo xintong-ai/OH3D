@@ -31,5 +31,7 @@ public:
 	//void SetDispalceOn(bool b) { displaceOn = b; }
 public slots:
 	void SlotGlyphSizeAdjustChanged(int v);
+
+	float3 findClosetGlyph(float3 aim);
 };
 #endif

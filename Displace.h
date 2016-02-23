@@ -9,6 +9,9 @@ class Displace
 	thrust::device_vector<float> d_vec_glyphSizeTarget;
 	thrust::device_vector<float> d_vec_glyphBrightTarget;
 	bool recomputeTarget = true;
+
+	thrust::device_vector<float> d_vec_disToAim; //used for snapping
+
 public:
 	Displace();
 	void Compute(float* modelview, float* projection, int winW, int winH,
@@ -16,6 +19,9 @@ public:
 	void LoadOrig(float4* v, int num);
 	void RecomputeTarget(){ recomputeTarget = true; }
 	void DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses);
+
+	float3 findClosetGlyph(float3 aim);
+
 };
 
 #endif

@@ -119,8 +119,7 @@ Window::Window()
 
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
-	addPolyLineLensBtn = new QPushButton("Add Poly Line Lens");
-	addCurveLensBtn = new QPushButton("Add Curve Lens");
+	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
 	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	//QHBoxLayout* addThingsLayout = new QHBoxLayout;
 
@@ -160,13 +159,7 @@ Window::Window()
 	//controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
-	controlLayout->addWidget(addPolyLineLensBtn);
-	controlLayout->addWidget(addCurveLensBtn);
-
-	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
 	controlLayout->addWidget(addCurveBLensBtn);
-	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
-	
 	controlLayout->addWidget(delLensBtn.get());
 
 	controlLayout->addWidget(gridCheck);
@@ -182,14 +175,9 @@ Window::Window()
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
-	connect(addPolyLineLensBtn, SIGNAL(clicked()), this, SLOT(AddPolyLineLens()));
-	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
+	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
 	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
 	
-
-
-
-
 
 	adjustOffsetBtn = new QPushButton("Adjust Offset");
 	controlLayout->addWidget(adjustOffsetBtn);
@@ -286,15 +274,6 @@ void Window::AddLineLens()
 	lensRenderable->AddLineLens();
 }
 
-void Window::AddPolyLineLens()
-{
-	lensRenderable->AddPolyLineLens();
-}
-
-void Window::AddCurveLens()
-{
-	lensRenderable->AddCurveLens();
-}
 
 void Window::AddCurveBLens()
 {

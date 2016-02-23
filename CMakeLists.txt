@@ -39,7 +39,7 @@ set( Srcs main.cpp GLSphere.cpp GLArrow.cpp
 	GridRenderable.cpp SQRenderable.cpp ArrowRenderable.cpp
 	VolumeReader.cpp DTIVolumeReader.cpp VecReader.cpp
 	VRWidget.cpp VRGlyphRenderable.cpp
-	LeapListener.cpp
+	LeapListener.cpp 
 	)
 set( Hdrs 
 GLSphere.h

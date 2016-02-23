@@ -49,8 +49,7 @@ private:
 	const int nScale = 20;
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
-	QPushButton* addPolyLineLensBtn;
-	QPushButton* addCurveLensBtn;
+
 	std::unique_ptr<QPushButton> delLensBtn;
 	QPushButton* adjustOffsetBtn;
 	QPushButton*refineBoundaryBtn;
@@ -90,14 +89,11 @@ private:
 
 
 	QPushButton *addCurveBLensBtn;
-	private slots:
-	void AddCurveBLens();
 
 private slots:
 	void AddLens();
 	void AddLineLens();
-	void AddPolyLineLens();
-	void AddCurveLens();
+	void AddCurveBLens();
 
 	void adjustOffset();
 	void RefineLensBoundary();
