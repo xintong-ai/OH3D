@@ -41,8 +41,9 @@ void GlyphRenderable::RecomputeTarget()
 
 void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 {
+	int2 winSize = actor->GetWindowSize();
 	displace->DisplacePoints(pts,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses());
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
 }
 
 void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)

@@ -122,7 +122,9 @@ void GLWidget::paintGL() {
 		renderer.second->draw(modelview, projection);
 
     TimerEnd();
-	vrWidget->UpdateGL();
+	if (nullptr != vrWidget){
+		vrWidget->UpdateGL();
+	}
 }
 
 void Perspective(float fovyInDegrees, float aspectRatio,

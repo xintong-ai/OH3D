@@ -484,5 +484,10 @@ inline __device__ __host__ float2 Object2Screen(float4 p, matrix4x4 mv, matrix4x
 	return Clip2ScreenGlobal(GetXY(Object2Clip(p, &mv.v[0].x, &pj.v[0].x)), width, height);
 }
 
+template <typename T>
+inline __device__ __host__ float2 Object2Screen(float4 p, T* mv, T* pj, int width, int height)
+{
+	return Clip2ScreenGlobal(GetXY(Object2Clip(p, mv, pj)), width, height);
+}
 #endif //TRANSFORM_FUNC_H
 
