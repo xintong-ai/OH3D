@@ -358,11 +358,11 @@ void LensRenderable::SlotFocusSizeChanged(int v)
 
 void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
 {
-	if (lenses.size() > 0){
-		lenses.back()->SetSideSize(v * 0.1);
-	}
-	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	actor->UpdateGL();
+	//if (lenses.size() > 0){
+	//	lenses.back()->SetSideSize(v * 0.1);
+	//}
+	//((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	//actor->UpdateGL();
 }
 
 void LensRenderable::SlotDelLens()
