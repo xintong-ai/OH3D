@@ -576,13 +576,15 @@ void Displace::LoadOrig(float4* v, int num)
 	d_vec_glyphBrightTarget.assign(num, 1.0f);
 }
 
-void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses)
+void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses
+	, float* modelview, float* projection, int winW, int winH)
 {
 	for (int i = 0; i < lenses.size(); i++) {
 		CircleLens* l = (CircleLens*)lenses[i];
 		for (auto& p : pts) {
 			float tmp = 1;
-			p = DisplaceCircleLens(l->x, l->y, l->radius, p, tmp, l->focusRatio);
+			float2 center = l->GetScreenPos(modelview, projection, winW, winH);
+			p = DisplaceCircleLens(center.x, center.y, l->radius, p, tmp, l->focusRatio);
 		}
 	}
 }
@@ -612,6 +614,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 		}
 		else {
 			for (int i = 0; i < lenses.size(); i++) {
+				float2 lensScreenCenter = lenses[i]->GetScreenPos(modelview, projection, winW, winH);
 				switch (lenses[i]->GetType()) {
 					case LENS_TYPE::TYPE_CIRCLE:
 					{
@@ -631,7 +634,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							d_vec_glyphSizeTarget.end(),
 							d_vec_glyphBrightTarget.end()
 							)),
-							functor_Displace(l->x, l->y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio));
+							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio));
 						break;
 
 					}
@@ -640,7 +643,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						LineLens* l = (LineLens*)lenses[i];
 						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 							d_vec_posClip.begin(), d_vec_posScreen.begin(),
-							functor_Displace_Line(l->x, l->y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
+							functor_Displace_Line(lensScreenCenter.x, lensScreenCenter.y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
 						break;
 					}
 					case LENS_TYPE::TYPE_CURVEB:
@@ -667,7 +670,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 								d_vec_glyphSizeTarget.end(),
 								d_vec_glyphBrightTarget.end()
 								)),
-								functor_Displace_CurveB(l->x, l->y, l->curveBLensInfo, l->GetClipDepth(modelview, projection)));
+								functor_Displace_CurveB(lensScreenCenter.x, lensScreenCenter.y, l->curveBLensInfo, l->GetClipDepth(modelview, projection)));
 
 						}
 						break;

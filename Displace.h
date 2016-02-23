@@ -15,7 +15,7 @@ public:
 		std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale = 0, float* glyphBright = 0);
 	void LoadOrig(float4* v, int num);
 	void RecomputeTarget(){ recomputeTarget = true; }
-	void DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses);
+	void DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses, float* modelview, float* projection, int winW, int winH);
 };
 
 #endif

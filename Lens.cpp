@@ -9,6 +9,24 @@ float Lens::GetClipDepth(float* mv, float* pj)
 	return Object2Clip(GetCenter(), mv, pj).z;
 }
 
+float2 Lens::GetScreenPos(float* mv, float* pj, int winW, int winH)
+{
+	return Object2Screen(GetCenter(), mv, pj, winW, winH);
+}
+
+void Lens::SetScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH)
+{
+	matrix4x4 invModelview, invProjection;
+	invertMatrix(mv, &invModelview.v[0].x);
+	invertMatrix(pj, &invProjection.v[0].x);
+	float4 cenClip = Object2Clip(GetCenter(), mv, pj);
+	float2 newClipXY = Screen2Clip(make_float2(sx, sy), winW, winH);
+	float4 newClip = make_float4(newClipXY.x, newClipXY.y, cenClip.z, cenClip.w);
+	float4 newObject = Clip2ObjectGlobal(newClip, &invModelview.v[0].x, &invProjection.v[0].x);
+	SetCenter(make_float3(newObject));
+}
+
+
 float4 Lens::GetCenter() { return make_float4(c.x, c.y, c.z, 1.0f); }
 
 void Lens::SetClipDepth(float d, float* mv, float* pj)
@@ -17,7 +35,7 @@ void Lens::SetClipDepth(float d, float* mv, float* pj)
 	invertMatrix(mv, &invModelview.v[0].x);
 	invertMatrix(pj, &invProjection.v[0].x);
 	float4 cenClip = Object2Clip(GetCenter(), mv, pj);
-	std::cout << "cenClip.z:" << cenClip.z << std::endl;
+	//std::cout << "cenClip.z:" << cenClip.z << std::endl;
 	cenClip.z = d;
 //	float4 cenShiftClip = cenClip + make_float4(0, 0, -0.01, 0);
 	float4 cenShiftObj = Clip2ObjectGlobal(cenClip, &invModelview.v[0].x, &invProjection.v[0].x);
@@ -49,7 +67,7 @@ void Lens::ChangeClipDepth(int v, float* mv, float* pj)
 
 
 
-void CurveBLens::FinishConstructing(){
+void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 	if (numCtrlPoints >= 3){
 		
 		//remove end shaking
@@ -82,8 +100,8 @@ void CurveBLens::FinishConstructing(){
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
 		}
-		x = sumx / numCtrlPoints, y = sumy / numCtrlPoints;
-		float2 center = make_float2(x, y);
+		SetScreenPos(sumx / numCtrlPoints, sumy / numCtrlPoints, mv, pj, winW, winH);
+		float2 center = GetScreenPos(mv, pj, winW, winH);// make_float2(x, y);
 		ctrlPoints.resize(numCtrlPoints);
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			ctrlPoints[ii] = ctrlPointsAbs[ii] - center;
@@ -142,8 +160,8 @@ void CurveBLens::FinishConstructing(){
 
 		////do it later: compute curveLensCtrlPoints
 		if (1){
-			curveBLensInfo.x = x;
-			curveBLensInfo.y = y;
+			curveBLensInfo.x = center.x;
+			curveBLensInfo.y = center.y;
 			curveBLensInfo.width = width;
 			curveBLensInfo.focusRatio = focusRatio;
 
@@ -262,11 +280,11 @@ void CurveBLens::computeBoundaryNeg()
 	}
 }
 
-std::vector<float2> CurveBLens::GetContour(){
+std::vector<float2> CurveBLens::GetContour(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
 	if (posOffsetBezierPoints.size()>2){
 	//if (!isConstructing && numCtrlPoints >= 3) {
-		float2 center = make_float2(x, y);
+		float2 center = GetScreenPos(mv, pj, winW, winH);// make_float2(x, y);
 		int n = posOffsetBezierPoints.size();
 
 		//!!! probably can be more precise !!!
@@ -287,11 +305,11 @@ std::vector<float2> CurveBLens::GetContour(){
 }
 
 
-std::vector<float2> CurveBLens::GetOuterContour() {
+std::vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
 	if (posOffsetBezierPoints.size()>2){
 		//if (!isConstructing && numCtrlPoints >= 3) {
-		float2 center = make_float2(x, y);
+		float2 center = GetScreenPos(mv, pj, winW, winH);// make_float2(x, y);
 		int n = posOffsetBezierPoints.size();
 		for (int ii = 0; ii < n; ii++){
 			ret.push_back(posOffsetBezierPoints[ii] + center);
@@ -310,7 +328,7 @@ std::vector<float2> CurveBLens::GetOuterContour() {
 }
 
 
-std::vector<float2> CurveBLens::GetExtraLensRendering(){
+std::vector<float2> CurveBLens::GetExtraLensRendering(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
 	if (isConstructing){
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -318,7 +336,7 @@ std::vector<float2> CurveBLens::GetExtraLensRendering(){
 		}
 	}
 	else{
-		float2 center = make_float2(x, y);
+		float2 center = GetScreenPos(mv, pj, winW, winH);//make_float2(x, y);
 		int n = ctrlPoints.size();
 		for (int ii = 0; ii < n; ii++) {
 			ret.push_back(ctrlPoints[ii] + center);
@@ -327,7 +345,7 @@ std::vector<float2> CurveBLens::GetExtraLensRendering(){
 	return ret;
 }
 
-std::vector<float2> CurveBLens::GetExtraLensRendering2(){
+std::vector<float2> CurveBLens::GetExtraLensRendering2(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
 	if (isConstructing){
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -335,7 +353,7 @@ std::vector<float2> CurveBLens::GetExtraLensRendering2(){
 		}
 	}
 	else{
-		float2 center = make_float2(x, y);
+		float2 center = GetScreenPos(mv, pj, winW, winH);//make_float2(x, y);
 		int n = BezierPoints.size();
 		for (int ii = 0; ii < n; ii++) {
 			ret.push_back(BezierPoints[ii] + center);
@@ -695,13 +713,13 @@ vector<float2> CurveBLens::BSplineSubdivide(vector<float2> p, int m, float u)
 }
 
 
-bool CurveBLens::PointInsideLens(int _x, int _y)
+bool CurveBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH)
 {
 	if (isConstructing)
 		return true;
 	float2 screenCoord = make_float2(_x, _y);
 
-	float2 center = make_float2(x, y);
+	float2 center = GetScreenPos(mv, pj, winW, winH); //make_float2(x, y);
 
 	int numPosPoints = subCtrlPointsPos.size();
 	int numNegPoints = subCtrlPointsNeg.size();
