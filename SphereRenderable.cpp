@@ -137,7 +137,11 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 		q_modelview = q_modelview.transposed();
 		float3 cen = actor->DataCenter();
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
-		qgl->glUniform3fv(glProg->uniform("Ka"), 1, &sphereColor[i].x);
+		if (i != snappedGlyphIdx)
+			qgl->glUniform3fv(glProg->uniform("Ka"), 1, &sphereColor[i].x);
+		else
+			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 1.0f, 1.0f);
+
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
