@@ -7,6 +7,7 @@
 #include <QOpenGLWidget>
 #include <vector_types.h>
 #include <vector_functions.h>
+#include <memory>
 //enum INTERACT_MODE{
 //	//	DRAG_LENS_EDGE,
 //	//	DRAG_LENS_TWO_ENDS,
@@ -26,6 +27,13 @@
 class StopWatchInterface;
 class Renderable;
 class GLWidget;
+namespace osvr{
+	namespace clientkit{
+		class ClientContext;
+		class DisplayConfig;
+	}
+}
+
 class VRWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
 	Q_OBJECT
@@ -111,6 +119,10 @@ private:
 
 	bool initialized = false;
 	GLWidget* mainGLWidget;
+
+	std::unique_ptr<osvr::clientkit::ClientContext> ctx;// ("com.osvr.example.SDLOpenGL");
+	std::unique_ptr<osvr::clientkit::DisplayConfig> display;// (ctx);
+
 	//bool pinching = false;
 	////mark whether there is any pinching gesture in this sequence of gestures.
 	//// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.

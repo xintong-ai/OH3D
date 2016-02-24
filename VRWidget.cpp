@@ -6,6 +6,10 @@
 #include <glwidget.h>
 #include <GlyphRenderable.h>
 
+
+#include <osvr/ClientKit/ClientKit.h>
+#include <osvr/ClientKit/Display.h>
+
 VRWidget::VRWidget(GLWidget* _mainGLWidget, QWidget *parent)
 	: QOpenGLWidget(parent)
 	, m_frame(0)
@@ -43,6 +47,26 @@ void VRWidget::initializeGL()
 	sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
+
+	//Start OSVR and get OSVR display config
+
+	ctx = std::make_unique<osvr::clientkit::ClientContext>("com.osvr.example.SDLOpenGL");
+	display = std::make_unique<osvr::clientkit::DisplayConfig>(*ctx.get());
+	if (!display->valid()) {
+		std::cerr << "\nCould not get display config (server probably not "
+			"running or not behaving), exiting."
+			<< std::endl;
+		return;
+	}
+
+	std::cout << "Waiting for the display to fully start up, including "
+		"receiving initial pose update..."
+		<< std::endl;
+	while (!display->checkStartup()) {
+		ctx->update();
+	}
+	std::cout << "OK, display startup status is good!" << std::endl;
+
 }
 
 void VRWidget::computeFPS()
@@ -79,6 +103,54 @@ void VRWidget::paintGL() {
 	mainGLWidget->GetProjection(projection);
 	makeCurrent();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+	display->forEachEye([](osvr::clientkit::Eye eye) {
+
+		/// Try retrieving the view matrix (based on eye pose) from OSVR
+		double viewMat[OSVR_MATRIX_SIZE];
+		eye.getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
+			viewMat);
+		/// Initialize the ModelView transform with the view matrix we
+		/// received
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glMultMatrixd(viewMat);
+
+		/// For each display surface seen by the given eye of the given
+		/// viewer...
+		eye.forEachSurface([](osvr::clientkit::Surface surface) {
+			auto viewport = surface.getRelativeViewport();
+			glViewport(static_cast<GLint>(viewport.left),
+				static_cast<GLint>(viewport.bottom),
+				static_cast<GLsizei>(viewport.width),
+				static_cast<GLsizei>(viewport.height));
+
+			/// Set the OpenGL projection matrix based on the one we
+			/// computed.
+			double zNear = 0.1;
+			double zFar = 100;
+			double projMat[OSVR_MATRIX_SIZE];
+			surface.getProjectionMatrix(
+				zNear, zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
+				OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
+				projMat);
+
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			glMultMatrixd(projMat);
+
+			/// Set the matrix mode to ModelView, so render code doesn't
+			/// mess with the projection matrix on accident.
+			glMatrixMode(GL_MODELVIEW);
+
+			/// Call out to render our scene.
+			//renderScene();
+		});
+	});
+
+
+
 	glViewport(0, 0, width / 2,height);
 	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
 	for (auto renderer : renderers)
