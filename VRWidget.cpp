@@ -9,6 +9,12 @@
 
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
+#include <QMatrix4x4>
+
+#ifdef WIN32
+#include "windows.h"
+#endif
+#define qgl	QOpenGLContext::currentContext()->functions()
 
 VRWidget::VRWidget(GLWidget* _mainGLWidget, QWidget *parent)
 	: QOpenGLWidget(parent)
@@ -103,61 +109,53 @@ void VRWidget::paintGL() {
 	mainGLWidget->GetProjection(projection);
 	makeCurrent();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	ctx->update();
 
+	OSVR_ViewerCount viewers = display->getNumViewers();
+	for (OSVR_ViewerCount viewer = 0; viewer < viewers; ++viewer) {
+		OSVR_EyeCount eyes = display->getViewer(viewer).getNumEyes();
+		for (OSVR_EyeCount eye = 0; eye < eyes; ++eye) {
+			QMatrix4x4 viewMat;
+			display->getViewer(viewer).getEye(eye).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
+				viewMat.data());
+			QMatrix4x4 mv(modelview);
+			mv = mv.transposed();
+			mv = mv * viewMat;
+			OSVR_SurfaceCount surfaces = display->getViewer(viewer).getEye(eye).getNumSurfaces();
+			for (OSVR_SurfaceCount surface = 0; surface < surfaces; ++surface) {
+				auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
+				qgl->glViewport(static_cast<GLint>(viewport.left),
+					static_cast<GLint>(viewport.bottom),
+					static_cast<GLsizei>(viewport.width),
+					static_cast<GLsizei>(viewport.height));
 
-	display->forEachEye([](osvr::clientkit::Eye eye) {
+				/// Set the OpenGL projection matrix based on the one we
+				/// computed.
+				float zNear = 0.1;
+				float zFar = 100;
+				QMatrix4x4 projMat;
+				display->getViewer(viewer).getEye(eye).getSurface(surface).getProjectionMatrix(
+					zNear, zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
+					OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
+					projMat.data());
 
-		/// Try retrieving the view matrix (based on eye pose) from OSVR
-		double viewMat[OSVR_MATRIX_SIZE];
-		eye.getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
-			viewMat);
-		/// Initialize the ModelView transform with the view matrix we
-		/// received
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glMultMatrixd(viewMat);
+				QMatrix4x4 pj(projection);
+				pj = pj.transposed();
 
-		/// For each display surface seen by the given eye of the given
-		/// viewer...
-		eye.forEachSurface([](osvr::clientkit::Surface surface) {
-			auto viewport = surface.getRelativeViewport();
-			glViewport(static_cast<GLint>(viewport.left),
-				static_cast<GLint>(viewport.bottom),
-				static_cast<GLsizei>(viewport.width),
-				static_cast<GLsizei>(viewport.height));
+				/// Call out to render our scene.
+				for (auto renderer : renderers)
+					renderer.second->draw(mv.data(), projMat.data());
+			}
+		}
+	};
 
-			/// Set the OpenGL projection matrix based on the one we
-			/// computed.
-			double zNear = 0.1;
-			double zFar = 100;
-			double projMat[OSVR_MATRIX_SIZE];
-			surface.getProjectionMatrix(
-				zNear, zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
-				OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
-				projMat);
-
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			glMultMatrixd(projMat);
-
-			/// Set the matrix mode to ModelView, so render code doesn't
-			/// mess with the projection matrix on accident.
-			glMatrixMode(GL_MODELVIEW);
-
-			/// Call out to render our scene.
-			//renderScene();
-		});
-	});
-
-
-
-	glViewport(0, 0, width / 2,height);
-	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
-	for (auto renderer : renderers)
-		renderer.second->draw(modelview, projection);
-	glViewport(width / 2, 0, width / 2, height);
-	for (auto renderer : renderers)
-		renderer.second->draw(modelview, projection);
+	//glViewport(0, 0, width / 2,height);
+	////((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
+	//for (auto renderer : renderers)
+	//	renderer.second->draw(modelview, projection);
+	//glViewport(width / 2, 0, width / 2, height);
+	//for (auto renderer : renderers)
+	//	renderer.second->draw(modelview, projection);
 	TimerEnd();
 }
 //void Perspective(float fovyInDegrees, float aspectRatio,
