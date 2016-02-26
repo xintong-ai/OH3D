@@ -271,6 +271,10 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->SetScreenPos(
 				center.x + (x - lastPt.x), center.y + (y - lastPt.y)
 				, modelview, projection, winSize.x, winSize.y);
+			if (isUsingSnap){
+				GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
+				glyphRenderable->findClosetGlyph(make_float3(lenses[pickedLens]->GetCenter()));
+			}
 		}
 		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 		lastPt = make_int2(x, y);

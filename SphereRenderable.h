@@ -16,6 +16,9 @@ public:
 	void UpdateData() override;
 	SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val);
 
+	void drawPicking(float modelview[16], float projection[16]) override;
+
+
 private:
 	std::vector<float> val;// = nullptr;
 	std::vector<float3> sphereColor;

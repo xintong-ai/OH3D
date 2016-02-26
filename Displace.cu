@@ -524,10 +524,9 @@ struct disToAim_functor
 };
 
 
-float3 Displace::findClosetGlyph(float3 aim, int& idx)
+float3 Displace::findClosetGlyph(float3 aim, int & snappedGlyphId)
 {
 	thrust::transform(posOrig.begin(), posOrig.end(), d_vec_disToAim.begin(), d_vec_disToAim.begin(), disToAim_functor(aim));
-	int k = thrust::min_element(d_vec_disToAim.begin(), d_vec_disToAim.end()) - d_vec_disToAim.begin();
-	idx = k;
-	return make_float3(posOrig[k]);
+	snappedGlyphId = thrust::min_element(d_vec_disToAim.begin(), d_vec_disToAim.end()) - d_vec_disToAim.begin();
+	return make_float3(posOrig[snappedGlyphId]);
 }

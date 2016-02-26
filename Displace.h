@@ -22,7 +22,8 @@ public:
 	void DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses, float* modelview, float* projection, int winW, int winH);
 
 
-	float3 findClosetGlyph(float3 aim, int& idx);
+	float3 findClosetGlyph(float3 aim, int &snappedGlyphId);
+
 
 
 };

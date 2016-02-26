@@ -65,5 +65,9 @@ void GlyphRenderable::resize(int width, int height)
 
 float3 GlyphRenderable::findClosetGlyph(float3 aim)
 {
-	return displace->findClosetGlyph(aim, snappedGlyphIdx);
+	return displace->findClosetGlyph(aim, snappedGlyphId);
+
 }
+
+
+
