@@ -25,6 +25,7 @@ public:
 	float3 findClosetGlyph(float3 aim, int &snappedGlyphId);
 
 
+
 };
 
 #endif
