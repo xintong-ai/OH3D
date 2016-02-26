@@ -15,6 +15,7 @@ protected:
 	std::vector<float> glyphSizeScale;
 	std::vector<float> glyphBright;
 	float glyphSizeAdjust = 0.5;
+	int snappedGlyphIdx = -1;
 	ShaderProgram* glProg = nullptr;
 	//bool displaceOn = true;
 	void ComputeDisplace();
