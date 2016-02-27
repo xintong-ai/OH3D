@@ -46,7 +46,7 @@ public:
 	void initForPicking(int nv, float* vertex);
 	void drawPicking(float modelview[16], float projection[16]);
 
-	bool isPicking = true;
+	bool isPicking = false;
 	unsigned int framebuffer, renderbuffer[2];
 	int xMouse, yMouse;
 

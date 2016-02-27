@@ -69,20 +69,20 @@ void GLWidget::initializeGL()
 
 
 
-	//glGenRenderbuffers(2, renderbuffer);
-	//glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[0]);
-	//glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, width, height);
+	glGenRenderbuffers(2, renderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[0]);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, width, height);
 
-	//glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1]);
-	//glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1]);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
 
 
-	//glGenFramebuffers(1, &framebuffer);
-	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-	//glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-	//	GL_RENDERBUFFER, renderbuffer[0]);
-	//glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-	//	GL_RENDERBUFFER, renderbuffer[1]);
+	glGenFramebuffers(1, &framebuffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+	glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+		GL_RENDERBUFFER, renderbuffer[0]);
+	glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+		GL_RENDERBUFFER, renderbuffer[1]);
 }
 
 void GLWidget::computeFPS()

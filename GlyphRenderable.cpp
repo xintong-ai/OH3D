@@ -148,8 +148,8 @@ void GlyphRenderable::initForPicking(int nv, float* vertex)
 	qgl->glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[0]);
 	int width, height;
 	actor->GetWindowSize(width, height);
-	//int width = 750, height = 900;
-	width = 900, height = 750;
+	//width = 750, height = 900;
+	//width = 900, height = 750;
 	qgl->glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, width, height);
 
 	qgl->glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1]);
@@ -221,7 +221,8 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 {
 	
 	if (QApplication::keyboardModifiers() == Qt::AltModifier && isPicking){
-		xMouse = x*1.0/662*750;
+
+		xMouse = x;// *1.0 / 619 * 750;// +750 - 619;// 
 		yMouse = y;
 //		isPicking = true;
 
