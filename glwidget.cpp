@@ -69,20 +69,20 @@ void GLWidget::initializeGL()
 
 
 
-	glGenRenderbuffers(2, renderbuffer);
-	glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[0]);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, width, height);
+	//glGenRenderbuffers(2, renderbuffer);
+	//glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[0]);
+	//glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, width, height);
 
-	glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1]);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+	//glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1]);
+	//glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
 
 
-	glGenFramebuffers(1, &framebuffer);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-	glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_RENDERBUFFER, renderbuffer[0]);
-	glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-		GL_RENDERBUFFER, renderbuffer[1]);
+	//glGenFramebuffers(1, &framebuffer);
+	//glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+	//glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+	//	GL_RENDERBUFFER, renderbuffer[0]);
+	//glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+	//	GL_RENDERBUFFER, renderbuffer[1]);
 }
 
 void GLWidget::computeFPS()
@@ -141,7 +141,6 @@ void GLWidget::paintGL() {
 		renderer.second->draw(modelview, projection);
 		GlyphRenderable* glyphRenderable = dynamic_cast<GlyphRenderable*> (renderer.second);
 		if (glyphRenderable){
-			//if (glyphRenderable->isPicking){
 			if (isPicking){
 
 				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
@@ -156,23 +155,14 @@ void GLWidget::paintGL() {
 				std::cout << "cursor color: " << (int)cursorPixel[0] << " " << (int)cursorPixel[1] << " "
 					<< (int)cursorPixel[2] << " " << (int)cursorPixel[3] << " " << std::endl;
 				pickID = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256 -1;
-				std::cout << "pick id: " << pickID << std::endl;
+				std::cout << "pick id in glwidget: " << pickID << std::endl;
 				glyphRenderable->snappedGlyphId = pickID;
-				//for (auto renderer : renderers)
-				//	renderer.second->SetPickID(pickID);
-				//for (auto renderer : renderers)
-				//	renderer.second->mousePress(xMouse, yMouse, QApplication::keyboardModifiers());
+
 				isPicking = false;
 			}
+			
 		}
-
-		//GlyphRenderable* glyphRenderable = dynamic_cast<GlyphRenderable*> (renderer.second);
-		//if (glyphRenderable){
-		//		glyphRenderable->drawPicking(modelview, projection);
-		//}
-		//else{
-		//	renderer.second->draw(modelview, projection);
-		//}
+		
 	}
 
     TimerEnd();
@@ -257,11 +247,14 @@ void GLWidget::mousePressEvent(QMouseEvent *event)
     prevPos = pos;
 
 
+	if (picking){
+		if (event->button() == Qt::LeftButton && QApplication::keyboardModifiers() == Qt::AltModifier){
+			xMouse = posGL.x();
+			yMouse = posGL.y();
+			isPicking = true;
 
-	if (event->button() == Qt::LeftButton && QApplication::keyboardModifiers() == Qt::AltModifier){
-		xMouse = posGL.x();
-		yMouse = posGL.y();
-		isPicking = true;
+			std::cout << "in glwidgt, x and y: " << xMouse << " " << yMouse << std::endl;
+		}
 	}
 }
 
@@ -415,5 +408,5 @@ void GLWidget::UpdateDepthRange()
 	}
 	depthRange.x = clamp(*std::min_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
 	depthRange.y = clamp(*std::max_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
-	std::cout << "depthRange: " << depthRange.x << "," << depthRange.y << std::endl;
+	//std::cout << "depthRange: " << depthRange.x << "," << depthRange.y << std::endl;
 }

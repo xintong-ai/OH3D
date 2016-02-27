@@ -229,7 +229,7 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 	actor->GetProjection(projection);
 	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
 		Lens* l = lenses[lenses.size() - 1];
-if (l->type == LENS_TYPE::TYPE_CURVEB) {
+		if (l->type == LENS_TYPE::TYPE_CURVEB) {
 			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}

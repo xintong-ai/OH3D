@@ -33,20 +33,15 @@ class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 public:
 
 
+	bool picking = false; //used for setting
 
-	bool isPicking = false;
+	bool isPicking = false; //used for state
 	GLuint framebuffer, renderbuffer[2];
 	int xMouse, yMouse;
 	int pickID = -1;
 
 
-
-
-
-
-
-
-
+	
     explicit GLWidget(QWidget *parent = 0);
     ~GLWidget();
 

@@ -27,7 +27,7 @@ public:
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
 
-	void drawPicking(float modelview[16], float projection[16]) override {};
+	//void drawPicking(float modelview[16], float projection[16]) override {};
 
 protected:
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;

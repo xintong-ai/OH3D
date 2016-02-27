@@ -7,6 +7,7 @@
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
+
 class SphereRenderable :public GlyphRenderable
 {
 public:
@@ -15,9 +16,6 @@ public:
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
 	SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val);
-
-	void drawPicking(float modelview[16], float projection[16]) override;
-
 
 private:
 	std::vector<float> val;// = nullptr;
