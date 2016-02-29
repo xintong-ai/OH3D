@@ -7,6 +7,7 @@
 #include <Lens.h>
 #include <LensRenderable.h>
 
+
 void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
@@ -61,4 +62,12 @@ void GlyphRenderable::resize(int width, int height)
 		RecomputeTarget();
 	}
 }
+
+float3 GlyphRenderable::findClosetGlyph(float3 aim)
+{
+	return displace->findClosetGlyph(aim, snappedGlyphId);
+
+}
+
+
 

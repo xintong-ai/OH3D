@@ -23,6 +23,7 @@ class GridRenderable;
 class VRWidget;
 class VRGlyphRenderable;
 class LeapListener;
+class DataMgr;
 namespace Leap{
 	class Controller;
 }
@@ -49,8 +50,7 @@ private:
 	const int nScale = 20;
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
-	QPushButton* addPolyLineLensBtn;
-	QPushButton* addCurveLensBtn;
+
 	std::unique_ptr<QPushButton> delLensBtn;
 	QPushButton* adjustOffsetBtn;
 	QPushButton*refineBoundaryBtn;
@@ -63,6 +63,7 @@ private:
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;
 	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
+	std::unique_ptr<DataMgr> dataMgr;
 
 	LeapListener* listener;
 	Leap::Controller* controller;
@@ -90,14 +91,11 @@ private:
 
 
 	QPushButton *addCurveBLensBtn;
-	private slots:
-	void AddCurveBLens();
 
 private slots:
 	void AddLens();
 	void AddLineLens();
-	void AddPolyLineLens();
-	void AddCurveLens();
+	void AddCurveBLens();
 
 	void adjustOffset();
 	void RefineLensBoundary();

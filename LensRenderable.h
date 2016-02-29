@@ -19,14 +19,15 @@ public:
 	std::vector<Lens*> GetLenses() { return lenses; }
 	void AddCircleLens();
 	void AddLineLens();
-	void AddPolyLineLens();
-	void AddCurveLens();
 	void AddCurveBLens();
 
 	void mousePress(int x, int y, int modifier) override;
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int delta)  override;
+
+	bool isUsingSnap = false;
+
 public slots:
 	void SlotFocusSizeChanged(int v);
 	void SlotSideSizeChanged(int v);
