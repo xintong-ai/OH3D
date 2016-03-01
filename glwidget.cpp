@@ -208,7 +208,7 @@ void GLWidget::resizeGL(int w, int h)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-	Perspective(30, (float)width / height, (float)0.1, (float)10e4);
+	Perspective(96.73, (float)width / height, (float)0.1, (float)100);
     glMatrixMode(GL_MODELVIEW);
 }
 

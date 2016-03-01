@@ -114,7 +114,7 @@ private:
 	void pinchTriggered(QPinchGesture *gesture);
 		/*****view*****/
     //transformation states
-    QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+    QVector3D transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
     QMatrix4x4 transRot;
 	float transScale = 1;
 	float currentTransScale = 1;

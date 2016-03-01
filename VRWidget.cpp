@@ -120,7 +120,7 @@ void VRWidget::paintGL() {
 				viewMat.data());
 			QMatrix4x4 mv(modelview);
 			mv = mv.transposed();
-			mv = mv * viewMat;
+			mv = viewMat * mv;
 			OSVR_SurfaceCount surfaces = display->getViewer(viewer).getEye(eye).getNumSurfaces();
 			for (OSVR_SurfaceCount surface = 0; surface < surfaces; ++surface) {
 				auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
