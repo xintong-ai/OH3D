@@ -113,7 +113,7 @@ void SphereRenderable::init()
 	GenVertexBuffer(glyphMesh->GetNumVerts(),
 		glyphMesh->GetVerts());
 
-	initForPicking(glyphMesh->GetNumVerts(), glyphMesh->GetVerts());
+	initPickingDrawingObjects(glyphMesh->GetNumVerts(), glyphMesh->GetVerts());
 }
 
 
@@ -177,8 +177,6 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 	}
 	if (!visible)
 		return;
-
-	myRecordMatrix(modelview, projection);
 
 	RecordMatrix(modelview, projection);
 	ComputeDisplace();

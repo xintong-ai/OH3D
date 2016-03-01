@@ -64,25 +64,6 @@ void GLWidget::initializeGL()
     sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
-
-
-
-
-
-	glGenRenderbuffers(2, renderbuffer);
-	glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[0]);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, width, height);
-
-	glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1]);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-
-
-	glGenFramebuffers(1, &framebuffer);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-	glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-		GL_RENDERBUFFER, renderbuffer[0]);
-	glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-		GL_RENDERBUFFER, renderbuffer[1]);
 }
 
 void GLWidget::computeFPS()
@@ -139,30 +120,6 @@ void GLWidget::paintGL() {
 	for (auto renderer : renderers)
 	{
 		renderer.second->draw(modelview, projection);
-		GlyphRenderable* glyphRenderable = dynamic_cast<GlyphRenderable*> (renderer.second);
-		if (glyphRenderable){
-			if (isPicking){
-
-				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				
-				glyphRenderable->drawPicking(modelview, projection);
-				
-				glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
-				unsigned char cursorPixel[4];
-				glReadBuffer(GL_COLOR_ATTACHMENT0);
-				glReadPixels(xMouse, yMouse, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cursorPixel);
-				std::cout << "cursor color: " << (int)cursorPixel[0] << " " << (int)cursorPixel[1] << " "
-					<< (int)cursorPixel[2] << " " << (int)cursorPixel[3] << " " << std::endl;
-				pickID = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256 -1;
-				std::cout << "pick id in glwidget: " << pickID << std::endl;
-				glyphRenderable->snappedGlyphId = pickID;
-
-				isPicking = false;
-			}
-			
-		}
-		
 	}
 
     TimerEnd();
@@ -241,21 +198,11 @@ void GLWidget::mousePressEvent(QMouseEvent *event)
 	QPointF pos = event->pos();
 	QPoint posGL = pixelPosToGLPos(event->pos());
 
+	makeCurrent();
 	for (auto renderer : renderers)
 		renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
     prevPos = pos;
-
-
-	if (picking){
-		if (event->button() == Qt::LeftButton && QApplication::keyboardModifiers() == Qt::AltModifier){
-			xMouse = posGL.x();
-			yMouse = posGL.y();
-			isPicking = true;
-
-			std::cout << "in glwidgt, x and y: " << xMouse << " " << yMouse << std::endl;
-		}
-	}
 }
 
 void GLWidget::mouseReleaseEvent(QMouseEvent *event)
@@ -277,7 +224,7 @@ void GLWidget::wheelEvent(QWheelEvent * event)
 	bool doTransform = true;
 	QPoint posGL = pixelPosToGLPos(event->pos());
 	for (auto renderer : renderers){
-		if (renderer.second->MouseWheel(posGL.x(), posGL.y(), event->delta()))
+		if (renderer.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
 			doTransform = false;
 	}
 	if (doTransform){

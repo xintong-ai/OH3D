@@ -32,28 +32,6 @@ class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
     Q_OBJECT
 public:
 
-
-	bool picking = true; //used for setting
-
-	bool isPicking = false; //used for state
-	GLuint framebuffer, renderbuffer[2];
-	int xMouse, yMouse;
-	int pickID = -1;
-	//transformation states
-	QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
-	QMatrix4x4 transRot;
-	float transScale = 1;
-	float currentTransScale = 1;
-
-	float3 dataMin = make_float3(0, 0, 0);
-	float3 dataMax = make_float3(10, 10, 10);
-
-
-
-
-
-
-
     explicit GLWidget(QWidget *parent = 0);
     ~GLWidget();
 
@@ -144,7 +122,14 @@ private:
 	// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.
 	bool pinched = false;	
 
+	//transformation states
+	QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+	QMatrix4x4 transRot;
+	float transScale = 1;
+	float currentTransScale = 1;
 
+	float3 dataMin = make_float3(0, 0, 0);
+	float3 dataMax = make_float3(10, 10, 10);
 
 	GLfloat modelview[16];
 	GLfloat projection[16];

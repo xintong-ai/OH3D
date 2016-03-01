@@ -126,6 +126,12 @@ Window::Window()
 	controller = new Leap::Controller();
 	controller->addListener(*listener);
 
+
+
+	QCheckBox* usingSnapCheck = new QCheckBox("Using Lens Snap", this);
+
+
+
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
@@ -141,6 +147,7 @@ Window::Window()
 	controlLayout->addWidget(glyphSizeAdjustSlider);
 	controlLayout->addWidget(adjustOffsetBtn);
 	controlLayout->addWidget(refineBoundaryBtn);
+	controlLayout->addWidget(usingSnapCheck);
 	controlLayout->addStretch();
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
@@ -160,6 +167,7 @@ Window::Window()
 	connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
 		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 	connect(refineBoundaryBtn, SIGNAL(clicked()), this, SLOT(RefineLensBoundary()));
+	connect(usingSnapCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingSnap(bool)));
 
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
@@ -236,4 +244,12 @@ void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D i
 {
 	std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
 	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
+}
+
+void Window::SlotToggleUsingSnap(bool b)
+{
+	lensRenderable->isUsingSnap = b;
+	if (!b){
+		glyphRenderable->SetSnappedGlyphId(-1);
+	}
 }
