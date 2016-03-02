@@ -16,6 +16,9 @@ public:
 	std::vector<float4> pos;
 	std::vector<float4> posOrig;
 
+	bool isPicking = false;
+
+
 protected:
 	std::shared_ptr<Displace> displace;
 	std::vector<float> glyphSizeScale;
@@ -36,7 +39,6 @@ protected:
 	int numVerticeOfGlyph = 0;
 	void initPickingDrawingObjects(int nv, float* vertex);
 	void drawPicking(float modelview[16], float projection[16]);
-	bool isPicking = true;
 	unsigned int framebuffer, renderbuffer[2];
 
 public:

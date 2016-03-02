@@ -249,6 +249,7 @@ void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D i
 void Window::SlotToggleUsingSnap(bool b)
 {
 	lensRenderable->isUsingSnap = b;
+	glyphRenderable->isPicking = b;
 	if (!b){
 		glyphRenderable->SetSnappedGlyphId(-1);
 	}
