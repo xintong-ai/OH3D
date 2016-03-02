@@ -10,14 +10,16 @@
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
 #include <QMatrix4x4>
+#include <GLMatrixManager.h>
 
 #ifdef WIN32
 #include "windows.h"
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 
-VRWidget::VRWidget(GLWidget* _mainGLWidget, QWidget *parent)
+VRWidget::VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, GLWidget* _mainGLWidget, QWidget *parent)
 	: QOpenGLWidget(parent)
+	, matrixMgr(_matrixMgr)
 	, m_frame(0)
 	, mainGLWidget(_mainGLWidget)
 {
@@ -103,24 +105,29 @@ void VRWidget::TimerEnd()
 
 void VRWidget::paintGL() {
 	TimerStart();
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	mainGLWidget->GetModelview(modelview);
-	mainGLWidget->GetProjection(projection);
+	//GLfloat modelview[16];
+	//GLfloat projection[16];
+	//mainGLWidget->GetModelview(modelview);
+	//mainGLWidget->GetProjection(projection);
 	makeCurrent();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	ctx->update();
+
+	QMatrix4x4 viewMat;
+	display->getViewer(0).getEye(0).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
+		viewMat.data());
+	matrixMgr->SetViewMat(viewMat);
 
 	OSVR_ViewerCount viewers = display->getNumViewers();
 	for (OSVR_ViewerCount viewer = 0; viewer < viewers; ++viewer) {
 		OSVR_EyeCount eyes = display->getViewer(viewer).getNumEyes();
 		for (OSVR_EyeCount eye = 0; eye < eyes; ++eye) {
-			QMatrix4x4 viewMat;
 			display->getViewer(viewer).getEye(eye).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
 				viewMat.data());
-			QMatrix4x4 mv(modelview);
-			mv = mv.transposed();
-			mv = viewMat * mv;
+			QMatrix4x4 mv;// (modelview);
+			//mv = mv.transposed();
+			//mv = viewMat * mv;
+			matrixMgr->GetModelView(mv.data(), viewMat.data());
 			OSVR_SurfaceCount surfaces = display->getViewer(viewer).getEye(eye).getNumSurfaces();
 			for (OSVR_SurfaceCount surface = 0; surface < surfaces; ++surface) {
 				auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
@@ -139,8 +146,8 @@ void VRWidget::paintGL() {
 					OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
 					projMat.data());
 
-				QMatrix4x4 pj(projection);
-				pj = pj.transposed();
+				//QMatrix4x4 pj(projection);
+				//pj = pj.transposed();
 
 				/// Call out to render our scene.
 				for (auto renderer : renderers)

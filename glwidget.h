@@ -7,6 +7,7 @@
 #include <QOpenGLWidget>
 #include <vector_types.h>
 #include <vector_functions.h>
+#include <memory>
 
 enum INTERACT_MODE{
 	//	DRAG_LENS_EDGE,
@@ -21,33 +22,20 @@ enum INTERACT_MODE{
 };
 
 
-class Trackball;
-class Rotation;
 class StopWatchInterface;
 class Renderable;
 class VRWidget;
+class GLMatrixManager;
 
 class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
     Q_OBJECT
 public:
-
-
-
 	bool isPicking = false;
 	GLuint framebuffer, renderbuffer[2];
 	int xMouse, yMouse;
 	int pickID = -1;
-
-
-
-
-
-
-
-
-
-    explicit GLWidget(QWidget *parent = 0);
+    explicit GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent = 0);
     ~GLWidget();
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -61,10 +49,6 @@ public:
 
 	int2 GetWindowSize() { return make_int2(width, height); }
 
-	void SetVol(int3 dim);
-
-	void SetVol(float3 posMin, float3 posMax);
-	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
 	float3 DataCenter();
 
 
@@ -75,8 +59,8 @@ public:
 
 	void SetInteractMode(INTERACT_MODE v) { interactMode = v; }
 
-	void GetModelview(float* m){ for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
-	void GetProjection(float* m){ for (int i = 0; i < 16; i++) m[i] = projection[i]; }
+	void GetModelview(float* m);// { for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
+	void GetProjection(float* m);// { for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 
@@ -93,8 +77,6 @@ protected:
 	virtual bool event(QEvent *event) Q_DECL_OVERRIDE;
 
 	uint width = 750, height = 900;
-
-
 private:
 	VRWidget* vrWidget = nullptr;
     void computeFPS();
@@ -113,15 +95,8 @@ private:
 
 	void pinchTriggered(QPinchGesture *gesture);
 		/*****view*****/
-    //transformation states
-    QVector3D transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
-    QMatrix4x4 transRot;
-	float transScale = 1;
-	float currentTransScale = 1;
 
-    Trackball *trackball;
     QPointF prevPos;//previous mouse position
-    Rotation *rot;
 
 	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
 
@@ -141,13 +116,12 @@ private:
 	// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.
 	bool pinched = false;	
 
-	float3 dataMin = make_float3(0, 0, 0);
-	float3 dataMax = make_float3(10, 10, 10);
 
-	GLfloat modelview[16];
-	GLfloat projection[16];
+
 
 	float2 depthRange;
+
+	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 private slots:
 	void animate();

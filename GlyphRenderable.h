@@ -34,7 +34,7 @@ public:
 	//void SetDispalceOn(bool b) { displaceOn = b; }
 	float3 findClosetGlyph(float3 aim);
 
-
+	int GetNumOfGlyphs(){ return pos.size(); }
 
 
 	//bool isPicking = true;

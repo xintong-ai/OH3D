@@ -41,6 +41,7 @@ set( Srcs main.cpp GLSphere.cpp GLArrow.cpp
 	VolumeReader.cpp DTIVolumeReader.cpp VecReader.cpp
 	VRWidget.cpp VRGlyphRenderable.cpp
 	LeapListener.cpp 
+    GLMatrixManager.cpp
 	)
 set( Hdrs 
 GLSphere.h
@@ -53,6 +54,7 @@ GLSphere.h
 	VolumeReader.h DTIVolumeReader.h VecReader.h
 	VRWidget.h VRGlyphRenderable.h
 	LeapListener.h LeapInteraction.h
+	GLMatrixManager.h
     )
 #set( Rcs resources/vechist.qrc)
 

@@ -73,8 +73,8 @@ struct functor_Displace
 		float2 lensCen = make_float2(lensX, lensY);
 		float2 vec = screenPos - lensCen;
 		float dis2Cen = length(vec);
-		const float thickDisp = 0.003;
-		const float thickFocus = 0.003;
+		const float thickDisp = 0.01;// 0.003;
+		const float thickFocus = 0.01;// 0.003;
 		const float dark = 0.05;
 		float outerR = circleR / focusRatio;
 		int myCase = 0;

@@ -6,28 +6,24 @@
 #include <fstream>
 #include <helper_timer.h>
 #include <Renderable.h>
-#include <Trackball.h>
-#include <Rotation.h>
 #include <GlyphRenderable.h>
 #include <VRWidget.h>
 #include <TransformFunc.h>
+#include <GLMatrixManager.h>
 
-
-GLWidget::GLWidget(QWidget *parent)
-    : QOpenGLWidget(parent)
+GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
+: QOpenGLWidget(parent)
     , m_frame(0)
+	, matrixMgr(_matrixMgr)
 {
     setFocusPolicy(Qt::StrongFocus);
     sdkCreateTimer(&timer);
 
-    trackball = new Trackball();
-    rot = new Rotation();
 
 	QTimer *aTimer = new QTimer;
 	connect(aTimer, SIGNAL(timeout()), SLOT(animate()));
 	aTimer->start(30);
 
-    transRot.setToIdentity();
 
 	grabGesture(Qt::PinchGesture);
 
@@ -115,27 +111,18 @@ void GLWidget::paintGL() {
     /****transform the view direction*****/
 	makeCurrent();
 	TimerStart();
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    //glMatrixMode(GL_MODELVIEW);
+    //glLoadIdentity();
 
-    glTranslatef(transVec[0], transVec[1], transVec[2]);
-    glMultMatrixf(transRot.data());
-	glScalef(transScale * currentTransScale, transScale* currentTransScale, transScale* currentTransScale);
-
-	float3 dataCenter = (dataMin + dataMax) * 0.5;
-	float3 dataWidth = dataMax - dataMin;
-    float dataMaxWidth = std::max(std::max(dataWidth.x, dataWidth.y), dataWidth.z);
-	float scale = 2.0f / dataMaxWidth;
-    glScalef(scale, scale, scale);
-	glTranslatef(-dataCenter.x, -dataCenter.y, -dataCenter.z);
-
-
-    glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
-    glGetFloatv(GL_PROJECTION_MATRIX, projection);
+    //glGetFloatv(GL_PROJECTION_MATRIX, projection);
 	//glViewport(0, 0, (GLint)width, (GLint)height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(true);
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	matrixMgr->GetModelView(modelview);
+	matrixMgr->GetProjection(projection, width, height);
 	for (auto renderer : renderers)
 	{
 		renderer.second->draw(modelview, projection);
@@ -181,14 +168,7 @@ void GLWidget::paintGL() {
 	}
 }
 
-void Perspective(float fovyInDegrees, float aspectRatio,
-                      float znear, float zfar)
-{
-    float ymax, xmax;
-    ymax = znear * tanf(fovyInDegrees * M_PI / 360.0);
-    xmax = ymax * aspectRatio;
-    glFrustum(-xmax, xmax, -ymax, ymax, znear, zfar);
-}
+
 
 void GLWidget::resizeGL(int w, int h)
 {
@@ -206,10 +186,9 @@ void GLWidget::resizeGL(int w, int h)
         initialized = true;
     }
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-	Perspective(96.73, (float)width / height, (float)0.1, (float)100);
-    glMatrixMode(GL_MODELVIEW);
+    //glMatrixMode(GL_PROJECTION);
+    //glLoadIdentity();
+    //glMatrixMode(GL_MODELVIEW);
 }
 
 void GLWidget::mouseMoveEvent(QMouseEvent *event)
@@ -222,17 +201,11 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 		if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
 			QPointF from = pixelPosToViewPos(prevPos);
 			QPointF to = pixelPosToViewPos(pos);
-			*rot = trackball->rotate(from.x(), from.y(),
-				to.x(), to.y());
-			float m[16];
-			rot->matrix(m);
-			QMatrix4x4 qm = QMatrix4x4(m).transposed();
-			transRot = qm * transRot;
+			matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
 		}
 		else if (event->buttons() & Qt::RightButton) {
 			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
-			transVec[0] += diff.x();
-			transVec[1] += diff.y();
+			matrixMgr->Translate(diff.x(), diff.y());
 		}
 	}
 	QPoint posGL = pixelPosToGLPos(event->pos());
@@ -288,7 +261,8 @@ void GLWidget::wheelEvent(QWheelEvent * event)
 			doTransform = false;
 	}
 	if (doTransform){
-		transScale *= exp(event->delta() * -0.001);
+		matrixMgr->Scale(event->delta());
+		//transScale *= exp(event->delta() * -0.001);
 		UpdateDepthRange();
 	}
 	update();
@@ -321,7 +295,8 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture)
 	}
 	QPinchGesture::ChangeFlags changeFlags = gesture->changeFlags();
 	if (changeFlags & QPinchGesture::ScaleFactorChanged) {
-		currentTransScale = gesture->totalScaleFactor();// exp(/*event->delta()*/gesture->totalScaleFactor() * 0.01);
+		//currentTransScale = gesture->totalScaleFactor();// exp(/*event->delta()*/gesture->totalScaleFactor() * 0.01);
+		matrixMgr->SetCurrentScale(gesture->totalScaleFactor());
 		update();
 	}
 	else {
@@ -332,14 +307,14 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture)
 		// transform only when there is no lens
 		QPointF diff = pixelPosToViewPos(gesture->centerPoint())
 			- pixelPosToViewPos(gesture->lastCenterPoint());
-		transVec[0] += diff.x();
-		transVec[1] += diff.y();
+		//transVec[0] += diff.x();
+		//transVec[1] += diff.y();
+		matrixMgr->Translate(diff.x(), diff.y());
 		update();
 	}
 
 	if (gesture->state() == Qt::GestureFinished) {
-		transScale *= currentTransScale;
-		currentTransScale = 1;
+		matrixMgr->FinishedScale();
 		pinching = false;
 	}
 }
@@ -364,18 +339,6 @@ Renderable* GLWidget::GetRenderable(const char* name)
 	return renderers[name];
 }
 
-void GLWidget::SetVol(int3 dim)
-{ 
-	dataMin = make_float3(0, 0, 0);
-	dataMax = make_float3(dim.x - 1, dim.y - 1, dim.z - 1);
-}
-
-void GLWidget::SetVol(float3 posMin, float3 posMax)
-{
-	dataMin = posMin;
-	dataMax = posMax;
-}
-
 
 
 void GLWidget::UpdateGL()
@@ -390,13 +353,16 @@ void GLWidget::animate()
 	update();
 }
 
-float3 GLWidget::DataCenter()
-{
-	return (dataMin + dataMax) * 0.5;
-}
 
 void GLWidget::UpdateDepthRange()
 {
+	float3 dataMin, dataMax;
+	matrixMgr->GetVol(dataMin, dataMax);
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	matrixMgr->GetModelView(modelview);
+	matrixMgr->GetProjection(projection, width, height);
+
 	float4 p[8];
 	p[0] = make_float4(dataMin.x, dataMin.y, dataMin.z, 1.0f);
 	p[1] = make_float4(dataMin.x, dataMin.y, dataMax.z, 1.0f);
@@ -417,3 +383,19 @@ void GLWidget::UpdateDepthRange()
 	depthRange.y = clamp(*std::max_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
 	std::cout << "depthRange: " << depthRange.x << "," << depthRange.y << std::endl;
 }
+
+float3 GLWidget::DataCenter()
+{
+	return matrixMgr->DataCenter();
+}
+
+void GLWidget::GetModelview(float* m)
+{
+	matrixMgr->GetModelView(m);
+}
+
+void GLWidget::GetProjection(float* m)
+{
+	matrixMgr->GetProjection(m, width, height);
+}
+

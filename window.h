@@ -24,6 +24,7 @@ class VRWidget;
 class VRGlyphRenderable;
 class LeapListener;
 class DataMgr;
+class GLMatrixManager;
 namespace Leap{
 	class Controller;
 }
@@ -64,6 +65,7 @@ private:
 	std::unique_ptr<GridRenderable> gridRenderable;
 	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
 	std::unique_ptr<DataMgr> dataMgr;
+	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	LeapListener* listener;
 	Leap::Controller* controller;

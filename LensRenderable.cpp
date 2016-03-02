@@ -334,6 +334,15 @@ void LensRenderable::SlotDelLens()
 	actor->UpdateGL();
 }
 
+inline float3 GetNormalizedLeapPos(float3 p)
+{
+	float3 leapPos;
+	leapPos.x = clamp((p.x + 117.5) / 235.0, 0.0f, 1.0f);
+	leapPos.y = clamp((p.y - 82.5) / 235.0, 0.0f, 1.0f);
+	leapPos.z = clamp((p.z + 73.5f) / 147.0f, 0.0f, 1.0f);
+	return leapPos;
+}
+
 void LensRenderable::SlotLensCenterChanged(float3 p)
 {
 	if (lenses.size() > 0){
@@ -344,15 +353,26 @@ void LensRenderable::SlotLensCenterChanged(float3 p)
 		actor->GetProjection(projection);
 		//lenses.back()->c = p;
 		float3 pScreen;
-		pScreen.x = (p.x + 117.5) / 235.0 * winSize.x;
-		pScreen.y = (p.y - 82.5) / 235.0 * winSize.y;
+		float3 leapPos = GetNormalizedLeapPos(p);
 		const float aa = 0.02f;
 		float2 depthRange;
 		actor->GetDepthRange(depthRange);
 		//pScreen.z = clamp((1.0f - aa * , 0.0f, 1.0f);
-		std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
-		pScreen.z = depthRange.x + (depthRange.y - depthRange.x) * clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f);
-		std::cout << "depth:" << pScreen.z << std::endl;
+		//std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
+		
+		//std::cout << "leapPos:" << leapPos.x << "," << leapPos.y << "," << leapPos.z << std::endl;
+		bool usingVR = true;
+		if (usingVR){
+			pScreen.x = (1.0 - leapPos.x) * winSize.x;
+			pScreen.y = clamp((1.0 - leapPos.z) * 2, 0.0f, 1.0f) * winSize.y;
+			pScreen.z = depthRange.x + (depthRange.y - depthRange.x) * leapPos.y;
+		}
+		else{
+			pScreen.x = leapPos.x * winSize.x;
+			pScreen.y = leapPos.y * winSize.y;
+			pScreen.z = depthRange.x + (depthRange.y - depthRange.x) * (1.0 - leapPos.z);
+		}
+		//std::cout << "depth:" << pScreen.z << std::endl;
 		lenses.back()->SetClipDepth(pScreen.z, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
 		//pScreen.z = clamp(aa *(1 - (p.y + 73.5) / 147), 0, 1);
 		//lenses.back()->c.z = pScreen.z;
