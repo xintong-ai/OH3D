@@ -1,6 +1,6 @@
 DATA_TYPE=TYPE_SCALAR
 DATA_PATH=D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu
-VR_SUPPORT=ON
+VR_SUPPORT=OFF
 
 b= TYPE_VECTOR,,TYPE_TENSOR,TYPE_SCALAR
 a=D:/onedrive/data/plume/15plume3d421-126x126x512.vec

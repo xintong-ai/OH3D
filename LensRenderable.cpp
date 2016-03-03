@@ -3,6 +3,78 @@
 #include "Lens.h"
 #include "glwidget.h"
 
+class SolidSphere
+{
+protected:
+	std::vector<GLfloat> vertices;
+	std::vector<GLfloat> normals;
+	std::vector<GLfloat> texcoords;
+	std::vector<GLushort> indices;
+
+public:
+	SolidSphere(float radius, unsigned int rings, unsigned int sectors)
+	{
+		float const R = 1. / (float)(rings - 1);
+		float const S = 1. / (float)(sectors - 1);
+		int r, s;
+
+		vertices.resize(rings * sectors * 3);
+		normals.resize(rings * sectors * 3);
+		texcoords.resize(rings * sectors * 2);
+		std::vector<GLfloat>::iterator v = vertices.begin();
+		std::vector<GLfloat>::iterator n = normals.begin();
+		std::vector<GLfloat>::iterator t = texcoords.begin();
+		for (r = 0; r < rings; r++) for (s = 0; s < sectors; s++) {
+			float const y = sin(-M_PI_2 + M_PI * r * R);
+			float const x = cos(2 * M_PI * s * S) * sin(M_PI * r * R);
+			float const z = sin(2 * M_PI * s * S) * sin(M_PI * r * R);
+
+			*t++ = s*S;
+			*t++ = r*R;
+
+			*v++ = x * radius;
+			*v++ = y * radius;
+			*v++ = z * radius;
+
+			*n++ = x;
+			*n++ = y;
+			*n++ = z;
+		}
+
+		indices.resize(rings * sectors * 4);
+		std::vector<GLushort>::iterator i = indices.begin();
+		for (r = 0; r < rings - 1; r++) for (s = 0; s < sectors - 1; s++) {
+			*i++ = r * sectors + s;
+			*i++ = r * sectors + (s + 1);
+			*i++ = (r + 1) * sectors + (s + 1);
+			*i++ = (r + 1) * sectors + s;
+		}
+	}
+
+	void draw(GLfloat x, GLfloat y, GLfloat z)
+	{
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glTranslatef(x, y, z);
+		glScalef(0.2, 0.2, 0.2);
+
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glEnableClientState(GL_NORMAL_ARRAY);
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+		glVertexPointer(3, GL_FLOAT, 0, &vertices[0]);
+		glNormalPointer(GL_FLOAT, 0, &normals[0]);
+		glTexCoordPointer(2, GL_FLOAT, 0, &texcoords[0]);
+		glDrawElements(GL_QUADS, indices.size(), GL_UNSIGNED_SHORT, &indices[0]);
+		glPopMatrix();
+	}
+};
+
+LensRenderable::LensRenderable()
+{
+	lensCenterSphere = new SolidSphere(0.1, 12, 24);
+
+}
 void LensRenderable::init()
 {
 }
@@ -38,125 +110,148 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 {
 	RecordMatrix(modelview, projection);
 
-	int2 winSize = actor->GetWindowSize();
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
-	glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
+	if (drawScreenSpace){
+		int2 winSize = actor->GetWindowSize();
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
 
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glLoadIdentity();
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
 
-	glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
-	glLineWidth(4);
-	glColor3f(1.0f, 0.2f, 0.2f);
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
+		glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+		glLineWidth(4);
+		glColor3f(1.0f, 0.2f, 0.2f);
+		for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
 
-		if (l->type == LENS_TYPE::TYPE_CURVEB) {
-			//glLineWidth(1);
-			//glColor3f(0.2f, 1.0f, 0.2f);
-			//std::vector<float2> lensExtraRendering = l->GetExtraLensRendering();
-			//glPointSize(1.0);
-			////glBegin(GL_POINTS);
-			//glBegin(GL_LINE_STRIP);
-			//for (auto v : lensExtraRendering)
-			//	glVertex2f(v.x, v.y);
-			//glEnd();
+			if (l->type == LENS_TYPE::TYPE_CURVEB) {
+				//glLineWidth(1);
+				//glColor3f(0.2f, 1.0f, 0.2f);
+				//std::vector<float2> lensExtraRendering = l->GetExtraLensRendering();
+				//glPointSize(1.0);
+				////glBegin(GL_POINTS);
+				//glBegin(GL_LINE_STRIP);
+				//for (auto v : lensExtraRendering)
+				//	glVertex2f(v.x, v.y);
+				//glEnd();
 
-			//glLineWidth(4);
-			glColor3f(0.9f, 0.9f, 0.2f);
-			std::vector<float2> lensExtraRendering2 = ((CurveBLens *)l)->GetExtraLensRendering2(modelview, projection, winSize.x, winSize.y);
-			glPointSize(5.0);
-			//glBegin(GL_POINTS);
-			glBegin(GL_LINE_STRIP);
-			for (auto v : lensExtraRendering2)
-				glVertex2f(v.x, v.y);
-			glEnd();
+				//glLineWidth(4);
+				glColor3f(0.9f, 0.9f, 0.2f);
+				std::vector<float2> lensExtraRendering2 = ((CurveBLens *)l)->GetExtraLensRendering2(modelview, projection, winSize.x, winSize.y);
+				glPointSize(5.0);
+				//glBegin(GL_POINTS);
+				glBegin(GL_LINE_STRIP);
+				for (auto v : lensExtraRendering2)
+					glVertex2f(v.x, v.y);
+				glEnd();
 
-			//glLineWidth(1);
-			glColor3f(1.0f, 0.2f, 0.2f);
-			std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
-			glBegin(GL_LINE_LOOP);
-			for (auto v : lensContour)
-				glVertex2f(v.x, v.y);
-			glEnd();
-
-
-			//vector<float2> pp = ((CurveBLens *)l)->posOffsetCtrlPoints;
-			//vector<float2> nn = ((CurveBLens *)l)->negOffsetCtrlPoints;
-			//
-			//vector<float2> pb = ((CurveBLens *)l)->posOffsetBezierPoints;
-			//vector<float2> nb = ((CurveBLens *)l)->negOffsetBezierPoints;
-			//vector<float2> subp = ((CurveBLens *)l)->subCtrlPointsPos;
-			//vector<float2> subn = ((CurveBLens *)l)->subCtrlPointsNeg;
-
-			//float2 center = make_float2(((CurveBLens *)l)->x, ((CurveBLens *)l)->y);
-			//for (int ii = 0; ii < pp.size(); ii++){
-			//	pp[ii] = pp[ii] + center;
-			//	pb[ii] = pb[ii] + center;
-			//	subp[ii] = subp[ii] + center;
-			//}
-			//for (int ii = 0; ii < nn.size(); ii++){
-			//	nn[ii] = nn[ii] + center;
-			//	nb[ii] = nb[ii] + center;
-			//	subn[ii] = subn[ii] + center;
-			//}
-			//glColor3f(0.2f, 0.8f, 0.8f);
-			//glPointSize(3.0);
-			//glBegin(GL_POINTS);
-			//for (auto v : pp)
-			//	glVertex2f(v.x, v.y);
-			//for (auto v : nn)
-			//	glVertex2f(v.x, v.y);
-			//glEnd();
-
-			//glColor3f(0.2f, 0.2f, 0.8f);
-			//glBegin(GL_LINES);
-			//for (int ii = 0; ii < pp.size(); ii++){
-			//	glVertex2f(pb[ii].x, pb[ii].y);
-			//	glVertex2f(subp[ii].x, subp[ii].y);
-			//}
-			//for (int ii = 0; ii < nn.size(); ii++){
-			//	glVertex2f(nb[ii].x, nb[ii].y);
-			//	glVertex2f(subn[ii].x, subn[ii].y);
-			//}
-			//glEnd();
+				//glLineWidth(1);
+				glColor3f(1.0f, 0.2f, 0.2f);
+				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
 
 
+				//vector<float2> pp = ((CurveBLens *)l)->posOffsetCtrlPoints;
+				//vector<float2> nn = ((CurveBLens *)l)->negOffsetCtrlPoints;
+				//
+				//vector<float2> pb = ((CurveBLens *)l)->posOffsetBezierPoints;
+				//vector<float2> nb = ((CurveBLens *)l)->negOffsetBezierPoints;
+				//vector<float2> subp = ((CurveBLens *)l)->subCtrlPointsPos;
+				//vector<float2> subn = ((CurveBLens *)l)->subCtrlPointsNeg;
+
+				//float2 center = make_float2(((CurveBLens *)l)->x, ((CurveBLens *)l)->y);
+				//for (int ii = 0; ii < pp.size(); ii++){
+				//	pp[ii] = pp[ii] + center;
+				//	pb[ii] = pb[ii] + center;
+				//	subp[ii] = subp[ii] + center;
+				//}
+				//for (int ii = 0; ii < nn.size(); ii++){
+				//	nn[ii] = nn[ii] + center;
+				//	nb[ii] = nb[ii] + center;
+				//	subn[ii] = subn[ii] + center;
+				//}
+				//glColor3f(0.2f, 0.8f, 0.8f);
+				//glPointSize(3.0);
+				//glBegin(GL_POINTS);
+				//for (auto v : pp)
+				//	glVertex2f(v.x, v.y);
+				//for (auto v : nn)
+				//	glVertex2f(v.x, v.y);
+				//glEnd();
+
+				//glColor3f(0.2f, 0.2f, 0.8f);
+				//glBegin(GL_LINES);
+				//for (int ii = 0; ii < pp.size(); ii++){
+				//	glVertex2f(pb[ii].x, pb[ii].y);
+				//	glVertex2f(subp[ii].x, subp[ii].y);
+				//}
+				//for (int ii = 0; ii < nn.size(); ii++){
+				//	glVertex2f(nb[ii].x, nb[ii].y);
+				//	glVertex2f(subn[ii].x, subn[ii].y);
+				//}
+				//glEnd();
 
 
-			glColor3f(0.2f, 0.8f, 0.8f);
-			std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
-			glBegin(GL_LINE_LOOP);
-			for (auto v : lensOuterContour)
-				glVertex2f(v.x, v.y);
-			glEnd();
-			//glLineWidth(4);
+
+
+				glColor3f(0.2f, 0.8f, 0.8f);
+				std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensOuterContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+				//glLineWidth(4);
+			}
+			else if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
+				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+
+				glColor3f(0.2f, 0.8f, 0.8f);
+				std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensOuterContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+			}
 		}
-		else if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
-			std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
-			glBegin(GL_LINE_LOOP);
-			for (auto v : lensContour)
-				glVertex2f(v.x, v.y);
-			glEnd();
 
-			glColor3f(0.2f, 0.8f, 0.8f);
-			std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
-			glBegin(GL_LINE_LOOP);
-			for (auto v : lensOuterContour)
-				glVertex2f(v.x, v.y);
-			glEnd();
+		glPopAttrib();
+		//restore the original 3D coordinate system
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
+
+	}
+	else {
+		for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
+			glMatrixMode(GL_PROJECTION);
+			glPushMatrix();
+			glLoadIdentity();
+			glLoadMatrixf( projection);
+			glMatrixMode(GL_MODELVIEW);
+			glPushMatrix();
+			glLoadIdentity();
+			glLoadMatrixf(modelview);
+
+			lensCenterSphere->draw(l->c.x, l->c.y, l->c.z);
+
+			glPopMatrix();
+			glPopMatrix();
+
 		}
 	}
 
-	glPopAttrib();
-	//restore the original 3D coordinate system
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
 }
 
 void LensRenderable::AddCircleLens()

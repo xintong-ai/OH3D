@@ -87,6 +87,7 @@ public:
 	}
 
 	void SetVisibility(bool b) { visible = b; }
+	void SetDrawScreenSpace(bool b) { drawScreenSpace = b; }
 
 protected:
     //DataMgr *dataMgr;
@@ -106,6 +107,7 @@ protected:
 
 	bool visible = true;
 
+	bool drawScreenSpace = false;
 
 private:
     void AllocOutImage();

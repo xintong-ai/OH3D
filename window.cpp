@@ -85,11 +85,14 @@ Window::Window()
 	/********GL widget******/
 	matrixMgr = std::make_shared<GLMatrixManager>();
 	openGL = std::make_unique<GLWidget>(matrixMgr);
+	lensRenderable = std::make_unique<LensRenderable>();
+	lensRenderable->SetDrawScreenSpace(false);
 	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
 		vrWidget = std::make_unique<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
 		vrGlyphRenderable = std::make_unique<VRGlyphRenderable>(glyphRenderable.get());
 		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
+		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
 	}
 	QSurfaceFormat format;
@@ -102,7 +105,6 @@ Window::Window()
 
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
-	lensRenderable = std::make_unique<LensRenderable>();
 	gridRenderable = std::make_unique<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	//openGL->AddRenderable("bbox", bbox);

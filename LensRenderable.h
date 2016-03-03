@@ -4,6 +4,7 @@
 
 
 class Lens;
+class SolidSphere;
 class LensRenderable :public Renderable
 {
 	Q_OBJECT
@@ -11,11 +12,12 @@ class LensRenderable :public Renderable
 	std::vector<Lens*> lenses;
 	int pickedLens = -1;
 	int2 lastPt = make_int2(0, 0);
+	SolidSphere* lensCenterSphere;
 public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	LensRenderable(){}
+	LensRenderable();
 	std::vector<Lens*> GetLenses() { return lenses; }
 	void AddCircleLens();
 	void AddLineLens();
