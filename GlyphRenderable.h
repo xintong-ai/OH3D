@@ -15,7 +15,8 @@ class GlyphRenderable: public Renderable
 public:
 	std::vector<float4> pos;
 	std::vector<float4> posOrig;
-
+	std::vector<char> feature;
+	bool isUsingFeature = true;
 	bool isPicking = false;
 
 
@@ -43,6 +44,7 @@ protected:
 
 public:
 	~GlyphRenderable();
+	void SetFeature(std::vector<char> & _feature){ for (int i = 0; i < _feature.size();i++) feature[i] = _feature[i]; };
 	void RecomputeTarget();
 	void DisplacePoints(std::vector<float2>& pts);
 	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;

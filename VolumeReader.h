@@ -78,6 +78,21 @@ public:
 
 	~VolumeReader();
 
+	bool useFeature;
+	void loadFeature(const char* filename)
+	{
+		FILE *pFile;
+		pFile = fopen(filename, "rb");
+		if (pFile == NULL) { fputs("File error", stderr); exit(1); }
+		int num = dataSizes.x*dataSizes.y*dataSizes.z;
+		feature = new char[num];
+		short *temp = new short[num];
+		fread(temp, sizeof(char), num, pFile);
+		for (int i = 0; i < num; i++){
+			feature[i] = temp[i];
+		}
+	};
+
 protected:
 	int dataDims;
 	int3 dataSizes;
@@ -89,6 +104,9 @@ protected:
 	float maxVal = 0.0f;
 	float minVal = 0.0f;
 	float *data = nullptr;
+
+	char *feature = nullptr;
+
 };
 
 #endif

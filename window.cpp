@@ -67,8 +67,20 @@ Window::Window()
 		reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
 		std::vector<float4> pos;
 		std::vector<float> val;
-		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+
+		bool isUsingFeature = true;
+		if (isUsingFeature){
+			((DTIVolumeReader*)reader.get())->loadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str());
+			std::vector<char> feature;
+			((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
+			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+			glyphRenderable->SetFeature(feature);
+		}
+		else
+		{
+			((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		}
 	}
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
 		reader = std::make_unique<VecReader>(dataPath.c_str());
