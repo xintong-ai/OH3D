@@ -31,6 +31,9 @@ public:
 
 protected:
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
+
+	void initPickingDrawingObjects();
+	void drawPicking(float modelview[16], float projection[16]);
 };
 
 #endif //SQ_RENDERABLE_H

@@ -68,9 +68,9 @@ Window::Window()
 		std::vector<float4> pos;
 		std::vector<float> val;
 
-		bool isUsingFeature = true;
-		if (isUsingFeature){
-			((DTIVolumeReader*)reader.get())->loadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str());
+		//bool isUsingFeature = true;
+
+		if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
 			std::vector<char> feature;
 			((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
 			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
@@ -141,6 +141,7 @@ Window::Window()
 
 
 	QCheckBox* usingSnapCheck = new QCheckBox("Using Lens Snap", this);
+	QCheckBox* usingFeatureCheck = new QCheckBox("Using Data Feature", this);
 
 
 
@@ -160,6 +161,7 @@ Window::Window()
 	controlLayout->addWidget(adjustOffsetBtn);
 	controlLayout->addWidget(refineBoundaryBtn);
 	controlLayout->addWidget(usingSnapCheck);
+	controlLayout->addWidget(usingFeatureCheck);	
 	controlLayout->addStretch();
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
@@ -180,7 +182,8 @@ Window::Window()
 		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 	connect(refineBoundaryBtn, SIGNAL(clicked()), this, SLOT(RefineLensBoundary()));
 	connect(usingSnapCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingSnap(bool)));
-
+	connect(usingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingFeature(bool)));
+	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
@@ -265,4 +268,9 @@ void Window::SlotToggleUsingSnap(bool b)
 	if (!b){
 		glyphRenderable->SetSnappedGlyphId(-1);
 	}
+}
+void Window::SlotToggleUsingFeature(bool b)
+{
+	glyphRenderable->isUsingFeature = b;
+	glyphRenderable->RecomputeTarget();
 }

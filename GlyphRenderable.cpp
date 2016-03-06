@@ -32,10 +32,17 @@ GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 	feature.resize(pos.size());
 
 	displace = std::make_shared<Displace>();
-	displace->LoadOrig(&pos[0], pos.size(), &feature[0]);
+	displace->LoadOrig(&pos[0], pos.size());
 	glyphSizeScale.assign(pos.size(), 1.0f);
 	glyphBright.assign(pos.size(), 1.0f);
 }
+
+void GlyphRenderable::SetFeature(std::vector<char> & _feature)
+{ 
+	for (int i = 0; i < _feature.size(); i++) 
+		feature[i] = _feature[i];
+	displace->LoadFeature(&feature[0], feature.size());
+};
 
 GlyphRenderable::~GlyphRenderable()
 { 
@@ -103,99 +110,6 @@ float3 GlyphRenderable::findClosetGlyph(float3 aim)
 
 
 
-void GlyphRenderable::initPickingDrawingObjects(int nv, float* vertex)
-{
-
-	//init shader
-#define GLSL(shader) "#version 440\n" #shader
-	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
-	//using two sides shading
-	const char* vertexVS =
-		GLSL(
-		layout(location = 0) in vec3 VertexPosition;
-		uniform mat4 ModelViewMatrix;
-		uniform mat4 ProjectionMatrix;
-		uniform vec3 Transform;
-		uniform float Scale;
-		void main()
-		{
-			mat4 MVP = ProjectionMatrix * ModelViewMatrix;
-			gl_Position = MVP * vec4(VertexPosition * (Scale * 0.08) + Transform, 1.0);
-		}
-		);
-
-		const char* vertexFS =
-			GLSL(
-			layout(location = 0) out vec4 FragColor;
-		uniform float r;
-		uniform float g;
-		uniform float b;
-		void main() {
-			FragColor = vec4(r, g, b, 1.0);
-		}
-	);
-
-	glPickingProg = new ShaderProgram;
-	glPickingProg->initFromStrings(vertexVS, vertexFS);
-
-	glPickingProg->addAttribute("VertexPosition");
-	glPickingProg->addUniform("r");
-	glPickingProg->addUniform("g");
-	glPickingProg->addUniform("b");
-
-	glPickingProg->addUniform("ModelViewMatrix");
-	glPickingProg->addUniform("ProjectionMatrix");
-	glPickingProg->addUniform("Transform");
-	glPickingProg->addUniform("Scale");
-
-	//init vertex buffer
-	qgl->glGenBuffers(1, &vbo_vert_picking);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
-	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, vertex, GL_STATIC_DRAW);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
-
-	numVerticeOfGlyph = nv;
-}
-
-
-void GlyphRenderable::drawPicking(float modelview[16], float projection[16])
-{
-	RecordMatrix(modelview, projection);
-
-	glPickingProg->use();
-
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
-	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
-
-	for (int i = 0; i < pos.size(); i++) {
-		//glPushMatrix();
-
-		int r = ((i + 1) & 0x000000FF) >> 0;
-		int g = ((i + 1) & 0x0000FF00) >> 8;
-		int b = ((i + 1) & 0x00FF0000) >> 16;
-
-		float4 shift = pos[i];
-		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
-		q_modelview = q_modelview.transposed();
-
-		qgl->glUniform1f(glPickingProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);
-		qgl->glUniform3fv(glPickingProg->uniform("Transform"), 1, &shift.x);
-		qgl->glUniformMatrix4fv(glPickingProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
-		qgl->glUniformMatrix4fv(glPickingProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
-		qgl->glUniform1f(glPickingProg->uniform("r"), r / 255.0f);
-		qgl->glUniform1f(glPickingProg->uniform("g"), g / 255.0f);
-		qgl->glUniform1f(glPickingProg->uniform("b"), b / 255.0f);
-
-		glDrawArrays(GL_QUADS, 0, numVerticeOfGlyph);
-		//glPopMatrix();
-	}
-
-	glPickingProg->disable();
-}
-
 void GlyphRenderable::mousePress(int x, int y, int modifier)
 {
 	if (QApplication::keyboardModifiers() == Qt::AltModifier && isPicking){
@@ -205,6 +119,7 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 		float modelview[16], projection[16];
 		actor->GetModelview(modelview);
 		actor->GetProjection(projection);
+
 		drawPicking(modelview, projection);
 
 		qgl->glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);

@@ -297,7 +297,7 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
 			//if (isUsingSnap && modifier != Qt::AltModifier){
 			//	GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
-			//	glyphRenderable->findClosetGlyph(make_float3(lenses[pickedLens]->GetCenter()));
+			//	glyphRenderable->findClosetGlyph(make_float3(l->GetCenter()));
 			//}
 		}
 	}

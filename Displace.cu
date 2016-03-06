@@ -85,7 +85,7 @@ struct functor_Displace
 				if ((lensD - clipPos.z) > thickDisp){
 					myCase = 1;//cutaway
 				}
-				else if (clipPos.z < lensD){
+				else if (clipPos.z < lensD-0.000001){ //add 0.0000001 to avoid numerical error
 					myCase = 2;//displace
 				}
 				else if (dis2Cen > circleR){
@@ -367,7 +367,7 @@ Displace::Displace()
 {
 }
 
-void Displace::LoadOrig(float4* v, int num, char* f)
+void Displace::LoadOrig(float4* v, int num)
 {
 	posOrig.assign(v, v + num);// , posOrig.begin());
 	d_vec_posTarget.assign(num, make_float4(0, 0, 0, 1));
@@ -375,11 +375,16 @@ void Displace::LoadOrig(float4* v, int num, char* f)
 	d_vec_glyphBrightTarget.assign(num, 1.0f);
 	d_vec_disToAim.assign(num, 0);
 
-	if (f != 0){
-		feature.assign(f, f + num);
+	feature.assign(num, 0);
+}
+
+void Displace::LoadFeature(char* f, int num)
+{
+	if (f == 0 || f==nullptr || f== NULL){
+		feature.assign(num, 0);
 	}
 	else{
-		feature.assign(num, 0);
+		feature.assign(f, f + num);
 	}
 }
 

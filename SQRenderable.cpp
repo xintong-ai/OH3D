@@ -131,6 +131,8 @@ void SQRenderable::init()
 	qgl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), &indices[0], GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+	initPickingDrawingObjects();
+
 	//m_vao->release();
 }
 
@@ -160,9 +162,9 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		float3 cen = actor->DataCenter();
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
 		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
-		if (i == snappedGlyphIdx)
+		if (i == snappedGlyphId)
 			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 0.3f, 0.3f); 
-		else if (feature[i]>0)
+		else if (isUsingFeature && feature[i]>0)
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.3f, 0.3f, 1.0f);
 		else
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
@@ -296,4 +298,124 @@ GlyphRenderable(_pos)
 			gltrans[3], gltrans[7], gltrans[11], gltrans[15]);
 		rotations.push_back(rot);
 	}
+}
+
+void SQRenderable::initPickingDrawingObjects()
+{
+#define GLSL(shader) "#version 440\n" #shader
+	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
+
+
+	const char* vertexVS =
+		GLSL(
+		in vec4 VertexPosition;
+		uniform mat4 ModelViewMatrix;
+		uniform mat4 ProjectionMatrix;
+		uniform mat4 SQRotMatrix;
+		uniform float Scale;
+
+		uniform vec3 Transform;
+
+		vec4 DivZ(vec4 v){
+			return vec4(v.x / v.w, v.y / v.w, v.z / v.w, 1.0f);
+		}
+		void main()
+		{
+			mat4 MVP = ProjectionMatrix * ModelViewMatrix;
+			gl_Position = MVP * vec4(vec3(DivZ(SQRotMatrix * VertexPosition)) * 1000 * Scale + Transform, 1.0);
+		}
+	);
+
+	const char* vertexFS =
+		GLSL(
+		layout(location = 0) out vec4 FragColor;
+		uniform float r;
+		uniform float g;
+		uniform float b;
+		void main() {
+			FragColor = vec4(r, g, b, 1.0);
+		}
+	);
+
+	glPickingProg = new ShaderProgram;
+	glPickingProg->initFromStrings(vertexVS, vertexFS);
+
+
+	glPickingProg->addAttribute("VertexPosition");
+	glPickingProg->addUniform("r");
+	glPickingProg->addUniform("g");
+	glPickingProg->addUniform("b");
+
+	glPickingProg->addUniform("ModelViewMatrix");
+	glPickingProg->addUniform("ProjectionMatrix");
+	glPickingProg->addUniform("Transform");
+	glPickingProg->addUniform("SQRotMatrix");
+	glPickingProg->addUniform("Scale");
+
+	qgl->glGenBuffers(1, &vbo_vert_picking);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
+	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(float)* 4, &verts[0].x, GL_STATIC_DRAW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+
+	qgl->glGenBuffers(1, &vbo_indices_picking);
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices_picking);
+	qgl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)* indices.size(), &indices[0], GL_STATIC_DRAW);
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void SQRenderable::drawPicking(float modelview[16], float projection[16])
+{
+	RecordMatrix(modelview, projection);
+
+	glPickingProg->use();
+	
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
+	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices_picking);
+
+	int firstVertex = 0;
+	int firstIndex = 0;
+
+	for (int i = 0; i < pos.size(); i++) {
+		//glPushMatrix();
+		
+		int r = ((i + 1) & 0x000000FF) >> 0;
+		int g = ((i + 1) & 0x0000FF00) >> 8;
+		int b = ((i + 1) & 0x00FF0000) >> 16;
+
+		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
+		q_modelview = q_modelview.transposed();
+
+		qgl->glUniform3fv(glPickingProg->uniform("Transform"), 1, &pos[i].x);
+		qgl->glUniform1f(glPickingProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);
+		//the data() returns array in column major, so there is no need to do transpose.
+		qgl->glUniformMatrix4fv(glPickingProg->uniform("ModelViewMatrix"), 1, GL_FALSE, q_modelview.data());
+		qgl->glUniformMatrix4fv(glPickingProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
+		qgl->glUniformMatrix4fv(glPickingProg->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
+
+		qgl->glUniform1f(glPickingProg->uniform("r"), r / 255.0f);
+		qgl->glUniform1f(glPickingProg->uniform("g"), g / 255.0f);
+		qgl->glUniform1f(glPickingProg->uniform("b"), b / 255.0f);
+
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
+		qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 4, GL_FLOAT,
+			GL_FALSE, sizeof(float4), (char*)NULL + firstVertex * sizeof(float4));
+
+		qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices_picking);
+
+		glDrawElements(GL_TRIANGLE_STRIP, nIndices[i], GL_UNSIGNED_INT, (char*)NULL + firstIndex * sizeof(unsigned int));
+
+		//glPopMatrix();
+
+		firstVertex += nVerts[i];
+		firstIndex += nIndices[i];
+	}
+
+
+	glPickingProg->disable();
+	
 }

@@ -23,6 +23,36 @@ using namespace std;
 #include <ColorGradient.h>
 
 
+SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val)
+//SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
+:GlyphRenderable(_spherePos)
+{
+	val = _val;
+	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
+	ColorGradient cg;
+	const float valMax = 350;
+	const float valMin = 70;
+	for (int i = 0; i < _spherePos.size(); i++) {
+		float valScaled = (val[i] - valMin) / (valMax - valMin);
+		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
+	}
+}
+
+void SphereRenderable::init()
+{
+	LoadShaders(glProg);
+	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
+	//m_vao->create();
+
+	glyphMesh = std::make_unique<GLSphere>(1, 8);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	GenVertexBuffer(glyphMesh->GetNumVerts(),
+		glyphMesh->GetVerts());
+
+	initPickingDrawingObjects();
+}
+
 void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
 #define GLSL(shader) "#version 440\n" #shader
@@ -101,25 +131,22 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 	shaderProg->addUniform("Bright");
 }
 
-void SphereRenderable::init()
+
+
+void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 {
-	LoadShaders(glProg);
-	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
-	//m_vao->create();
+	//m_vao->bind();
 
-	glyphMesh = std::make_unique<GLSphere>(1, 8);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	qgl->glGenBuffers(1, &vbo_vert);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, vertex, GL_STATIC_DRAW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 
-	GenVertexBuffer(glyphMesh->GetNumVerts(),
-		glyphMesh->GetVerts());
-
-	initPickingDrawingObjects(glyphMesh->GetNumVerts(), glyphMesh->GetVerts());
+	//m_vao->release();
 }
 
-
-void SphereRenderable::UpdateData()
-{
-}
 
 void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
@@ -187,31 +214,97 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 }
 
 
-void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
+void SphereRenderable::UpdateData()
 {
-	//m_vao->bind();
-
-	qgl->glGenBuffers(1, &vbo_vert);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, vertex, GL_STATIC_DRAW);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
-
-	//m_vao->release();
 }
 
-SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val)
-//SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
-	:GlyphRenderable(_spherePos)
-{ 
-	val = _val; 
-	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
-	ColorGradient cg;
-	const float valMax = 350;
-	const float valMin = 70;
-	for (int i = 0; i < _spherePos.size(); i++) {
-		float valScaled = (val[i] - valMin) / (valMax - valMin);
-		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
+void SphereRenderable::initPickingDrawingObjects()
+{
+
+	//init shader
+#define GLSL(shader) "#version 440\n" #shader
+	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
+	//using two sides shading
+	const char* vertexVS =
+		GLSL(
+		layout(location = 0) in vec3 VertexPosition;
+	uniform mat4 ModelViewMatrix;
+	uniform mat4 ProjectionMatrix;
+	uniform vec3 Transform;
+	uniform float Scale;
+	void main()
+	{
+		mat4 MVP = ProjectionMatrix * ModelViewMatrix;
+		gl_Position = MVP * vec4(VertexPosition * (Scale * 0.08) + Transform, 1.0);
 	}
+	);
+
+	const char* vertexFS =
+		GLSL(
+		layout(location = 0) out vec4 FragColor;
+	uniform float r;
+	uniform float g;
+	uniform float b;
+	void main() {
+		FragColor = vec4(r, g, b, 1.0);
+	}
+	);
+
+	glPickingProg = new ShaderProgram;
+	glPickingProg->initFromStrings(vertexVS, vertexFS);
+
+	glPickingProg->addAttribute("VertexPosition");
+	glPickingProg->addUniform("r");
+	glPickingProg->addUniform("g");
+	glPickingProg->addUniform("b");
+
+	glPickingProg->addUniform("ModelViewMatrix");
+	glPickingProg->addUniform("ProjectionMatrix");
+	glPickingProg->addUniform("Transform");
+	glPickingProg->addUniform("Scale");
+
+	//init vertex buffer
+	qgl->glGenBuffers(1, &vbo_vert_picking);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
+	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glBufferData(GL_ARRAY_BUFFER, glyphMesh->GetNumVerts() * sizeof(float)* 3, glyphMesh->GetVerts(), GL_STATIC_DRAW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+}
+
+
+void SphereRenderable::drawPicking(float modelview[16], float projection[16])
+{
+	RecordMatrix(modelview, projection);
+
+	glPickingProg->use();
+
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
+	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+
+	for (int i = 0; i < pos.size(); i++) {
+		//glPushMatrix();
+
+		int r = ((i + 1) & 0x000000FF) >> 0;
+		int g = ((i + 1) & 0x0000FF00) >> 8;
+		int b = ((i + 1) & 0x00FF0000) >> 16;
+
+		float4 shift = pos[i];
+		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
+		q_modelview = q_modelview.transposed();
+
+		qgl->glUniform1f(glPickingProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);
+		qgl->glUniform3fv(glPickingProg->uniform("Transform"), 1, &shift.x);
+		qgl->glUniformMatrix4fv(glPickingProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
+		qgl->glUniformMatrix4fv(glPickingProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
+		qgl->glUniform1f(glPickingProg->uniform("r"), r / 255.0f);
+		qgl->glUniform1f(glPickingProg->uniform("g"), g / 255.0f);
+		qgl->glUniform1f(glPickingProg->uniform("b"), b / 255.0f);
+
+		glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
+		//glPopMatrix();
+	}
+
+	glPickingProg->disable();
 }

@@ -133,7 +133,7 @@ void DTIVolumeReader::GetSamplesWithFeature(std::vector<float4>& _pos, std::vect
 		for (int j = 0; j < dataSizes.y; j += 4) {
 			for (int i = 0; i < dataSizes.x; i += 4){
 				int idx = k * dataSizes.x * dataSizes.y + j * dataSizes.x + i;
-				if (b[idx] > 0.4) {
+				if (b[idx] > 0.4 || (feature[idx]>0 && b[idx] > 0.2)) {
 					_pos.push_back(float3To4(GetDataPos(make_int3(i, j, k))));
 					_feature.push_back(feature[idx]);
 					_val.push_back(1.0f);
