@@ -69,8 +69,20 @@ Window::Window()
 		reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
 		std::vector<float4> pos;
 		std::vector<float> val;
-		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+
+		//bool isUsingFeature = true;
+
+		if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
+			std::vector<char> feature;
+			((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
+			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+			glyphRenderable->SetFeature(feature);
+		}
+		else
+		{
+			((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		}
 	}
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
 		reader = std::make_unique<VecReader>(dataPath.c_str());
@@ -132,6 +144,13 @@ Window::Window()
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
 
+
+
+	QCheckBox* usingSnapCheck = new QCheckBox("Using Lens Snap", this);
+	QCheckBox* usingFeatureCheck = new QCheckBox("Using Data Feature", this);
+
+
+
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
@@ -147,6 +166,8 @@ Window::Window()
 	controlLayout->addWidget(glyphSizeAdjustSlider);
 	controlLayout->addWidget(adjustOffsetBtn);
 	controlLayout->addWidget(refineBoundaryBtn);
+	controlLayout->addWidget(usingSnapCheck);
+	controlLayout->addWidget(usingFeatureCheck);	
 	controlLayout->addStretch();
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
@@ -166,7 +187,9 @@ Window::Window()
 	connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
 		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 	connect(refineBoundaryBtn, SIGNAL(clicked()), this, SLOT(RefineLensBoundary()));
-
+	connect(usingSnapCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingSnap(bool)));
+	connect(usingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingFeature(bool)));
+	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
@@ -242,4 +265,18 @@ void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D i
 {
 	//std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
 	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
+}
+
+void Window::SlotToggleUsingSnap(bool b)
+{
+	lensRenderable->isUsingSnap = b;
+	glyphRenderable->isPicking = b;
+	if (!b){
+		glyphRenderable->SetSnappedGlyphId(-1);
+	}
+}
+void Window::SlotToggleUsingFeature(bool b)
+{
+	glyphRenderable->isUsingFeature = b;
+	glyphRenderable->RecomputeTarget();
 }

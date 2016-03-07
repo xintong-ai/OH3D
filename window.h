@@ -106,6 +106,8 @@ private slots:
 	//void SlotSetAnimation(bool doAnimation);
 	void SlotToggleGrid(bool b);
 	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
+	void SlotToggleUsingSnap(bool b);
+	void SlotToggleUsingFeature(bool b);
 
 	//void XSliderChanged(int i);
 	//void YSliderChanged(int i);

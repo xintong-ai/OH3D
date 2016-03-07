@@ -26,7 +26,7 @@ public:
 	void mousePress(int x, int y, int modifier) override;
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
-	bool MouseWheel(int x, int y, int delta)  override;
+	bool MouseWheel(int x, int y, int modifier, int delta)  override;
 
 	bool isUsingSnap = false;
 

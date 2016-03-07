@@ -76,7 +76,7 @@ public:
     //    ProjectionMatrix = ProjectionMatrix.transposed();
     //}
 
-	virtual bool MouseWheel(int x, int y, int delta){ return false; };// {cameraChanged = true; }
+	virtual bool MouseWheel(int x, int y, int modifier, int delta){ return false; };// {cameraChanged = true; }
 
 	void SetAllRenderable(std::map<std::string, Renderable*>* _allrenderer) {
 		allrenderer = _allrenderer;

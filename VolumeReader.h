@@ -78,6 +78,31 @@ public:
 
 	~VolumeReader();
 
+	bool useFeature;
+	bool LoadFeature(const char* filename)
+	{
+		int num = dataSizes.x*dataSizes.y*dataSizes.z;
+		feature = new char[num];
+
+		FILE *pFile;
+		pFile = fopen(filename, "rb");
+		if (pFile == NULL) 
+		{
+			fputs("no feature is loaded \n", stderr);
+			memset(feature, 0, num);
+			return false;
+		}
+
+		typedef unsigned char FEATURE_FILE_TYPE;
+		FEATURE_FILE_TYPE *temp = new FEATURE_FILE_TYPE[num];
+		fread(temp, sizeof(FEATURE_FILE_TYPE), num, pFile);
+
+		for (int i = 0; i < num; i++){
+			feature[i] = temp[i];
+		}
+		return true;
+	};
+
 protected:
 	int dataDims;
 	int3 dataSizes;
@@ -89,6 +114,9 @@ protected:
 	float maxVal = 0.0f;
 	float minVal = 0.0f;
 	float *data = nullptr;
+
+	char *feature = nullptr;
+
 };
 
 #endif

@@ -31,12 +31,17 @@ class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
     Q_OBJECT
 public:
+
 	bool isPicking = false;
 	GLuint framebuffer, renderbuffer[2];
 	int xMouse, yMouse;
 	int pickID = -1;
     explicit GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent = 0);
-    ~GLWidget();
+
+
+    explicit GLWidget(QWidget *parent = 0);
+
+	~GLWidget();
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
     QSize sizeHint() const Q_DECL_OVERRIDE;
@@ -116,6 +121,15 @@ private:
 	// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.
 	bool pinched = false;	
 
+
+	//transformation states
+	QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+	QMatrix4x4 transRot;
+	float transScale = 1;
+	float currentTransScale = 1;
+
+	float3 dataMin = make_float3(0, 0, 0);
+	float3 dataMax = make_float3(10, 10, 10);
 
 
 

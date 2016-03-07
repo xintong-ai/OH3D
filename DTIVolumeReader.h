@@ -25,6 +25,7 @@ public:
 	float* GetFractionalAnisotropy();
 	float3* GetColors();
 	void GetSamples(std::vector<float4>& _pos, std::vector<float>& _val);
+	void GetSamplesWithFeature(std::vector<float4>& _pos, std::vector<float>& _val, std::vector<char>& _feature);
 	//float* GetEigenValue();
 private:
 	void EigenAnalysis();
