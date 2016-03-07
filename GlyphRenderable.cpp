@@ -21,7 +21,7 @@ void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
 	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isUsingFeature);
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature);
 }
 
 
@@ -37,11 +37,14 @@ GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 	glyphBright.assign(pos.size(), 1.0f);
 }
 
-void GlyphRenderable::SetFeature(std::vector<char> & _feature)
+void GlyphRenderable::SetFeature(std::vector<char> & _feature, std::vector<float3> & _featureCenter)
 { 
 	for (int i = 0; i < _feature.size(); i++) 
 		feature[i] = _feature[i];
 	displace->LoadFeature(&feature[0], feature.size());
+	featureCenter = _featureCenter;
+	//for (int i = 0; i < _featureCenter.size(); i++)
+	//	featureCenter[i] = _featureCenter[i];
 };
 
 GlyphRenderable::~GlyphRenderable()
@@ -135,6 +138,36 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 			for (int i = 0; i < lenses.size(); i++) {
 				Lens* l = lenses[i];
 				l->SetCenter(make_float3(posOrig[snappedGlyphId]));
+			}
+		}
+	}
+	else if (QApplication::keyboardModifiers() == Qt::ShiftModifier && isPickingFeature){
+		qgl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		float modelview[16], projection[16];
+		actor->GetModelview(modelview);
+		actor->GetProjection(projection);
+
+		drawPicking(modelview, projection);
+
+		qgl->glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
+		unsigned char cursorPixel[4];
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cursorPixel);
+
+		snappedFeatureId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256;
+		//std::cout << "pick id in glyphrenderable: " << snappedGlyphId << std::endl;
+
+		cout << snappedFeatureId << endl;
+
+		if (snappedFeatureId > 0){
+			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
+			for (int i = 0; i < lenses.size(); i++) {
+				Lens* l = lenses[i];
+				l->SetCenter(featureCenter[snappedFeatureId-1]);
+				cout << featureCenter[snappedFeatureId - 1].x << " " << featureCenter[snappedFeatureId - 1].y << " " << featureCenter[snappedFeatureId - 1].z << endl;
+
 			}
 		}
 	}

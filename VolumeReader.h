@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <helper_math.h>
+#include <vector>
 
 
 struct matrix3x3{
@@ -78,30 +79,13 @@ public:
 
 	~VolumeReader();
 
+	//related to feature input
 	bool useFeature;
-	bool LoadFeature(const char* filename)
-	{
-		int num = dataSizes.x*dataSizes.y*dataSizes.z;
-		feature = new char[num];
+	int featureAmount;
+	std::vector<float3> featureCenter;
+	bool LoadFeature(const char* filename);
 
-		FILE *pFile;
-		pFile = fopen(filename, "rb");
-		if (pFile == NULL) 
-		{
-			fputs("no feature is loaded \n", stderr);
-			memset(feature, 0, num);
-			return false;
-		}
-
-		typedef unsigned char FEATURE_FILE_TYPE;
-		FEATURE_FILE_TYPE *temp = new FEATURE_FILE_TYPE[num];
-		fread(temp, sizeof(FEATURE_FILE_TYPE), num, pFile);
-
-		for (int i = 0; i < num; i++){
-			feature[i] = temp[i];
-		}
-		return true;
-	};
+	
 
 protected:
 	int dataDims;
@@ -115,6 +99,7 @@ protected:
 	float minVal = 0.0f;
 	float *data = nullptr;
 
+	//related to feature input
 	char *feature = nullptr;
 
 };

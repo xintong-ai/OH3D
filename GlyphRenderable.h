@@ -18,14 +18,19 @@ public:
 
 	//used for feature rendering
 	std::vector<char> feature;
-	bool isUsingFeature = false;
-	void SetFeature(std::vector<char> & _feature);
+	bool isHighlightingFeature = false;
+	void SetFeature(std::vector<char> & _feature, std::vector<float3> & _featureCenter);
+	std::vector<float3> featureCenter;
+
+	bool isPickingFeature = true;
+	int snappedFeatureId = -1;
 
 	//used for picking and snapping
 	bool isPicking = false;
 	float3 findClosetGlyph(float3 aim);
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
+
 
 protected:
 	std::shared_ptr<Displace> displace;

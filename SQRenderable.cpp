@@ -164,7 +164,7 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		if (i == snappedGlyphId)
 			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 0.3f, 0.3f); 
-		else if (isUsingFeature && feature[i]>0)
+		else if (isHighlightingFeature && feature[i]>0)
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.3f, 0.3f, 1.0f);
 		else
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
@@ -382,10 +382,18 @@ void SQRenderable::drawPicking(float modelview[16], float projection[16])
 
 	for (int i = 0; i < pos.size(); i++) {
 		//glPushMatrix();
-		
-		int r = ((i + 1) & 0x000000FF) >> 0;
-		int g = ((i + 1) & 0x0000FF00) >> 8;
-		int b = ((i + 1) & 0x00FF0000) >> 16;
+		int r, g, b;
+		if (1){
+			char c = feature[i];
+			r = ((c) & 0x000000FF) >> 0;
+			g = ((c) & 0x0000FF00) >> 8;
+			b = ((c) & 0x00FF0000) >> 16;
+		}
+		else{
+			r = ((i + 1) & 0x000000FF) >> 0;
+			g = ((i + 1) & 0x0000FF00) >> 8;
+			b = ((i + 1) & 0x00FF0000) >> 16;
+		}
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();

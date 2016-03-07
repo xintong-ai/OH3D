@@ -64,11 +64,11 @@ struct functor_Displace
 	int lensX, lensY, circleR;
 	float lensD;
 	float focusRatio;
-	bool isUsingFeature;
+	bool isHighlightingFeature;
 	template<typename Tuple>
 	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
 		char cc = thrust::get<4>(t);
-		if (!isUsingFeature || cc == 0){
+		if (!isHighlightingFeature || cc == 0){
 			float2 screenPos = thrust::get<0>(t);
 			float4 clipPos = thrust::get<1>(t);
 			float2 newScreenPos = screenPos;
@@ -117,7 +117,7 @@ struct functor_Displace
 	
 	
 	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, bool _isUsingFeature)
-		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isUsingFeature(_isUsingFeature){}
+		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isHighlightingFeature(_isUsingFeature){}
 };
 
 struct functor_Displace_Line
@@ -403,7 +403,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 
 
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
-	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isUsingFeature)
+	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isHighlightingFeature)
 {
 	int size = posOrig.size();
 	matrix4x4 mv(modelview);
@@ -448,7 +448,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							d_vec_glyphBrightTarget.end(),
 							feature.end()
 							)),
-							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isUsingFeature));
+							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isHighlightingFeature));
 						break;
 
 					}

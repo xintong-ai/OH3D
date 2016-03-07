@@ -17,7 +17,7 @@ class Displace
 public:
 	Displace();
 	void Compute(float* modelview, float* projection, int winW, int winH,
-		std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale = 0, float* glyphBright = 0, bool isUsingFeature = false);
+		std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale = 0, float* glyphBright = 0, bool isHighlightingFeature = false);
 	void LoadOrig(float4* v, int num);
 	void LoadFeature(char* f, int num);
 	void RecomputeTarget(){ recomputeTarget = true; }
