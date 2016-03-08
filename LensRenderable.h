@@ -26,7 +26,8 @@ public:
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int modifier, int delta)  override;
 
-	bool isUsingSnap = false;
+	bool isSnapToGlyph = false;
+	bool isSnapToFeature = false;
 
 public slots:
 	void SlotFocusSizeChanged(int v);

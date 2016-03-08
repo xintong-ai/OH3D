@@ -164,8 +164,12 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		if (i == snappedGlyphId)
 			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 0.3f, 0.3f); 
-		else if (isHighlightingFeature && feature[i]>0)
-			qgl->glUniform3f(glProg->uniform("Ka"), 0.3f, 0.3f, 1.0f);
+		else if (isHighlightingFeature && feature[i] > 0){
+			if (feature[i] == snappedFeatureId)
+				qgl->glUniform3f(glProg->uniform("Ka"), 0.3f, 0.3f, 1.0f);
+			else
+				qgl->glUniform3f(glProg->uniform("Ka"), 0.2f, 0.2f, 0.6f);
+		}
 		else
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 
@@ -214,6 +218,7 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 	glProg->disable();
 
 }
+
 void SQRenderable::UpdateData()
 {
 
@@ -365,7 +370,7 @@ void SQRenderable::initPickingDrawingObjects()
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void SQRenderable::drawPicking(float modelview[16], float projection[16])
+void SQRenderable::drawPicking(float modelview[16], float projection[16], bool isForGlyph)
 {
 	RecordMatrix(modelview, projection);
 
@@ -383,16 +388,16 @@ void SQRenderable::drawPicking(float modelview[16], float projection[16])
 	for (int i = 0; i < pos.size(); i++) {
 		//glPushMatrix();
 		int r, g, b;
-		if (1){
-			char c = feature[i];
-			r = ((c) & 0x000000FF) >> 0;
-			g = ((c) & 0x0000FF00) >> 8;
-			b = ((c) & 0x00FF0000) >> 16;
-		}
-		else{
+		if (isForGlyph){
 			r = ((i + 1) & 0x000000FF) >> 0;
 			g = ((i + 1) & 0x0000FF00) >> 8;
 			b = ((i + 1) & 0x00FF0000) >> 16;
+		}
+		else{
+			char c = feature[i];
+			r = ((c)& 0x000000FF) >> 0;
+			g = ((c)& 0x0000FF00) >> 8;
+			b = ((c)& 0x00FF0000) >> 16;
 		}
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);

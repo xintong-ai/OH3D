@@ -21,7 +21,7 @@ void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
 	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature);
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId);
 }
 
 
@@ -111,6 +111,30 @@ float3 GlyphRenderable::findClosetGlyph(float3 aim)
 	return displace->findClosetGlyph(aim, snappedGlyphId);
 }
 
+// !!! NOTE: result is not meaningful when no feature is loaded. Need to deal with this situation when calling this function. when no feature is loaded, return false 
+bool GlyphRenderable::findClosetFeature(float3 aim, float3 & result)
+{
+	int n = featureCenter.size();
+	if (n < 1){
+		return false;
+	}
+
+	int resid = -1;
+	float resDistance = 9999999999;
+	result = make_float3(0, 0, 0);
+	for (int i=0; i < n; i++){
+		float curRes = length(aim - featureCenter[i]);
+		if (curRes < resDistance){
+			resid = i;
+			resDistance = curRes;
+			result = featureCenter[i];
+		}
+	}
+
+	snappedFeatureId = resid + 1;
+	return true;
+}
+
 
 
 void GlyphRenderable::mousePress(int x, int y, int modifier)
@@ -123,7 +147,7 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 		actor->GetModelview(modelview);
 		actor->GetProjection(projection);
 
-		drawPicking(modelview, projection);
+		drawPicking(modelview, projection, true);
 
 		qgl->glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
 		unsigned char cursorPixel[4];
@@ -131,7 +155,6 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 		glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cursorPixel);
 
 		snappedGlyphId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256 - 1;
-		//std::cout << "pick id in glyphrenderable: " << snappedGlyphId << std::endl;
 
 		if (snappedGlyphId != -1){
 			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
@@ -149,7 +172,7 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 		actor->GetModelview(modelview);
 		actor->GetProjection(projection);
 
-		drawPicking(modelview, projection);
+		drawPicking(modelview, projection, false);
 
 		qgl->glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer);
 		unsigned char cursorPixel[4];
@@ -157,19 +180,16 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 		glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cursorPixel);
 
 		snappedFeatureId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256;
-		//std::cout << "pick id in glyphrenderable: " << snappedGlyphId << std::endl;
 
-		cout << snappedFeatureId << endl;
+		//cout << snappedFeatureId << endl;
 
 		if (snappedFeatureId > 0){
 			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
 			for (int i = 0; i < lenses.size(); i++) {
 				Lens* l = lenses[i];
 				l->SetCenter(featureCenter[snappedFeatureId-1]);
-				cout << featureCenter[snappedFeatureId - 1].x << " " << featureCenter[snappedFeatureId - 1].y << " " << featureCenter[snappedFeatureId - 1].z << endl;
-
+				//cout << featureCenter[snappedFeatureId - 1].x << " " << featureCenter[snappedFeatureId - 1].y << " " << featureCenter[snappedFeatureId - 1].z << endl;
 			}
 		}
 	}
-	
 }

@@ -37,14 +37,12 @@ public:
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
 
-//	void drawPicking(float modelview[16], float projection[16]) override{} ;
-
 protected:
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
 
 	void initPickingDrawingObjects();
-	void drawPicking(float modelview[16], float projection[16]);
+	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
 };
 
 #endif //ARROW_RENDERABLE_H

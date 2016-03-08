@@ -58,6 +58,9 @@ private:
 	//LensRenderable* lensRenderable;
 	//GridRenderable* gridRenderable;
 
+	QCheckBox* usingSnapCheck;
+	QCheckBox* highlightingFeatureCheck;
+	QCheckBox* usingFeatureSnappingCheck;
 
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;

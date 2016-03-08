@@ -135,14 +135,12 @@ Window::Window()
 	listener = new LeapListener();
 	controller = new Leap::Controller();
 	controller->addListener(*listener);
+	
 
-
-
-	QCheckBox* usingSnapCheck = new QCheckBox("Using Lens Snap", this);
-	QCheckBox* highlightingFeatureCheck = new QCheckBox("Highlighting Feature", this);
-	QCheckBox* usingFeatureSnappingCheck = new QCheckBox("Snapping Feature", this);
-
-
+	usingSnapCheck = new QCheckBox("Snapping Glyph", this);
+	highlightingFeatureCheck = new QCheckBox("Highlighting Feature", this);
+	usingFeatureSnappingCheck = new QCheckBox("Snapping Feature", this);
+	
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 	controlLayout->addWidget(addLensBtn);
@@ -264,12 +262,18 @@ void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D i
 
 void Window::SlotToggleUsingSnap(bool b)
 {
-	lensRenderable->isUsingSnap = b;
+	lensRenderable->isSnapToGlyph = b;
 	glyphRenderable->isPicking = b;
 	if (!b){
 		glyphRenderable->SetSnappedGlyphId(-1);
 	}
+	else{
+		usingFeatureSnappingCheck->setChecked(false);
+		SlotToggleUsingFeatureSnapping(false);
+	}
 }
+
+
 void Window::SlotToggleHighlightingFeature(bool b)
 {
 	glyphRenderable->isHighlightingFeature = b;
@@ -278,10 +282,14 @@ void Window::SlotToggleHighlightingFeature(bool b)
 
 void Window::SlotToggleUsingFeatureSnapping(bool b)
 {
-	glyphRenderable->isPickingFeature = b;
+	lensRenderable->isSnapToFeature = b;
+	glyphRenderable->isPickingFeature = b;	
 	if (!b){
-		//glyphRenderable->SetSnappedGlyphId(-1);
-		glyphRenderable->snappedFeatureId = -1;
+		glyphRenderable->SetSnappedFeatureId(-1);
+	}
+	else{
+		usingSnapCheck->setChecked(false);
+		SlotToggleUsingSnap(false);
 	}
 }
 
