@@ -19,7 +19,7 @@ public:
 
 protected:
 	void initPickingDrawingObjects();
-	void drawPicking(float modelview[16], float projection[16]);
+	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
 
 private:
 	std::vector<float> val;// = nullptr;

@@ -5,6 +5,7 @@
 #include <Lens.h>
 #include <math_constants.h>
 #include <thrust/extrema.h>
+#include <thrust/sequence.h>
 
 
 //when using thrust::device_vector instead of thrust::device_vector,
@@ -64,11 +65,12 @@ struct functor_Displace
 	int lensX, lensY, circleR;
 	float lensD;
 	float focusRatio;
-	bool isUsingFeature;
+	bool isHighlightingFeature;
+	int snappedGlyphId;
+
 	template<typename Tuple>
 	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
-		char cc = thrust::get<4>(t);
-		if (!isUsingFeature || cc == 0){
+		if (thrust::get<5>(t) != snappedGlyphId && (thrust::get<4>(t) == 0 || !isHighlightingFeature)){
 			float2 screenPos = thrust::get<0>(t);
 			float4 clipPos = thrust::get<1>(t);
 			float2 newScreenPos = screenPos;
@@ -85,7 +87,7 @@ struct functor_Displace
 				if ((lensD - clipPos.z) > thickDisp){
 					myCase = 1;//cutaway
 				}
-				else if (clipPos.z < lensD-0.000001){ //add 0.0000001 to avoid numerical error
+				else if (clipPos.z < lensD){
 					myCase = 2;//displace
 				}
 				else if (dis2Cen > circleR){
@@ -116,8 +118,8 @@ struct functor_Displace
 	}
 	
 	
-	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, bool _isUsingFeature)
-		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isUsingFeature(_isUsingFeature){}
+	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, bool _isUsingFeature, int _snappedGlyphId)
+		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId){}
 };
 
 struct functor_Displace_Line
@@ -376,6 +378,9 @@ void Displace::LoadOrig(float4* v, int num)
 	d_vec_disToAim.assign(num, 0);
 
 	feature.assign(num, 0);
+
+	d_vec_id.resize(num);
+	thrust::sequence(d_vec_id.begin(), d_vec_id.end());	
 }
 
 void Displace::LoadFeature(char* f, int num)
@@ -403,7 +408,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 
 
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
-	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isUsingFeature)
+	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isHighlightingFeature, int snappedGlyphId)
 {
 	int size = posOrig.size();
 	matrix4x4 mv(modelview);
@@ -438,7 +443,8 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							d_vec_posClip.begin(),
 							d_vec_glyphSizeTarget.begin(),
 							d_vec_glyphBrightTarget.begin(),
-							feature.begin()
+							feature.begin(),
+							d_vec_id.begin()
 							)),
 							thrust::make_zip_iterator(
 							thrust::make_tuple(
@@ -446,9 +452,10 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							d_vec_posClip.end(),
 							d_vec_glyphSizeTarget.end(),
 							d_vec_glyphBrightTarget.end(),
-							feature.end()
+							feature.end(),
+							d_vec_id.end()
 							)),
-							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isUsingFeature));
+							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isHighlightingFeature, snappedGlyphId));
 						break;
 
 					}

@@ -273,7 +273,7 @@ void SphereRenderable::initPickingDrawingObjects()
 }
 
 
-void SphereRenderable::drawPicking(float modelview[16], float projection[16])
+void SphereRenderable::drawPicking(float modelview[16], float projection[16], bool isForGlyph)
 {
 	RecordMatrix(modelview, projection);
 
@@ -286,9 +286,19 @@ void SphereRenderable::drawPicking(float modelview[16], float projection[16])
 	for (int i = 0; i < pos.size(); i++) {
 		//glPushMatrix();
 
-		int r = ((i + 1) & 0x000000FF) >> 0;
-		int g = ((i + 1) & 0x0000FF00) >> 8;
-		int b = ((i + 1) & 0x00FF0000) >> 16;
+		int r, g, b;
+		if (isForGlyph){
+			r = ((i + 1) & 0x000000FF) >> 0;
+			g = ((i + 1) & 0x0000FF00) >> 8;
+			b = ((i + 1) & 0x00FF0000) >> 16;
+		}
+		else{
+			char c = feature[i];
+			r = ((c)& 0x000000FF) >> 0;
+			g = ((c)& 0x0000FF00) >> 8;
+			b = ((c)& 0x00FF0000) >> 16;
+		}
+
 
 		float4 shift = pos[i];
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
