@@ -167,7 +167,7 @@ void SphereRenderable::init()
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	((ModelGridRenderable*)actor->GetRenderable("model"))->UpdateGridDensity(&pos[0], pos.size());
+	((ModelGridRenderable*)actor->GetRenderable("model"))->InitGridDensity(&pos[0], pos.size());
 }
 
 
@@ -229,12 +229,15 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		UpdateData();
 		updated = true;
 	}
-	if (!visible)
-		return;
+
 
 	RecordMatrix(modelview, projection);
 	ComputeDisplace();
 
+	((ModelGridRenderable*)actor->GetRenderable("model"))->UpdatePointCoords(&pos[0], pos.size());
+
+	if (!visible)
+		return;
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();

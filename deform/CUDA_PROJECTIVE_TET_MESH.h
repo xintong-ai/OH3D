@@ -209,7 +209,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	float3 lensForce;// = { 0, 0, 0 };
 //	float dist = sqrt(pow(X[i * 3 + 0] - lens[0], 2) + pow(X[i * 3 + 2] - lens[2], 2));
 	float dist = length(vert - lens);
-	float radius = 2;
+	float radius = 2; 
 	if (dist < radius){
 		float3 dir = normalize(vert - lens);// make_float3(lens[0] - X[i * 3], lens[1] - X[i * 3 + 1], 0);
 		lensForce = dir * (radius - dist);
@@ -217,8 +217,8 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 			V[i * 3 + j] += (3000 * (&(lensForce.x))[j]* t);
 		}
 	}
-	else
-		return;
+	//else
+	//	return;
 	//if (dist > radius * 2){
 	//	return;
 	//}

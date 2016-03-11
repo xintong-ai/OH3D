@@ -75,3 +75,8 @@ void ModelGrid::SetElasticity(float* v)
 {
 	std::copy(v, v + gridMesh->tet_number, gridMesh->EL);
 }
+
+int* ModelGrid::GetTet()
+{
+	return gridMesh->Tet;
+}

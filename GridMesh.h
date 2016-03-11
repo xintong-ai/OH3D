@@ -80,13 +80,19 @@ public:
 		}
 		number = nStep[0] * nStep[1] * nStep[2];
 		int idx = 0;
+		int end[3] = {0, 0, 0};// whether it is at the two ends of the axis
 		for (int i = 0; i < nStep[0]; i++){
+			end[0] = ((i == 0) || (i == (nStep[0] - 1))) ? 1 : 0;
 			for (int j = 0; j < nStep[1]; j++){
+				end[1] = ((j == 0) || (j == (nStep[1] - 1))) ? 1 : 0;
 				for (int k = 0; k < nStep[2]; k++){
+					end[2] = ((k == 0) || (k == (nStep[2] - 1))) ? 1 : 0;
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 					X[3 * idx + 0] = dmin[0] + i * step;
 					X[3 * idx + 1] = dmin[1] + j * step;
 					X[3 * idx + 2] = dmin[2] + k * step;
+					if ((end[0] + end[1] + end[2]) > 1)
+						fixed[idx] = 10000000;
 				}
 			}
 		}
@@ -198,11 +204,11 @@ public:
 		//		fixed[v]=10000000;
 		//Rotate_X(1.2);
 
-		for(int v=0; v<number; v++)
-			if (X[v * 3 + 0] < (gridMin.x + 0.0001) || X[v * 3 + 0] > (gridMax.x - 0.0001)
-				|| X[v * 3 + 1] < (gridMin.y + 0.0001) || X[v * 3 + 1] > (gridMax.x - 0.0001)
-				|| X[v * 3 + 2] < (gridMin.z + 0.0001) || X[v * 3 + 2] > (gridMax.x - 0.0001))
-				fixed[v]=10000000;
+		//for(int v=0; v<number; v++)
+		//	if (X[v * 3 + 0] < (gridMin.x + 0.0001) || X[v * 3 + 0] > (gridMax.x - 0.0001)
+		//		|| X[v * 3 + 1] < (gridMin.y + 0.0001) || X[v * 3 + 1] > (gridMax.x - 0.0001)
+		//		|| X[v * 3 + 2] < (gridMin.z + 0.0001) || X[v * 3 + 2] > (gridMax.x - 0.0001))
+		//		fixed[v]=10000000;
 
 		elasticity = 1800;// 18000000; //5000000
 		control_mag	= 500;		//500

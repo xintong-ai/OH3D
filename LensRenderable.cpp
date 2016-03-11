@@ -53,6 +53,7 @@ public:
 
 	void draw(GLfloat x, GLfloat y, GLfloat z)
 	{
+		glColor3f(1.0f, 1.0f, 1.0f);
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
 		glTranslatef(x, y, z);

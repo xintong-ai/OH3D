@@ -227,7 +227,7 @@ void Window::RefineLensBoundary()
 
 void Window::SlotToggleGrid(bool b)
 {
-	gridRenderable->SetVisibility(b);
+	modelGridRenderable->SetVisibility(b);
 }
 
 Window::~Window() {

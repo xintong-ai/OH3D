@@ -23,6 +23,7 @@ public:
 	int3 GetNumSteps();
 	float GetStep();
 	float* GetE();
+	int* GetTet();
 	void SetElasticity(float* v);
 };
 #endif
