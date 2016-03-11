@@ -21,8 +21,7 @@ using namespace std;
 #include "GLSphere.h"
 #include <helper_math.h>
 #include <ColorGradient.h>
-
-
+#include <ModelGridRenderable.h>
 
 void LoadPickingShaders(ShaderProgram*& shaderProg)
 {
@@ -167,6 +166,8 @@ void SphereRenderable::init()
 	qgl->glBufferData(GL_ARRAY_BUFFER, glyphMesh->GetNumVerts() * sizeof(float)* 3, glyphMesh->GetVerts(), GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+
+	((ModelGridRenderable*)actor->GetRenderable("model"))->UpdateGridDensity(&pos[0], pos.size());
 }
 
 
@@ -267,6 +268,7 @@ SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<
 		float valScaled = (val[i] - valMin) / (valMax - valMin);
 		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 	}
+	visible = true;
 }
 
 

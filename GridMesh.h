@@ -30,6 +30,9 @@ template <class TYPE>
 class GridMesh: public CUDA_PROJECTIVE_TET_MESH<TYPE> 
 {
 public:
+	float3 gridMin, gridMax;
+	int nStep[3];
+	float step;
 	void Build_Boundary_Triangles2()
 	{
 		t_number = tet_number * 4;
@@ -72,7 +75,6 @@ public:
 
 	void BuildMesh(TYPE dmin[3], TYPE dmax[3], TYPE step)
 	{
-		int nStep[3];
 		for (int i = 0; i < 3; i++){
 			nStep[i] = ceil((dmax[i] - dmin[i]) / step) + 1;
 		}
@@ -88,6 +90,8 @@ public:
 				}
 			}
 		}
+		gridMin = make_float3(dmin[0], dmin[1], dmin[2]);
+		gridMax = make_float3(dmin[0] + (nStep[0] - 1) * step, dmin[1] + (nStep[1] - 1) * step, dmin[2] + (nStep[2] - 1) * step);
 
 		int3 vc[8];
 		vc[0] = make_int3(0, 0, 0);
@@ -167,7 +171,7 @@ public:
 	}
 
 
-	GridMesh(float dataMin[3], float dataMax[3], float n)
+	GridMesh(float dataMin[3], float dataMax[3], int n)
 	{
 		float3 rangeDiff;
 		rangeDiff = make_float3(
@@ -175,7 +179,7 @@ public:
 			dataMax[1] - dataMin[1], 
 			dataMax[2] - dataMin[2]);
 		float minDiff = std::min(rangeDiff.x, std::min(rangeDiff.y, rangeDiff.z));
-		float step = minDiff / n;
+		step = (minDiff / n) * 1.01;
 		//Read_Original_File("sorted_armadillo");
 		//Read_Original_File("armadillo_10k.1");
 		//float dataMin[3] = { -0.50, -0.50, -0.50 };
@@ -195,9 +199,9 @@ public:
 		//Rotate_X(1.2);
 
 		for(int v=0; v<number; v++)
-			if (	X[v * 3 + 0] < -0.49 || X[v * 3 + 0] > 0.49
-				||	X[v * 3 + 1] < -0.49 || X[v * 3 + 1] > 0.49
-				||	X[v * 3 + 2] < -0.49 || X[v * 3 + 2] > 0.49)
+			if (X[v * 3 + 0] < (gridMin.x + 0.0001) || X[v * 3 + 0] > (gridMax.x - 0.0001)
+				|| X[v * 3 + 1] < (gridMin.y + 0.0001) || X[v * 3 + 1] > (gridMax.x - 0.0001)
+				|| X[v * 3 + 2] < (gridMin.z + 0.0001) || X[v * 3 + 2] > (gridMax.x - 0.0001))
 				fixed[v]=10000000;
 
 		elasticity = 1800;// 18000000; //5000000

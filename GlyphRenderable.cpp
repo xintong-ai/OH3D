@@ -7,12 +7,15 @@
 #include <Lens.h>
 #include <LensRenderable.h>
 
-
 void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
-	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0]);
+	//displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
+	//	((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0]);
+}
+
+void GlyphRenderable::init()
+{
 }
 
 
@@ -36,14 +39,14 @@ GlyphRenderable::~GlyphRenderable()
 
 void GlyphRenderable::RecomputeTarget()
 {
-	displace->RecomputeTarget();
+	//displace->RecomputeTarget();
 }
 
 void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 {
 	int2 winSize = actor->GetWindowSize();
-	displace->DisplacePoints(pts,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
+	//displace->DisplacePoints(pts,
+	//	((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
 }
 
 void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)
@@ -66,7 +69,6 @@ void GlyphRenderable::resize(int width, int height)
 float3 GlyphRenderable::findClosetGlyph(float3 aim)
 {
 	return displace->findClosetGlyph(aim, snappedGlyphId);
-
 }
 
 

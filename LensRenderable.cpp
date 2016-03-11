@@ -285,6 +285,15 @@ void LensRenderable::AddCurveBLens()
 	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
 }
 
+float3 LensRenderable::GetBackLensCenter()
+{
+	float3 ret = make_float3(0,0,5);
+	if (lenses.size() > 0)
+		ret = lenses.back()->c;
+	return ret;
+}
+
+
 void LensRenderable::mousePress(int x, int y, int modifier)
 {
 	int2 winSize = actor->GetWindowSize();

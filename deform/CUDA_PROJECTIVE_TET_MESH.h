@@ -190,9 +190,9 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 
 	if(more_fixed[i]!=0)
 	{
-		X[i*3+0]+=dir_x;
-		X[i*3+1]+=dir_y;
-		X[i*3+2]+=dir_z;
+		//X[i*3+0]+=dir_x;
+		//X[i*3+1]+=dir_y;
+		//X[i*3+2]+=dir_z;
 		V[i*3+0] =0;
 		V[i*3+1] =0;
 		V[i*3+2] =0;
@@ -204,17 +204,17 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	V[i*3+1]*=damping;
 	V[i*3+2]*=damping;
 	//Apply gravity
-	float3 lens= make_float3( 0, 0 , 0);
+	float3 lens = make_float3(dir_x, dir_y, dir_z);// make_float3(0, 0, 5);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 lensForce;// = { 0, 0, 0 };
 //	float dist = sqrt(pow(X[i * 3 + 0] - lens[0], 2) + pow(X[i * 3 + 2] - lens[2], 2));
 	float dist = length(vert - lens);
-	float radius = 0.4;
+	float radius = 4;
 	if (dist < radius){
 		float3 dir = normalize(vert - lens);// make_float3(lens[0] - X[i * 3], lens[1] - X[i * 3 + 1], 0);
 		lensForce = dir * (radius - dist);
 		for (int j = 0; j < 3; j++) {
-			V[i * 3 + j] += (100 * (&(lensForce.x))[j]* t);
+			V[i * 3 + j] += (3000 * (&(lensForce.x))[j]* t);
 		}
 	} 
 
@@ -228,7 +228,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Tet Constraint Kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const float elasticity, const int tet_number, const int l)
+__global__ void Tet_Constraint_Kernel(const float* EL, const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const float elasticity, const int tet_number, const int l)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if(t>=tet_number)	return;
@@ -274,7 +274,7 @@ __global__ void Tet_Constraint_Kernel(const float* X, const int* Tet, const floa
 	dev_Matrix_Substract_3(new_R, F, new_R);
 	dev_Matrix_Product(new_R, &half_matrix[0][0], &result_matrix[0][0], 3, 3, 4);
 			
-	float rate=Vol[t]*elasticity;
+	float rate = Vol[t] * elasticity;
 	Tet_Temp[t*12+ 0]=result_matrix[0][0]*rate;
 	Tet_Temp[t*12+ 1]=result_matrix[1][0]*rate;
 	Tet_Temp[t*12+ 2]=result_matrix[2][0]*rate;
@@ -396,6 +396,8 @@ public:
 	TYPE*	dev_more_fixed;
 	TYPE*	dev_init_B;		// Initialized momentum condition in B
 
+	//by Xin
+	TYPE*	dev_EL;
 	TYPE*	dev_Dm;
 	TYPE*	dev_inv_Dm;
 	TYPE*	dev_Vol;
@@ -409,6 +411,9 @@ public:
 
 	TYPE*	error;
 	TYPE*	dev_error;
+
+	//by Xin
+	TYPE* EL;
 
 	CUDA_PROJECTIVE_TET_MESH()
 	{
@@ -426,6 +431,8 @@ public:
 		vtt_num	= new int	[max_number  ];
 
 		error	= new TYPE	[max_number*3];
+
+		EL = new TYPE[max_number * 5];
 
 		fps			= 0;
 		elasticity	= 3000000; //5000000
@@ -446,7 +453,8 @@ public:
 		dev_more_fixed	= 0;
 		dev_init_B		= 0;
 
-		dev_Dm			= 0;
+		dev_EL = 0;
+		dev_Dm = 0;
 		dev_inv_Dm		= 0;
 		dev_Vol			= 0;
 		dev_Tet			= 0;
@@ -482,7 +490,8 @@ public:
 		if(dev_more_fixed)	cudaFree(dev_more_fixed);
 		if(dev_init_B)		cudaFree(dev_init_B);
 
-		if(dev_Dm)			cudaFree(dev_Dm);
+		if (dev_EL)			cudaFree(dev_EL);
+		if (dev_Dm)			cudaFree(dev_Dm);
 		if(dev_inv_Dm)		cudaFree(dev_inv_Dm);
 		if(dev_Vol)			cudaFree(dev_Vol);
 		if(dev_Tet)			cudaFree(dev_Tet);
@@ -621,7 +630,9 @@ public:
 		cudaMalloc((void**)&dev_more_fixed, sizeof(TYPE)*  number);
 		cudaMalloc((void**)&dev_init_B,		sizeof(TYPE)*3*number);
 
-		cudaMalloc((void**)&dev_Dm,			sizeof(int )*tet_number*9);
+		//by Xin
+		cudaMalloc((void**)&dev_EL,			sizeof(float)*tet_number);
+		cudaMalloc((void**)&dev_Dm,			sizeof(int)*tet_number * 9);
 		cudaMalloc((void**)&dev_inv_Dm,		sizeof(int )*tet_number*9);
 		cudaMalloc((void**)&dev_Vol,		sizeof(int )*tet_number);
 		cudaMalloc((void**)&dev_Tet,		sizeof(int )*tet_number*4);
@@ -647,6 +658,9 @@ public:
 		cudaMemcpy(dev_inv_Dm,		inv_Dm,		sizeof(int)*tet_number*9,	cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_Vol,			Vol,		sizeof(int)*tet_number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_Tet,			Tet,		sizeof(int)*tet_number*4,	cudaMemcpyHostToDevice);
+
+		//by Xin
+		cudaMemcpy(dev_EL,			EL,			sizeof(float)*tet_number,	cudaMemcpyHostToDevice);
 
 		cudaMemcpy(dev_MD,			MD,			sizeof(TYPE)*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_VTT,			VTT,		sizeof(int )*tet_number*4,	cudaMemcpyHostToDevice);
@@ -687,7 +701,7 @@ public:
 		TYPE omega;
 		for(int l=0; l<iterations; l++)
 		{	
-			Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock>> >(dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, elasticity, tet_number, l);
+			Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock>> >(dev_EL, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, elasticity, tet_number, l);
 			Constraint_1_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_next_X, dev_Tet_Temp, dev_MD, dev_VTT, dev_vtt_num, number);
 
 			if(l<=10)		omega=1;

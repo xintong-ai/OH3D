@@ -30,7 +30,48 @@ unsigned int* ModelGrid::GetL()
 	return gridMesh->L;
 }
 
+float* ModelGrid::GetE()
+{
+	return gridMesh->EL;
+}
+
+
 int ModelGrid::GetLNumber()
 {
 	return gridMesh->l_number;
+}
+
+void ModelGrid::Initialize(float time_step)
+{
+	return gridMesh->Initialize(time_step);
+}
+
+void ModelGrid::Update(float time_step, float lensCenter[3])
+{
+	gridMesh->Update(time_step, 64, lensCenter);
+}
+
+float3 ModelGrid::GetGridMin()
+{
+	return gridMesh->gridMin;
+}
+
+float3 ModelGrid::GetGridMax()
+{
+	return gridMesh->gridMax;
+}
+
+int3 ModelGrid::GetNumSteps()
+{
+	return make_int3(gridMesh->nStep[0], gridMesh->nStep[1], gridMesh->nStep[2]);
+}
+
+float ModelGrid::GetStep()
+{
+	return gridMesh->step;
+}
+
+void ModelGrid::SetElasticity(float* v)
+{
+	std::copy(v, v + gridMesh->tet_number, gridMesh->EL);
 }
