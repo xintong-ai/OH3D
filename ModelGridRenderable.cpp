@@ -42,7 +42,7 @@ void ModelGridRenderable::UpdateGridDensity(float4* v, int n)
 	const float base = 400.0f / cnts.size();
 	for (int i = 0; i < cnts.size(); i++) {
 		for (int j = 0; j < 5; j++) {
-			density[i * 5 + j] = 3000000;// *(200 * (float)cnts[i] / n + base);
+			density[i * 5 + j] = 1800 + 10000 * (float)cnts[i] ;
 		}
 	}
 	modelGrid->SetElasticity(&density[0]);
@@ -89,8 +89,8 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	float* e = modelGrid->GetE();
 	glBegin(GL_LINES);
 	for (int i = 0; i < modelGrid->GetLNumber(); i++){
-		//glColor3f(e[i / 6] / 3000000, 0, 0);
-		glColor3f(1.0f, 0, 0);
+		glColor3f(e[i / 6] / 100000, 0, 0);
+		//glColor3f(1.0f, 0, 0);
 
 		glVertex3fv(lx + 3 * l[i * 2]);
 		glVertex3fv(lx + 3 * l[i * 2 + 1]);

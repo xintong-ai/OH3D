@@ -209,14 +209,19 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	float3 lensForce;// = { 0, 0, 0 };
 //	float dist = sqrt(pow(X[i * 3 + 0] - lens[0], 2) + pow(X[i * 3 + 2] - lens[2], 2));
 	float dist = length(vert - lens);
-	float radius = 4;
+	float radius = 2;
 	if (dist < radius){
 		float3 dir = normalize(vert - lens);// make_float3(lens[0] - X[i * 3], lens[1] - X[i * 3 + 1], 0);
 		lensForce = dir * (radius - dist);
 		for (int j = 0; j < 3; j++) {
 			V[i * 3 + j] += (3000 * (&(lensForce.x))[j]* t);
 		}
-	} 
+	}
+	else
+		return;
+	//if (dist > radius * 2){
+	//	return;
+	//}
 
 	//V[i*3+1]+=GRAVITY*t;
 	//Position update
@@ -274,7 +279,7 @@ __global__ void Tet_Constraint_Kernel(const float* EL, const float* X, const int
 	dev_Matrix_Substract_3(new_R, F, new_R);
 	dev_Matrix_Product(new_R, &half_matrix[0][0], &result_matrix[0][0], 3, 3, 4);
 			
-	float rate = Vol[t] * elasticity;
+	float rate = Vol[t] * EL[t];
 	Tet_Temp[t*12+ 0]=result_matrix[0][0]*rate;
 	Tet_Temp[t*12+ 1]=result_matrix[1][0]*rate;
 	Tet_Temp[t*12+ 2]=result_matrix[2][0]*rate;
@@ -548,21 +553,21 @@ public:
 				}				
 			}
 
-			MD[v[0]]+=(idm[0]+idm[3]+idm[6])*(idm[0]+idm[3]+idm[6])*Vol[t]*elasticity;
-			MD[v[0]]+=(idm[1]+idm[4]+idm[7])*(idm[1]+idm[4]+idm[7])*Vol[t]*elasticity;
-			MD[v[0]]+=(idm[2]+idm[5]+idm[8])*(idm[2]+idm[5]+idm[8])*Vol[t]*elasticity;
+			MD[v[0]] += (idm[0] + idm[3] + idm[6])*(idm[0] + idm[3] + idm[6])*Vol[t] * EL[t];
+			MD[v[0]] += (idm[1] + idm[4] + idm[7])*(idm[1] + idm[4] + idm[7])*Vol[t] * EL[t];
+			MD[v[0]] += (idm[2] + idm[5] + idm[8])*(idm[2] + idm[5] + idm[8])*Vol[t] * EL[t];
 
-			MD[v[1]]+=idm[0]*idm[0]*Vol[t]*elasticity;
-			MD[v[1]]+=idm[1]*idm[1]*Vol[t]*elasticity;
-			MD[v[1]]+=idm[2]*idm[2]*Vol[t]*elasticity;
+			MD[v[1]] += idm[0] * idm[0] * Vol[t] * EL[t];
+			MD[v[1]] += idm[1] * idm[1] * Vol[t] * EL[t];
+			MD[v[1]] += idm[2] * idm[2] * Vol[t] * EL[t];
 
-			MD[v[2]]+=idm[3]*idm[3]*Vol[t]*elasticity;
-			MD[v[2]]+=idm[4]*idm[4]*Vol[t]*elasticity;
-			MD[v[2]]+=idm[5]*idm[5]*Vol[t]*elasticity;
+			MD[v[2]] += idm[3] * idm[3] * Vol[t] * EL[t];
+			MD[v[2]] += idm[4] * idm[4] * Vol[t] * EL[t];
+			MD[v[2]] += idm[5] * idm[5] * Vol[t] * EL[t];
 
-			MD[v[3]]+=idm[6]*idm[6]*Vol[t]*elasticity;
-			MD[v[3]]+=idm[7]*idm[7]*Vol[t]*elasticity;
-			MD[v[3]]+=idm[8]*idm[8]*Vol[t]*elasticity;
+			MD[v[3]] += idm[6] * idm[6] * Vol[t] * EL[t];
+			MD[v[3]] += idm[7] * idm[7] * Vol[t] * EL[t];
+			MD[v[3]] += idm[8] * idm[8] * Vol[t] * EL[t];
 		}		
 	}
 
