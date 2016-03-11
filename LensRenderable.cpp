@@ -246,7 +246,9 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 			lensCenterSphere->draw(l->c.x, l->c.y, l->c.z);
 
+			glMatrixMode(GL_PROJECTION);
 			glPopMatrix();
+			glMatrixMode(GL_MODELVIEW);
 			glPopMatrix();
 
 		}
