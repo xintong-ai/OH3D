@@ -64,7 +64,10 @@ struct Lens
 struct CircleLens :public Lens
 {
 	float radius;
-	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; };
+	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; 
+	
+		Compute3DContour();
+	};
 	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
@@ -98,6 +101,12 @@ struct CircleLens :public Lens
 		vector<float2> res(0);
 		return res;
 	}
+
+	void Compute3DContour();
+	vector<vector<float3>> contour3D;
+	vector<vector<float3>> Get3DContour();
+
+
 };
 
 
@@ -207,7 +216,7 @@ struct LineLens :public Lens
 class CurveBLens :public Lens
 {
 #define numCtrlPointsLimit 25
-#define distanceThr 2
+#define distanceThr 5
 #define distanceThrCount 10
 
 #define refineIterationLimit 2
@@ -329,9 +338,6 @@ public:
 	vector<float2> BezierSmaple(vector<float2> p);
 	vector<float2> BezierSmaple(vector<float2> p, vector<float> us);//for computing the tangent
 
-
-	vector<float2> BSplineSubdivide(vector<float2> p, int m, float u);
-	vector<float2> BSplineOneSubdivide(vector<float2> p, int m, float u);
 };
 
 #endif
