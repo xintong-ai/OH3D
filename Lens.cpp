@@ -64,6 +64,58 @@ void Lens::ChangeClipDepth(int v, float* mv, float* pj)
 }
 
 
+void CircleLens::Compute3DContour()
+{
+	vector<float3> innerContour;
+	vector<float3> outerContour;
+	vector<float3> bottomContour;
+
+	vector<float3> connection;
+
+	float rr = 2;
+	float d1 = 2, d2 = 2;
+	const int num_segments = 32;
+	for (int ii = 0; ii < num_segments; ii++)
+	{
+		float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments);//get the current angle 
+
+		float ax = rr * cosf(theta);//calculate the x component 
+		float ay = rr * sinf(theta);//calculate the y component 
+		float ax2 = rr * 2 * cosf(theta);//calculate the x component 
+		float ay2 = rr * 2 * sinf(theta);//calculate the y component 
+		float3 ip = make_float3(c.x + ax, c.y + ay, c.z);
+		float3 op = make_float3(c.x + ax2, c.y + ay2, c.z + d1);
+		float3 bp = make_float3(c.x + ax, c.y + ay, c.z - d2);
+
+		innerContour.push_back(ip);
+		outerContour.push_back(op);
+		bottomContour.push_back(bp);
+
+		if (ii % 4 == 0){
+			connection.push_back(ip);
+			connection.push_back(op);
+
+			connection.push_back(ip);
+			connection.push_back(bp);
+		}
+	}
+
+	contour3D.push_back(innerContour);
+	contour3D.push_back(outerContour);
+	contour3D.push_back(bottomContour);
+	contour3D.push_back(connection);
+}
+
+vector<vector<float3>> CircleLens::Get3DContour()
+{
+	return contour3D;
+}
+
+
+
+
+
+
 
 
 
@@ -661,56 +713,7 @@ vector<float2> CurveBLens::BezierSmaple(vector<float2> p, vector<float> us)//for
 	return res;
 }
 
-vector<float2> CurveBLens::BSplineOneSubdivide(vector<float2> p, int m, float u)
-{
-	vector<float2> res;
-	if (m == 1){
-		res.push_back(p[0] * 0.75 + p[1] * 0.25);
-		res.push_back(p[0] * 0.25 + p[1] * 0.75);
-		res.push_back(p[1] * 0.75 + p[2] * 0.25);
-		res.push_back(p[1] * 0.25 + p[2] * 0.75);
-	}
-	else
-	{
-		vector<float2> p1(3), p2(3);
-		p1[0] = 0.75*p[0] + 0.25*p[1];
-		p1[1] = 0.25*p[0] + 0.75*p[1];
-		p1[2] = 0.75*p[1] + 0.25*p[2];
-		p2[0] = p1[1];
-		p2[1] = p1[2];
-		p2[2] = 0.25*p[1] + 0.75*p[2];
 
-		vector<float2> res1 = BSplineOneSubdivide(p1, m - 1, u);
-		vector<float2> res2 = BSplineOneSubdivide(p2, m - 1, u);
-
-		res = res1;
-		res.pop_back();
-		res.pop_back();
-		res.insert(res.end(), res2.begin(), res2.end());
-	}
-	return res;
-}
-
-vector<float2> CurveBLens::BSplineSubdivide(vector<float2> p, int m, float u)
-{
-	int D = 3;
-	vector<float2> res;
-	for (int i = 0; i < p.size() - 2; i++){
-		vector<float2> pcur(3);
-		pcur[0] = p[i];
-		pcur[1] = p[i + 1];
-		pcur[2] = p[i + 2];
-		vector<float2> rescur = BSplineOneSubdivide(pcur, m, u);
-		if (i == 0)
-			res = rescur;
-		else{
-			res.pop_back();
-			res.pop_back();
-			res.insert(res.end(), rescur.begin(), rescur.end());
-		}
-	}
-	return res;
-}
 
 
 bool CurveBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH)

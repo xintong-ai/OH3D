@@ -126,7 +126,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glColor3f(1.0f, 0.2f, 0.2f);
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
-
 			if (l->type == LENS_TYPE::TYPE_CURVEB) {
 				//glLineWidth(1);
 				//glColor3f(0.2f, 1.0f, 0.2f);
@@ -230,7 +229,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glPopMatrix();
 		glMatrixMode(GL_MODELVIEW);
 		glPopMatrix();
-
 	}
 	else {
 		for (int i = 0; i < lenses.size(); i++) {
@@ -238,7 +236,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glMatrixMode(GL_PROJECTION);
 			glPushMatrix();
 			glLoadIdentity();
-			glLoadMatrixf( projection);
+			glLoadMatrixf(projection);
 			glMatrixMode(GL_MODELVIEW);
 			glPushMatrix();
 			glLoadIdentity();
@@ -249,11 +247,40 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glPopMatrix();
 			glPopMatrix();
 
+			/*
+			//code from chengli for object space drawing
+			}
+			else{//to draw 3D contour
+			glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+			glLineWidth(4);
+			glColor3f(1.0f, 0.2f, 0.2f);
+
+			for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
+
+			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
+			std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour();
+
+			for (int i = 0; i <lensContour.size()-1; i++){
+			glBegin(GL_LINE_LOOP);
+			for (auto v : lensContour[i]){
+			glVertex3f(v.x, v.y, v.z);
+			}
+			glEnd();
+			}
+
+			glBegin(GL_LINES);
+			for (auto v : lensContour[lensContour.size() - 1]){
+			glVertex3f(v.x, v.y, v.z);
+			}
+			glEnd();
+
+			}
+			*/
 		}
+		glPopAttrib();
 	}
-
 }
-
 void LensRenderable::AddCircleLens()
 {
 	int2 winSize = actor->GetWindowSize();
@@ -366,7 +393,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		}
 	}
 	else{
-
 		if (actor->GetInteractMode() == INTERACT_MODE::LENS) {
 			//lenses[pickedLens]->x += (x - lastPt.x);
 			//lenses[pickedLens]->y += (y - lastPt.y);

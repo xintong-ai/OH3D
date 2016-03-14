@@ -176,7 +176,6 @@ Window::Window()
 
 	adjustOffsetBtn = new QPushButton("Adjust Offset");
 	controlLayout->addWidget(adjustOffsetBtn);
-	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
 	connect(adjustOffsetBtn, SIGNAL(clicked()), this, SLOT(adjustOffset()));
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
