@@ -458,6 +458,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 		//and the glyphs go back to the original positions
 		if (lenses.size() < 1){
 			d_vec_posTarget = posOrig;
+			thrust::fill(d_vec_glyphBrightTarget.begin(), d_vec_glyphBrightTarget.end(), 1.0f);
 		}
 		else {
 			for (int i = 0; i < lenses.size(); i++) {
