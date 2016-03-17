@@ -38,7 +38,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 {
 	RecordMatrix(modelview, projection);
 
-
 	if (1){
 
 		int2 winSize = actor->GetWindowSize();
@@ -59,14 +58,14 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 			if (l->type == LENS_TYPE::TYPE_CURVEB) {
 				//glLineWidth(1);
-				//glColor3f(0.2f, 1.0f, 0.2f);
-				//std::vector<float2> lensExtraRendering = l->GetExtraLensRendering();
-				//glPointSize(1.0);
-				////glBegin(GL_POINTS);
+				glColor3f(0.2f, 1.0f, 0.2f);
+				std::vector<float2> lensExtraRendering = ((CurveBLens *)l)->GetExtraLensRendering(modelview, projection, winSize.x, winSize.y);
+				glPointSize(5.0);
+				glBegin(GL_POINTS);
 				//glBegin(GL_LINE_STRIP);
-				//for (auto v : lensExtraRendering)
-				//	glVertex2f(v.x, v.y);
-				//glEnd();
+				for (auto v : lensExtraRendering)
+					glVertex2f(v.x, v.y);
+				glEnd();
 
 				//glLineWidth(4);
 				glColor3f(0.9f, 0.9f, 0.2f);
@@ -214,7 +213,7 @@ void LensRenderable::AddLineLens()
 void LensRenderable::AddCurveBLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new CurveBLens(winSize.y * 0.07, actor->DataCenter());
+	Lens* l = new CurveBLens(winSize.y * 0.1, actor->DataCenter());
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();

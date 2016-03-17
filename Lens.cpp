@@ -132,12 +132,12 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 				ctrlPointsAbs[i] = ctrlPointsAbs[0] + dis*i / end1ind*dir;
 			}
 		}
-		int end2ind = numCtrlPoints*(1-endRegionThr)-1;
+		int end2ind = numCtrlPoints - end1ind - 1;
 		if (end2ind >= 0 && end2ind < numCtrlPoints - 1){
 			float dis = length(ctrlPointsAbs[numCtrlPoints - 1] - ctrlPointsAbs[end2ind]);
 			float2 dir = normalize(ctrlPointsAbs[numCtrlPoints - 1] - ctrlPointsAbs[end2ind]);
 			for (int i = end2ind + 1; i < numCtrlPoints - 1; i++){
-				ctrlPointsAbs[i] = ctrlPointsAbs[end2ind] + dis*(i - end2ind) / (numCtrlPoints - 1 - end1ind)*dir;
+				ctrlPointsAbs[i] = ctrlPointsAbs[end2ind] + dis*(i - end2ind) / end1ind*dir;
 			}
 		}
 		//cout << numCtrlPoints << " " << end1ind << " " << end2ind << endl;
@@ -160,6 +160,7 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 		}
 
 		//optional: refine the control points shape and reduce the number, by the Bezier Curve
+		//better strategy is to check methods about bezier down degree with minimum shape loss
 		if (0){
 			vector<float2> BezierSmapleOri = BezierSmaple(ctrlPoints);
 			numCtrlPoints = numCtrlPoints / 2;
@@ -210,8 +211,8 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 		computeBoundaryPos();
 		computeBoundaryNeg();
 
-		////do it later: compute curveLensCtrlPoints
-		if (1){
+		////compute curveBLensInfo
+		{
 			curveBLensInfo.x = center.x;
 			curveBLensInfo.y = center.y;
 			curveBLensInfo.width = width;
@@ -220,7 +221,6 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 			curveBLensInfo.numBezierPoints = BezierPoints.size();
 			for (int i = 0; i < BezierPoints.size(); i++){
 				curveBLensInfo.BezierPoints[i] = BezierPoints[i];
-				curveBLensInfo.BezierNormals[i] = BezierNormals[i];		
 			}
 
 			curveBLensInfo.numPosPoints = subCtrlPointsPos.size();
@@ -246,7 +246,7 @@ void CurveBLens::offsetControlPointsPos()
 	float2 dir;
 
 	int np = subCtrlPointsPos.size();
-	posOffsetCtrlPoints.clear(); //!!! maybe can improve performance by using vector<>::resize??
+	posOffsetCtrlPoints.clear(); //!!! maybe can improve performance by using vector<>::reserve
 
 	dir = normalize(subCtrlPointsPos[1] - subCtrlPointsPos[0]);
 	normal = make_float2(-dir.y, dir.x);

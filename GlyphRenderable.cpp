@@ -21,7 +21,7 @@ void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
 	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId);
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId, snappedFeatureId);
 }
 
 

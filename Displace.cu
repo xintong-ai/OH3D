@@ -66,15 +66,15 @@ struct functor_Displace
 	float lensD;
 	float focusRatio;
 	bool isHighlightingFeature;
-	int snappedGlyphId;
+	int snappedGlyphId, snappedFeatureId;
 
 	template<typename Tuple>
 	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
-		if (thrust::get<5>(t) != snappedGlyphId && (thrust::get<4>(t) == 0 || !isHighlightingFeature)){
-			float2 screenPos = thrust::get<0>(t);
+		float brightness = 1.0f;
+		float2 screenPos = thrust::get<0>(t);
+		float2 newScreenPos = screenPos;
+		if (thrust::get<5>(t) != snappedGlyphId && (!isHighlightingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
 			float4 clipPos = thrust::get<1>(t);
-			float2 newScreenPos = screenPos;
-			float brightness = 1.0f;
 			float2 lensCen = make_float2(lensX, lensY);
 			float2 vec = screenPos - lensCen;
 			float dis2Cen = length(vec);
@@ -112,14 +112,15 @@ struct functor_Displace
 				brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
 				break;
 			}
-			thrust::get<0>(t) = newScreenPos;
-			thrust::get<3>(t) = brightness;
 		}
+
+		thrust::get<0>(t) = newScreenPos;
+		thrust::get<3>(t) = brightness;
 	}
 	
 	
-	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, bool _isUsingFeature, int _snappedGlyphId)
-		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId){}
+	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId)
+		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
 };
 
 struct functor_Displace_Line
@@ -196,112 +197,53 @@ struct functor_Displace_CurveB
 	const float thickDisp = 0.003;
 	const float thickFocus = 0.003;
 	const float dark = 0.05;
+	bool isHighlightingFeature;
+	int snappedGlyphId, snappedFeatureId;
 
 	template<typename Tuple>
 	__device__ __host__ void operator() (Tuple t){
 		float2 screenCoord = thrust::get<0>(t);
-		float4 clipPos = thrust::get<1>(t);
-
 		float2 ret = screenCoord;
 		float brightness = 1.0f;
 
+		if (thrust::get<5>(t) != snappedGlyphId && (!isHighlightingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
 
-		//we may be able to use BezierPoints for in lens detection, for a better speed
-		int numBezierPoints = curveBLensInfo.numBezierPoints;
-		float2* BezierPoints = curveBLensInfo.BezierPoints;
-		float2* BezierNormals = curveBLensInfo.BezierNormals;
+			float4 clipPos = thrust::get<1>(t);
 
-		int numPosPoints = curveBLensInfo.numPosPoints;
-		float2* subCtrlPointsPos = curveBLensInfo.subCtrlPointsPos;
-		float2* posOffsetCtrlPoints = curveBLensInfo.posOffsetCtrlPoints;
+			//we may be able to use BezierPoints for in lens detection, for a better speed
+			int numBezierPoints = curveBLensInfo.numBezierPoints;
+			float2* BezierPoints = curveBLensInfo.BezierPoints;
 
-		int numNegPoints = curveBLensInfo.numNegPoints;
-		float2* subCtrlPointsNeg = curveBLensInfo.subCtrlPointsNeg;
-		float2* negOffsetCtrlPoints = curveBLensInfo.negOffsetCtrlPoints;
+			int numPosPoints = curveBLensInfo.numPosPoints;
+			float2* subCtrlPointsPos = curveBLensInfo.subCtrlPointsPos;
+			float2* posOffsetCtrlPoints = curveBLensInfo.posOffsetCtrlPoints;
 
-		float width = curveBLensInfo.width;
-		float ratio = curveBLensInfo.focusRatio;
-		float rOut = width / ratio;
+			int numNegPoints = curveBLensInfo.numNegPoints;
+			float2* subCtrlPointsNeg = curveBLensInfo.subCtrlPointsNeg;
+			float2* negOffsetCtrlPoints = curveBLensInfo.negOffsetCtrlPoints;
 
-		//possible difference of the numPosPoints and numNegPoints makes the positive half and the negative half region do npt cover the whole lens region, according to current method
-		const float DifResAdjust = 0.05;
+			float width = curveBLensInfo.width;
+			float ratio = curveBLensInfo.focusRatio;
+			float rOut = width / ratio;
 
-		float2 center = make_float2(x, y);
+			//possible difference of the numPosPoints and numNegPoints makes the positive half and the negative half region do npt cover the whole lens region, according to current method
+			const float DifResAdjust = 0.05;
 
-		bool segmentNotFoundPos = true;
-		int keySegmentId = -1;
-		for (int ii = 0; ii < numPosPoints - 1 && segmentNotFoundPos; ii++) {
-			float2 toPoint = screenCoord - (center + subCtrlPointsPos[ii]);
-			float2 dir = normalize(subCtrlPointsPos[ii + 1] - subCtrlPointsPos[ii]);
-			float2 minorDir = make_float2(-dir.y, dir.x);
-			float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
-			if (disMinor < rOut && (disMinor >= 0 || (numPosPoints < numNegPoints && disMinor >= -rOut*DifResAdjust))){
-				float2 ctrlPointAbsolute1 = center + subCtrlPointsPos[ii];
-				float2 ctrlPointAbsolute2 = center + subCtrlPointsPos[ii + 1];
+			float2 center = make_float2(x, y);
 
-				float2 normal1 = normalize(posOffsetCtrlPoints[ii] - subCtrlPointsPos[ii]);
-				float2 normal2 = normalize(posOffsetCtrlPoints[ii + 1] - subCtrlPointsPos[ii + 1]);
-
-				//first check if screenCoord and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
-				//then check if screenCoord and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
-
-				if (((screenCoord.x - ctrlPointAbsolute1.x)*normal1.y - (screenCoord.y - ctrlPointAbsolute1.y)*normal1.x)
-					*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normal1.y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normal1.x)
-					>= 0) {
-					if (((screenCoord.x - ctrlPointAbsolute2.x)*normal2.y - (screenCoord.y - ctrlPointAbsolute2.y)*normal2.x)
-						*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normal2.y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normal2.x)
-						>= 0) {
-						segmentNotFoundPos = false;
-						keySegmentId = ii;
-
-
-						if (clipPos.z < lensD)
-						{
-							float sin1 = dir.x*normal1.y - dir.y*normal1.x;//sin of the angle of dir x normals[ii]
-							float sin2 = dir.x*normal2.y - dir.y*normal2.x;//sin of the angle of dir x normals[ii+1]
-
-							//float disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
-							float disMinorNewAbs;
-							if ((lensD - clipPos.z) > thickDisp){
-								disMinorNewAbs = rOut;
-							}
-							else{
-								disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
-							}
-
-							float2 intersectLeftOri = ctrlPointAbsolute1 + normal1 * (disMinor / sin1);
-							float2 intersectRightOri = ctrlPointAbsolute2 + normal2 * (disMinor / sin2);
-							float posRatio = length(screenCoord - intersectLeftOri) / length(intersectRightOri - intersectLeftOri);
-							float2 intersectLeft = ctrlPointAbsolute1 + normal1 * (disMinorNewAbs / sin1);
-							float2 intersectRight = ctrlPointAbsolute2 + normal2 * (disMinorNewAbs / sin2);
-							ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
-						}
-						else{
-							//brightness = clamp(1.3f - 300 * abs(clipPos.z - lensD), 0.1f, 1.0f);
-							if (abs(disMinor) > width)
-								brightness = dark;
-							else if((clipPos.z - lensD) > thickFocus)
-								brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
-
-						}
-					}
-				}
-			}
-		}
-		if (segmentNotFoundPos){
-			bool segmentNotFoundNeg = true;
+			bool segmentNotFoundPos = true;
 			int keySegmentId = -1;
-			for (int ii = 0; ii < numNegPoints - 1 && segmentNotFoundNeg; ii++) {
-				float2 toPoint = screenCoord - (center + subCtrlPointsNeg[ii]);
-				float2 dir = normalize(subCtrlPointsNeg[ii + 1] - subCtrlPointsNeg[ii]);
+			for (int ii = 0; ii < numPosPoints - 1 && segmentNotFoundPos; ii++) {
+				float2 toPoint = screenCoord - (center + subCtrlPointsPos[ii]);
+				float2 dir = normalize(subCtrlPointsPos[ii + 1] - subCtrlPointsPos[ii]);
 				float2 minorDir = make_float2(-dir.y, dir.x);
 				float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
-				if (disMinor >-rOut && (disMinor <= 0 || (numPosPoints > numNegPoints && disMinor <= rOut*DifResAdjust))){
-					float2 ctrlPointAbsolute1 = center + subCtrlPointsNeg[ii];
-					float2 ctrlPointAbsolute2 = center + subCtrlPointsNeg[ii + 1];
+				if (disMinor < rOut && (disMinor >= 0 || (numPosPoints < numNegPoints && disMinor >= -rOut*DifResAdjust))){
+					float2 ctrlPointAbsolute1 = center + subCtrlPointsPos[ii];
+					float2 ctrlPointAbsolute2 = center + subCtrlPointsPos[ii + 1];
 
-					float2 normal1 = normalize(negOffsetCtrlPoints[ii] - subCtrlPointsNeg[ii]);
-					float2 normal2 = normalize(negOffsetCtrlPoints[ii + 1] - subCtrlPointsNeg[ii + 1]);
+					float2 normal1 = normalize(posOffsetCtrlPoints[ii] - subCtrlPointsPos[ii]);
+					float2 normal2 = normalize(posOffsetCtrlPoints[ii + 1] - subCtrlPointsPos[ii + 1]);
 
 					//first check if screenCoord and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
 					//then check if screenCoord and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
@@ -312,16 +254,16 @@ struct functor_Displace_CurveB
 						if (((screenCoord.x - ctrlPointAbsolute2.x)*normal2.y - (screenCoord.y - ctrlPointAbsolute2.y)*normal2.x)
 							*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normal2.y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normal2.x)
 							>= 0) {
-							segmentNotFoundNeg = false;
+							segmentNotFoundPos = false;
 							keySegmentId = ii;
+
 
 							if (clipPos.z < lensD)
 							{
 								float sin1 = dir.x*normal1.y - dir.y*normal1.x;//sin of the angle of dir x normals[ii]
 								float sin2 = dir.x*normal2.y - dir.y*normal2.x;//sin of the angle of dir x normals[ii+1]
 
-
-								// float disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
+								//float disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
 								float disMinorNewAbs;
 								if ((lensD - clipPos.z) > thickDisp){
 									disMinorNewAbs = rOut;
@@ -329,12 +271,12 @@ struct functor_Displace_CurveB
 								else{
 									disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
 								}
-								
+
 								float2 intersectLeftOri = ctrlPointAbsolute1 + normal1 * (disMinor / sin1);
 								float2 intersectRightOri = ctrlPointAbsolute2 + normal2 * (disMinor / sin2);
 								float posRatio = length(screenCoord - intersectLeftOri) / length(intersectRightOri - intersectLeftOri);
-								float2 intersectLeft = ctrlPointAbsolute1 - normal1 * (disMinorNewAbs / sin1);
-								float2 intersectRight = ctrlPointAbsolute2 - normal2 * (disMinorNewAbs / sin2);
+								float2 intersectLeft = ctrlPointAbsolute1 + normal1 * (disMinorNewAbs / sin1);
+								float2 intersectRight = ctrlPointAbsolute2 + normal2 * (disMinorNewAbs / sin2);
 								ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
 							}
 							else{
@@ -343,21 +285,81 @@ struct functor_Displace_CurveB
 									brightness = dark;
 								else if ((clipPos.z - lensD) > thickFocus)
 									brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
+
 							}
 						}
 					}
 				}
 			}
+			if (segmentNotFoundPos){
+				bool segmentNotFoundNeg = true;
+				int keySegmentId = -1;
+				for (int ii = 0; ii < numNegPoints - 1 && segmentNotFoundNeg; ii++) {
+					float2 toPoint = screenCoord - (center + subCtrlPointsNeg[ii]);
+					float2 dir = normalize(subCtrlPointsNeg[ii + 1] - subCtrlPointsNeg[ii]);
+					float2 minorDir = make_float2(-dir.y, dir.x);
+					float disMinor = toPoint.x*minorDir.x + toPoint.y*minorDir.y;
+					if (disMinor >-rOut && (disMinor <= 0 || (numPosPoints > numNegPoints && disMinor <= rOut*DifResAdjust))){
+						float2 ctrlPointAbsolute1 = center + subCtrlPointsNeg[ii];
+						float2 ctrlPointAbsolute2 = center + subCtrlPointsNeg[ii + 1];
 
+						float2 normal1 = normalize(negOffsetCtrlPoints[ii] - subCtrlPointsNeg[ii]);
+						float2 normal2 = normalize(negOffsetCtrlPoints[ii + 1] - subCtrlPointsNeg[ii + 1]);
+
+						//first check if screenCoord and ctrlPointAbsolute2 are at the same side of Line (ctrlPointAbsolute1, normals[ii])
+						//then check if screenCoord and ctrlPointAbsolute1 are at the same side of Line (ctrlPointAbsolute2, normals[ii+1])
+
+						if (((screenCoord.x - ctrlPointAbsolute1.x)*normal1.y - (screenCoord.y - ctrlPointAbsolute1.y)*normal1.x)
+							*((ctrlPointAbsolute2.x - ctrlPointAbsolute1.x)*normal1.y - (ctrlPointAbsolute2.y - ctrlPointAbsolute1.y)*normal1.x)
+							>= 0) {
+							if (((screenCoord.x - ctrlPointAbsolute2.x)*normal2.y - (screenCoord.y - ctrlPointAbsolute2.y)*normal2.x)
+								*((ctrlPointAbsolute1.x - ctrlPointAbsolute2.x)*normal2.y - (ctrlPointAbsolute1.y - ctrlPointAbsolute2.y)*normal2.x)
+								>= 0) {
+								segmentNotFoundNeg = false;
+								keySegmentId = ii;
+
+								if (clipPos.z < lensD)
+								{
+									float sin1 = dir.x*normal1.y - dir.y*normal1.x;//sin of the angle of dir x normals[ii]
+									float sin2 = dir.x*normal2.y - dir.y*normal2.x;//sin of the angle of dir x normals[ii+1]
+
+
+									// float disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
+									float disMinorNewAbs;
+									if ((lensD - clipPos.z) > thickDisp){
+										disMinorNewAbs = rOut;
+									}
+									else{
+										disMinorNewAbs = G(abs(disMinor) / rOut, ratio) * rOut;
+									}
+
+									float2 intersectLeftOri = ctrlPointAbsolute1 + normal1 * (disMinor / sin1);
+									float2 intersectRightOri = ctrlPointAbsolute2 + normal2 * (disMinor / sin2);
+									float posRatio = length(screenCoord - intersectLeftOri) / length(intersectRightOri - intersectLeftOri);
+									float2 intersectLeft = ctrlPointAbsolute1 - normal1 * (disMinorNewAbs / sin1);
+									float2 intersectRight = ctrlPointAbsolute2 - normal2 * (disMinorNewAbs / sin2);
+									ret = posRatio*intersectRight + (1 - posRatio)*intersectLeft;
+								}
+								else{
+									//brightness = clamp(1.3f - 300 * abs(clipPos.z - lensD), 0.1f, 1.0f);
+									if (abs(disMinor) > width)
+										brightness = dark;
+									else if ((clipPos.z - lensD) > thickFocus)
+										brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
+								}
+							}
+						}
+					}
+				}
+
+			}
 		}
-
-
 
 		thrust::get<0>(t) = ret;
 		thrust::get<3>(t) = brightness;
 	}
-	functor_Displace_CurveB(int _x, int _y, CurveBLensInfo _curveBLensInfo, float _d) :
-		x(_x), y(_y), curveBLensInfo(_curveBLensInfo), lensD(_d){}
+	functor_Displace_CurveB(int _x, int _y, CurveBLensInfo _curveBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
+		x(_x), y(_y), curveBLensInfo(_curveBLensInfo), lensD(_d), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
 };
 
 
@@ -438,7 +440,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 
 
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
-	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isHighlightingFeature, int snappedGlyphId)
+	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isHighlightingFeature, int snappedGlyphId, int snappedFeatureId)
 {
 	int size = posOrig.size();
 	matrix4x4 mv(modelview);
@@ -486,7 +488,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							feature.end(),
 							d_vec_id.end()
 							)),
-							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isHighlightingFeature, snappedGlyphId));
+							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isHighlightingFeature, snappedGlyphId, snappedFeatureId));
 						break;
 
 					}
@@ -513,16 +515,20 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 								d_vec_posScreen.begin(),
 								d_vec_posClip.begin(),
 								d_vec_glyphSizeTarget.begin(),
-								d_vec_glyphBrightTarget.begin()
+								d_vec_glyphBrightTarget.begin(),
+								feature.begin(),
+								d_vec_id.begin()
 								)),
 								thrust::make_zip_iterator(
 								thrust::make_tuple(
 								d_vec_posScreen.end(),
 								d_vec_posClip.end(),
 								d_vec_glyphSizeTarget.end(),
-								d_vec_glyphBrightTarget.end()
+								d_vec_glyphBrightTarget.end(),
+								feature.end(),
+								d_vec_id.end()
 								)),
-								functor_Displace_CurveB(lensScreenCenter.x, lensScreenCenter.y, l->curveBLensInfo, l->GetClipDepth(modelview, projection)));
+								functor_Displace_CurveB(lensScreenCenter.x, lensScreenCenter.y, l->curveBLensInfo, l->GetClipDepth(modelview, projection), isHighlightingFeature, snappedGlyphId, snappedFeatureId));
 
 						}
 						break;

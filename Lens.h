@@ -19,7 +19,6 @@ struct CurveBLensInfo
 {
 	int numBezierPoints;
 	float2 BezierPoints[25];
-	float2 BezierNormals[25];
 
 	int numPosPoints;
 	float2 subCtrlPointsPos[100];
@@ -215,11 +214,10 @@ struct LineLens :public Lens
 
 class CurveBLens :public Lens
 {
-#define numCtrlPointsLimit 25
-#define distanceThr 5
-#define distanceThrCount 10
-
-#define refineIterationLimit 2
+	static const int numCtrlPointsLimit = 25;
+	static const int distanceThr = 5;
+	static const int distanceThrCount = 10;
+	static const int refineIterationLimit = 2;
 
 public:
 
@@ -260,10 +258,10 @@ public:
 
 		if (numCtrlPoints < numCtrlPointsLimit) {
 
-			//first check if the candidate point is not too close to previous points
+			//check if the candidate point is not too close to previous points
 			int tt = max(0, numCtrlPoints - distanceThrCount);
 			bool notFoundTooClose = true;
-			for (int i = numCtrlPoints - 1; i >= tt; i--){
+			for (int i = numCtrlPoints - 1; i >= tt && notFoundTooClose; i--){
 				if (length(ctrlPointsAbs[i] - make_float2(_x, _y)) < distanceThr)
 					notFoundTooClose = false;
 			}

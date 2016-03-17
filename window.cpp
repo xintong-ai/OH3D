@@ -120,7 +120,6 @@ Window::Window()
 	///********controls******/
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
-	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
 	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
 	adjustOffsetBtn = new QPushButton("Adjust Offset");
