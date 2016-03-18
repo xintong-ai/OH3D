@@ -18,7 +18,9 @@ __device__ __host__ inline float4 Float3ToFloat4(float3 v)
 
 __device__ __host__ inline float G(float x, float r)
 {
-	return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
+	//return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
+	return x*(1 - r) + r;
+
 }
 
 __device__ __host__ inline float G_Diff(float x, float r)
@@ -26,6 +28,7 @@ __device__ __host__ inline float G_Diff(float x, float r)
 	return pow((r - 1)/ (r * x - 1), 2);
 }
 
+//used for grid deformation??
 __device__ __host__ float2 DisplaceCircleLens(float lensX, float lensY, float lensR, float2 screenPos, float& glyphSize, float r)//, float rSide = 0)
 {
 	float2 ret = screenPos;
@@ -176,6 +179,86 @@ struct functor_Displace_Line
 	}
 	functor_Displace_Line(int _x, int _y, int _lSemiMajorAxis, int _lSemiMinorAxis, float2 _direction, float _d) :
 		x(_x), y(_y), lSemiMajorAxis(_lSemiMajorAxis), lSemiMinorAxis(_lSemiMinorAxis), direction(_direction), d(_d){}
+};
+
+
+struct functor_Displace_LineB
+{
+	int x, y;
+	float d;
+	float focusRatio;
+	
+	const float thickDisp = 0.003;
+	const float thickFocus = 0.003;
+	const float dark = 0.05;
+
+	LineBLensInfo lineBLensInfo;
+	float lSemiMajorAxis, lSemiMinorAxis;
+	float2 direction;
+
+	bool isHighlightingFeature;
+	int snappedGlyphId, snappedFeatureId;
+
+	template<typename Tuple>
+	__device__ __host__ void operator() (Tuple t) {
+		float2 screenCoord = thrust::get<0>(t);
+		float2 ret = screenCoord;
+		float brightness = 1.0f;
+		
+		float4 clipPos = thrust::get<1>(t);
+
+		if (thrust::get<5>(t) != snappedGlyphId && (!isHighlightingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+
+
+
+			float2 toPoint = screenCoord - make_float2(x, y);
+			float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+			if (abs(disMajor) < lSemiMajorAxis) {
+
+				float2 minorDirection = make_float2(-direction.y, direction.x);
+				//dot product of (_x-x, _y-y) and minorDirection
+				float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
+
+				float rOut = lSemiMinorAxis / focusRatio;
+
+				if (abs(disMinor) < rOut){
+					if (clipPos.z < d) {
+						float disMinorNewAbs;
+						if ((d - clipPos.z) > thickDisp){
+							disMinorNewAbs = rOut;
+						}
+						else{
+							disMinorNewAbs = G(abs(disMinor) / rOut, focusRatio) * rOut;
+						}
+			
+						if (disMinor > 0){
+							ret = make_float2(screenCoord.x, screenCoord.y) + minorDirection * (disMinorNewAbs - disMinor);
+						}
+						else {
+							ret = make_float2(screenCoord.x, screenCoord.y) - minorDirection * (disMinorNewAbs + disMinor);
+						}
+					}
+					else{
+						if (abs(disMinor) > lSemiMinorAxis)
+							brightness = dark;
+						else if ((clipPos.z - d) > thickFocus)
+							brightness = max(dark, 1.0 / (1000 * (clipPos.z - d - thickFocus) + 1.0));
+					}
+				}
+			}
+		}
+		//return ret;
+		thrust::get<0>(t) = ret;
+		thrust::get<3>(t) = brightness;
+	}
+	functor_Displace_LineB(int _x, int _y, LineBLensInfo _lineBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
+	x(_x), y(_y), lineBLensInfo(_lineBLensInfo), d(_d), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId)
+	{
+		lSemiMajorAxis = lineBLensInfo.lSemiMajorAxis;
+		lSemiMinorAxis = lineBLensInfo.lSemiMinorAxis;
+		direction = lineBLensInfo.direction;
+		focusRatio = lineBLensInfo.focusRatio;
+	}
 };
 
 
@@ -432,7 +515,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 		CircleLens* l = (CircleLens*)lenses[i];
 		for (auto& p : pts) {
 			float tmp = 1;
-			float2 center = l->GetScreenPos(modelview, projection, winW, winH);
+			float2 center = l->GetCenterScreenPos(modelview, projection, winW, winH);
 			p = DisplaceCircleLens(center.x, center.y, l->radius, p, tmp, l->focusRatio);
 		}
 	}
@@ -464,7 +547,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 		}
 		else {
 			for (int i = 0; i < lenses.size(); i++) {
-				float2 lensScreenCenter = lenses[i]->GetScreenPos(modelview, projection, winW, winH);
+				float2 lensScreenCenter = lenses[i]->GetCenterScreenPos(modelview, projection, winW, winH);
 				switch (lenses[i]->GetType()) {
 					case LENS_TYPE::TYPE_CIRCLE:
 					{
@@ -499,6 +582,41 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							d_vec_posClip.begin(), d_vec_posScreen.begin(),
 							functor_Displace_Line(lensScreenCenter.x, lensScreenCenter.y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
 						break;
+					}
+					case LENS_TYPE::TYPE_LINEB:
+					{
+							LineBLens* l = (LineBLens*)lenses[i];
+							//if (l->isConstructing){
+							//	thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
+							//		d_vec_posClip.begin(), d_vec_posScreen.begin(),
+							//		functor_Displace_NotFinish());
+							//}
+							//else
+							{
+								thrust::for_each(
+									thrust::make_zip_iterator(
+									thrust::make_tuple(
+									d_vec_posScreen.begin(),
+									d_vec_posClip.begin(),
+									d_vec_glyphSizeTarget.begin(),
+									d_vec_glyphBrightTarget.begin(),
+									feature.begin(),
+									d_vec_id.begin()
+									)),
+									thrust::make_zip_iterator(
+									thrust::make_tuple(
+									d_vec_posScreen.end(),
+									d_vec_posClip.end(),
+									d_vec_glyphSizeTarget.end(),
+									d_vec_glyphBrightTarget.end(),
+									feature.end(),
+									d_vec_id.end()
+									)), 
+									functor_Displace_LineB(lensScreenCenter.x, lensScreenCenter.y, l->lineBLensInfo, l->GetClipDepth(modelview, projection), isHighlightingFeature, snappedGlyphId, snappedFeatureId));
+
+
+							}
+							break;
 					}
 					case LENS_TYPE::TYPE_CURVEB:
 					{

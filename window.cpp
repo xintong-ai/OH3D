@@ -193,7 +193,7 @@ void Window::AddLens()
 
 void Window::AddLineLens()
 {
-	lensRenderable->AddLineLens();
+	lensRenderable->AddLineBLens();
 }
 
 
