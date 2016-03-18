@@ -9,12 +9,12 @@ float Lens::GetClipDepth(float* mv, float* pj)
 	return Object2Clip(GetCenter(), mv, pj).z;
 }
 
-float2 Lens::GetScreenPos(float* mv, float* pj, int winW, int winH)
+float2 Lens::GetCenterScreenPos(float* mv, float* pj, int winW, int winH)
 {
 	return Object2Screen(GetCenter(), mv, pj, winW, winH);
 }
 
-void Lens::SetScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH)
+void Lens::UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH)
 {
 	matrix4x4 invModelview, invProjection;
 	invertMatrix(mv, &invModelview.v[0].x);
@@ -112,16 +112,152 @@ vector<vector<float3>> CircleLens::Get3DContour()
 }
 
 
+bool LineBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
+
+
+	//dot product of (_x-x, _y-y) and direction
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 toPoint = make_float2(_x - center.x, _y - center.y);
+	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+
+	if (abs(disMajor) < lSemiMajorAxis) {
+		float2 minorDirection = make_float2(-direction.y, direction.x);
+		//dot product of (_x-x, _y-y) and minorDirection
+		float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
+		if (abs(disMinor) < lSemiMinorAxis)
+			return true;
+	}
+	return false;
+}
+
+
+
+vector<float2> LineBLens::GetContour(float* mv, float* pj, int winW, int winH)
+{
+	vector<float2> ret;
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
+	float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
+
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+
+
+	ret.push_back(ctrlPoint1 - minorDirection*lSemiMinorAxis);
+	ret.push_back(ctrlPoint2 - minorDirection*lSemiMinorAxis);
+	ret.push_back(ctrlPoint2 + minorDirection*lSemiMinorAxis);
+	ret.push_back(ctrlPoint1 + minorDirection*lSemiMinorAxis);
+	return ret;
+}
+
+vector<float2> LineBLens::GetOuterContour(float* mv, float* pj, int winW, int winH)
+{
+	vector<float2> ret;
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
+	float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
+
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+
+	ret.push_back(ctrlPoint1 - minorDirection*lSemiMinorAxis / focusRatio);
+	ret.push_back(ctrlPoint2 - minorDirection*lSemiMinorAxis / focusRatio);
+	ret.push_back(ctrlPoint2 + minorDirection*lSemiMinorAxis / focusRatio);
+	ret.push_back(ctrlPoint1 + minorDirection*lSemiMinorAxis / focusRatio);
+
+	return ret;
+}
+
+void LineBLens::UpdateInfo(float* mv, float* pj, int winW, int winH)
+{
+	UpdateCenterByScreenPos((ctrlPoint1Abs.x + ctrlPoint2Abs.x) / 2.0, (ctrlPoint1Abs.y + ctrlPoint2Abs.y) / 2.0, mv, pj, winW, winH);
+
+	direction = ctrlPoint2Abs - ctrlPoint1Abs;
+
+	lSemiMajorAxis = length(direction) / 2;
+	float ratio = 3.0f;
+	lSemiMinorAxis = lSemiMajorAxis / ratio;
+
+	if (lSemiMajorAxis < 0.000001)
+		direction = make_float2(0, 0);
+	else
+		direction = normalize(direction);
+
+	lineBLensInfo.lSemiMajorAxis = lSemiMajorAxis;
+	lineBLensInfo.lSemiMinorAxis = lSemiMinorAxis;
+	lineBLensInfo.direction = direction;
+	lineBLensInfo.focusRatio = focusRatio;
+}
+
+void LineBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
+{
+	UpdateInfo(mv, pj, winW, winH);
+	isConstructing = false;
+}
+
+vector<float2> LineBLens::GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
+	vector<float2> res;
+	if (isConstructing){
+		res.push_back(ctrlPoint1Abs);
+		res.push_back(ctrlPoint2Abs);
+	}
+	else{
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
+		float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
+		res.push_back(ctrlPoint1);
+		res.push_back(ctrlPoint2);
+		float2 minorDirection = make_float2(-direction.y, direction.x);
+		float2 semiCtrlPoint1 = center - minorDirection*lSemiMinorAxis;
+		float2 semiCtrlPoint2 = center + minorDirection*lSemiMinorAxis;
+		res.push_back(semiCtrlPoint1);
+		res.push_back(semiCtrlPoint2);
+	}
+	return res;
+}
 
 
 
 
 
+void redistributePoints(vector<float2> & p)
+{
+	int n = p.size();
+	if (n > 2){
+		vector<float2> orip = p;
+		float totalDis = 0;
+		for (int i = 1; i < n; i++){
+			totalDis += length(p[i] - p[i - 1]);
+		}
+		float segDis = totalDis/(n - 1);
+		float curDis = 0;
+		float2 curPos = orip[0];
+		int nextId = 1;
+
+		for (int i = 1; i < n - 1; i++){
+			float targetDis = segDis*i;			
+			while (curDis < targetDis){
+				if (curDis + length(orip[nextId] - curPos) < targetDis){
+					curDis = curDis + length(orip[nextId] - curPos);
+					curPos = orip[nextId];
+					nextId++;
+				}
+				else{
+					curPos = curPos + normalize(orip[nextId] - curPos)*(targetDis - curDis);
+					curDis = targetDis;
+				}
+			}
+			p[i] = curPos;
+		}
+	}
+}
 
 
-void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
+
+void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
+{
 	if (numCtrlPoints >= 3){
 		
+		redistributePoints(ctrlPointsAbs);
+
 		//remove end shaking
 		float endRegionThr = 0.15;
 		int end1ind = ceil(numCtrlPoints*endRegionThr);
@@ -132,12 +268,12 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 				ctrlPointsAbs[i] = ctrlPointsAbs[0] + dis*i / end1ind*dir;
 			}
 		}
-		int end2ind = numCtrlPoints*(1-endRegionThr)-1;
+		int end2ind = numCtrlPoints - end1ind - 1;
 		if (end2ind >= 0 && end2ind < numCtrlPoints - 1){
 			float dis = length(ctrlPointsAbs[numCtrlPoints - 1] - ctrlPointsAbs[end2ind]);
 			float2 dir = normalize(ctrlPointsAbs[numCtrlPoints - 1] - ctrlPointsAbs[end2ind]);
 			for (int i = end2ind + 1; i < numCtrlPoints - 1; i++){
-				ctrlPointsAbs[i] = ctrlPointsAbs[end2ind] + dis*(i - end2ind) / (numCtrlPoints - 1 - end1ind)*dir;
+				ctrlPointsAbs[i] = ctrlPointsAbs[end2ind] + dis*(i - end2ind) / end1ind*dir;
 			}
 		}
 		//cout << numCtrlPoints << " " << end1ind << " " << end2ind << endl;
@@ -152,14 +288,15 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
 		}
-		SetScreenPos(sumx / numCtrlPoints, sumy / numCtrlPoints, mv, pj, winW, winH);
-		float2 center = GetScreenPos(mv, pj, winW, winH);// make_float2(x, y);
+		UpdateCenterByScreenPos(sumx / numCtrlPoints, sumy / numCtrlPoints, mv, pj, winW, winH);
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);// make_float2(x, y);
 		ctrlPoints.resize(numCtrlPoints);
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
 			ctrlPoints[ii] = ctrlPointsAbs[ii] - center;
 		}
 
 		//optional: refine the control points shape and reduce the number, by the Bezier Curve
+		//better strategy is to check methods about bezier down degree with minimum shape loss
 		if (0){
 			vector<float2> BezierSmapleOri = BezierSmaple(ctrlPoints);
 			numCtrlPoints = numCtrlPoints / 2;
@@ -210,17 +347,14 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH){
 		computeBoundaryPos();
 		computeBoundaryNeg();
 
-		////do it later: compute curveLensCtrlPoints
-		if (1){
-			curveBLensInfo.x = center.x;
-			curveBLensInfo.y = center.y;
+		////compute curveBLensInfo
+		{
 			curveBLensInfo.width = width;
 			curveBLensInfo.focusRatio = focusRatio;
 
 			curveBLensInfo.numBezierPoints = BezierPoints.size();
 			for (int i = 0; i < BezierPoints.size(); i++){
 				curveBLensInfo.BezierPoints[i] = BezierPoints[i];
-				curveBLensInfo.BezierNormals[i] = BezierNormals[i];		
 			}
 
 			curveBLensInfo.numPosPoints = subCtrlPointsPos.size();
@@ -246,7 +380,7 @@ void CurveBLens::offsetControlPointsPos()
 	float2 dir;
 
 	int np = subCtrlPointsPos.size();
-	posOffsetCtrlPoints.clear(); //!!! maybe can improve performance by using vector<>::resize??
+	posOffsetCtrlPoints.clear(); //!!! maybe can improve performance by using vector<>::reserve
 
 	dir = normalize(subCtrlPointsPos[1] - subCtrlPointsPos[0]);
 	normal = make_float2(-dir.y, dir.x);
@@ -336,7 +470,7 @@ std::vector<float2> CurveBLens::GetContour(float* mv, float* pj, int winW, int w
 	std::vector<float2> ret;
 	if (posOffsetBezierPoints.size()>2){
 	//if (!isConstructing && numCtrlPoints >= 3) {
-		float2 center = GetScreenPos(mv, pj, winW, winH);// make_float2(x, y);
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);// make_float2(x, y);
 		int n = posOffsetBezierPoints.size();
 
 		//!!! probably can be more precise !!!
@@ -361,7 +495,7 @@ std::vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, 
 	std::vector<float2> ret;
 	if (posOffsetBezierPoints.size()>2){
 		//if (!isConstructing && numCtrlPoints >= 3) {
-		float2 center = GetScreenPos(mv, pj, winW, winH);// make_float2(x, y);
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);// make_float2(x, y);
 		int n = posOffsetBezierPoints.size();
 		for (int ii = 0; ii < n; ii++){
 			ret.push_back(posOffsetBezierPoints[ii] + center);
@@ -380,7 +514,7 @@ std::vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, 
 }
 
 
-std::vector<float2> CurveBLens::GetExtraLensRendering(float* mv, float* pj, int winW, int winH){
+std::vector<float2> CurveBLens::GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
 	if (isConstructing){
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -388,7 +522,7 @@ std::vector<float2> CurveBLens::GetExtraLensRendering(float* mv, float* pj, int 
 		}
 	}
 	else{
-		float2 center = GetScreenPos(mv, pj, winW, winH);//make_float2(x, y);
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);//make_float2(x, y);
 		int n = ctrlPoints.size();
 		for (int ii = 0; ii < n; ii++) {
 			ret.push_back(ctrlPoints[ii] + center);
@@ -397,7 +531,7 @@ std::vector<float2> CurveBLens::GetExtraLensRendering(float* mv, float* pj, int 
 	return ret;
 }
 
-std::vector<float2> CurveBLens::GetExtraLensRendering2(float* mv, float* pj, int winW, int winH){
+std::vector<float2> CurveBLens::GetCenterLineForRendering(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
 	if (isConstructing){
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -405,7 +539,7 @@ std::vector<float2> CurveBLens::GetExtraLensRendering2(float* mv, float* pj, int
 		}
 	}
 	else{
-		float2 center = GetScreenPos(mv, pj, winW, winH);//make_float2(x, y);
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);//make_float2(x, y);
 		int n = BezierPoints.size();
 		for (int ii = 0; ii < n; ii++) {
 			ret.push_back(BezierPoints[ii] + center);
@@ -722,7 +856,7 @@ bool CurveBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW,
 		return true;
 	float2 screenCoord = make_float2(_x, _y);
 
-	float2 center = GetScreenPos(mv, pj, winW, winH); //make_float2(x, y);
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH); //make_float2(x, y);
 
 	int numPosPoints = subCtrlPointsPos.size();
 	int numNegPoints = subCtrlPointsNeg.size();
