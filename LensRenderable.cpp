@@ -110,12 +110,9 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 {
 	RecordMatrix(modelview, projection);
 
-<<<<<<< HEAD
-	if (drawScreenSpace){
-=======
-	if (1){
 
->>>>>>> lcbranch
+	if (drawScreenSpace){
+
 		int2 winSize = actor->GetWindowSize();
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
