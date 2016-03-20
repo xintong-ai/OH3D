@@ -114,7 +114,7 @@ void ModelGridRenderable::InitGridDensity(float4* v, int n)
 	int* tet = modelGrid->GetTet();
 	float* X = modelGrid->GetX();
 	std::vector<int> cnts;
-	cnts.resize((nStep.x - 1) *(nStep.y - 1) *(nStep.z - 1), 0);
+	cnts.resize((nStep.x - 1) *(nStep.y - 1) *(nStep.z - 1) * 5, 0);
 	vBaryCoord.resize(n);
 	vIdx.resize(n);
 	for (int i = 0; i < n; i++){
@@ -125,29 +125,30 @@ void ModelGridRenderable::InitGridDensity(float4* v, int n)
 			+ idx3.y * (nStep.z - 1) + idx3.z;
 		for (int j = 0; j < 5; j++){
 			float3 vv[4];
+			int tetId = idx * 5 + j;
 			for (int k = 0; k < 4; k++){
-				int iv = tet[idx * 5 * 4 + j * 4 + k];
+				int iv = tet[tetId * 4 + k];
 				vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
 			}
 			float4 bary = GetBarycentricCoordinate(vv[0], vv[1], vv[2], vv[3], vc);
 			if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
 				vIdx[i] = idx * 5 + j;
 				vBaryCoord[i] = bary;
+				cnts[tetId]++;
 				break;
 			}
 		}
 		//float3 local = make_float3(tmp.x - idx3.x, tmp.y - idx3.y, tmp.z - idx3.z);// vc - (gridMin + make_float3(idx3.x * step, idx3.y * step, idx3.z * step));
 
 		//localCoord.push_back(make_float4(idx, local.x, local.y, local.z));
-		cnts[idx]++;
 	}
 	std::vector<float> density;
-	density.resize(cnts.size() * 5);
-	const float base = 400.0f / cnts.size();
+	density.resize(cnts.size());
+	//const float base = 400.0f / cnts.size();
 	for (int i = 0; i < cnts.size(); i++) {
-		for (int j = 0; j < 5; j++) {
-			density[i * 5 + j] = 1800 + 10000 * (float)cnts[i] ;
-		}
+		//for (int j = 0; j < 5; j++) {
+		density[i] = 1000 + 1000 * (float)cnts[i];
+		//}
 	}
 	modelGrid->SetElasticity(&density[0]);
 	modelGrid->Initialize(time_step);
@@ -173,14 +174,17 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 	q_modelview = q_modelview.transposed();
-	QVector4D cameraObj = QVector4D(0, 0, 0, 1) * q_modelview.inverted();// make_float4(0, 0, 0, 1);
+	QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
+	cameraObj = cameraObj / cameraObj.w();
 	float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
 	float3 lensDir = make_float3(
 		cameraObj.x() - lensCen.x, 
 		cameraObj.y() - lensCen.y, 
 		cameraObj.z() - lensCen.z);
 	lensDir = normalize(lensDir);
-	std::cout << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
+	//std::cout << "cameraObj:" << cameraObj.x() << "," << cameraObj.y() << "," << cameraObj.z() << std::endl;
+	//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
+	//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
 
 	modelGrid->Update(time_step, &lensCen.x, &lensDir.x);
 

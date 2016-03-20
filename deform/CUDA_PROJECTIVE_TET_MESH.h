@@ -211,28 +211,26 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 lensCen2Vert = vert - lensCen;
 	float vertProjLeng = dot(lensCen2Vert, lensDir);
+	float3 lensForce = make_float3( 0, 0, 0 );
+	const float focusRadSqr = 9;
+	float3 projVec = vertProjLeng * lensDir;
+	float3 moveDir = lensCen2Vert - projVec;
+	float dist2RaySqr = dot(moveDir, moveDir);
+#if 1
 	if (vertProjLeng > 0){
-		float vert2RaySqr = dot(lensCen2Vert, lensCen2Vert) - vertProjLeng * vertProjLeng;
-		if (vert2RaySqr < 10){
-
+		if (dist2RaySqr < focusRadSqr){
+			lensForce =  2 * (focusRadSqr - dist2RaySqr) * normalize(moveDir);
 		}
 	}
-//	float3 lensForce;// = { 0, 0, 0 };
-////	float dist = sqrt(pow(X[i * 3 + 0] - lens[0], 2) + pow(X[i * 3 + 2] - lens[2], 2));
-//	float dist = length(vert - lensCen);
-//	float radius = 2; 
-//	if (dist < radius){
-//		float3 dir = normalize(vert - lens);// make_float3(lens[0] - X[i * 3], lens[1] - X[i * 3 + 1], 0);
-//		lensForce = dir * (radius - dist);
-//		for (int j = 0; j < 3; j++) {
-//			V[i * 3 + j] += (3000 * (&(lensForce.x))[j]* t);
-//		}
-//	}
-	//else
-	//	return;
-	//if (dist > radius * 2){
-	//	return;
-	//}
+#else 
+	if (dist2RaySqr < focusRadSqr && vertProjLeng > 0){
+		lensForce = 0.3 * normalize(lensDir);// *(focusRadSqr - dist2RaySqr);
+	}
+
+#endif
+	for (int j = 0; j < 3; j++) {
+		V[i * 3 + j] += (30 * (&(lensForce.x))[j]* t);
+	}
 
 	//V[i*3+1]+=GRAVITY*t;
 	//Position update
@@ -244,7 +242,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Tet Constraint Kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Tet_Constraint_Kernel(const float* EL, const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const float elasticity, const int tet_number, const int l)
+__global__ void Tet_Constraint_Kernel(const float* EL, const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const int tet_number, const int l)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if(t>=tet_number)	return;
@@ -392,7 +390,7 @@ public:
 	TYPE*	fixed;
 
 	TYPE	rho;
-	TYPE	elasticity;
+	//TYPE	elasticity;
 	TYPE	control_mag;
 	TYPE	damping;
 
@@ -451,7 +449,7 @@ public:
 		EL = new TYPE[max_number * 5];
 
 		fps			= 0;
-		elasticity	= 3000000; //5000000
+		//elasticity	= 3000000; //5000000
 		control_mag	= 10;
 		rho			= 0.9992;
 		damping		= 0.9995;
@@ -719,7 +717,7 @@ public:
 		TYPE omega;
 		for(int l=0; l<iterations; l++)
 		{	
-			Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock>> >(dev_EL, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, elasticity, tet_number, l);
+			Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock>> >(dev_EL, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, tet_number, l);
 			Constraint_1_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_next_X, dev_Tet_Temp, dev_MD, dev_VTT, dev_vtt_num, number);
 
 			if(l<=10)		omega=1;
