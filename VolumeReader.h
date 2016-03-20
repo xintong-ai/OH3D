@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <helper_math.h>
+#include <vector>
 
 
 struct matrix3x3{
@@ -78,6 +79,14 @@ public:
 
 	~VolumeReader();
 
+	//related to feature input
+	bool useFeature;
+	int featureAmount;
+	std::vector<float3> featureCenter;
+	bool LoadFeature(const char* filename);
+
+	
+
 protected:
 	int dataDims;
 	int3 dataSizes;
@@ -89,6 +98,10 @@ protected:
 	float maxVal = 0.0f;
 	float minVal = 0.0f;
 	float *data = nullptr;
+
+	//related to feature input
+	char *feature = nullptr;
+
 };
 
 #endif

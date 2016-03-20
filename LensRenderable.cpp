@@ -336,19 +336,27 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 	actor->GetProjection(projection);
 	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
 		Lens* l = lenses[lenses.size() - 1];
-if (l->type == LENS_TYPE::TYPE_CURVEB) {
+		if (l->type == LENS_TYPE::TYPE_CURVEB) {
 			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
 
 	}
 	else {
-		if (actor->GetInteractMode() == INTERACT_MODE::LENS && isUsingSnap){
+		if (actor->GetInteractMode() == INTERACT_MODE::LENS && isSnapToGlyph && modifier != Qt::AltModifier){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
 			float3 snapPos = glyphRenderable->findClosetGlyph(center);
 			l->SetCenter(snapPos);
+		}
+		else if (actor->GetInteractMode() == INTERACT_MODE::LENS && isSnapToFeature && modifier != Qt::ShiftModifier){
+			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
+			Lens* l = lenses[lenses.size() - 1];
+			float3 center = make_float3(l->GetCenter());
+			float3 snapPos;
+			if (glyphRenderable->findClosetFeature(center, snapPos))
+				l->SetCenter(snapPos);
 		}
 		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	}
@@ -378,9 +386,14 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->SetScreenPos(
 				center.x + (x - lastPt.x), center.y + (y - lastPt.y)
 				, modelview, projection, winSize.x, winSize.y);
-			if (isUsingSnap){
+			if (isSnapToGlyph && modifier != Qt::AltModifier){
 				GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 				glyphRenderable->findClosetGlyph(make_float3(lenses[pickedLens]->GetCenter()));
+			}
+			else if (isSnapToFeature && modifier != Qt::ShiftModifier){
+				GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
+				float3 snapPos;
+				glyphRenderable->findClosetFeature(make_float3(lenses[pickedLens]->GetCenter()), snapPos);
 			}
 		}
 		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
@@ -388,7 +401,7 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 	}
 }
 
-bool LensRenderable::MouseWheel(int x, int y, int delta)
+bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 {
 	int2 winSize = actor->GetWindowSize();
 	GLfloat modelview[16];
@@ -402,6 +415,10 @@ bool LensRenderable::MouseWheel(int x, int y, int delta)
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
 			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+			//if (isSnapToGlyph && modifier != Qt::AltModifier){
+			//	GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
+			//	glyphRenderable->findClosetGlyph(make_float3(l->GetCenter()));
+			//}
 		}
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();

@@ -60,6 +60,9 @@ private:
 	//LensRenderable* lensRenderable;
 	//GridRenderable* gridRenderable;
 
+	QCheckBox* usingSnapCheck;
+	QCheckBox* highlightingFeatureCheck;
+	QCheckBox* usingFeatureSnappingCheck;
 
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;
@@ -108,6 +111,9 @@ private slots:
 	//void SlotSetAnimation(bool doAnimation);
 	void SlotToggleGrid(bool b);
 	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
+	void SlotToggleUsingSnap(bool b);
+	void SlotToggleHighlightingFeature(bool b);
+	void SlotToggleUsingFeatureSnapping(bool b);
 
 	//void XSliderChanged(int i);
 	//void YSliderChanged(int i);

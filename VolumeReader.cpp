@@ -5,6 +5,7 @@
 //#include "cuda_math.h"
 #include <vector_functions.h>
 #include <helper_math.h>
+using namespace std;
 
 VolumeReader::VolumeReader(const char* filename):
 Reader(filename)
@@ -140,4 +141,55 @@ VolumeReader::~VolumeReader()
 	if (nullptr != data) {
 		delete[] data;
 	}
+}
+
+
+bool VolumeReader::LoadFeature(const char* filename)
+{
+	int num = dataSizes.x*dataSizes.y*dataSizes.z;
+	feature = new char[num];
+
+	FILE *pFile;
+	pFile = fopen(filename, "rb");
+	if (pFile == NULL)
+	{
+		fputs("no feature is loaded \n", stderr);
+		memset(feature, 0, num);
+		featureAmount = 0;
+		return false;
+	}
+
+	typedef unsigned char FEATURE_FILE_TYPE;
+	FEATURE_FILE_TYPE *temp = new FEATURE_FILE_TYPE[num];
+	fread(temp, sizeof(FEATURE_FILE_TYPE), num, pFile);
+
+
+	featureAmount = 0;
+
+	for (int i = 0; i < num; i++){
+		feature[i] = temp[i];
+		if (feature[i]>featureAmount)
+			featureAmount = feature[i];
+	}
+
+	featureCenter.resize(featureAmount, make_float3(0, 0, 0));
+	vector<int> featureCount(featureAmount,0);
+
+	for (int k = 0; k < dataSizes.z; k++){
+		for (int j = 0; j < dataSizes.y; j += 4) {
+			for (int i = 0; i < dataSizes.x; i += 4){
+				int idx = k * dataSizes.x * dataSizes.y + j * dataSizes.x + i;
+				if (feature[idx]>0){
+					featureCount[feature[idx] - 1] ++;
+					featureCenter[feature[idx] - 1] += GetDataPos(make_int3(i, j, k));
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < featureAmount; i++){
+		featureCenter[i] /= featureCount[i];
+	}
+
+	return true;
 }
