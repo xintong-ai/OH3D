@@ -10,7 +10,7 @@ class GLMatrixManager{
 	Trackball *trackball;
 	Rotation *rot;
 	//transformation states
-	QVector3D transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
+	QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
 	QMatrix4x4 transRot;
 	QMatrix4x4 viewMat;
 	float transScale = 1;

@@ -22,6 +22,8 @@ using namespace std;
 #include <helper_math.h>
 #include <ColorGradient.h>
 
+//void LoadPickingShaders(ShaderProgram*& shaderProg)
+
 
 SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val)
 //SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
@@ -40,6 +42,7 @@ SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<
 
 void SphereRenderable::init()
 {
+	GlyphRenderable::init();
 	LoadShaders(glProg);
 	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	//m_vao->create();
@@ -142,7 +145,7 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, vertex, GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
+	//qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
 	//m_vao->release();
 }
@@ -202,12 +205,14 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		UpdateData();
 		updated = true;
 	}
-	if (!visible)
-		return;
+
 
 	RecordMatrix(modelview, projection);
 	ComputeDisplace();
 
+
+	if (!visible)
+		return;
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();

@@ -21,6 +21,11 @@ enum INTERACT_MODE{
 	//DRAW_ELLIPSE,
 };
 
+enum DEFORM_MODEL{
+	OBJECT_SPACE,
+	SCREEN_SPACE,
+};
+
 
 class StopWatchInterface;
 class Renderable;
@@ -70,6 +75,10 @@ public:
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 
 	void GetDepthRange(float2& v){ v = depthRange; }
+
+	void SetDeformModel(DEFORM_MODEL v) { deformModel = v; }
+	DEFORM_MODEL GetDeformModel() { return deformModel; }
+
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;
@@ -136,6 +145,8 @@ private:
 	float2 depthRange;
 
 	std::shared_ptr<GLMatrixManager> matrixMgr;
+
+	DEFORM_MODEL deformModel = DEFORM_MODEL::OBJECT_SPACE;// DEFORM_MODEL::SCREEN_SPACE;
 
 private slots:
 	void animate();

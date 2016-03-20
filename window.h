@@ -25,6 +25,7 @@ class VRGlyphRenderable;
 class LeapListener;
 class DataMgr;
 class GLMatrixManager;
+class ModelGridRenderable;
 namespace Leap{
 	class Controller;
 }
@@ -67,6 +68,7 @@ private:
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;
 	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
+	std::unique_ptr<ModelGridRenderable> modelGridRenderable;
 	std::unique_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 

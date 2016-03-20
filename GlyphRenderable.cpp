@@ -6,7 +6,7 @@
 #include <glwidget.h>
 #include <Lens.h>
 #include <LensRenderable.h>
-
+#include <ModelGridRenderable.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -20,10 +20,22 @@ using namespace std;
 void GlyphRenderable::ComputeDisplace()
 {
 	int2 winSize = actor->GetWindowSize();
-	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId, snappedFeatureId);
+	switch (actor->GetDeformModel())
+	{
+	case DEFORM_MODEL::SCREEN_SPACE:
+		displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
+			((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId, snappedFeatureId);
+		break;
+	case DEFORM_MODEL::OBJECT_SPACE:
+		((ModelGridRenderable*)actor->GetRenderable("model"))->UpdatePointCoords(&pos[0], pos.size());
+		break;
+	}
 }
 
+void GlyphRenderable::init()
+{
+	((ModelGridRenderable*)actor->GetRenderable("model"))->InitGridDensity(&pos[0], pos.size());
+}
 
 GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 { 
@@ -58,14 +70,19 @@ GlyphRenderable::~GlyphRenderable()
 
 void GlyphRenderable::RecomputeTarget()
 {
-	displace->RecomputeTarget();
+	switch (actor->GetDeformModel())
+	{
+	case DEFORM_MODEL::SCREEN_SPACE:
+		displace->RecomputeTarget();
+		break;
+	}
 }
 
 void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 {
 	int2 winSize = actor->GetWindowSize();
-	displace->DisplacePoints(pts,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
+	//displace->DisplacePoints(pts,
+	//	((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
 }
 
 void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)
@@ -103,12 +120,12 @@ void GlyphRenderable::resize(int width, int height)
 	qgl->glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 		GL_RENDERBUFFER, renderbuffer[1]);
 	qgl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
 }
 
 float3 GlyphRenderable::findClosetGlyph(float3 aim)
 {
 	return displace->findClosetGlyph(aim, snappedGlyphId);
+
 }
 
 // !!! NOTE: result is not meaningful when no feature is loaded. Need to deal with this situation when calling this function. when no feature is loaded, return false 

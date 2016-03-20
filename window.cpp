@@ -15,6 +15,7 @@
 #include "DataMgr.h"
 #include "VRWidget.h"
 #include "VRGlyphRenderable.h"
+#include "ModelGridRenderable.h"
 
 #include "GLMatrixManager.h"
 
@@ -117,10 +118,12 @@ Window::Window()
 	reader->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_unique<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
+	modelGridRenderable = std::make_unique<ModelGridRenderable>(&posMin.x, &posMax.x, 15);
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
+	openGL->AddRenderable("model", modelGridRenderable.get());
 
 	///********controls******/
 	addLensBtn = new QPushButton("Add Circle Lens");
@@ -244,7 +247,7 @@ void Window::RefineLensBoundary()
 
 void Window::SlotToggleGrid(bool b)
 {
-	gridRenderable->SetVisibility(b);
+	modelGridRenderable->SetVisibility(b);
 }
 
 Window::~Window() {

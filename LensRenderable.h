@@ -19,6 +19,7 @@ public:
 	void UpdateData() override;
 	LensRenderable();
 	std::vector<Lens*> GetLenses() { return lenses; }
+	float3 GetBackLensCenter();
 	void AddCircleLens();
 	void AddLineLens();
 	void AddLineBLens();

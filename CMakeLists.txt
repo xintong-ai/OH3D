@@ -42,8 +42,10 @@ set( Srcs main.cpp GLSphere.cpp GLArrow.cpp
 	VRWidget.cpp VRGlyphRenderable.cpp
 	LeapListener.cpp 
     GLMatrixManager.cpp
+    ModelGridRenderable.cpp
+	ModelGrid.cu
 	)
-set( Hdrs 
+set( Hdrs  
 GLSphere.h
 	window.h glwidget.h Renderable.h trackball.h Rotation.h QuatVector.h
 	DataMgr.h defines.h Reader.h GLArrow.h
@@ -55,6 +57,11 @@ GLSphere.h
 	VRWidget.h VRGlyphRenderable.h
 	LeapListener.h LeapInteraction.h
 	GLMatrixManager.h
+	ModelGridRenderable.h
+	ModelGrid.h
+	GridMesh.h
+	OPENGL_DRIVER.h
+	deform/CUDA_PROJECTIVE_TET_MESH.h
     )
 #set( Rcs resources/vechist.qrc)
 
