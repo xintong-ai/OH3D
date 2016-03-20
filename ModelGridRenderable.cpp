@@ -169,9 +169,20 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	qgl->glUseProgram(0);
 	RecordMatrix(modelview, projection);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//convert the camera location from camera space to object space
+	//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
+	QMatrix4x4 q_modelview = QMatrix4x4(modelview);
+	q_modelview = q_modelview.transposed();
+	QVector4D cameraObj = QVector4D(0, 0, 0, 1) * q_modelview.inverted();// make_float4(0, 0, 0, 1);
 	float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+	float3 lensDir = make_float3(
+		cameraObj.x() - lensCen.x, 
+		cameraObj.y() - lensCen.y, 
+		cameraObj.z() - lensCen.z);
+	lensDir = normalize(lensDir);
+	std::cout << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
 
-	modelGrid->Update(time_step, &lensCen.x);
+	modelGrid->Update(time_step, &lensCen.x, &lensDir.x);
 
 	if (!visible)
 		return;

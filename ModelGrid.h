@@ -17,7 +17,7 @@ public:
 	unsigned int* GetL();
 	int GetLNumber();
 	void Initialize(float time_step);
-	void Update(float time_step, float lensCenter[3]);
+	void Update(float time_step, float lensCenter[3], float lenDir[3]);
 	float3 GetGridMin();
 	float3 GetGridMax();
 	int3 GetNumSteps();

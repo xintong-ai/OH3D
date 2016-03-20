@@ -181,7 +181,9 @@ __global__ void Control_Kernel(float* X, float *more_fixed, const float control_
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Basic update kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number, const float dir_x, const float dir_y, const float dir_z)
+__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
+	, const float cen_x, const float cen_y, const float cen_z
+	, const float dir_x, const float dir_y, const float dir_z)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
@@ -204,19 +206,28 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	V[i*3+1]*=damping;
 	V[i*3+2]*=damping;
 	//Apply gravity
-	float3 lens = make_float3(dir_x, dir_y, dir_z);// make_float3(0, 0, 5);
+	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
+	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
-	float3 lensForce;// = { 0, 0, 0 };
-//	float dist = sqrt(pow(X[i * 3 + 0] - lens[0], 2) + pow(X[i * 3 + 2] - lens[2], 2));
-	float dist = length(vert - lens);
-	float radius = 2; 
-	if (dist < radius){
-		float3 dir = normalize(vert - lens);// make_float3(lens[0] - X[i * 3], lens[1] - X[i * 3 + 1], 0);
-		lensForce = dir * (radius - dist);
-		for (int j = 0; j < 3; j++) {
-			V[i * 3 + j] += (3000 * (&(lensForce.x))[j]* t);
+	float3 lensCen2Vert = vert - lensCen;
+	float vertProjLeng = dot(lensCen2Vert, lensDir);
+	if (vertProjLeng > 0){
+		float vert2RaySqr = dot(lensCen2Vert, lensCen2Vert) - vertProjLeng * vertProjLeng;
+		if (vert2RaySqr < 10){
+
 		}
 	}
+//	float3 lensForce;// = { 0, 0, 0 };
+////	float dist = sqrt(pow(X[i * 3 + 0] - lens[0], 2) + pow(X[i * 3 + 2] - lens[2], 2));
+//	float dist = length(vert - lensCen);
+//	float radius = 2; 
+//	if (dist < radius){
+//		float3 dir = normalize(vert - lens);// make_float3(lens[0] - X[i * 3], lens[1] - X[i * 3 + 1], 0);
+//		lensForce = dir * (radius - dist);
+//		for (int j = 0; j < 3; j++) {
+//			V[i * 3 + j] += (3000 * (&(lensForce.x))[j]* t);
+//		}
+//	}
 	//else
 	//	return;
 	//if (dist > radius * 2){
@@ -687,7 +698,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Update functions
 ///////////////////////////////////////////////////////////////////////////////////////////
-	void Update(TYPE t, int iterations, TYPE dir[])
+	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3])
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -697,7 +708,9 @@ public:
 		TIMER timer;
 
 		// Step 1: Basic update
-		Update_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number, dir[0], dir[1], dir[2]);
+		Update_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
+			, lensCen[0], lensCen[1], lensCen[2]
+			, lenDir[0], lenDir[1], lenDir[2]);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1/t, number);

@@ -46,9 +46,9 @@ void ModelGrid::Initialize(float time_step)
 	return gridMesh->Initialize(time_step);
 }
 
-void ModelGrid::Update(float time_step, float lensCenter[3])
+void ModelGrid::Update(float time_step, float lensCenter[3], float lenDir[3])
 {
-	gridMesh->Update(time_step, 64, lensCenter);
+	gridMesh->Update(time_step, 64, lensCenter, lenDir);
 }
 
 float3 ModelGrid::GetGridMin()
