@@ -62,11 +62,27 @@ void VecReader::GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec,
 	//		for (int i = 200+(j / 4) % 4; i < 400; i += 8){
 
 
-	//for plume
-	float lengthThrLow = 0.1;
-	float lengthThrHigh = 1.2;
-	for (int k = size[2] * 0.4; k < size[2] * 0.6; k += 4){
-		for (int j = 0; j < size[1]; j+=4) {
+	////for plume
+	//float lengthThrLow = 0.1;
+	//float lengthThrHigh = 1.2;
+	//for (int k = size[2] * 0.4; k < size[2] * 0.6; k += 4){
+	//	for (int j = 0; j < size[1]; j+=4) {
+	//		for (int i = 0; i < size[0]; i += 4){
+	//			int idx = k * size[0] * size[1] + j * size[0] + i;
+	//			if (val[idx] > lengthThrLow && val[idx] <lengthThrHigh) {
+	//				_pos.push_back(make_float4(i, j, k, 1.0));
+	//				_val.push_back(val[idx]);
+	//				_vec.push_back(vecs[idx]);
+	//			}
+	//		}
+	//	}
+	//}
+
+	//for nek
+	float lengthThrLow = 20;
+	float lengthThrHigh = 1000003.2;
+	for (int k = 0; k < size[2]; k += 4){
+		for (int j = 0; j < size[1]; j += 4) {
 			for (int i = 0; i < size[0]; i += 4){
 				int idx = k * size[0] * size[1] + j * size[0] + i;
 				if (val[idx] > lengthThrLow && val[idx] <lengthThrHigh) {

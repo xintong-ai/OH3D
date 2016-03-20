@@ -128,7 +128,6 @@ Window::Window()
 	///********controls******/
 	addLensBtn = new QPushButton("Add Circle Lens");
 	addLineLensBtn = new QPushButton("Add Line Lens");
-	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
 	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
 	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
 	adjustOffsetBtn = new QPushButton("Adjust Offset");
@@ -179,7 +178,6 @@ Window::Window()
 
 	adjustOffsetBtn = new QPushButton("Adjust Offset");
 	controlLayout->addWidget(adjustOffsetBtn);
-	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
 	connect(adjustOffsetBtn, SIGNAL(clicked()), this, SLOT(adjustOffset()));
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
@@ -204,7 +202,7 @@ void Window::AddLens()
 
 void Window::AddLineLens()
 {
-	lensRenderable->AddLineLens();
+	lensRenderable->AddLineBLens();
 }
 
 

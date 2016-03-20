@@ -111,7 +111,9 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 {
 	RecordMatrix(modelview, projection);
 
+
 	if (drawScreenSpace){
+
 		int2 winSize = actor->GetWindowSize();
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
@@ -127,21 +129,27 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glColor3f(1.0f, 0.2f, 0.2f);
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
-
 			if (l->type == LENS_TYPE::TYPE_CURVEB) {
 				//glLineWidth(1);
-				//glColor3f(0.2f, 1.0f, 0.2f);
-				//std::vector<float2> lensExtraRendering = l->GetExtraLensRendering();
-				//glPointSize(1.0);
-				////glBegin(GL_POINTS);
-				//glBegin(GL_LINE_STRIP);
+				glColor3f(0.2f, 1.0f, 0.2f);
+				std::vector<float2> lensExtraRendering = ((CurveBLens *)l)->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
+				glPointSize(5.0);
+				glBegin(GL_POINTS);
+				for (int i = 0; i < lensExtraRendering.size(); i++){
+					glColor3f(1.0f - i % 4 / 3.0, 0.0f, i % 4 / 3.0);
+
+					float2 v = lensExtraRendering[i];
+					glVertex2f(v.x, v.y);
+
+				}
+
 				//for (auto v : lensExtraRendering)
 				//	glVertex2f(v.x, v.y);
-				//glEnd();
+				glEnd();
 
 				//glLineWidth(4);
 				glColor3f(0.9f, 0.9f, 0.2f);
-				std::vector<float2> lensExtraRendering2 = ((CurveBLens *)l)->GetExtraLensRendering2(modelview, projection, winSize.x, winSize.y);
+				std::vector<float2> lensExtraRendering2 = ((CurveBLens *)l)->GetCenterLineForRendering(modelview, projection, winSize.x, winSize.y);
 				glPointSize(5.0);
 				//glBegin(GL_POINTS);
 				glBegin(GL_LINE_STRIP);
@@ -223,6 +231,36 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 					glVertex2f(v.x, v.y);
 				glEnd();
 			}
+			else if (l->type == LENS_TYPE::TYPE_LINEB){
+				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+
+				glColor3f(0.2f, 0.8f, 0.8f);
+				std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensOuterContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+
+				std::vector<float2> ctrlPoints = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
+				glColor3f(0.8f, 0.8f, 0.2f);
+				if (((LineBLens*)l)->isConstructing){
+					glBegin(GL_LINES);
+					for (auto v : ctrlPoints)
+						glVertex2f(v.x, v.y);
+					glEnd();
+				}
+				else{
+					glPointSize(10.0);
+					glBegin(GL_POINTS);
+					for (auto v : ctrlPoints)
+						glVertex2f(v.x, v.y);
+					glEnd();
+				}
+			}
 		}
 
 		glPopAttrib();
@@ -231,7 +269,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glPopMatrix();
 		glMatrixMode(GL_MODELVIEW);
 		glPopMatrix();
-
 	}
 	else {
 		for (int i = 0; i < lenses.size(); i++) {
@@ -239,7 +276,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glMatrixMode(GL_PROJECTION);
 			glPushMatrix();
 			glLoadIdentity();
-			glLoadMatrixf( projection);
+			glLoadMatrixf(projection);
 			glMatrixMode(GL_MODELVIEW);
 			glPushMatrix();
 			glLoadIdentity();
@@ -252,11 +289,40 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glMatrixMode(GL_MODELVIEW);
 			glPopMatrix();
 
+			/*
+			//code from chengli for object space drawing
+			}
+			else{//to draw 3D contour
+			glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+			glLineWidth(4);
+			glColor3f(1.0f, 0.2f, 0.2f);
+
+			for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
+
+			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
+			std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour();
+
+			for (int i = 0; i <lensContour.size()-1; i++){
+			glBegin(GL_LINE_LOOP);
+			for (auto v : lensContour[i]){
+			glVertex3f(v.x, v.y, v.z);
+			}
+			glEnd();
+			}
+
+			glBegin(GL_LINES);
+			for (auto v : lensContour[lensContour.size() - 1]){
+			glVertex3f(v.x, v.y, v.z);
+			}
+			glEnd();
+
+			}
+			*/
 		}
+		glPopAttrib();
 	}
-
 }
-
 void LensRenderable::AddCircleLens()
 {
 	int2 winSize = actor->GetWindowSize();
@@ -275,11 +341,21 @@ void LensRenderable::AddLineLens()
 	actor->UpdateGL();
 }
 
+void LensRenderable::AddLineBLens()
+{
+	int2 winSize = actor->GetWindowSize();
+	Lens* l = new LineBLens(actor->DataCenter());
+	lenses.push_back(l);
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	actor->UpdateGL();
+	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
+
+}
 
 void LensRenderable::AddCurveBLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new CurveBLens(winSize.y * 0.07, actor->DataCenter());
+	Lens* l = new CurveBLens(winSize.y * 0.1, actor->DataCenter());
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
@@ -305,11 +381,12 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
-
-			if ( l->type == LENS_TYPE::TYPE_CURVEB) {
-				if (modifier == Qt::ControlModifier) {
-					((CurveBLens *)l)->AddCtrlPoint(x, y);
-				}
+			if (l->type == LENS_TYPE::TYPE_CURVEB) {
+				((CurveBLens *)l)->AddCtrlPoint(x, y);
+			}
+			else if (l->type == LENS_TYPE::TYPE_LINEB) {
+				((LineBLens *)l)->ctrlPoint1Abs = make_float2(x, y);
+				((LineBLens *)l)->ctrlPoint2Abs = make_float2(x, y);
 			}
 		}
 	}
@@ -338,6 +415,10 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 		Lens* l = lenses[lenses.size() - 1];
 		if (l->type == LENS_TYPE::TYPE_CURVEB) {
 			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
+			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+		}
+		else if (l->type == LENS_TYPE::TYPE_LINEB) {
+			((LineBLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
 
@@ -376,14 +457,18 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		if (l->type == LENS_TYPE::TYPE_CURVEB){
 			((CurveBLens *)l)->AddCtrlPoint(x, y);
 		}
+		else if (l->type == LENS_TYPE::TYPE_LINEB){
+			((LineBLens *)l)->ctrlPoint2Abs = make_float2(x, y);
+			((LineBLens*)l)->UpdateInfo(modelview, projection, winSize.x, winSize.y);
+			((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		}
 	}
 	else{
-
 		if (actor->GetInteractMode() == INTERACT_MODE::LENS) {
 			//lenses[pickedLens]->x += (x - lastPt.x);
 			//lenses[pickedLens]->y += (y - lastPt.y);
-			float2 center = lenses[pickedLens]->GetScreenPos(modelview, projection, winSize.x, winSize.y);
-			lenses[pickedLens]->SetScreenPos(
+			float2 center = lenses[pickedLens]->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
+			lenses[pickedLens]->UpdateCenterByScreenPos(
 				center.x + (x - lastPt.x), center.y + (y - lastPt.y)
 				, modelview, projection, winSize.x, winSize.y);
 			if (isSnapToGlyph && modifier != Qt::AltModifier){
@@ -500,7 +585,7 @@ void LensRenderable::SlotLensCenterChanged(float3 p)
 		lenses.back()->SetClipDepth(pScreen.z, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
 		//pScreen.z = clamp(aa *(1 - (p.y + 73.5) / 147), 0, 1);
 		//lenses.back()->c.z = pScreen.z;
-		lenses.back()->SetScreenPos(pScreen.x, pScreen.y, modelview, projection, winSize.x, winSize.y);
+		lenses.back()->UpdateCenterByScreenPos(pScreen.x, pScreen.y, modelview, projection, winSize.x, winSize.y);
 		//interaction box
 		//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
 		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();

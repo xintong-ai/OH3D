@@ -22,6 +22,7 @@ public:
 	float3 GetBackLensCenter();
 	void AddCircleLens();
 	void AddLineLens();
+	void AddLineBLens();
 	void AddCurveBLens();
 
 	void mousePress(int x, int y, int modifier) override;

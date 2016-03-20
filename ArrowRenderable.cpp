@@ -250,9 +250,11 @@ void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 		qgl->glUniformMatrix4fv(sp->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
 
 
-		float maxSize = 8;
+		float maxScaleInv = 8;
 		qgl->glUniform1f(sp->uniform("Bright"), glyphBright[i]);
-		qgl->glUniform1f(sp->uniform("Scale"), val[i] / lMax * maxSize);
+		//qgl->glUniform1f(sp->uniform("Scale"), val[i] / lMax * maxScaleInv);
+		qgl->glUniform1f(sp->uniform("Scale"), 3.0);
+
 		if (i != snappedGlyphId){
 			qgl->glUniform3fv(sp->uniform("Ka"), 1, &cols[i].x);
 		}
@@ -390,8 +392,8 @@ void ArrowRenderable::drawPicking(float modelview[16], float projection[16], boo
 		qgl->glUniform1f(glPickingProg->uniform("g"), g / 255.0f);
 		qgl->glUniform1f(glPickingProg->uniform("b"), b / 255.0f);
 
-		float maxSize = 8;
-		qgl->glUniform1f(glPickingProg->uniform("Scale"), val[i] / lMax * maxSize);
+		float maxScaleInv = 8;
+		qgl->glUniform1f(glPickingProg->uniform("Scale"), val[i] / lMax * maxScaleInv);
 
 
 		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());
