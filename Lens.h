@@ -340,6 +340,8 @@ public:
 
 	void computeBoundaryPos();
 	void computeBoundaryNeg();
+	void computeRenderingBoundaryPos(std::vector<float2> &ret, int bezierSampleAccuracyRate);
+	void computeRenderingBoundaryNeg(std::vector<float2> &ret, int bezierSampleAccuracyRate);
 
 	bool ccw(float2 A, float2 B, float2 C) //counter clock wise
 	{
@@ -379,7 +381,7 @@ public:
 
 	vector<float2> BezierOneSubdivide(vector<float2> p, vector<float2> poly1, vector<float2> poly2, float u);
 	vector<float2> BezierSubdivide(vector<float2> p, int m, float u);
-	vector<float2> BezierSmaple(vector<float2> p);
+	vector<float2> BezierSmaple(vector<float2> p, int bezierSampleAccuracyRate = 1);
 	vector<float2> BezierSmaple(vector<float2> p, vector<float> us);//for computing the tangent
 
 };

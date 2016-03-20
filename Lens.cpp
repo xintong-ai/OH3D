@@ -466,30 +466,68 @@ void CurveBLens::computeBoundaryNeg()
 	}
 }
 
+
+void CurveBLens::computeRenderingBoundaryPos(std::vector<float2> &ret, int bezierSampleAccuracyRate)
+{
+	int np = posOffsetCtrlPoints.size();
+	int numberPosBezierPart = pow(2, refinedRoundPos);
+	ret.clear();
+	for (int i = 0; i < numberPosBezierPart; i++){
+		vector<float2> curPart(
+			posOffsetCtrlPoints.begin() + (np - 1) / numberPosBezierPart*i,
+			posOffsetCtrlPoints.begin() + (np - 1) / numberPosBezierPart*(i + 1) + 1);
+		vector<float2> curBezierPart = BezierSmaple(curPart, bezierSampleAccuracyRate);
+		if (i == 0)
+			ret.insert(ret.end(), curBezierPart.begin(), curBezierPart.end());
+		else
+			ret.insert(ret.end(), curBezierPart.begin() + 1, curBezierPart.end());
+	}
+
+}
+
+void CurveBLens::computeRenderingBoundaryNeg(std::vector<float2> &ret, int bezierSampleAccuracyRate)
+{
+	int nn = negOffsetCtrlPoints.size();
+	int numberNegBezierPart = pow(2, refinedRoundNeg);
+	ret.clear();
+	for (int i = 0; i < numberNegBezierPart; i++){
+		vector<float2> curPart(
+			negOffsetCtrlPoints.begin() + (nn - 1) / numberNegBezierPart*i,
+			negOffsetCtrlPoints.begin() + (nn - 1) / numberNegBezierPart*(i + 1) + 1);
+		vector<float2> curBezierPart = BezierSmaple(curPart, bezierSampleAccuracyRate);
+		if (i == 0)
+			ret.insert(ret.end(), curBezierPart.begin(), curBezierPart.end());
+		else
+			ret.insert(ret.end(), curBezierPart.begin() + 1, curBezierPart.end());
+	}
+}
+
+/*
 std::vector<float2> CurveBLens::GetContour(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
-	if (posOffsetBezierPoints.size()>2){
-	//if (!isConstructing && numCtrlPoints >= 3) {
+
+	//may not use posOffsetBezierPoints directly since the num of points is too few
+	if (posOffsetCtrlPoints.size()>2){
+
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);// make_float2(x, y);
 		int n = posOffsetBezierPoints.size();
 
-		//!!! probably can be more precise !!!
+		//!!! probably can be more precise with focusRatio!!!
 		for (int ii = 0; ii < n; ii++){
-			ret.push_back((subCtrlPointsPos[ii]+ posOffsetBezierPoints[ii])/2.0 + center);
+			ret.push_back((subCtrlPointsPos[ii] + posOffsetBezierPoints[ii]) / 2.0 + center);
 		}
 		std::vector<float2> rettemp;
 		int m = negOffsetBezierPoints.size();
 		for (int ii = 0; ii < m; ii++){
-			rettemp.push_back((subCtrlPointsNeg[ii]+ negOffsetBezierPoints[ii])/2.0 + center);
+			rettemp.push_back((subCtrlPointsNeg[ii] + negOffsetBezierPoints[ii]) / 2.0 + center);
 		}
-		
+
 		std::reverse(rettemp.begin(), rettemp.end());
 		ret.insert(ret.end(), rettemp.begin(), rettemp.end());
 
 	}
 	return ret;
 }
-
 
 std::vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
@@ -504,6 +542,72 @@ std::vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, 
 		int m = negOffsetBezierPoints.size();
 		for (int ii = 0; ii < m; ii++){
 			rettemp.push_back(negOffsetBezierPoints[ii] + center);
+		}
+
+		std::reverse(rettemp.begin(), rettemp.end());
+		ret.insert(ret.end(), rettemp.begin(), rettemp.end());
+
+	}
+	return ret;
+}
+
+*/
+
+//do not use posOffsetBezierPoints directly since the num of points is too few
+std::vector<float2> CurveBLens::GetContour(float* mv, float* pj, int winW, int winH){
+	std::vector<float2> ret;
+
+	if (!isConstructing && posOffsetCtrlPoints.size()>2){
+
+		int segPrec = 4;
+		std::vector<float2> bppos, bpneg;
+		computeRenderingBoundaryPos(bppos, segPrec);
+		computeRenderingBoundaryNeg(bpneg, segPrec);
+
+		int numberPosBezierPart = pow(2, refinedRoundPos);
+		int numberNegBezierPart = pow(2, refinedRoundNeg);
+		std::vector<float2> centerCurvePos = BezierSmaple(ctrlPoints, segPrec*numberPosBezierPart);
+		std::vector<float2> centerCurveNeg = BezierSmaple(ctrlPoints, segPrec*numberNegBezierPart);
+
+
+
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);// make_float2(x, y);
+		int n = centerCurvePos.size();
+		for (int ii = 0; ii < n; ii++){
+			ret.push_back((centerCurvePos[ii] + bppos[ii]) / 2.0 + center);
+		}
+		std::vector<float2> rettemp;
+		int m = centerCurveNeg.size();
+		for (int ii = 0; ii < m; ii++){
+			rettemp.push_back((centerCurveNeg[ii] + bpneg[ii]) / 2.0 + center);
+		}
+
+		std::reverse(rettemp.begin(), rettemp.end());
+		ret.insert(ret.end(), rettemp.begin(), rettemp.end());
+
+	}
+	return ret;
+}
+
+
+vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, int winH){
+	std::vector<float2> ret;
+	if (!isConstructing && posOffsetBezierPoints.size()>2){
+
+		int segPrec = 4;
+		std::vector<float2> bppos, bpneg;
+		computeRenderingBoundaryPos(bppos, segPrec);
+		computeRenderingBoundaryNeg(bpneg, segPrec);
+
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);// make_float2(x, y);
+		int n = bppos.size();
+		for (int ii = 0; ii < n; ii++){
+			ret.push_back(bppos[ii] + center);
+		}
+		std::vector<float2> rettemp;
+		int m = bpneg.size();
+		for (int ii = 0; ii < m; ii++){
+			rettemp.push_back(bpneg[ii] + center);
 		}
 
 		std::reverse(rettemp.begin(), rettemp.end());
@@ -779,11 +883,10 @@ vector<float2> CurveBLens::BezierSubdivide(vector<float2> p, int m, float u)
 	return res;
 }
 
-vector<float2> CurveBLens::BezierSmaple(vector<float2> p)
+vector<float2> CurveBLens::BezierSmaple(vector<float2> p, int bezierSampleAccuracyRate)
 {
 	vector<float2> res;
 	if (p.size() >= 2){
-#define bezierSampleAccuracyRate 1 
 		int n = p.size() - 1;
 
 		double *combinationValue = new double[n + 1];
@@ -812,7 +915,7 @@ vector<float2> CurveBLens::BezierSmaple(vector<float2> p)
 	return res;
 }
 
-vector<float2> CurveBLens::BezierSmaple(vector<float2> p, vector<float> us)//for computing the tangent
+vector<float2> CurveBLens::BezierSmaple(vector<float2> p, vector<float> us)//for computing the tangent. bezierSampleAccuracyRate is always 1 in this function
 {
 	vector<float2> res;
 	if (p.size() >= 2){
