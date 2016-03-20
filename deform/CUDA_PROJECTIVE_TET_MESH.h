@@ -178,6 +178,33 @@ __global__ void Control_Kernel(float* X, float *more_fixed, const float control_
 	}
 }
 
+__global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
+	, const float cen_x, const float cen_y, const float cen_z
+	, const float dir_x, const float dir_y, const float dir_z)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= number)	return;
+	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
+	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
+	float3 lensCen2Vert = vert - lensCen;
+	float vertProjLeng = dot(lensCen2Vert, lensDir);
+	float3 lensForce = make_float3(0, 0, 0);
+	const float focusRadSqr = 9;
+	float3 projVec = vertProjLeng * lensDir;
+	float3 moveDir = lensCen2Vert - projVec;
+	float dist2RaySqr = dot(moveDir, moveDir);
+	if (vertProjLeng < 0 || dist2RaySqr >(4 * focusRadSqr)){
+		more_fixed[i] = 10;
+		X[i * 3 + 0] = X_Orig[i * 3 + 0];
+		X[i * 3 + 1] = X_Orig[i * 3 + 1];
+		X[i * 3 + 2] = X_Orig[i * 3 + 2];
+		V[i * 3 + 0] = 0;
+		V[i * 3 + 1] = 0;
+		V[i * 3 + 2] = 0;
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Basic update kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -402,6 +429,7 @@ public:
 
 	//CUDA data
 	TYPE*	dev_X;
+	TYPE*	dev_X_Orig;
 	TYPE*	dev_E;
 	TYPE*	dev_V;
 	TYPE*	dev_next_X;		// next X		(for temporary storage)
@@ -459,6 +487,7 @@ public:
 
 		// GPU data
 		dev_X			= 0;
+		dev_X_Orig		= 0;
 		dev_E			= 0;
 		dev_V			= 0;
 		dev_next_X		= 0;
@@ -495,7 +524,8 @@ public:
 		if(error)			delete[] error;
 
 		//GPU Data
-		if(dev_X)			cudaFree(dev_X);
+		if (dev_X)			cudaFree(dev_X);
+		if (dev_X_Orig)		cudaFree(dev_X_Orig);
 		if(dev_E)			cudaFree(dev_E);
 		if(dev_V)			cudaFree(dev_V);
 		if(dev_next_X)		cudaFree(dev_next_X);
@@ -635,7 +665,8 @@ public:
 	void Allocate_GPU_Memory()
 	{
 		//Allocate CUDA memory
-		cudaMalloc((void**)&dev_X,			sizeof(int )*3*number);
+		cudaMalloc((void**)&dev_X, sizeof(int) * 3 * number);
+		cudaMalloc((void**)&dev_X_Orig, sizeof(int) * 3 * number);
 		cudaMalloc((void**)&dev_E,			sizeof(int )*3*number);
 		cudaMalloc((void**)&dev_V,			sizeof(TYPE)*3*number);
 		cudaMalloc((void**)&dev_next_X,		sizeof(TYPE)*3*number);
@@ -662,6 +693,7 @@ public:
 
 		//Copy data into CUDA memory
 		cudaMemcpy(dev_X,			X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
+		cudaMemcpy(dev_X_Orig,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_V,			V,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_prev_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_next_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
@@ -704,6 +736,11 @@ public:
 		int tet_blocksPerGrid = (tet_number + tet_threadsPerBlock - 1) / tet_threadsPerBlock;
 
 		TIMER timer;
+		// Step 0 by Xin
+		Set_Fixed_By_Lens << <blocksPerGrid, threadsPerBlock >> >(
+			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
+			, lensCen[0], lensCen[1], lensCen[2]
+			, lenDir[0], lenDir[1], lenDir[2]);
 
 		// Step 1: Basic update
 		Update_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
@@ -733,6 +770,9 @@ public:
 		// Step 4: Finalizing update
 		Constraint_3_Kernel<< <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_V, dev_fixed, dev_more_fixed, 1/t, number);
 		
+		// Step 5 by Xin
+		Reset_More_Fixed(-1);
+
 		//Output to main memory for rendering
 		cudaMemcpy(X, dev_X, sizeof(TYPE)*3*number, cudaMemcpyDeviceToHost);
 
