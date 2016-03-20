@@ -21,7 +21,6 @@ using namespace std;
 #include "GLSphere.h"
 #include <helper_math.h>
 #include <ColorGradient.h>
-#include <ModelGridRenderable.h>
 
 //void LoadPickingShaders(ShaderProgram*& shaderProg)
 
@@ -43,6 +42,7 @@ SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<
 
 void SphereRenderable::init()
 {
+	GlyphRenderable::init();
 	LoadShaders(glProg);
 	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	//m_vao->create();
@@ -147,7 +147,6 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	((ModelGridRenderable*)actor->GetRenderable("model"))->InitGridDensity(&pos[0], pos.size());
 	//m_vao->release();
 }
 
@@ -211,7 +210,6 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 	RecordMatrix(modelview, projection);
 	ComputeDisplace();
 
-	((ModelGridRenderable*)actor->GetRenderable("model"))->UpdatePointCoords(&pos[0], pos.size());
 
 	if (!visible)
 		return;

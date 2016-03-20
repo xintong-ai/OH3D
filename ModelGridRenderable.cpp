@@ -79,6 +79,7 @@ const float4 GetBarycentricCoordinate(const float3& v0_,
 ModelGridRenderable::ModelGridRenderable(float dmin[3], float dmax[3], int nPart)
 {
 	modelGrid = new ModelGrid(dmin, dmax, nPart);
+	visible = false;
 }
 
 inline bool within(float v)

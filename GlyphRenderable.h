@@ -44,7 +44,7 @@ protected:
 	void ComputeDisplace();
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
-	//void init() override;
+	void init() override;
 	GlyphRenderable(std::vector<float4>& _pos);
 
 	//used for picking and snapping

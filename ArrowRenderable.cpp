@@ -175,6 +175,7 @@ void ArrowRenderable::init()
 {
 	if (initialized)
 		return;
+	GlyphRenderable::init();
 	glProg = new ShaderProgram;
 	LoadShaders(glProg);
 
