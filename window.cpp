@@ -65,6 +65,7 @@ Window::Window()
 		glyphRenderable = std::make_unique<SphereRenderable>(
 			((ParticleReader*)reader.get())->GetPos(),
 			((ParticleReader*)reader.get())->GetVal());
+		std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
 	}
 	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
 		reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
@@ -82,6 +83,8 @@ Window::Window()
 			((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
 			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
 		}
+		std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
+
 	}
 	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
 		reader = std::make_unique<VecReader>(dataPath.c_str());
@@ -90,6 +93,8 @@ Window::Window()
 		std::vector<float> val;
 		((VecReader*)reader.get())->GetSamples(pos, vec, val);
 		glyphRenderable = std::make_unique<ArrowRenderable>(pos, vec, val);
+
+		std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 	}
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
