@@ -125,7 +125,10 @@ private:
         {
             // Display the shader log via a runtime_error
             /*throw std::runtime_error*/
-			printf("Could not create shader of type %s : %s", shaderTypeString.c_str(), getInfoLog(SHADER, shaderId).c_str());
+			printf("Could not create shader of type %s : %s \n", shaderTypeString.c_str(), getInfoLog(SHADER, shaderId).c_str());
+
+			printf("problematic shader: \n%s \n", shaderSource.c_str());
+			
 			exit(1);
         }
 
