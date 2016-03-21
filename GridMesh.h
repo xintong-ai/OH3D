@@ -192,8 +192,8 @@ public:
 			gridMax[0] - gridMin[0],
 			gridMax[1] - gridMin[1],
 			gridMax[2] - gridMin[2]);
-		float minDiff = std::min(rangeDiff.x, std::min(rangeDiff.y, rangeDiff.z));
-		step = (minDiff / n) * 1.01;
+		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
+		step = (maxDiff / n) * 1.01;
 		//Read_Original_File("sorted_armadillo");
 		//Read_Original_File("armadillo_10k.1");
 		//float dataMin[3] = { -0.50, -0.50, -0.50 };
@@ -220,7 +220,7 @@ public:
 
 		//elasticity = 1800;// 18000000; //5000000
 		control_mag	= 500;		//500
-		damping		= 1;
+		damping		= 0.5;
 	}
 
 };
