@@ -29,6 +29,8 @@ public:
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int modifier, int delta)  override;
+	void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) override;
+	bool InsideALens(int x, int y);
 
 	bool isSnapToGlyph = false;
 	bool isSnapToFeature = false;

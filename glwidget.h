@@ -12,12 +12,15 @@
 enum INTERACT_MODE{
 	//	DRAG_LENS_EDGE,
 	//	DRAG_LENS_TWO_ENDS,
-	LENS,
+	MOVE_LENS,
+	MODIFY_LENS_FOCUS_SIZE,
+	MODIFY_LENS_TRANSITION_SIZE,
+	MODIFY_LENS_DEPTH,
 	TRANSFORMATION,
 	MODIFYING_LENS,
 	//CUT_LINE,
 	//ADD_NODE,
-	MODIFY_LENS,
+	//MODIFY_LENS,
 	//DRAW_ELLIPSE,
 };
 
@@ -107,7 +110,9 @@ private:
 
 	bool gestureEvent(QGestureEvent *event);
 
-	void pinchTriggered(QPinchGesture *gesture);
+	bool TouchEvent(QTouchEvent *event);
+
+	void pinchTriggered(QPinchGesture *gesture/*, QPointF center*/);
 		/*****view*****/
 
     QPointF prevPos;//previous mouse position
@@ -144,10 +149,12 @@ private:
 
 	float2 depthRange;
 
+	//int2 lastPt = make_int2(0,0);
+
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
-	DEFORM_MODEL deformModel = DEFORM_MODEL::OBJECT_SPACE;// DEFORM_MODEL::SCREEN_SPACE;
-
+	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE; //DEFORM_MODEL::OBJECT_SPACE;// 
+	bool insideLens = false;
 private slots:
 	void animate();
 

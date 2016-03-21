@@ -277,7 +277,7 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 	//	return;
 
 	RecordMatrix(modelview, projection);
-	ComputeDisplace();
+	ComputeDisplace(modelview);
 
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);

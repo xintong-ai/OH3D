@@ -10,6 +10,7 @@
 #include <VRWidget.h>
 #include <TransformFunc.h>
 #include <GLMatrixManager.h>
+#include <LensRenderable.h>
 
 GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 : QOpenGLWidget(parent)
@@ -165,12 +166,14 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
-	if (pinching)
-		return;
+	std::cout << "mousePressEvent:" <<  std::endl;
 
 	QPointF pos = event->pos();
 	QPoint posGL = pixelPosToGLPos(event->pos());
+	//lastPt = make_int2(posGL.x(), posGL.y());
 
+	//if (pinching)
+	//	return;
 	makeCurrent();
 	for (auto renderer : renderers)
 		renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
@@ -180,8 +183,8 @@ void GLWidget::mousePressEvent(QMouseEvent *event)
 
 void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-	if (pinching)
-		return;
+	//if (pinching)
+	//	return;
 
 	pinched = false;
 
@@ -216,45 +219,86 @@ bool GLWidget::event(QEvent *event)
 {
 	if (event->type() == QEvent::Gesture)
 		return gestureEvent(static_cast<QGestureEvent*>(event));
+	else if (event->type() == QEvent::TouchBegin)
+		return TouchEvent(static_cast<QTouchEvent*>(event));
 	return QWidget::event(event);
 }
+
+bool GLWidget::TouchEvent(QTouchEvent *event)
+{
+	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
+	QPointF p = pts.back().lastPos();
+	//std::cout << "p:" << p.x() << "," << p.y() << std::endl;
+	QPoint posGL = pixelPosToGLPos(QPoint(p.x(), p.y()));
+	insideLens = ((LensRenderable*)renderers["lenses"])->InsideALens(posGL.x(), posGL.y());
+
+	return true;
+}
+
 
 //http://doc.qt.io/qt-5/gestures-overview.html
 bool GLWidget::gestureEvent(QGestureEvent *event)
 {
 	if (QGesture *pinch = event->gesture(Qt::PinchGesture))
-		pinchTriggered(static_cast<QPinchGesture *>(pinch));
+	{
+		QPinchGesture* ges = static_cast<QPinchGesture *>(pinch);
+		//QPointF center = ges->centerPoint());
+		//std::cout << "center:" << center.x() << "," << center.y() << std::endl;
+		pinchTriggered(ges);
+
+	}
 	return true;
 }
 
-void GLWidget::pinchTriggered(QPinchGesture *gesture)
+void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 {
 	if (!pinching) {
 		pinching = true;
 		pinched = true;
 	}
-	QPinchGesture::ChangeFlags changeFlags = gesture->changeFlags();
-	if (changeFlags & QPinchGesture::ScaleFactorChanged) {
-		//currentTransScale = gesture->totalScaleFactor();// exp(/*event->delta()*/gesture->totalScaleFactor() * 0.01);
-		matrixMgr->SetCurrentScale(gesture->totalScaleFactor());
-		update();
+	QPoint gesScreen = QPoint(gesture->centerPoint().x(), gesture->centerPoint().y());
+
+	//std::cout << "this->pos:" << this->pos().x() << "," << this->pos().y() << std::endl;
+	//QPoint gesWin = gesScreen - this->pos();
+	//QPoint posGL = pixelPosToGLPos(gesWin);
+	////std::cout << "gesture->centerPoint():" << .x() << "," << gesture->centerPoint().y() << std::endl;
+	//std::cout << "posGL:" << posGL.x() << "," << posGL.y() << std::endl;
+
+	if (insideLens){
+		interactMode = INTERACT_MODE::MODIFY_LENS_DEPTH;
+		for (auto renderer : renderers)
+			renderer.second->PinchScaleFactorChanged(
+			0,
+			0,
+			gesture->totalScaleFactor());
 	}
 	else {
-		for (auto renderer : renderers)
-			renderer.second->PinchScaleFactorChanged(gesture->totalScaleFactor());
-	}
-	if (changeFlags & QPinchGesture::CenterPointChanged) {
-		// transform only when there is no lens
-		QPointF diff = pixelPosToViewPos(gesture->centerPoint())
-			- pixelPosToViewPos(gesture->lastCenterPoint());
-		//transVec[0] += diff.x();
-		//transVec[1] += diff.y();
-		matrixMgr->Translate(diff.x(), diff.y());
-		update();
-	}
+		QPinchGesture::ChangeFlags changeFlags = gesture->changeFlags();
+		//if (INTERACT_MODE::TRANSFORMATION == interactMode){
+		if (changeFlags & QPinchGesture::ScaleFactorChanged) {
+			//currentTransScale = gesture->totalScaleFactor();// exp(/*event->delta()*/gesture->totalScaleFactor() * 0.01);
+			matrixMgr->SetCurrentScale(gesture->totalScaleFactor());
+			update();
+		}
 
+		if (changeFlags & QPinchGesture::CenterPointChanged) {
+			// transform only when there is no lens
+			QPointF diff = pixelPosToViewPos(gesture->centerPoint())
+				- pixelPosToViewPos(gesture->lastCenterPoint());
+			//transVec[0] += diff.x();
+			//transVec[1] += diff.y();
+			matrixMgr->Translate(diff.x(), diff.y());
+			update();
+		}
+
+		if (gesture->state() == Qt::GestureFinished) {
+			matrixMgr->FinishedScale();
+		}
+		//}
+
+	}
 	if (gesture->state() == Qt::GestureFinished) {
-		matrixMgr->FinishedScale();
+		interactMode = INTERACT_MODE::TRANSFORMATION;
 		pinching = false;
 	}
 }
