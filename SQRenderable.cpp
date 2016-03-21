@@ -106,6 +106,7 @@ void SQRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 void SQRenderable::init()
 {
+	GlyphRenderable::init();
 	LoadShaders(glProg);
 	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
 	//m_vao->create();
@@ -219,7 +220,7 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 		return;
 
 	RecordMatrix(modelview, projection);
-	ComputeDisplace();
+	ComputeDisplace(modelview);
 
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);

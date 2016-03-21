@@ -224,8 +224,9 @@ inline void GetTwoPoints(Leap::Frame frame, Leap::Vector &point1, Leap::Vector &
 
 inline void GetFingers(Leap::Hand hand, Leap::Vector &thumbTip, Leap::Vector &indexTip, Leap::Vector &indexDir)
 {
-	thumbTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_THUMB).frontmost().stabilizedTipPosition();
-	indexTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().stabilizedTipPosition();
+	thumbTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_THUMB).frontmost().tipPosition();
+	//indexTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().stabilizedTipPosition();
+	indexTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().tipPosition();
 	indexDir = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().direction().normalized();
 }
 

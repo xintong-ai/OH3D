@@ -41,6 +41,7 @@ struct CurveBLensInfo
 
 struct Lens
 {
+	const int eps_pixel = 32;
 	LENS_TYPE type;
 	float3 c; //center
 	//int x, y; //screen location
@@ -58,12 +59,21 @@ struct Lens
 		c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;//x = _x; y = _y; 
 	}
 	virtual bool PointInsideLens(int x, int y, float* mv, float* pj, int winW, int winH) = 0;
+	virtual bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
+	virtual bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
+	virtual void ChangeLensSize(int _x, int _y, float* mv, float* pj, int winW, int winH) {}
+	virtual void ChangefocusRatio(int _x, int _y, float* mv, float* pj, int winW, int winH) {}
 	virtual vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
+	bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) {
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
+		return dis < eps_pixel;
+	}
 };
 
 struct CircleLens :public Lens
@@ -78,6 +88,36 @@ struct CircleLens :public Lens
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < radius;
 	}
+
+	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override
+	{
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
+		return abs(dis - radius) < eps_pixel;
+	}
+
+	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override
+	{ 
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
+		return abs(dis - radius / focusRatio) < eps_pixel;
+	}
+
+	void ChangeLensSize(int _x, int _y, float* mv, float* pj, int winW, int winH) override
+	{
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
+		radius = dis;
+	}
+
+	void ChangefocusRatio(int _x, int _y, float* mv, float* pj, int winW, int winH) override
+	{
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
+		if (dis > radius)
+			focusRatio = radius / dis; 
+	}
+
 
 	vector<float2> GetContourTemplate(int rr, float* mv, float* pj, int winW, int winH) {
 		vector<float2> ret;

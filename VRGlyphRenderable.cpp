@@ -4,16 +4,26 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
 
+
 //removing the following lines will cause runtime error
 #ifdef WIN32
 #include "windows.h"
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 #include "ShaderProgram.h"
+
+// Standard includes
+#include <iostream>
+
+static auto const WIDTH = 1920;
+static auto const HEIGHT = 1080;
+
 void VRGlyphRenderable::init()
 {
 	glProg = new ShaderProgram;
 	glyphRenderable->LoadShaders(glProg);
+
+
 }
 
 void VRGlyphRenderable::draw(float modelview[16], float projection[16])

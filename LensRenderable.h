@@ -4,6 +4,7 @@
 
 
 class Lens;
+class SolidSphere;
 class LensRenderable :public Renderable
 {
 	Q_OBJECT
@@ -11,12 +12,14 @@ class LensRenderable :public Renderable
 	std::vector<Lens*> lenses;
 	int pickedLens = -1;
 	int2 lastPt = make_int2(0, 0);
+	SolidSphere* lensCenterSphere;
 public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	LensRenderable(){}
+	LensRenderable();
 	std::vector<Lens*> GetLenses() { return lenses; }
+	float3 GetBackLensCenter();
 	void AddCircleLens();
 	void AddLineLens();
 	void AddLineBLens();
@@ -26,6 +29,8 @@ public:
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int modifier, int delta)  override;
+	void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) override;
+	bool InsideALens(int x, int y);
 
 	bool isSnapToGlyph = false;
 	bool isSnapToFeature = false;

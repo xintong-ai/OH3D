@@ -6,11 +6,13 @@
 class Displace;
 class ShaderProgram;
 class QOpenGLContext;
+class ModelGrid;
 
 class GlyphRenderable: public Renderable
 {
 	Q_OBJECT
 	bool frameBufferObjectInitialized = false;
+
 
 public:
 	//used for feature highlight rendering
@@ -30,20 +32,23 @@ public:
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 	float3 findClosetGlyph(float3 aim);
+	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 
 
 protected:
 	std::vector<float4> pos; 
 	std::vector<float4> posOrig;
 	std::shared_ptr<Displace> displace;
+	ModelGrid* modelGrid;
 	std::vector<float> glyphSizeScale;
 	std::vector<float> glyphBright;
 	float glyphSizeAdjust = 0.5;
 	ShaderProgram* glProg = nullptr;
 	//bool displaceOn = true;
-	void ComputeDisplace();
+	void ComputeDisplace(float _mv[16]);
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
+	void init() override;
 	GlyphRenderable(std::vector<float4>& _pos);
 
 	//used for picking and snapping
@@ -63,6 +68,12 @@ public:
 	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
 	//void SetDispalceOn(bool b) { displaceOn = b; }
+
+
+	int GetNumOfGlyphs(){ return pos.size(); }
+
+
+
 
 public slots:
 	void SlotGlyphSizeAdjustChanged(int v);

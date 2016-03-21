@@ -9,6 +9,7 @@ find_package(Qt5Widgets)
 find_package(CUDA REQUIRED)
 find_package(Teem)
 find_package(Leap)
+find_package(osvr)
 
 #find_package(OpenMP)
 #if(OPENMP_FOUND)
@@ -40,8 +41,11 @@ set( Srcs main.cpp GLSphere.cpp GLArrow.cpp
 	VolumeReader.cpp DTIVolumeReader.cpp VecReader.cpp
 	VRWidget.cpp VRGlyphRenderable.cpp
 	LeapListener.cpp 
+    GLMatrixManager.cpp
+    ModelGridRenderable.cpp
+	ModelGrid.cu
 	)
-set( Hdrs 
+set( Hdrs  
 GLSphere.h
 	window.h glwidget.h Renderable.h trackball.h Rotation.h QuatVector.h
 	DataMgr.h defines.h Reader.h GLArrow.h
@@ -52,6 +56,12 @@ GLSphere.h
 	VolumeReader.h DTIVolumeReader.h VecReader.h
 	VRWidget.h VRGlyphRenderable.h
 	LeapListener.h LeapInteraction.h
+	GLMatrixManager.h
+	ModelGridRenderable.h
+	ModelGrid.h
+	GridMesh.h
+	OPENGL_DRIVER.h
+	deform/CUDA_PROJECTIVE_TET_MESH.h
     )
 #set( Rcs resources/vechist.qrc)
 
@@ -67,4 +77,4 @@ set(CMAKE_AUTOMOC ON)
 cuda_add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} ${QtApp_RCC_SRCS})
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui)
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets  ${SHARED_LIBRARIES} ${Teem_LIBRARY_DIRS}/teem.lib
-${Leap_IMPORT_LIB_DEBUG})
+${Leap_IMPORT_LIB_DEBUG} osvr::osvrClientKitCpp)

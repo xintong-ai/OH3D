@@ -15,6 +15,9 @@
 #include "DataMgr.h"
 #include "VRWidget.h"
 #include "VRGlyphRenderable.h"
+#include "ModelGridRenderable.h"
+#include <ModelGrid.h>
+#include "GLMatrixManager.h"
 
 
 #include <LeapListener.h>
@@ -89,19 +92,23 @@ Window::Window()
 		std::vector<float3> vec;
 		std::vector<float> val;
 		((VecReader*)reader.get())->GetSamples(pos, vec, val);
-		std::cout << "number of sampled glyphs: " << pos.size() << std::endl;
 		glyphRenderable = std::make_unique<ArrowRenderable>(pos, vec, val);
 
 		std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 	}
+	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 	/********GL widget******/
-	openGL = std::make_unique<GLWidget>();
+	matrixMgr = std::make_shared<GLMatrixManager>();
+	openGL = std::make_unique<GLWidget>(matrixMgr);
+	lensRenderable = std::make_unique<LensRenderable>();
+	//lensRenderable->SetDrawScreenSpace(false);
 	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
-		vrWidget = std::make_unique<VRWidget>(openGL.get());
+		vrWidget = std::make_unique<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
 		vrGlyphRenderable = std::make_unique<VRGlyphRenderable>(glyphRenderable.get());
 		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
+		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
 	}
 	QSurfaceFormat format;
@@ -114,13 +121,16 @@ Window::Window()
 
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
-	lensRenderable = std::make_unique<LensRenderable>();
 	gridRenderable = std::make_unique<GridRenderable>(64);
-	openGL->SetVol(posMin, posMax);// cubemap->GetInnerDim());
+	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
+	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 25);
+	modelGridRenderable = std::make_unique<ModelGridRenderable>(modelGrid.get());
+	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
+	openGL->AddRenderable("model", modelGridRenderable.get());
 
 	///********controls******/
 	addLensBtn = new QPushButton("Add Circle Lens");
@@ -138,6 +148,7 @@ Window::Window()
 	refineBoundaryBtn = new QPushButton("Refine Lens Boundary Line");
 	listener = new LeapListener();
 	controller = new Leap::Controller();
+	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
 	
 
@@ -243,7 +254,7 @@ void Window::RefineLensBoundary()
 
 void Window::SlotToggleGrid(bool b)
 {
-	gridRenderable->SetVisibility(b);
+	modelGridRenderable->SetVisibility(b);
 }
 
 Window::~Window() {
@@ -259,7 +270,7 @@ void Window::init()
 
 void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
 {
-	std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
+	//std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
 	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
 }
 

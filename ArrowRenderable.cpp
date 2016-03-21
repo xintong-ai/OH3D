@@ -175,6 +175,7 @@ void ArrowRenderable::init()
 {
 	if (initialized)
 		return;
+	GlyphRenderable::init();
 	glProg = new ShaderProgram;
 	LoadShaders(glProg);
 
@@ -276,7 +277,7 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 	//	return;
 
 	RecordMatrix(modelview, projection);
-	ComputeDisplace();
+	ComputeDisplace(modelview);
 
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);

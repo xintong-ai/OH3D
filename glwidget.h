@@ -7,33 +7,49 @@
 #include <QOpenGLWidget>
 #include <vector_types.h>
 #include <vector_functions.h>
+#include <memory>
 
 enum INTERACT_MODE{
 	//	DRAG_LENS_EDGE,
 	//	DRAG_LENS_TWO_ENDS,
-	LENS,
+	MOVE_LENS,
+	MODIFY_LENS_FOCUS_SIZE,
+	MODIFY_LENS_TRANSITION_SIZE,
+	MODIFY_LENS_DEPTH,
 	TRANSFORMATION,
 	MODIFYING_LENS,
 	//CUT_LINE,
 	//ADD_NODE,
-	MODIFY_LENS,
+	//MODIFY_LENS,
 	//DRAW_ELLIPSE,
 };
 
+enum DEFORM_MODEL{
+	OBJECT_SPACE,
+	SCREEN_SPACE,
+};
 
-class Trackball;
-class Rotation;
+
 class StopWatchInterface;
 class Renderable;
 class VRWidget;
+class GLMatrixManager;
 
 class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
     Q_OBJECT
 public:
 
+	bool isPicking = false;
+	GLuint framebuffer, renderbuffer[2];
+	int xMouse, yMouse;
+	int pickID = -1;
+    explicit GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent = 0);
+
+
     explicit GLWidget(QWidget *parent = 0);
-    ~GLWidget();
+
+	~GLWidget();
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
     QSize sizeHint() const Q_DECL_OVERRIDE;
@@ -46,10 +62,6 @@ public:
 
 	int2 GetWindowSize() { return make_int2(width, height); }
 
-	void SetVol(int3 dim);
-
-	void SetVol(float3 posMin, float3 posMax);
-	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
 	float3 DataCenter();
 
 
@@ -60,12 +72,16 @@ public:
 
 	void SetInteractMode(INTERACT_MODE v) { interactMode = v; }
 
-	void GetModelview(float* m){ for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
-	void GetProjection(float* m){ for (int i = 0; i < 16; i++) m[i] = projection[i]; }
+	void GetModelview(float* m);// { for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
+	void GetProjection(float* m);// { for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 
 	void GetDepthRange(float2& v){ v = depthRange; }
+
+	void SetDeformModel(DEFORM_MODEL v) { deformModel = v; }
+	DEFORM_MODEL GetDeformModel() { return deformModel; }
+
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;
@@ -78,8 +94,6 @@ protected:
 	virtual bool event(QEvent *event) Q_DECL_OVERRIDE;
 
 	uint width = 750, height = 900;
-
-
 private:
 	VRWidget* vrWidget = nullptr;
     void computeFPS();
@@ -96,13 +110,12 @@ private:
 
 	bool gestureEvent(QGestureEvent *event);
 
-	void pinchTriggered(QPinchGesture *gesture);
-		/*****view*****/
-    
+	bool TouchEvent(QTouchEvent *event);
 
-    Trackball *trackball;
+	void pinchTriggered(QPinchGesture *gesture/*, QPointF center*/);
+		/*****view*****/
+
     QPointF prevPos;//previous mouse position
-    Rotation *rot;
 
 	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
 
@@ -122,6 +135,7 @@ private:
 	// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.
 	bool pinched = false;	
 
+
 	//transformation states
 	QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
 	QMatrix4x4 transRot;
@@ -131,11 +145,16 @@ private:
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
 
-	GLfloat modelview[16];
-	GLfloat projection[16];
+
 
 	float2 depthRange;
 
+	//int2 lastPt = make_int2(0,0);
+
+	std::shared_ptr<GLMatrixManager> matrixMgr;
+
+	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE; //DEFORM_MODEL::OBJECT_SPACE;// 
+	bool insideLens = false;
 private slots:
 	void animate();
 

@@ -26,7 +26,7 @@ inline QVector<QVector<QVector3D>> Leap2QVector(std::vector<std::vector<Leap::Ve
 void LeapListener::onFrame(const Leap::Controller & ctl)
 {
 
-	if(timer->elapsed() > 100)
+	if(timer->elapsed() > 16.7)
 	{
 		Leap::Frame f = ctl.frame();
 		setObjectName(QString::number(f.id()));
@@ -52,7 +52,9 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 		if(rightMostHand.isRight())
 		{
 			GetFingers(rightMostHand, thumbTip, indexTip, indexDir);
-			emit UpdateRightHand(Leap2QVector(thumbTip), Leap2QVector(indexTip), Leap2QVector(indexDir));
+			//if ((thumbTip - indexTip).magnitude() < 15){
+				emit UpdateRightHand(Leap2QVector(thumbTip), Leap2QVector(indexTip), Leap2QVector(indexDir));
+			//}
 		}
 
 		std::vector<std::vector<Leap::Vector>> fingers;

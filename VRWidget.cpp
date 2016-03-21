@@ -6,8 +6,20 @@
 #include <glwidget.h>
 #include <GlyphRenderable.h>
 
-VRWidget::VRWidget(GLWidget* _mainGLWidget, QWidget *parent)
+
+#include <osvr/ClientKit/ClientKit.h>
+#include <osvr/ClientKit/Display.h>
+#include <QMatrix4x4>
+#include <GLMatrixManager.h>
+
+#ifdef WIN32
+#include "windows.h"
+#endif
+#define qgl	QOpenGLContext::currentContext()->functions()
+
+VRWidget::VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, GLWidget* _mainGLWidget, QWidget *parent)
 	: QOpenGLWidget(parent)
+	, matrixMgr(_matrixMgr)
 	, m_frame(0)
 	, mainGLWidget(_mainGLWidget)
 {
@@ -43,6 +55,26 @@ void VRWidget::initializeGL()
 	sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
+
+	//Start OSVR and get OSVR display config
+
+	ctx = std::make_unique<osvr::clientkit::ClientContext>("com.osvr.example.SDLOpenGL");
+	display = std::make_unique<osvr::clientkit::DisplayConfig>(*ctx.get());
+	if (!display->valid()) {
+		std::cerr << "\nCould not get display config (server probably not "
+			"running or not behaving), exiting."
+			<< std::endl;
+		return;
+	}
+
+	std::cout << "Waiting for the display to fully start up, including "
+		"receiving initial pose update..."
+		<< std::endl;
+	while (!display->checkStartup()) {
+		ctx->update();
+	}
+	std::cout << "OK, display startup status is good!" << std::endl;
+
 }
 
 void VRWidget::computeFPS()
@@ -73,19 +105,64 @@ void VRWidget::TimerEnd()
 
 void VRWidget::paintGL() {
 	TimerStart();
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	mainGLWidget->GetModelview(modelview);
-	mainGLWidget->GetProjection(projection);
+	//GLfloat modelview[16];
+	//GLfloat projection[16];
+	//mainGLWidget->GetModelview(modelview);
+	//mainGLWidget->GetProjection(projection);
 	makeCurrent();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, width / 2,height);
-	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
-	for (auto renderer : renderers)
-		renderer.second->draw(modelview, projection);
-	glViewport(width / 2, 0, width / 2, height);
-	for (auto renderer : renderers)
-		renderer.second->draw(modelview, projection);
+	ctx->update();
+
+	QMatrix4x4 viewMat;
+	display->getViewer(0).getEye(0).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
+		viewMat.data());
+	matrixMgr->SetViewMat(viewMat);
+
+	OSVR_ViewerCount viewers = display->getNumViewers();
+	for (OSVR_ViewerCount viewer = 0; viewer < viewers; ++viewer) {
+		OSVR_EyeCount eyes = display->getViewer(viewer).getNumEyes();
+		for (OSVR_EyeCount eye = 0; eye < eyes; ++eye) {
+			display->getViewer(viewer).getEye(eye).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
+				viewMat.data());
+			QMatrix4x4 mv;// (modelview);
+			//mv = mv.transposed();
+			//mv = viewMat * mv;
+			matrixMgr->GetModelView(mv.data(), viewMat.data());
+			OSVR_SurfaceCount surfaces = display->getViewer(viewer).getEye(eye).getNumSurfaces();
+			for (OSVR_SurfaceCount surface = 0; surface < surfaces; ++surface) {
+				auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
+				qgl->glViewport(static_cast<GLint>(viewport.left),
+					static_cast<GLint>(viewport.bottom),
+					static_cast<GLsizei>(viewport.width),
+					static_cast<GLsizei>(viewport.height));
+
+				/// Set the OpenGL projection matrix based on the one we
+				/// computed.
+				float zNear = 0.1;
+				float zFar = 100;
+				QMatrix4x4 projMat;
+				display->getViewer(viewer).getEye(eye).getSurface(surface).getProjectionMatrix(
+					zNear, zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
+					OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
+					projMat.data());
+
+				//QMatrix4x4 pj(projection);
+				//pj = pj.transposed();
+
+				/// Call out to render our scene.
+				for (auto renderer : renderers)
+					renderer.second->draw(mv.data(), projMat.data());
+			}
+		}
+	};
+
+	//glViewport(0, 0, width / 2,height);
+	////((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
+	//for (auto renderer : renderers)
+	//	renderer.second->draw(modelview, projection);
+	//glViewport(width / 2, 0, width / 2, height);
+	//for (auto renderer : renderers)
+	//	renderer.second->draw(modelview, projection);
 	TimerEnd();
 }
 //void Perspective(float fovyInDegrees, float aspectRatio,

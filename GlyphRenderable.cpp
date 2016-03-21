@@ -6,7 +6,8 @@
 #include <glwidget.h>
 #include <Lens.h>
 #include <LensRenderable.h>
-
+#include <ModelGridRenderable.h>
+#include <ModelGrid.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -17,13 +18,48 @@ using namespace std;
 #include <QOpenGLFunctions>
 #include "ShaderProgram.h"
 
-void GlyphRenderable::ComputeDisplace()
+void GlyphRenderable::ComputeDisplace(float _mv[16])
 {
 	int2 winSize = actor->GetWindowSize();
-	displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId, snappedFeatureId);
+	switch (actor->GetDeformModel())
+	{
+	case DEFORM_MODEL::SCREEN_SPACE:
+	{
+		displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
+			((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId, snappedFeatureId);
+		break;
+	}
+	case DEFORM_MODEL::OBJECT_SPACE:
+	{
+		if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().size() < 1)
+			return;
+		//convert the camera location from camera space to object space
+		//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
+		QMatrix4x4 q_modelview = QMatrix4x4(_mv);
+		q_modelview = q_modelview.transposed();
+		QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
+		cameraObj = cameraObj / cameraObj.w();
+		float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+		float3 lensDir = make_float3(
+			cameraObj.x() - lensCen.x,
+			cameraObj.y() - lensCen.y,
+			cameraObj.z() - lensCen.z);
+		lensDir = normalize(lensDir);
+		//std::cout << "cameraObj:" << cameraObj.x() << "," << cameraObj.y() << "," << cameraObj.z() << std::endl;
+		//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
+		//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
+
+		modelGrid->Update(&lensCen.x, &lensDir.x);
+		modelGrid->UpdatePointCoords(&pos[0], pos.size());
+		break;
+	}
+	}
 }
 
+void GlyphRenderable::init()
+{
+	modelGrid->InitGridDensity(&pos[0], pos.size());
+}
 
 GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 { 
@@ -58,14 +94,19 @@ GlyphRenderable::~GlyphRenderable()
 
 void GlyphRenderable::RecomputeTarget()
 {
-	displace->RecomputeTarget();
+	switch (actor->GetDeformModel())
+	{
+	case DEFORM_MODEL::SCREEN_SPACE:
+		displace->RecomputeTarget();
+		break;
+	}
 }
 
 void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 {
 	int2 winSize = actor->GetWindowSize();
-	displace->DisplacePoints(pts,
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
+	//displace->DisplacePoints(pts,
+	//	((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
 }
 
 void GlyphRenderable::SlotGlyphSizeAdjustChanged(int v)
@@ -103,12 +144,12 @@ void GlyphRenderable::resize(int width, int height)
 	qgl->glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 		GL_RENDERBUFFER, renderbuffer[1]);
 	qgl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
 }
 
 float3 GlyphRenderable::findClosetGlyph(float3 aim)
 {
 	return displace->findClosetGlyph(aim, snappedGlyphId);
+
 }
 
 // !!! NOTE: result is not meaningful when no feature is loaded. Need to deal with this situation when calling this function. when no feature is loaded, return false 

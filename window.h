@@ -24,6 +24,9 @@ class VRWidget;
 class VRGlyphRenderable;
 class LeapListener;
 class DataMgr;
+class GLMatrixManager;
+class ModelGridRenderable;
+class ModelGrid;
 namespace Leap{
 	class Controller;
 }
@@ -66,7 +69,9 @@ private:
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;
 	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
+	std::unique_ptr<ModelGridRenderable> modelGridRenderable;
 	std::unique_ptr<DataMgr> dataMgr;
+	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	LeapListener* listener;
 	Leap::Controller* controller;
@@ -94,6 +99,8 @@ private:
 
 
 	QPushButton *addCurveBLensBtn;
+
+	std::shared_ptr<ModelGrid> modelGrid;
 
 private slots:
 	void AddLens();
