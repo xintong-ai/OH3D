@@ -178,10 +178,39 @@ __global__ void Control_Kernel(float* X, float *more_fixed, const float control_
 	}
 }
 
+__global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
+	, const float cen_x, const float cen_y, const float cen_z
+	, const float dir_x, const float dir_y, const float dir_z)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= number)	return;
+	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
+	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
+	float3 lensCen2Vert = vert - lensCen;
+	float vertProjLeng = dot(lensCen2Vert, lensDir);
+	float3 lensForce = make_float3(0, 0, 0);
+	const float focusRadSqr = 9;
+	float3 projVec = vertProjLeng * lensDir;
+	float3 moveDir = lensCen2Vert - projVec;
+	float dist2RaySqr = dot(moveDir, moveDir);
+	if (vertProjLeng < 0 || dist2RaySqr >(4 * focusRadSqr)){
+		more_fixed[i] = 10;
+		X[i * 3 + 0] = X_Orig[i * 3 + 0];
+		X[i * 3 + 1] = X_Orig[i * 3 + 1];
+		X[i * 3 + 2] = X_Orig[i * 3 + 2];
+		V[i * 3 + 0] = 0;
+		V[i * 3 + 1] = 0;
+		V[i * 3 + 2] = 0;
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Basic update kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number, const float dir_x, const float dir_y, const float dir_z)
+__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
+	, const float cen_x, const float cen_y, const float cen_z
+	, const float dir_x, const float dir_y, const float dir_z)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
@@ -204,24 +233,31 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	V[i*3+1]*=damping;
 	V[i*3+2]*=damping;
 	//Apply gravity
-	float3 lens = make_float3(dir_x, dir_y, dir_z);// make_float3(0, 0, 5);
+	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
+	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
-	float3 lensForce;// = { 0, 0, 0 };
-//	float dist = sqrt(pow(X[i * 3 + 0] - lens[0], 2) + pow(X[i * 3 + 2] - lens[2], 2));
-	float dist = length(vert - lens);
-	float radius = 2; 
-	if (dist < radius){
-		float3 dir = normalize(vert - lens);// make_float3(lens[0] - X[i * 3], lens[1] - X[i * 3 + 1], 0);
-		lensForce = dir * (radius - dist);
-		for (int j = 0; j < 3; j++) {
-			V[i * 3 + j] += (3000 * (&(lensForce.x))[j]* t);
+	float3 lensCen2Vert = vert - lensCen;
+	float vertProjLeng = dot(lensCen2Vert, lensDir);
+	float3 lensForce = make_float3( 0, 0, 0 );
+	const float focusRadSqr = 9;
+	float3 projVec = vertProjLeng * lensDir;
+	float3 moveDir = lensCen2Vert - projVec;
+	float dist2RaySqr = dot(moveDir, moveDir);
+#if 1
+	if (vertProjLeng > 0){
+		if (dist2RaySqr < focusRadSqr){
+			lensForce =  2 * (focusRadSqr - dist2RaySqr) * normalize(moveDir);
 		}
 	}
-	//else
-	//	return;
-	//if (dist > radius * 2){
-	//	return;
-	//}
+#else 
+	if (dist2RaySqr < focusRadSqr && vertProjLeng > 0){
+		lensForce = 0.3 * normalize(lensDir);// *(focusRadSqr - dist2RaySqr);
+	}
+
+#endif
+	for (int j = 0; j < 3; j++) {
+		V[i * 3 + j] += (30 * (&(lensForce.x))[j]* t);
+	}
 
 	//V[i*3+1]+=GRAVITY*t;
 	//Position update
@@ -233,7 +269,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Tet Constraint Kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Tet_Constraint_Kernel(const float* EL, const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const float elasticity, const int tet_number, const int l)
+__global__ void Tet_Constraint_Kernel(const float* EL, const float* X, const int* Tet, const float* inv_Dm, const float* Vol, float* Tet_Temp, const int tet_number, const int l)
 {
 	int t = blockDim.x * blockIdx.x + threadIdx.x;
 	if(t>=tet_number)	return;
@@ -381,7 +417,7 @@ public:
 	TYPE*	fixed;
 
 	TYPE	rho;
-	TYPE	elasticity;
+	//TYPE	elasticity;
 	TYPE	control_mag;
 	TYPE	damping;
 
@@ -393,6 +429,7 @@ public:
 
 	//CUDA data
 	TYPE*	dev_X;
+	TYPE*	dev_X_Orig;
 	TYPE*	dev_E;
 	TYPE*	dev_V;
 	TYPE*	dev_next_X;		// next X		(for temporary storage)
@@ -440,7 +477,7 @@ public:
 		EL = new TYPE[max_number * 5];
 
 		fps			= 0;
-		elasticity	= 3000000; //5000000
+		//elasticity	= 3000000; //5000000
 		control_mag	= 10;
 		rho			= 0.9992;
 		damping		= 0.9995;
@@ -450,6 +487,7 @@ public:
 
 		// GPU data
 		dev_X			= 0;
+		dev_X_Orig		= 0;
 		dev_E			= 0;
 		dev_V			= 0;
 		dev_next_X		= 0;
@@ -486,7 +524,8 @@ public:
 		if(error)			delete[] error;
 
 		//GPU Data
-		if(dev_X)			cudaFree(dev_X);
+		if (dev_X)			cudaFree(dev_X);
+		if (dev_X_Orig)		cudaFree(dev_X_Orig);
 		if(dev_E)			cudaFree(dev_E);
 		if(dev_V)			cudaFree(dev_V);
 		if(dev_next_X)		cudaFree(dev_next_X);
@@ -626,7 +665,8 @@ public:
 	void Allocate_GPU_Memory()
 	{
 		//Allocate CUDA memory
-		cudaMalloc((void**)&dev_X,			sizeof(int )*3*number);
+		cudaMalloc((void**)&dev_X, sizeof(int) * 3 * number);
+		cudaMalloc((void**)&dev_X_Orig, sizeof(int) * 3 * number);
 		cudaMalloc((void**)&dev_E,			sizeof(int )*3*number);
 		cudaMalloc((void**)&dev_V,			sizeof(TYPE)*3*number);
 		cudaMalloc((void**)&dev_next_X,		sizeof(TYPE)*3*number);
@@ -653,6 +693,7 @@ public:
 
 		//Copy data into CUDA memory
 		cudaMemcpy(dev_X,			X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
+		cudaMemcpy(dev_X_Orig,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_V,			V,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_prev_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_next_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
@@ -687,7 +728,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Update functions
 ///////////////////////////////////////////////////////////////////////////////////////////
-	void Update(TYPE t, int iterations, TYPE dir[])
+	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3])
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -695,9 +736,16 @@ public:
 		int tet_blocksPerGrid = (tet_number + tet_threadsPerBlock - 1) / tet_threadsPerBlock;
 
 		TIMER timer;
+		// Step 0 by Xin
+		Set_Fixed_By_Lens << <blocksPerGrid, threadsPerBlock >> >(
+			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
+			, lensCen[0], lensCen[1], lensCen[2]
+			, lenDir[0], lenDir[1], lenDir[2]);
 
 		// Step 1: Basic update
-		Update_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number, dir[0], dir[1], dir[2]);
+		Update_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
+			, lensCen[0], lensCen[1], lensCen[2]
+			, lenDir[0], lenDir[1], lenDir[2]);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1/t, number);
@@ -706,7 +754,7 @@ public:
 		TYPE omega;
 		for(int l=0; l<iterations; l++)
 		{	
-			Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock>> >(dev_EL, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, elasticity, tet_number, l);
+			Tet_Constraint_Kernel << <tet_blocksPerGrid, tet_threadsPerBlock>> >(dev_EL, dev_X, dev_Tet, dev_inv_Dm, dev_Vol, dev_Tet_Temp, tet_number, l);
 			Constraint_1_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_next_X, dev_Tet_Temp, dev_MD, dev_VTT, dev_vtt_num, number);
 
 			if(l<=10)		omega=1;
@@ -722,6 +770,9 @@ public:
 		// Step 4: Finalizing update
 		Constraint_3_Kernel<< <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_V, dev_fixed, dev_more_fixed, 1/t, number);
 		
+		// Step 5 by Xin
+		Reset_More_Fixed(-1);
+
 		//Output to main memory for rendering
 		cudaMemcpy(X, dev_X, sizeof(TYPE)*3*number, cudaMemcpyDeviceToHost);
 

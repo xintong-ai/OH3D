@@ -91,7 +91,7 @@ public:
 					X[3 * idx + 0] = dmin[0] + i * step;
 					X[3 * idx + 1] = dmin[1] + j * step;
 					X[3 * idx + 2] = dmin[2] + k * step;
-					if ((end[0] + end[1] + end[2]) > 1)
+					if ((end[0] + end[1] + end[2]) > 0)
 						fixed[idx] = 10000000;
 				}
 			}
@@ -180,17 +180,25 @@ public:
 	GridMesh(float dataMin[3], float dataMax[3], int n)
 	{
 		float3 rangeDiff;
+		float gridMin[3];
+		float gridMax[3];
+		float marginScale = 0.2;
+		for (int i = 0; i < 3; i++){
+			float marginSize = (dataMax[i] - dataMin[i]) * marginScale;
+			gridMin[i] = dataMin[i] - marginSize;
+			gridMax[i] = dataMax[i] + marginSize;
+		}
 		rangeDiff = make_float3(
-			dataMax[0] - dataMin[0], 
-			dataMax[1] - dataMin[1], 
-			dataMax[2] - dataMin[2]);
+			gridMax[0] - gridMin[0],
+			gridMax[1] - gridMin[1],
+			gridMax[2] - gridMin[2]);
 		float minDiff = std::min(rangeDiff.x, std::min(rangeDiff.y, rangeDiff.z));
 		step = (minDiff / n) * 1.01;
 		//Read_Original_File("sorted_armadillo");
 		//Read_Original_File("armadillo_10k.1");
 		//float dataMin[3] = { -0.50, -0.50, -0.50 };
 		//float dataMax[3] = { 0.50, 0.50, 0.50 };
-		BuildMesh(dataMin, dataMax, step);
+		BuildMesh(gridMin, gridMax, step);
 		//Scale(0.008);
 		//Centralize(); 
 		printf("N: %d, %d\n", number, tet_number);
@@ -210,7 +218,7 @@ public:
 		//		|| X[v * 3 + 2] < (gridMin.z + 0.0001) || X[v * 3 + 2] > (gridMax.x - 0.0001))
 		//		fixed[v]=10000000;
 
-		elasticity = 1800;// 18000000; //5000000
+		//elasticity = 1800;// 18000000; //5000000
 		control_mag	= 500;		//500
 		damping		= 1;
 	}

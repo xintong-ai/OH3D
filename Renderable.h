@@ -47,7 +47,7 @@ public:
 	virtual void mousePress(int x, int y, int modifier) {}
 	virtual void mouseRelease(int x, int y, int modifier) {}
 	virtual void mouseMove(int x, int y, int modifier) {}
-	virtual void PinchScaleFactorChanged(float totalScaleFactor) {}
+	virtual void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) {}
 
 	virtual void UpdateData() {}
 
@@ -87,7 +87,7 @@ public:
 	}
 
 	void SetVisibility(bool b) { visible = b; }
-	void SetDrawScreenSpace(bool b) { drawScreenSpace = b; }
+	//void SetDrawScreenSpace(bool b) { drawScreenSpace = b; }
 
 protected:
     //DataMgr *dataMgr;
@@ -107,7 +107,7 @@ protected:
 
 	bool visible = true;
 
-	bool drawScreenSpace = false;
+	//bool drawScreenSpace = false;
 
 private:
     void AllocOutImage();

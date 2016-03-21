@@ -16,7 +16,7 @@
 #include "VRWidget.h"
 #include "VRGlyphRenderable.h"
 #include "ModelGridRenderable.h"
-
+#include <ModelGrid.h>
 #include "GLMatrixManager.h"
 
 
@@ -97,7 +97,7 @@ Window::Window()
 	matrixMgr = std::make_shared<GLMatrixManager>();
 	openGL = std::make_unique<GLWidget>(matrixMgr);
 	lensRenderable = std::make_unique<LensRenderable>();
-	lensRenderable->SetDrawScreenSpace(false);
+	//lensRenderable->SetDrawScreenSpace(false);
 	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
 		vrWidget = std::make_unique<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
@@ -118,7 +118,9 @@ Window::Window()
 	reader->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_unique<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGridRenderable = std::make_unique<ModelGridRenderable>(&posMin.x, &posMax.x, 15);
+	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 25);
+	modelGridRenderable = std::make_unique<ModelGridRenderable>(modelGrid.get());
+	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());

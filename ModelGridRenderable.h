@@ -9,13 +9,8 @@ class ModelGridRenderable : public Renderable{
 	std::shared_ptr<float3> gridPts;
 	unsigned int vertex_handle = 0;
 	unsigned int triangle_handle = 0;
-	float	time_step = 1 / 30.0;
-	std::vector<float4> vBaryCoord;
-	std::vector<int> vIdx;
 public:
-	ModelGridRenderable(float dmin[3], float dmax[3], int nPart);
-	void InitGridDensity(float4* v, int n);
-	void UpdatePointCoords(float4* v, int n);
+	ModelGridRenderable(ModelGrid* _modelGrid);// float dmin[3], float dmax[3], int nPart);
 protected:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;

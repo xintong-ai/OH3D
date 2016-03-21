@@ -7,6 +7,7 @@
 #include <Lens.h>
 #include <LensRenderable.h>
 #include <ModelGridRenderable.h>
+#include <ModelGrid.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -17,24 +18,47 @@ using namespace std;
 #include <QOpenGLFunctions>
 #include "ShaderProgram.h"
 
-void GlyphRenderable::ComputeDisplace()
+void GlyphRenderable::ComputeDisplace(float _mv[16])
 {
 	int2 winSize = actor->GetWindowSize();
 	switch (actor->GetDeformModel())
 	{
 	case DEFORM_MODEL::SCREEN_SPACE:
+	{
 		displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
 			((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId, snappedFeatureId);
 		break;
+	}
 	case DEFORM_MODEL::OBJECT_SPACE:
-		((ModelGridRenderable*)actor->GetRenderable("model"))->UpdatePointCoords(&pos[0], pos.size());
+	{
+		if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().size() < 1)
+			return;
+		//convert the camera location from camera space to object space
+		//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
+		QMatrix4x4 q_modelview = QMatrix4x4(_mv);
+		q_modelview = q_modelview.transposed();
+		QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
+		cameraObj = cameraObj / cameraObj.w();
+		float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+		float3 lensDir = make_float3(
+			cameraObj.x() - lensCen.x,
+			cameraObj.y() - lensCen.y,
+			cameraObj.z() - lensCen.z);
+		lensDir = normalize(lensDir);
+		//std::cout << "cameraObj:" << cameraObj.x() << "," << cameraObj.y() << "," << cameraObj.z() << std::endl;
+		//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
+		//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
+
+		modelGrid->Update(&lensCen.x, &lensDir.x);
+		modelGrid->UpdatePointCoords(&pos[0], pos.size());
 		break;
+	}
 	}
 }
 
 void GlyphRenderable::init()
 {
-	((ModelGridRenderable*)actor->GetRenderable("model"))->InitGridDensity(&pos[0], pos.size());
+	modelGrid->InitGridDensity(&pos[0], pos.size());
 }
 
 GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)

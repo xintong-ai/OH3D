@@ -26,6 +26,7 @@ class LeapListener;
 class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
+class ModelGrid;
 namespace Leap{
 	class Controller;
 }
@@ -98,6 +99,8 @@ private:
 
 
 	QPushButton *addCurveBLensBtn;
+
+	std::shared_ptr<ModelGrid> modelGrid;
 
 private slots:
 	void AddLens();
