@@ -32,10 +32,20 @@ SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<
 	val = _val;
 	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
 	ColorGradient cg;
-	const float valMax = 350;
-	const float valMin = 70;
+	float vMax = -FLT_MAX;
+	float vMin = FLT_MAX;
+	int n = pos.size();
+	float v = 0;
+	for (int i = 0; i < n; i++) {
+		v = val[i];
+		if (v > vMax)
+			vMax = v;
+		if (v < vMin)
+			vMin = v;
+	}
+	vMax = vMax - 0.2 * (vMax - vMin);
 	for (int i = 0; i < _spherePos.size(); i++) {
-		float valScaled = (val[i] - valMin) / (valMax - valMin);
+		float valScaled = (val[i] - vMin) / (vMax - vMin);
 		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 	}
 }

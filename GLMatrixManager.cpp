@@ -39,7 +39,8 @@ void GLMatrixManager::Translate(float x, float y)
 void GLMatrixManager::GetProjection(float ret[16], float width, float height)
 {
 	QMatrix4x4 m;
-	m.perspective(96.73, (float)width / height, (float)0.1, (float)100);
+	//m.perspective(96.73, (float)width / height, (float)0.1, (float)100);// for VR
+	m.perspective(30, (float)width / height, (float)0.1, (float)100);// for VR
 	m = m.transposed();
 	m.copyDataTo(ret); //this copy is row major, so we need to transpose it first
 }

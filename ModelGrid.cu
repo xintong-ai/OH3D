@@ -141,7 +141,7 @@ void ModelGrid::InitGridDensity(float4* v, int n)
 	//const float base = 400.0f / cnts.size();
 	for (int i = 0; i < cnts.size(); i++) {
 		//for (int j = 0; j < 5; j++) {
-		density[i] = 1000 + 1000 * (float)cnts[i];
+		density[i] = 500 + 1000 * pow((float)cnts[i], 2);
 		//}
 	}
 	SetElasticity(&density[0]);
