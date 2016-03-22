@@ -61,9 +61,11 @@ private:
 	//LensRenderable* lensRenderable;
 	//GridRenderable* gridRenderable;
 
-	QCheckBox* usingSnapCheck;
-	QCheckBox* highlightingFeatureCheck;
+	QCheckBox* usingGlyphSnappingCheck;
+	QCheckBox* usingGlyphPickingCheck;
+	QCheckBox* freezingFeatureCheck;
 	QCheckBox* usingFeatureSnappingCheck;
+	QCheckBox* usingFeaturePickingCheck;
 
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;
@@ -114,9 +116,14 @@ private slots:
 	//void SlotSetAnimation(bool doAnimation);
 	void SlotToggleGrid(bool b);
 	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
-	void SlotToggleUsingSnap(bool b);
-	void SlotToggleHighlightingFeature(bool b);
+	void SlotToggleUsingGlyphSnapping(bool b);
+	void SlotTogglePickingGlyph(bool b);
+	void SlotToggleFreezingFeature(bool b);
 	void SlotToggleUsingFeatureSnapping(bool b);
+	void SlotTogglePickingFeature(bool b);
+
+	void SlotToggleGlyphPickingFinished();
+	void SlotToggleFeaturePickingFinished();
 
 	//void XSliderChanged(int i);
 	//void YSliderChanged(int i);

@@ -68,7 +68,7 @@ struct functor_Displace
 	int lensX, lensY, circleR;
 	float lensD;
 	float focusRatio;
-	bool isHighlightingFeature;
+	bool isFreezingFeature;
 	int snappedGlyphId, snappedFeatureId;
 
 	template<typename Tuple>
@@ -76,7 +76,7 @@ struct functor_Displace
 		float brightness = 1.0f;
 		float2 screenPos = thrust::get<0>(t);
 		float2 newScreenPos = screenPos;
-		if (thrust::get<5>(t) != snappedGlyphId && (!isHighlightingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
 			float4 clipPos = thrust::get<1>(t);
 			float2 lensCen = make_float2(lensX, lensY);
 			float2 vec = screenPos - lensCen;
@@ -123,7 +123,7 @@ struct functor_Displace
 	
 	
 	functor_Displace(int _lensX, int _lensY, int _circleR, float _lensD, float _focusRatio, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId)
-		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
+		: lensX(_lensX), lensY(_lensY), circleR(_circleR), lensD(_lensD), focusRatio(_focusRatio), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
 };
 
 struct functor_Displace_Line
@@ -196,7 +196,7 @@ struct functor_Displace_LineB
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction;
 
-	bool isHighlightingFeature;
+	bool isFreezingFeature;
 	int snappedGlyphId, snappedFeatureId;
 
 	template<typename Tuple>
@@ -207,7 +207,7 @@ struct functor_Displace_LineB
 		
 		float4 clipPos = thrust::get<1>(t);
 
-		if (thrust::get<5>(t) != snappedGlyphId && (!isHighlightingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
 
 
 
@@ -252,7 +252,7 @@ struct functor_Displace_LineB
 		thrust::get<3>(t) = brightness;
 	}
 	functor_Displace_LineB(int _x, int _y, LineBLensInfo _lineBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
-	x(_x), y(_y), lineBLensInfo(_lineBLensInfo), d(_d), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId)
+	x(_x), y(_y), lineBLensInfo(_lineBLensInfo), d(_d), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId)
 	{
 		lSemiMajorAxis = lineBLensInfo.lSemiMajorAxis;
 		lSemiMinorAxis = lineBLensInfo.lSemiMinorAxis;
@@ -280,7 +280,7 @@ struct functor_Displace_CurveB
 	const float thickDisp = 0.003;
 	const float thickFocus = 0.003;
 	const float dark = 0.05;
-	bool isHighlightingFeature;
+	bool isFreezingFeature;
 	int snappedGlyphId, snappedFeatureId;
 
 	template<typename Tuple>
@@ -289,7 +289,7 @@ struct functor_Displace_CurveB
 		float2 ret = screenCoord;
 		float brightness = 1.0f;
 
-		if (thrust::get<5>(t) != snappedGlyphId && (!isHighlightingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
 
 			float4 clipPos = thrust::get<1>(t);
 
@@ -442,7 +442,7 @@ struct functor_Displace_CurveB
 		thrust::get<3>(t) = brightness;
 	}
 	functor_Displace_CurveB(int _x, int _y, CurveBLensInfo _curveBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
-		x(_x), y(_y), curveBLensInfo(_curveBLensInfo), lensD(_d), isHighlightingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
+		x(_x), y(_y), curveBLensInfo(_curveBLensInfo), lensD(_d), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
 };
 
 
@@ -523,7 +523,7 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 
 
 void Displace::Compute(float* modelview, float* projection, int winW, int winH,
-	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isHighlightingFeature, int snappedGlyphId, int snappedFeatureId)
+	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isFreezingFeature, int snappedGlyphId, int snappedFeatureId)
 {
 	int size = posOrig.size();
 	matrix4x4 mv(modelview);
@@ -571,7 +571,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 							feature.end(),
 							d_vec_id.end()
 							)),
-							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isHighlightingFeature, snappedGlyphId, snappedFeatureId));
+							functor_Displace(lensScreenCenter.x, lensScreenCenter.y, l->radius, l->GetClipDepth(modelview, projection), l->focusRatio, isFreezingFeature, snappedGlyphId, snappedFeatureId));
 						break;
 
 					}
@@ -612,7 +612,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 									feature.end(),
 									d_vec_id.end()
 									)), 
-									functor_Displace_LineB(lensScreenCenter.x, lensScreenCenter.y, l->lineBLensInfo, l->GetClipDepth(modelview, projection), isHighlightingFeature, snappedGlyphId, snappedFeatureId));
+									functor_Displace_LineB(lensScreenCenter.x, lensScreenCenter.y, l->lineBLensInfo, l->GetClipDepth(modelview, projection), isFreezingFeature, snappedGlyphId, snappedFeatureId));
 
 
 							}
@@ -646,7 +646,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 								feature.end(),
 								d_vec_id.end()
 								)),
-								functor_Displace_CurveB(lensScreenCenter.x, lensScreenCenter.y, l->curveBLensInfo, l->GetClipDepth(modelview, projection), isHighlightingFeature, snappedGlyphId, snappedFeatureId));
+								functor_Displace_CurveB(lensScreenCenter.x, lensScreenCenter.y, l->curveBLensInfo, l->GetClipDepth(modelview, projection), isFreezingFeature, snappedGlyphId, snappedFeatureId));
 
 						}
 						break;

@@ -16,7 +16,7 @@ class GlyphRenderable: public Renderable
 
 public:
 	//used for feature highlight rendering
-	bool isHighlightingFeature = false;
+	bool isFreezingFeature = false;
 	std::vector<char> feature;
 	std::vector<float3> featureCenter;
 	void SetFeature(std::vector<char> & _feature, std::vector<float3> & _featureCenter);
@@ -28,7 +28,7 @@ public:
 	bool findClosetFeature(float3 aim, float3 & result);
 
 	//used for picking and snapping
-	bool isPicking = false;
+	bool isPickingGlyph = false;
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 	float3 findClosetGlyph(float3 aim);
@@ -72,10 +72,11 @@ public:
 
 	int GetNumOfGlyphs(){ return pos.size(); }
 
-
-
-
 public slots:
 	void SlotGlyphSizeAdjustChanged(int v);
+
+signals:
+	void glyphPickingFinished();
+	void featurePickingFinished();
 };
 #endif

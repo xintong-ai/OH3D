@@ -165,6 +165,13 @@ vector<float2> LineBLens::GetOuterContour(float* mv, float* pj, int winW, int wi
 
 	return ret;
 }
+void LineBLens::UpdateLineBLensInfo()
+{
+	lineBLensInfo.lSemiMajorAxis = lSemiMajorAxis;
+	lineBLensInfo.lSemiMinorAxis = lSemiMinorAxis;
+	lineBLensInfo.direction = direction;
+	lineBLensInfo.focusRatio = focusRatio;
+}
 
 void LineBLens::UpdateInfo(float* mv, float* pj, int winW, int winH)
 {
@@ -181,10 +188,7 @@ void LineBLens::UpdateInfo(float* mv, float* pj, int winW, int winH)
 	else
 		direction = normalize(direction);
 
-	lineBLensInfo.lSemiMajorAxis = lSemiMajorAxis;
-	lineBLensInfo.lSemiMinorAxis = lSemiMinorAxis;
-	lineBLensInfo.direction = direction;
-	lineBLensInfo.focusRatio = focusRatio;
+	UpdateLineBLensInfo();
 }
 
 void LineBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
@@ -215,8 +219,155 @@ vector<float2> LineBLens::GetCtrlPointsForRendering(float* mv, float* pj, int wi
 }
 
 
+bool LineBLens::PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) 
+{
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	return (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
+		|| (abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
+}
 
 
+bool LineBLens::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) 
+{
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	return (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs > lSemiMinorAxis && disMinorAbs <= lSemiMinorAxis / focusRatio)
+		|| (abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
+}
+
+/*
+bool LineBLens::PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	return false;
+	float disThr = max(eps_pixel / 4, 10);
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	return (abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr)
+		|| (abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr);
+}
+*/
+
+void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	//float disThr = max(eps_pixel / 4, 10);
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
+
+
+	if (abs(disMajor - lSemiMajorAxis) < eps_pixel && abs(disMinor) <= lSemiMinorAxis){
+		float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
+		float2 newctrlPoint2 = ctrlPoint2 + (make_float2(_x, _y) - make_float2(_prex, _prey));
+		lSemiMajorAxis = length(newctrlPoint2 - center);
+		direction = normalize(newctrlPoint2 - center);
+	}
+	else if (abs(-disMajor - lSemiMajorAxis) < eps_pixel && abs(disMinor) <= lSemiMinorAxis){
+		float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
+		float2 newctrlPoint1 = ctrlPoint1 + (make_float2(_x, _y) - make_float2(_prex, _prey));
+		lSemiMajorAxis = length(newctrlPoint1 - center);
+		direction = -normalize(newctrlPoint1 - center);
+	}
+	else if (abs(disMinor - lSemiMinorAxis) < eps_pixel && abs(disMajor) <= lSemiMajorAxis){
+		float2 minorCtrlPoint2 = center + minorDirection*lSemiMinorAxis;
+		float2 newminorCtrlPoint2 = minorCtrlPoint2 + (make_float2(_x, _y) - make_float2(_prex, _prey));;
+		lSemiMinorAxis = length(newminorCtrlPoint2 - center);
+
+		float2 newmd = normalize(newminorCtrlPoint2 - center);
+		float2 newd = make_float2(-newmd.y, newmd.x);
+		direction = newd;
+	}
+	else if (abs(-disMinor - lSemiMinorAxis) < eps_pixel && abs(disMajor) <= lSemiMajorAxis){
+		float2 minorCtrlPoint1 = center - minorDirection*lSemiMinorAxis;
+		float2 newminorCtrlPoint1 = minorCtrlPoint1 + (make_float2(_x, _y) - make_float2(_prex, _prey));;
+		lSemiMinorAxis = length(newminorCtrlPoint1 - center);
+		
+		float2 newmd = normalize(newminorCtrlPoint1 - center);
+		float2 newd = make_float2(-newmd.y, newmd.x);
+
+		direction = -newd;
+	}
+	UpdateLineBLensInfo();
+	/*
+	//only change size but not direction
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	if (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
+		lSemiMajorAxis = disMajorAbs;
+	else if(abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
+		lSemiMinorAxis = disMinorAbs;
+		*/
+}
+
+void LineBLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	if (abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
+	{
+		if (disMinorAbs > lSemiMinorAxis + eps_pixel + 1)
+			focusRatio = lSemiMinorAxis / disMinorAbs;
+	}
+	UpdateLineBLensInfo();
+}
+
+/*
+void LineBLens::ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	//only rotate
+	float disThr = max(eps_pixel / 4, 10);
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	if (abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr){
+		float2 newd = normalize(make_float2(_x, _y) - center);
+		if (dot(newd, direction) < 0)
+			direction = -newd;
+		else
+			direction = newd;
+	}
+	else if (abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr){
+		float2 newmd = normalize(make_float2(_x, _y) - center);
+		float2 newd = make_float2(-newmd.y, newmd.x);
+		if (dot(newd, direction) < 0)
+			direction = -newd;
+		else
+			direction = newd;
+	}
+}
+*/
 
 void redistributePoints(vector<float2> & p)
 {
