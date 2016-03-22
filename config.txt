@@ -1,8 +1,9 @@
 DATA_TYPE=TYPE_SCALAR
-DATA_PATH=D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu
+DATA_PATH=D:/onedrive/data/particle/smoothinglength_0.44/run14/120.vtu
 VR_SUPPORT=OFF
-FEATURE_PATH=D:/Data/DiffusionMRIData/SlicerTutorial/isosurface/mask.raw
+FEATURE_PATH=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
 b= TYPE_VECTOR,,TYPE_TENSOR,TYPE_SCALAR
 a=D:/onedrive/data/plume/15plume3d421-126x126x512.vec
 c=D:/onedrive/data/particle/smoothinglength_0.44/run15/099.vtu
-d=D:/onedrive/data/dti_challenge_15/patient1_dti/patient1_dti.nhdr
+d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
+e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw

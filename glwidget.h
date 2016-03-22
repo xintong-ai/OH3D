@@ -154,7 +154,7 @@ private:
 
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
-	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE; //DEFORM_MODEL::OBJECT_SPACE;// 
+	DEFORM_MODEL deformModel = DEFORM_MODEL::OBJECT_SPACE;// DEFORM_MODEL::SCREEN_SPACE; //
 	bool insideLens = false;
 private slots:
 	void animate();

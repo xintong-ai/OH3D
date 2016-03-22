@@ -212,15 +212,18 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		firstVertex += nVerts[i];
 		firstIndex += nIndices[i];
 	}
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void SQRenderable::draw(float modelview[16], float projection[16])
 {
-	if (!visible)
-		return;
 
 	RecordMatrix(modelview, projection);
 	ComputeDisplace(modelview);
+
+	if (!visible)
+		return;
 
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);

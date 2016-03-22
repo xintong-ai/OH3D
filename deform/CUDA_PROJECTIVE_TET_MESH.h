@@ -199,9 +199,9 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 		X[i * 3 + 0] = X_Orig[i * 3 + 0];
 		X[i * 3 + 1] = X_Orig[i * 3 + 1];
 		X[i * 3 + 2] = X_Orig[i * 3 + 2];
-		V[i * 3 + 0] = 0;
-		V[i * 3 + 1] = 0;
-		V[i * 3 + 2] = 0;
+		//V[i * 3 + 0] = 0;
+		//V[i * 3 + 1] = 0;
+		//V[i * 3 + 2] = 0;
 	}
 }
 
