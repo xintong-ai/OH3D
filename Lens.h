@@ -12,7 +12,6 @@ enum LENS_TYPE{
 	TYPE_LINE,
 	TYPE_LINEB, 
 	TYPE_CURVEB,
-
 };
 
 struct LineBLensInfo
@@ -61,8 +60,10 @@ struct Lens
 	virtual bool PointInsideLens(int x, int y, float* mv, float* pj, int winW, int winH) = 0;
 	virtual bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
-	virtual void ChangeLensSize(int _x, int _y, float* mv, float* pj, int winW, int winH) {}
-	virtual void ChangefocusRatio(int _x, int _y, float* mv, float* pj, int winW, int winH) {}
+	//virtual bool PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
+	virtual void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+	virtual void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+	//virtual void ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	virtual vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
@@ -103,18 +104,18 @@ struct CircleLens :public Lens
 		return abs(dis - radius / focusRatio) < eps_pixel;
 	}
 
-	void ChangeLensSize(int _x, int _y, float* mv, float* pj, int winW, int winH) override
+	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		radius = dis;
 	}
 
-	void ChangefocusRatio(int _x, int _y, float* mv, float* pj, int winW, int winH) override
+	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
-		if (dis > radius)
+		if (dis > radius + eps_pixel + 1)
 			focusRatio = radius / dis; 
 	}
 
@@ -264,7 +265,7 @@ struct LineBLens :public Lens
 	
 	LineBLensInfo lineBLensInfo;
 
-	float2 ctrlPoint1Abs, ctrlPoint2Abs;//only used during construction
+	float2 ctrlPoint1Abs, ctrlPoint2Abs; //only used during construction/transfornation. afterwards the center, direction, lSemiMajorAxis, and lSemiMinorAxis will be computed and recorded
 
 	LineBLens(float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){
 		lSemiMajorAxis = 0;
@@ -278,10 +279,7 @@ struct LineBLens :public Lens
 
 		type = LENS_TYPE::TYPE_LINEB;
 
-		lineBLensInfo.lSemiMajorAxis = lSemiMajorAxis;
-		lineBLensInfo.lSemiMinorAxis = lSemiMinorAxis;
-		lineBLensInfo.direction = direction;
-		lineBLensInfo.focusRatio = focusRatio;
+		UpdateLineBLensInfo();
 	};
 
 	void FinishConstructing(float* mv, float* pj, int winW, int winH);
@@ -294,7 +292,16 @@ struct LineBLens :public Lens
 	vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
 
 	vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
-};
+
+	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	//bool PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	//void ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void UpdateLineBLensInfo();
+};	
+
 
 
 

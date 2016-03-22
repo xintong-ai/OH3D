@@ -123,7 +123,7 @@ Window::Window()
 	reader->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_unique<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 25);
+	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 1);
 	modelGridRenderable = std::make_unique<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
@@ -152,10 +152,15 @@ Window::Window()
 	controller->addListener(*listener);
 	
 
-	usingSnapCheck = new QCheckBox("Snapping Glyph", this);
-	highlightingFeatureCheck = new QCheckBox("Highlighting Feature", this);
+	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph", this);
+	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
+	freezingFeatureCheck = new QCheckBox("Freezing Feature", this);
 	usingFeatureSnappingCheck = new QCheckBox("Snapping Feature", this);
-	
+	usingFeaturePickingCheck = new QCheckBox("Picking Feature", this);
+
+	connect(glyphRenderable.get(), SIGNAL(glyphPickingFinished()), this, SLOT(SlotToggleGlyphPickingFinished()));
+	connect(glyphRenderable.get(), SIGNAL(featurePickingFinished()), this, SLOT(SlotToggleFeaturePickingFinished()));
+
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 	controlLayout->addWidget(addLensBtn);
@@ -172,9 +177,11 @@ Window::Window()
 	controlLayout->addWidget(glyphSizeAdjustSlider);
 	controlLayout->addWidget(adjustOffsetBtn);
 	controlLayout->addWidget(refineBoundaryBtn);
-	controlLayout->addWidget(usingSnapCheck);
-	controlLayout->addWidget(highlightingFeatureCheck);	
+	controlLayout->addWidget(usingGlyphSnappingCheck);
+	controlLayout->addWidget(usingGlyphPickingCheck);
+	controlLayout->addWidget(freezingFeatureCheck);
 	controlLayout->addWidget(usingFeatureSnappingCheck); 
+	controlLayout->addWidget(usingFeaturePickingCheck);
 	controlLayout->addStretch();
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
@@ -193,10 +200,12 @@ Window::Window()
 	connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
 		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 	connect(refineBoundaryBtn, SIGNAL(clicked()), this, SLOT(RefineLensBoundary()));
-	connect(usingSnapCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingSnap(bool)));
-	connect(highlightingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleHighlightingFeature(bool)));
+	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
+	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
+	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
 	connect(usingFeatureSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingFeatureSnapping(bool)));
-	
+	connect(usingFeaturePickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingFeature(bool)));
+
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
@@ -274,36 +283,71 @@ void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D i
 	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
 }
 
-void Window::SlotToggleUsingSnap(bool b)
+void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
 	lensRenderable->isSnapToGlyph = b;
-	glyphRenderable->isPicking = b;
 	if (!b){
 		glyphRenderable->SetSnappedGlyphId(-1);
 	}
 	else{
 		usingFeatureSnappingCheck->setChecked(false);
 		SlotToggleUsingFeatureSnapping(false);
+		usingFeaturePickingCheck->setChecked(false);
+		SlotTogglePickingFeature(false);
 	}
 }
 
-
-void Window::SlotToggleHighlightingFeature(bool b)
+void Window::SlotTogglePickingGlyph(bool b)
 {
-	glyphRenderable->isHighlightingFeature = b;
+	glyphRenderable->isPickingGlyph = b;
+	if (b){
+		usingFeatureSnappingCheck->setChecked(false);
+		SlotToggleUsingFeatureSnapping(false);
+		usingFeaturePickingCheck->setChecked(false);
+		SlotTogglePickingFeature(false);
+	}
+}
+
+void Window::SlotToggleFreezingFeature(bool b)
+{
+	glyphRenderable->isFreezingFeature = b;
 	glyphRenderable->RecomputeTarget();
 }
 
 void Window::SlotToggleUsingFeatureSnapping(bool b)
 {
 	lensRenderable->isSnapToFeature = b;
-	glyphRenderable->isPickingFeature = b;	
 	if (!b){
 		glyphRenderable->SetSnappedFeatureId(-1);
 	}
 	else{
-		usingSnapCheck->setChecked(false);
-		SlotToggleUsingSnap(false);
+		usingGlyphSnappingCheck->setChecked(false);
+		SlotToggleUsingGlyphSnapping(false);
+		usingGlyphPickingCheck->setChecked(false);
+		SlotTogglePickingGlyph(false);
 	}
 }
 
+void Window::SlotTogglePickingFeature(bool b)
+{
+	glyphRenderable->isPickingFeature = b;
+	if (b){
+		usingGlyphSnappingCheck->setChecked(false);
+		SlotToggleUsingGlyphSnapping(false);
+		usingGlyphPickingCheck->setChecked(false);
+		SlotTogglePickingGlyph(false);
+	}
+}
+
+
+
+
+void Window::SlotToggleGlyphPickingFinished()
+{
+	usingGlyphPickingCheck->setChecked(false);
+}
+
+void Window::SlotToggleFeaturePickingFinished()
+{
+	usingFeaturePickingCheck->setChecked(false);
+}

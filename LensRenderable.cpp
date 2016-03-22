@@ -255,23 +255,23 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				//glEnd();
 			}
 
-			if (l->type == LENS_TYPE::TYPE_LINEB){
-				std::vector<float2> ctrlPoints = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
-				glColor3f(0.8f, 0.8f, 0.2f);
-				if (((LineBLens*)l)->isConstructing){
-					glBegin(GL_LINES);
-					for (auto v : ctrlPoints)
-						glVertex2f(v.x, v.y);
-					glEnd();
-				}
-				else{
-					glPointSize(10.0);
-					glBegin(GL_POINTS);
-					for (auto v : ctrlPoints)
-						glVertex2f(v.x, v.y);
-					glEnd();
-				}
-			}
+			//if (l->type == LENS_TYPE::TYPE_LINEB){
+			//	std::vector<float2> ctrlPoints = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
+			//	glColor3f(0.8f, 0.8f, 0.2f);
+			//	if (((LineBLens*)l)->isConstructing){
+			//		glBegin(GL_LINES);
+			//		for (auto v : ctrlPoints)
+			//			glVertex2f(v.x, v.y);
+			//		glEnd();
+			//	}
+			//	else{
+			//		glPointSize(10.0);
+			//		glBegin(GL_POINTS);
+			//		for (auto v : ctrlPoints)
+			//			glVertex2f(v.x, v.y);
+			//		glEnd();
+			//	}
+			//}
 		}
 
 		glPopAttrib();
@@ -383,6 +383,12 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				pickedLens = i;
 				break;
 			}
+			//else if(l->PointOnCriticalPos(x, y, modelview, projection, winSize.x, winSize.y)) {
+			//	//workingOnLens = true;
+			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DIRECTION);
+			//	pickedLens = i;
+			//	break;
+			//}
 			else if (l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
 				pickedLens = i;
@@ -428,14 +434,14 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 
 	}
 	else {
-		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToGlyph && modifier != Qt::AltModifier){
+		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToGlyph){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
 			float3 snapPos = glyphRenderable->findClosetGlyph(center);
 			l->SetCenter(snapPos);
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature && modifier != Qt::ShiftModifier){
+		else if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
@@ -479,11 +485,11 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		lenses[pickedLens]->UpdateCenterByScreenPos(
 			center.x + (x - lastPt.x), center.y + (y - lastPt.y)
 			, modelview, projection, winSize.x, winSize.y);
-		if (isSnapToGlyph && modifier != Qt::AltModifier){
+		if (isSnapToGlyph){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			glyphRenderable->findClosetGlyph(make_float3(lenses[pickedLens]->GetCenter()));
 		}
-		else if (isSnapToFeature && modifier != Qt::ShiftModifier){
+		else if (isSnapToFeature){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			float3 snapPos;
 			glyphRenderable->findClosetFeature(make_float3(lenses[pickedLens]->GetCenter()), snapPos);
@@ -493,14 +499,19 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 	}
 	case INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE:
 	{
-		lenses[pickedLens]->ChangeLensSize(x, y, modelview, projection, winSize.x, winSize.y);
+		lenses[pickedLens]->ChangeLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		break;
 	}
 	case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
 	{
-		lenses[pickedLens]->ChangefocusRatio(x, y, modelview, projection, winSize.x, winSize.y);
+		lenses[pickedLens]->ChangefocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		break;
-	}
+	}	
+	//case INTERACT_MODE::MODIFY_LENS_DIRECTION:
+	//{
+	//	lenses[pickedLens]->ChangeDirection(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
+	//	break;
+	//}
 	}
 	lastPt = make_int2(x, y);
 }
@@ -519,10 +530,6 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
 			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-			//if (isSnapToGlyph && modifier != Qt::AltModifier){
-			//	GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
-			//	glyphRenderable->findClosetGlyph(make_float3(l->GetCenter()));
-			//}
 		}
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
