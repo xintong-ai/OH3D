@@ -110,7 +110,7 @@ void LensRenderable::RefineLensBoundary(){
 void LensRenderable::draw(float modelview[16], float projection[16])
 {
 	RecordMatrix(modelview, projection);
-
+	
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
 		glMatrixMode(GL_PROJECTION);
@@ -132,7 +132,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 	}
 
 	if (DEFORM_MODEL::SCREEN_SPACE == actor->GetDeformModel()){
-
 		int2 winSize = actor->GetWindowSize();
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
@@ -282,7 +281,65 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glPopMatrix();
 	}
 	else if (DEFORM_MODEL::OBJECT_SPACE == actor->GetDeformModel()){
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		glLoadMatrixf(projection);
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
+		glLoadMatrixf(modelview);
+
+
+
+		glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+		glLineWidth(4);
+		glColor3f(1.0f, 0.2f, 0.2f);
+
+	
+		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
+		q_modelview = q_modelview.transposed();
+		QMatrix4x4 q_invVP = q_modelview.inverted();
+		QVector4D q_eye4 = q_invVP.map(QVector4D(0, 0, 0, 1));
+		float eyeWorld3[3];
+		eyeWorld3[0] = q_eye4[0];
+		eyeWorld3[1] = q_eye4[1];
+		eyeWorld3[2] = q_eye4[2];
+
+		for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
+
+			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
+				std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour(eyeWorld3);
+
+				for (int i = 0; i < lensContour.size() - 1; i++){
+					glBegin(GL_LINE_LOOP);
+					for (auto v : lensContour[i]){
+						glVertex3f(v.x, v.y, v.z);
+					}
+					glEnd();
+				}
+
+				glBegin(GL_LINES);
+				for (auto v : lensContour[lensContour.size() - 1]){
+					glVertex3f(v.x, v.y, v.z);
+				}
+				glEnd();
+
+			}
+		}
+		glPopAttrib();
+
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
+		glPopAttrib();
+
 	}
+
+	/*bool draw3DContour
+	if ()*/
 }
 void LensRenderable::AddCircleLens()
 {

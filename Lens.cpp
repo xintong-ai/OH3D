@@ -64,50 +64,54 @@ void Lens::ChangeClipDepth(int v, float* mv, float* pj)
 }
 
 
-void CircleLens::Compute3DContour()
+vector<vector<float3>> CircleLens::Get3DContour(float *eyeWorld3)
 {
-	vector<float3> innerContour;
-	vector<float3> outerContour;
-	vector<float3> bottomContour;
+	vector<vector<float3>> contour3D;
+	//return contour3D;
 
-	vector<float3> connection;
+	if (1){ //draw screen-space deformed circle lens
+		vector<float3> innerContour;
+		vector<float3> outerContour;
+		vector<float3> bottomContour;
+		vector<float3> connection;
 
-	float rr = 2;
-	float d1 = 2, d2 = 2;
-	const int num_segments = 32;
-	for (int ii = 0; ii < num_segments; ii++)
-	{
-		float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments);//get the current angle 
+		float rr = 2;
+		float d1 = 2, d2 = 2;
+		const int num_segments = 32;
+		for (int ii = 0; ii < num_segments; ii++)
+		{
+			float theta = 2.0f * 3.1415926f * float(ii) / float(num_segments);//get the current angle 
 
-		float ax = rr * cosf(theta);//calculate the x component 
-		float ay = rr * sinf(theta);//calculate the y component 
-		float ax2 = rr * 2 * cosf(theta);//calculate the x component 
-		float ay2 = rr * 2 * sinf(theta);//calculate the y component 
-		float3 ip = make_float3(c.x + ax, c.y + ay, c.z);
-		float3 op = make_float3(c.x + ax2, c.y + ay2, c.z + d1);
-		float3 bp = make_float3(c.x + ax, c.y + ay, c.z - d2);
+			float ax = rr * cosf(theta);//calculate the x component 
+			float ay = rr * sinf(theta);//calculate the y component 
+			float ax2 = rr * 2 * cosf(theta);//calculate the x component 
+			float ay2 = rr * 2 * sinf(theta);//calculate the y component 
+			float3 ip = make_float3(c.x + ax, c.y + ay, c.z);
+			float3 op = make_float3(c.x + ax2, c.y + ay2, c.z + d1);
+			float3 bp = make_float3(c.x + ax, c.y + ay, c.z - d2);
 
-		innerContour.push_back(ip);
-		outerContour.push_back(op);
-		bottomContour.push_back(bp);
+			innerContour.push_back(ip);
+			outerContour.push_back(op);
+			bottomContour.push_back(bp);
 
-		if (ii % 4 == 0){
-			connection.push_back(ip);
-			connection.push_back(op);
+			if (ii % 4 == 0){
+				connection.push_back(ip);
+				connection.push_back(op);
 
-			connection.push_back(ip);
-			connection.push_back(bp);
+				connection.push_back(ip);
+				connection.push_back(bp);
+			}
 		}
+
+		contour3D.push_back(innerContour);
+		contour3D.push_back(outerContour);
+		contour3D.push_back(bottomContour);
+		contour3D.push_back(connection);
 	}
+	else{
 
-	contour3D.push_back(innerContour);
-	contour3D.push_back(outerContour);
-	contour3D.push_back(bottomContour);
-	contour3D.push_back(connection);
-}
-
-vector<vector<float3>> CircleLens::Get3DContour()
-{
+	}
+	
 	return contour3D;
 }
 

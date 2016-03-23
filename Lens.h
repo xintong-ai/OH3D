@@ -80,10 +80,7 @@ struct Lens
 struct CircleLens :public Lens
 {
 	float radius;
-	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE; 
-	
-		Compute3DContour();
-	};
+	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE;};
 	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
@@ -148,9 +145,7 @@ struct CircleLens :public Lens
 		return res;
 	}
 
-	void Compute3DContour();
-	vector<vector<float3>> contour3D;
-	vector<vector<float3>> Get3DContour();
+	vector<vector<float3>> Get3DContour(float *eyeWorld3);
 
 
 };
