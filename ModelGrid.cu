@@ -184,9 +184,9 @@ void ModelGrid::Initialize(float time_step)
 	return gridMesh->Initialize(time_step);
 }
 
-void ModelGrid::Update(float lensCenter[3], float lenDir[3])
+void ModelGrid::Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius)
 {
-	gridMesh->Update(time_step, 64, lensCenter, lenDir);
+	gridMesh->Update(time_step, 64, lensCenter, lenDir, focusRatio, radius);
 }
 
 float3 ModelGrid::GetGridMin()

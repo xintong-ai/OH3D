@@ -180,7 +180,7 @@ __global__ void Control_Kernel(float* X, float *more_fixed, const float control_
 
 __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
 	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z)
+	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, const float radius)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -190,11 +190,12 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 	float3 lensCen2Vert = vert - lensCen;
 	float vertProjLeng = dot(lensCen2Vert, lensDir);
 	float3 lensForce = make_float3(0, 0, 0);
-	const float focusRadSqr = 9;
+	//const float focusRadSqr = 9;
+	float focusRadSqr = radius*radius;
 	float3 projVec = vertProjLeng * lensDir;
 	float3 moveDir = lensCen2Vert - projVec;
 	float dist2RaySqr = dot(moveDir, moveDir);
-	if (vertProjLeng < 0 || dist2RaySqr >(4 * focusRadSqr)){
+	if (vertProjLeng < 0 || dist2RaySqr >((1 / focusRatio / focusRatio)* focusRadSqr)){
 		more_fixed[i] = 10;
 		X[i * 3 + 0] = X_Orig[i * 3 + 0];
 		X[i * 3 + 1] = X_Orig[i * 3 + 1];
@@ -728,7 +729,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Update functions
 ///////////////////////////////////////////////////////////////////////////////////////////
-	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3])
+	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], TYPE focusRatio, TYPE radius)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -740,7 +741,7 @@ public:
 		Set_Fixed_By_Lens << <blocksPerGrid, threadsPerBlock >> >(
 			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
 			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2]);
+			, lenDir[0], lenDir[1], lenDir[2], focusRatio, radius);
 
 		// Step 1: Basic update
 		Update_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number

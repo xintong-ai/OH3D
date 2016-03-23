@@ -20,6 +20,8 @@ public:
 	LensRenderable();
 	std::vector<Lens*> GetLenses() { return lenses; }
 	float3 GetBackLensCenter();
+	float GetBackLensFocusRatio();
+	float GetBackLensObjectRadius();
 	void AddCircleLens();
 	void AddLineLens();
 	void AddLineBLens();

@@ -40,6 +40,9 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 		QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
 		cameraObj = cameraObj / cameraObj.w();
 		float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+		float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
+		float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
+
 		float3 lensDir = make_float3(
 			cameraObj.x() - lensCen.x,
 			cameraObj.y() - lensCen.y,
@@ -49,7 +52,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 		//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
 		//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
 
-		modelGrid->Update(&lensCen.x, &lensDir.x);
+		modelGrid->Update(&lensCen.x, &lensDir.x, focusRatio, radius);
 		modelGrid->UpdatePointCoords(&pos[0], pos.size());
 		break;
 	}

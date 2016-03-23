@@ -40,6 +40,11 @@ struct CurveBLensInfo
 
 struct Lens
 {
+	Lens(float3 _c, float _focusRatio = 0.6)//, float _sideSize = 0.5) //int _x, int _y, 
+	{
+		c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;//x = _x; y = _y; 
+	}
+
 	const int eps_pixel = 32;
 	LENS_TYPE type;
 	float3 c; //center
@@ -53,16 +58,20 @@ struct Lens
 	float GetClipDepth(float* mv, float* pj);
 	float2 GetCenterScreenPos(float* mv, float* pj, int winW, int winH);
 	void UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
-	Lens(float3 _c, float _focusRatio = 0.6)//, float _sideSize = 0.5) //int _x, int _y, 
-	{
-		c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;//x = _x; y = _y; 
-	}
+	float3 Compute3DPosByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);	
+
 	virtual bool PointInsideLens(int x, int y, float* mv, float* pj, int winW, int winH) = 0;
 	virtual bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
+	virtual bool PointInsideObjectLens(int x, int y, float* mv, float* pj, int winW, int winH) { return false; }
+
+	virtual bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
+	virtual bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	//virtual bool PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	virtual void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+	virtual void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}	
+	virtual void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	//virtual void ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	virtual vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
@@ -70,6 +79,10 @@ struct Lens
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
+
+	bool isConstructing;
+
+
 	bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
@@ -80,13 +93,23 @@ struct Lens
 struct CircleLens :public Lens
 {
 	float radius;
-	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){ radius = _r; type = LENS_TYPE::TYPE_CIRCLE;};
+	float objectRadius;
+
+	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio)
+	{ 
+		radius = _r;
+		objectRadius = 2.5;
+		type = LENS_TYPE::TYPE_CIRCLE;
+		isConstructing = false;
+	};
+	
+
 	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < radius;
 	}
-
+	
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -100,7 +123,11 @@ struct CircleLens :public Lens
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return abs(dis - radius / focusRatio) < eps_pixel;
 	}
-
+	
+	bool PointInsideObjectLens(int x, int y, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -115,7 +142,8 @@ struct CircleLens :public Lens
 		if (dis > radius + eps_pixel + 1)
 			focusRatio = radius / dis; 
 	}
-
+	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
 
 	vector<float2> GetContourTemplate(int rr, float* mv, float* pj, int winW, int winH) {
 		vector<float2> ret;
@@ -145,7 +173,7 @@ struct CircleLens :public Lens
 		return res;
 	}
 
-	vector<vector<float3>> Get3DContour(float *eyeWorld3);
+	vector<vector<float3>> Get3DContour(float3 eyeWorld, bool isScreenDeformingLens);
 
 
 };
@@ -164,6 +192,7 @@ struct LineLens :public Lens
 
 		direction = make_float2(1.0, 0.0);
 		type = LENS_TYPE::TYPE_LINE;
+		isConstructing = false;
 	};
 
 	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
@@ -256,7 +285,6 @@ struct LineBLens :public Lens
 {
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction; //suppose normalized
-	bool isConstructing;
 	
 	LineBLensInfo lineBLensInfo;
 
@@ -326,8 +354,6 @@ public:
 	vector<float2> negOffsetCtrlPoints;
 	vector<float2> posOffsetBezierPoints;
 	vector<float2> negOffsetBezierPoints;
-
-	bool isConstructing;
 
 	CurveBLensInfo curveBLensInfo;
 

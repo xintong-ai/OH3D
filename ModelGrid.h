@@ -22,7 +22,7 @@ public:
 	unsigned int* GetL();
 	int GetLNumber();
 	void Initialize(float time_step);
-	void Update(float lensCenter[3], float lenDir[3]);
+	void Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius);
 	float3 GetGridMin();
 	float3 GetGridMax();
 	int3 GetNumSteps();
