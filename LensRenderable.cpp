@@ -128,7 +128,8 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 		//lensCenterSphere->draw(l->c.x, l->c.y, l->c.z);
 
-		GLSphere sphere;
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		GLSphere sphere(1.0,8);
 		glColor4f(1.0f, 1.0f, 1.0f, 0.9f);
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
@@ -137,7 +138,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glVertexPointer(3, GL_FLOAT, 0, sphere.GetVerts());
 		glDrawArrays(GL_QUADS, 0, sphere.GetNumVerts());
 		glPopMatrix();
-
+		glPolygonMode(GL_FRONT_AND_BACK ,GL_FILL);
 
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
