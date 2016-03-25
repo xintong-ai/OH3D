@@ -18,6 +18,8 @@
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
 #include "GLMatrixManager.h"
+#include "PolyRenderable.h"
+#include "MeshReader.h"
 
 
 #include <LeapListener.h>
@@ -60,6 +62,7 @@ Window::Window()
 		dataType = DATA_TYPE::TYPE_TENSOR;
 	}
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
+
 	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
 		reader = std::make_unique<ParticleReader>(dataPath.c_str());
 		glyphRenderable = std::make_unique<SphereRenderable>(
@@ -131,6 +134,25 @@ Window::Window()
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("model", modelGridRenderable.get());
+	if (DATA_TYPE::TYPE_TENSOR == dataType) {
+		PolyRenderable* polyFeature;
+		MeshReader *meshReader;
+		meshReader = new MeshReader();
+		meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str());
+		polyFeature = new PolyRenderable(meshReader);
+		openGL->AddRenderable("ventricles", polyFeature);
+
+		meshReader = new MeshReader();
+		meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str());
+		polyFeature = new PolyRenderable(meshReader);
+		openGL->AddRenderable("tumor1", polyFeature);
+
+		meshReader = new MeshReader();
+		meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str());
+		polyFeature = new PolyRenderable(meshReader);
+		openGL->AddRenderable("tumor2", polyFeature);
+
+	}
 
 	///********controls******/
 	addLensBtn = new QPushButton("Add Circle Lens");
