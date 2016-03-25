@@ -98,7 +98,7 @@ struct CircleLens :public Lens
 	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio)
 	{ 
 		radius = _r;
-		objectRadius = 1;
+		objectRadius = 1.5;
 		type = LENS_TYPE::TYPE_CIRCLE;
 		isConstructing = false;
 	};

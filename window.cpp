@@ -155,24 +155,27 @@ Window::Window()
 	}
 
 	///********controls******/
-	addLensBtn = new QPushButton("Add Circle Lens");
-	addLineLensBtn = new QPushButton("Add Line Lens");
-	delLensBtn = std::make_unique<QPushButton>("Delete a Lens");
-	addCurveBLensBtn = new QPushButton("Add CurveB Lens");
-	adjustOffsetBtn = new QPushButton("Adjust Offset");
+	addLensBtn = new QPushButton("Add circle lens");
+	addLineLensBtn = new QPushButton("Add straight band lens");
+	delLensBtn = std::make_unique<QPushButton>("Delete a lens");
+	addCurveBLensBtn = new QPushButton("Add curved band lens");
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
-	QLabel* sideSizeLabel = new QLabel("Lens side size:", this);
-	QSlider* sideSizeSlider = CreateSlider();
-	QLabel* glyphSizeAdjustLabel = new QLabel("Glyph size adjust:", this);
-	QSlider* glyphSizeAdjustSlider = CreateSlider();
-	refineBoundaryBtn = new QPushButton("Refine Lens Boundary Line");
 	listener = new LeapListener();
 	controller = new Leap::Controller();
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
 	
+
+	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
+	QHBoxLayout *deformModeLayout = new QHBoxLayout;
+	radioDeformScreen = std::make_unique<QRadioButton>(tr("&screen space"));
+	radioDeformObject = std::make_unique<QRadioButton>(tr("&object space"));
+	radioDeformScreen->setChecked(true);
+	deformModeLayout->addWidget(radioDeformScreen.get());
+	deformModeLayout->addWidget(radioDeformObject.get());
+	groupBox->setLayout(deformModeLayout);
 
 	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph", this);
 	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
@@ -190,20 +193,15 @@ Window::Window()
 
 	controlLayout->addWidget(addCurveBLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
-	controlLayout->addWidget(gridCheck);
+	controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(transSizeLabel);
 	controlLayout->addWidget(transSizeSlider);
-	controlLayout->addWidget(sideSizeLabel);
-	controlLayout->addWidget(sideSizeSlider);
-	controlLayout->addWidget(glyphSizeAdjustLabel);
-	controlLayout->addWidget(glyphSizeAdjustSlider);
-	controlLayout->addWidget(adjustOffsetBtn);
-	controlLayout->addWidget(refineBoundaryBtn);
 	controlLayout->addWidget(usingGlyphSnappingCheck);
 	controlLayout->addWidget(usingGlyphPickingCheck);
 	controlLayout->addWidget(freezingFeatureCheck);
 	controlLayout->addWidget(usingFeatureSnappingCheck); 
 	controlLayout->addWidget(usingFeaturePickingCheck);
+	controlLayout->addWidget(gridCheck);
 	controlLayout->addStretch();
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
@@ -212,21 +210,17 @@ Window::Window()
 	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
 
 
-	adjustOffsetBtn = new QPushButton("Adjust Offset");
-	controlLayout->addWidget(adjustOffsetBtn);
-	connect(adjustOffsetBtn, SIGNAL(clicked()), this, SLOT(adjustOffset()));
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
-	connect(sideSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotSideSizeChanged(int)));
-	connect(glyphSizeAdjustSlider, SIGNAL(valueChanged(int)), glyphRenderable.get(), SLOT(SlotGlyphSizeAdjustChanged(int)));
 	connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
 		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
-	connect(refineBoundaryBtn, SIGNAL(clicked()), this, SLOT(RefineLensBoundary()));
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
 	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
 	connect(usingFeatureSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingFeatureSnapping(bool)));
 	connect(usingFeaturePickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingFeature(bool)));
+	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
+	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
@@ -249,31 +243,6 @@ void Window::AddCurveBLens()
 	lensRenderable->AddCurveBLens();
 }
 
-void Window::adjustOffset()
-{
-	lensRenderable->adjustOffset();
-}
-
-void Window::RefineLensBoundary()
-{
-	lensRenderable->RefineLensBoundary();
-}
-
-//void Window::SlotSliceOrieChanged(bool clicked)
-//{
-//	if (radioX->isChecked()){
-//		sliceSlider->setRange(0, cubemap->GetInnerDim(0)/*vecReader->GetVolumeDim().z*/ - 1);
-//		glyphRenderable->SlotSetSliceOrie(0);
-//	}	else if (radioY->isChecked()){
-//		sliceSlider->setRange(0, cubemap->GetInnerDim(1)/*vecReader->GetVolumeDim().z*/ - 1);
-//		glyphRenderable->SlotSetSliceOrie(1);
-//	}	else if (radioZ->isChecked()){
-//		sliceSlider->setRange(0, cubemap->GetInnerDim(2)/*vecReader->GetVolumeDim().z*/ - 1);
-//		glyphRenderable->SlotSetSliceOrie(2);
-//	}
-//	sliceSlider->setValue(0);
-//}
-//
 //void Window::animate()
 //{
 //	//int v = heightScaleSlider->value();
@@ -372,4 +341,14 @@ void Window::SlotToggleGlyphPickingFinished()
 void Window::SlotToggleFeaturePickingFinished()
 {
 	usingFeaturePickingCheck->setChecked(false);
+}
+
+void Window::SlotDeformModeChanged(bool clicked)
+{
+	if (radioDeformScreen->isChecked()){
+		openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
+	}
+	else if (radioDeformObject->isChecked()){
+		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+	}
 }

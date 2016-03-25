@@ -456,7 +456,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 void LensRenderable::AddCircleLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new CircleLens(winSize.y * 0.2, actor->DataCenter());
+	Lens* l = new CircleLens(winSize.y * 0.1, actor->DataCenter());
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
