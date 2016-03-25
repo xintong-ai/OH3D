@@ -190,7 +190,7 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 	float3 lensCen2Vert = vert - lensCen;
 	float vertProjLeng = dot(lensCen2Vert, lensDir);
 	float3 lensForce = make_float3(0, 0, 0);
-	const float focusRadSqr = 9;
+	const float focusRadSqr = 4;
 	float3 projVec = vertProjLeng * lensDir;
 	float3 moveDir = lensCen2Vert - projVec;
 	float dist2RaySqr = dot(moveDir, moveDir);
@@ -239,14 +239,14 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	float3 lensCen2Vert = vert - lensCen;
 	float vertProjLeng = dot(lensCen2Vert, lensDir);
 	float3 lensForce = make_float3( 0, 0, 0 );
-	const float focusRadSqr = 9;
+	const float focusRadSqr = 4;
 	float3 projVec = vertProjLeng * lensDir;
 	float3 moveDir = lensCen2Vert - projVec;
 	float dist2RaySqr = dot(moveDir, moveDir);
 #if 1
 	if (vertProjLeng > 0){
 		if (dist2RaySqr < focusRadSqr){
-			lensForce =  2 * (focusRadSqr - dist2RaySqr) * normalize(moveDir);
+			lensForce =  10 * (focusRadSqr - dist2RaySqr) * normalize(moveDir);
 		}
 	}
 #else 
