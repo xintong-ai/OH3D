@@ -14,13 +14,13 @@
 
 void PolyRenderable::init()
 {
-    loadShaders();
+	loadShaders();
 	m_vao = new QOpenGLVertexArrayObject();
 	m_vao->create();
 
-    //glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 
-	GenVertexBuffer(m->TotalConnectedPoints,
+	GenVertexBuffer(m->numElements,
 		m->Faces_Triangles,
 		m->Normals);
 }
@@ -36,7 +36,7 @@ void PolyRenderable::loadShaders()
 	//http://stackoverflow.com/questions/4703432/why-does-my-opengl-phong-shader-behave-like-a-flat-shader
 	const char* vertexVS =
 		GLSL(
-	layout(location = 0) in vec3 VertexPosition;
+		layout(location = 0) in vec3 VertexPosition;
 	layout(location = 1) in vec3 VertexNormal;
 	smooth out vec3 tnorm;
 	out vec4 eyeCoords;
@@ -104,19 +104,19 @@ void PolyRenderable::loadShaders()
 	);
 
 	glProg = new ShaderProgram();
-    glProg->initFromStrings(vertexVS, vertexFS);
+	glProg->initFromStrings(vertexVS, vertexFS);
 
-    glProg->addAttribute("VertexPosition");
-    glProg->addAttribute("VertexNormal");
+	glProg->addAttribute("VertexPosition");
+	glProg->addAttribute("VertexNormal");
 
-    glProg->addUniform("LightPosition");
-    glProg->addUniform("Ka");
-    glProg->addUniform("Kd");
-    glProg->addUniform("Ks");
-    glProg->addUniform("Shininess");
+	glProg->addUniform("LightPosition");
+	glProg->addUniform("Ka");
+	glProg->addUniform("Kd");
+	glProg->addUniform("Ks");
+	glProg->addUniform("Shininess");
 
-    glProg->addUniform("ModelViewMatrix");
-    glProg->addUniform("NormalMatrix");
+	glProg->addUniform("ModelViewMatrix");
+	glProg->addUniform("NormalMatrix");
 	glProg->addUniform("ProjectionMatrix");
 
 	glProg->addUniform("Transform");
@@ -131,10 +131,11 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!visible)
 		return;
-    glMatrixMode(GL_MODELVIEW);
+
+	glMatrixMode(GL_MODELVIEW);
 
 
-    glProg->use();
+	glProg->use();
 	m_vao->bind();
 
 	qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, 10, 1);
@@ -145,21 +146,25 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 
 	qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
 
-    QMatrix4x4 q_modelview = QMatrix4x4(modelview);
-    q_modelview = q_modelview.transposed();
+	QMatrix4x4 q_modelview = QMatrix4x4(modelview);
+	q_modelview = q_modelview.transposed();
 
 	qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 	qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 	qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
-    //glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
-	glDrawElements(GL_TRIANGLES, m->numElements, GL_UNSIGNED_INT, m->indices);
+	glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
+	//glDrawElements(GL_TRIANGLES, m->numElements, GL_UNSIGNED_INT, m->indices);
 
-    //glBindVertexArray(0);
+	//glBindVertexArray(0);
 	m_vao->release();
-    glProg->disable();
+	glProg->disable();
 
 }
+//
+//void PolyRenderable::cleanup()
+//{
+//}
 
 void PolyRenderable::GenVertexBuffer(int nv)
 {
@@ -185,7 +190,7 @@ void PolyRenderable::GenVertexBuffer(int nv)
 void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 {
 	m_vao->bind();
-	
+
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
 	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
