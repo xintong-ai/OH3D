@@ -73,6 +73,32 @@ public:
 		}
 	}
 
+	void PrintMesh(){
+		for (int i = 0; i < nStep[0]; i++){
+			for (int j = 0; j < nStep[1]; j++){
+				for (int k = 0; k < nStep[2]; k++){
+					int idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+					std::cout << X[3 * idx + 0] << " "
+						<< X[3 * idx + 1] << " "
+						<< X[3 * idx + 2] << ";" << std::endl;
+				}
+			}
+		}
+		for (int i = 0; i < (nStep[0] - 1); i++){
+			for (int j = 0; j < (nStep[1] - 1); j++){
+				for (int k = 0; k < (nStep[2] - 1); k++){
+					int idx = i * (nStep[1] - 1) * (nStep[2] - 1) + j * (nStep[2] - 1) + k;
+					for (int t = 0; t < 5; t++){
+						for (int v = 0; v < 4; v++){
+							std::cout << Tet[4 * 5 * idx + 4 * t + v] << " ";
+						}
+						std::cout << ";" << std::endl;
+					}
+				}
+			}
+		}
+	}
+
 	void BuildMesh(TYPE dmin[3], TYPE dmax[3], TYPE step)
 	{
 		for (int i = 0; i < 3; i++){
@@ -174,6 +200,7 @@ public:
 		}
 		//Build_Boundary_Triangles2();
 		Build_Boundary_Lines();
+		//PrintMesh();
 	}
 
 
