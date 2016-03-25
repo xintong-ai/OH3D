@@ -26,7 +26,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 	case DEFORM_MODEL::SCREEN_SPACE:
 	{
 		displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-			((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isHighlightingFeature, snappedGlyphId, snappedFeatureId);
+			((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
 		break;
 	}
 	case DEFORM_MODEL::OBJECT_SPACE:
@@ -40,6 +40,9 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 		QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
 		cameraObj = cameraObj / cameraObj.w();
 		float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+		float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
+		float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
+
 		float3 lensDir = make_float3(
 			cameraObj.x() - lensCen.x,
 			cameraObj.y() - lensCen.y,
@@ -49,7 +52,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 		//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
 		//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
 
-		modelGrid->Update(&lensCen.x, &lensDir.x);
+		modelGrid->Update(&lensCen.x, &lensDir.x, focusRatio, radius);
 		modelGrid->UpdatePointCoords(&pos[0], pos.size());
 		break;
 	}
@@ -180,7 +183,7 @@ bool GlyphRenderable::findClosetFeature(float3 aim, float3 & result)
 
 void GlyphRenderable::mousePress(int x, int y, int modifier)
 {
-	if (QApplication::keyboardModifiers() == Qt::AltModifier && isPicking){
+	if (isPickingGlyph){
 		qgl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -195,17 +198,21 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 		glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cursorPixel);
 
-		snappedGlyphId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256 - 1;
-
-		if (snappedGlyphId != -1){
+		int pickedGlyphId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256 - 1;
+		
+		if (pickedGlyphId != -1){
+			snappedGlyphId = pickedGlyphId;
 			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
 			for (int i = 0; i < lenses.size(); i++) {
 				Lens* l = lenses[i];
 				l->SetCenter(make_float3(posOrig[snappedGlyphId]));
 			}
 		}
+
+		isPickingGlyph = false;
+		emit glyphPickingFinished();
 	}
-	else if (QApplication::keyboardModifiers() == Qt::ShiftModifier && isPickingFeature){
+	else if (isPickingFeature){
 		qgl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -220,17 +227,18 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 		glReadBuffer(GL_COLOR_ATTACHMENT0);
 		glReadPixels(x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cursorPixel);
 
-		snappedFeatureId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256;
+		int pickedGlyphId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256;
 
-		//cout << snappedFeatureId << endl;
-
-		if (snappedFeatureId > 0){
+		if (pickedGlyphId > 0){
+			snappedFeatureId = pickedGlyphId;
 			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
 			for (int i = 0; i < lenses.size(); i++) {
 				Lens* l = lenses[i];
 				l->SetCenter(featureCenter[snappedFeatureId-1]);
-				//cout << featureCenter[snappedFeatureId - 1].x << " " << featureCenter[snappedFeatureId - 1].y << " " << featureCenter[snappedFeatureId - 1].z << endl;
 			}
 		}
+
+		isPickingFeature = false;
+		emit featurePickingFinished();
 	}
 }

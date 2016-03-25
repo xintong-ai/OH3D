@@ -164,20 +164,19 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
 		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		if (i == snappedGlyphId)
-			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 0.3f, 0.3f); 
-		//else if (isHighlightingFeature && feature[i] > 0){
-		//	if (feature[i] == snappedFeatureId)
-		//		qgl->glUniform3f(glProg->uniform("Ka"), 0.3f, 0.3f, 1.0f);
-		//	else
-		//		qgl->glUniform3f(glProg->uniform("Ka"), 0.2f, 0.2f, 0.6f);
-		//}
+			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 1.0f, 0.3f); 
 		else if (feature[i] > 0){
+			float kar = 0.3f, kag = 0.3f, kab = 0.3f;
 			if (feature[i] == 1)
-				qgl->glUniform3f(glProg->uniform("Ka"), 0.3f, 0.3f, 1.0f);
+				kab = 1.0f;
 			else if (feature[i] == 2)
-				qgl->glUniform3f(glProg->uniform("Ka"), 0.3f, 1.0f, 0.3f);
+				kag = 1.0f;
 			else if (feature[i] == 3)
-				qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 0.3f, 0.3f);
+				kar = 1.0f;
+			if (feature[i] == snappedFeatureId){
+				kar += 0.3f, kag += 0.3f, kab += 0.3f;
+			}
+			qgl->glUniform3f(glProg->uniform("Ka"), kar, kag, kab);
 		}
 		else
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
@@ -186,6 +185,7 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 1);
+
 		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &pos[i].x);
 		qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
