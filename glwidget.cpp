@@ -166,7 +166,7 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
-	std::cout << "mousePressEvent:" <<  std::endl;
+	//std::cout << "mousePressEvent:" <<  std::endl;
 
 	QPointF pos = event->pos();
 	QPoint posGL = pixelPosToGLPos(event->pos());

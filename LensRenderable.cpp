@@ -614,7 +614,7 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 	}
 	//return insideAnyLens;
 	lastPt = make_int2(x, y);
-	std::cout << lastPt.x << ", " << lastPt.y << std::endl;
+	//std::cout << lastPt.x << ", " << lastPt.y << std::endl;
 }
 
 void LensRenderable::mouseRelease(int x, int y, int modifier)

@@ -43,6 +43,8 @@ set( Srcs main.cpp GLSphere.cpp GLArrow.cpp
 	LeapListener.cpp 
     GLMatrixManager.cpp
     ModelGridRenderable.cpp
+	PolyRenderable.cpp
+	MeshReader.cpp
 	ModelGrid.cu
 	)
 set( Hdrs  
@@ -61,6 +63,8 @@ GLSphere.h
 	ModelGrid.h
 	GridMesh.h
 	OPENGL_DRIVER.h
+	PolyRenderable.h
+	MeshReader.h
 	deform/CUDA_PROJECTIVE_TET_MESH.h
     )
 #set( Rcs resources/vechist.qrc)
