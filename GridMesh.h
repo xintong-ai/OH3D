@@ -204,7 +204,7 @@ public:
 	}
 
 
-	GridMesh(float dataMin[3], float dataMax[3], int n)
+	GridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH((n + 1) * (n + 1) * (n + 1) * 5)
 	{
 		float3 rangeDiff;
 		float gridMin[3];
@@ -247,7 +247,7 @@ public:
 
 		//elasticity = 1800;// 18000000; //5000000
 		control_mag	= 500;		//500
-		damping		= 0.5;
+		damping = 0.9;
 	}
 
 };
