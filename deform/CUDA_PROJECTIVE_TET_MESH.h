@@ -230,51 +230,45 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 
 	if(fixed[i]!=0)	return;
 
-	if(more_fixed[i]!=0)
-	{
-		//X[i*3+0]+=dir_x;
-		//X[i*3+1]+=dir_y;
-		//X[i*3+2]+=dir_z;
-		//V[i*3+0] =0;
-		//V[i*3+1] =0;
-		//V[i*3+2] =0;
-		return;
-	}
+	if(more_fixed[i]!=0) return;
 
 	//Apply damping
 	V[i*3+0]*=damping;
 	V[i*3+1]*=damping;
 	V[i*3+2]*=damping;
-	//Apply gravity
+	//Apply force
 	float3 lensForce = make_float3(0, 0, 0);
 	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
 	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
-	float3 lensCen2Vert = vert - lensCen;
-	float lensCen2VertProj = dot(lensCen2Vert, lensDir);
-	const float focusRadSq = radius * radius;
-	float3 moveVec = lensCen2Vert - lensCen2VertProj * lensDir;
+	float3 lensCenFront = lensCen + lensDir * radius;
+	//float3 lensCenBack = lensCen - lensDir * radius;
+	float3 lensCenFront2Vert = vert - lensCenFront;
+	float lensCenFront2VertProj = dot(lensCenFront2Vert, lensDir);
+	const float transRad = radius / focusRatio;
+	float3 moveVec = lensCenFront2Vert - lensCenFront2VertProj * lensDir;
 	float3 moveDir = normalize(moveVec);
-	float3 lensCenBack = lensCen - lensDir * radius;
-	if (lensCen2VertProj > 0){
-		float dist2RaySq = dot(moveVec, moveVec);
-		if (dist2RaySq < focusRadSq){
-			lensForce = (focusRadSq - dist2RaySq) * moveDir;
+	if (lensCenFront2VertProj > 0){
+		float dist2Ray = length(moveVec);
+		if (dist2Ray < radius){
+			lensForce = radius / transRad * moveDir;
+		}
+		else if (dist2Ray < transRad){
+			lensForce = (transRad - dist2Ray) / transRad * moveDir;
 		}
 	}
-	//else if (dot(vert - lensCenBack, lensDir) > 0){
 	else{
-		//float3 lensCenFront2Vert = vert - lensCenFront;
-		float dist2LensCenSq = dot(lensCen2Vert, lensCen2Vert);
-		if (dist2LensCenSq < focusRadSq)
-			lensForce = (focusRadSq - dist2LensCenSq) *  moveDir; //normalize(lensCen2Vert);//
+		float dist2LensCenFront = length(lensCenFront2Vert);
+		if (dist2LensCenFront < radius){
+			lensForce = radius / transRad * moveDir; //normalize(lensCen2Vert);//
+		}
+		else if (dist2LensCenFront < transRad){
+			lensForce = (transRad - dist2LensCenFront) / transRad *  moveDir; //normalize(lensCen2Vert);//
+		}
 	}
-	//float dist2LensCenSq = dot(lensCen2Vert, lensCen2Vert);
-	//if (dist2LensCenSq < focusRadSq)
-	//	lensForce = (focusRadSq - dist2LensCenSq) *  moveDir; //normalize(lensCen2Vert);//
 
 	for (int j = 0; j < 3; j++) {
-		V[i * 3 + j] += (300 * (&(lensForce.x))[j]* t);
+		V[i * 3 + j] += (1000 * (&(lensForce.x))[j]* t);
 	}
 
 	//V[i*3+1]+=GRAVITY*t;
