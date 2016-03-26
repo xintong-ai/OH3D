@@ -72,6 +72,11 @@ public:
 		glTexCoordPointer(2, GL_FLOAT, 0, &texcoords[0]);
 		glDrawElements(GL_QUADS, indices.size(), GL_UNSIGNED_SHORT, &indices[0]);
 		glPopMatrix();
+
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glDisableClientState(GL_NORMAL_ARRAY);
+		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
 	}
 };
 
@@ -96,7 +101,6 @@ void LensRenderable::adjustOffset(){
 
 		}
 	}
-
 }; 
 
 void LensRenderable::RefineLensBoundary(){
@@ -127,9 +131,10 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glLoadMatrixf(modelview);
 
 		//lensCenterSphere->draw(l->c.x, l->c.y, l->c.z);
+		glEnableClientState(GL_VERTEX_ARRAY);
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		GLSphere sphere(1.0,8);
+		GLSphere sphere(1.0,3);
 		glColor4f(1.0f, 1.0f, 1.0f, 0.9f);
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
@@ -139,6 +144,8 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glDrawArrays(GL_QUADS, 0, sphere.GetNumVerts());
 		glPopMatrix();
 		glPolygonMode(GL_FRONT_AND_BACK ,GL_FILL);
+
+		glDisableClientState(GL_VERTEX_ARRAY);
 
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
@@ -163,18 +170,18 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
 			
-			if (!l->isConstructing){
-				glEnable(GL_BLEND);
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-				glPointSize(25.0);
-				glEnable(GL_POINT_SMOOTH);
-				glColor4f(0.5f, 0.3f, 0.8f, 0.9f);
-				glBegin(GL_POINTS);
-				float2 center = l->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
-				glVertex2f(center.x, center.y);
-				glEnd();
-				glDisable(GL_POINT_SMOOTH);
-			}
+			//if (!l->isConstructing){
+			//	glEnable(GL_BLEND);
+			//	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			//	glPointSize(25.0);
+			//	glEnable(GL_POINT_SMOOTH);
+			//	glColor4f(0.5f, 0.3f, 0.8f, 0.9f);
+			//	glBegin(GL_POINTS);
+			//	float2 center = l->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
+			//	glVertex2f(center.x, center.y);
+			//	glEnd();
+			//	glDisable(GL_POINT_SMOOTH);
+			//}
 
 			std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
 			glColor3f(0.39f, 0.89f, 0.26f);

@@ -1,6 +1,6 @@
 build*/
 
-state.txt
+*.state
 
 # Compiled Object files
 *.slo

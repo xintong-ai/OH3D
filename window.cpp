@@ -340,12 +340,12 @@ void Window::SlotTogglePickingFeature(bool b)
 
 void Window::SlotSaveState()
 {
-	matrixMgr->SaveState("state.txt");
+	matrixMgr->SaveState("current.state");
 }
 
 void Window::SlotLoadState()
 {
-	matrixMgr->LoadState("state.txt");
+	matrixMgr->LoadState("current.state");
 }
 
 

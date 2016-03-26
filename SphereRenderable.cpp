@@ -207,6 +207,9 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 		glPopMatrix();
 	}
 
+	qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 }
 
 void SphereRenderable::draw(float modelview[16], float projection[16])
@@ -330,6 +333,9 @@ void SphereRenderable::drawPicking(float modelview[16], float projection[16], bo
 		glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
 		//glPopMatrix();
 	}
+
+	qgl->glDisableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glPickingProg->disable();
 }
