@@ -1,6 +1,8 @@
 #ifndef GL_WIDGET_H
 #define GL_WIDGET_H
 
+#define ENABLE_TIMER 1
+
 #include <QtWidgets>
 #include <QVector3D>
 #include <QMatrix4x4>
@@ -124,8 +126,7 @@ private:
     StopWatchInterface *timer = 0;
     int m_frame;
     int fpsCount = 0;        // FPS count for averaging
-    int fpsLimit = 16;        // FPS limit for sampling
-    int g_Index = 0;
+    int fpsLimit = 64;        // FPS limit for sampling
     unsigned int frameCount = 0;
 
     std::map<std::string,Renderable*> renderers;

@@ -10,6 +10,7 @@
 class GLWidget;
 #define USE_PBO 0
 #define DRAW_PIXELS 0
+class StopWatchInterface;
 inline void GetInvPVM(float modelview[16], float projection[16], float invPVM[16])
 {
     QMatrix4x4 q_modelview(modelview);
@@ -33,8 +34,13 @@ inline void GetNormalMatrix(float modelview[16], float NormalMatrix[9])
 
 class Renderable: public QObject
 {
+	/****timing****/
+	StopWatchInterface *timer = 0;
+	int fpsCount = 0;        // FPS count for averaging
+	int fpsLimit = 64;        // FPS limit for sampling
+
 public:
-    Renderable(){}
+	Renderable();
     ~Renderable();
 
 	virtual void init(){}
@@ -88,6 +94,12 @@ public:
 
 	void SetVisibility(bool b) { visible = b; }
 	//void SetDrawScreenSpace(bool b) { drawScreenSpace = b; }
+
+	void ReportDrawTime();
+
+	void DrawBegin();
+
+	void DrawEnd(const char* rendererName);
 
 protected:
     //DataMgr *dataMgr;
