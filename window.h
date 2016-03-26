@@ -51,6 +51,9 @@ private:
 	std::unique_ptr<QRadioButton> radioDeformScreen;
 	std::unique_ptr<QRadioButton> radioDeformObject;
 
+	std::unique_ptr<QPushButton> saveStateBtn;
+	std::unique_ptr<QPushButton> loadStateBtn;
+
 	QCheckBox* usingGlyphSnappingCheck;
 	QCheckBox* usingGlyphPickingCheck;
 	QCheckBox* freezingFeatureCheck;
@@ -90,6 +93,9 @@ private slots:
 	void SlotToggleFeaturePickingFinished();
 
 	void SlotDeformModeChanged(bool clicked);
+
+	void SlotSaveState();
+	void SlotLoadState();
 };
 
 #endif

@@ -159,6 +159,9 @@ Window::Window()
 	addLineLensBtn = new QPushButton("Add straight band lens");
 	delLensBtn = std::make_unique<QPushButton>("Delete a lens");
 	addCurveBLensBtn = new QPushButton("Add curved band lens");
+	saveStateBtn = std::make_unique<QPushButton>("Save State");
+	loadStateBtn = std::make_unique<QPushButton>("Load State");
+
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
@@ -193,6 +196,8 @@ Window::Window()
 
 	controlLayout->addWidget(addCurveBLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
+	controlLayout->addWidget(saveStateBtn.get());
+	controlLayout->addWidget(loadStateBtn.get());
 	controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(transSizeLabel);
 	controlLayout->addWidget(transSizeSlider);
@@ -208,6 +213,8 @@ Window::Window()
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
 	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
 	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
+	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
+	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
 
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
@@ -222,6 +229,7 @@ Window::Window()
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 
+	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
@@ -330,7 +338,15 @@ void Window::SlotTogglePickingFeature(bool b)
 	}
 }
 
+void Window::SlotSaveState()
+{
+	matrixMgr->SaveState("state.txt");
+}
 
+void Window::SlotLoadState()
+{
+	matrixMgr->LoadState("state.txt");
+}
 
 
 void Window::SlotToggleGlyphPickingFinished()
