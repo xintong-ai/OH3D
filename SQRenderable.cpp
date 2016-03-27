@@ -165,19 +165,19 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 		if (i == snappedGlyphId)
 			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 1.0f, 0.3f); 
-		else if (feature[i] > 0){
-			float kar = 0.3f, kag = 0.3f, kab = 0.3f;
-			if (feature[i] == 1)
-				kab = 1.0f;
-			else if (feature[i] == 2)
-				kag = 1.0f;
-			else if (feature[i] == 3)
-				kar = 1.0f;
-			if (feature[i] == snappedFeatureId){
-				kar += 0.3f, kag += 0.3f, kab += 0.3f;
-			}
-			qgl->glUniform3f(glProg->uniform("Ka"), kar, kag, kab);
-		}
+		//else if (feature[i] > 0){
+		//	float kar = 0.3f, kag = 0.3f, kab = 0.3f;
+		//	if (feature[i] == 1)
+		//		kab = 1.0f;
+		//	else if (feature[i] == 2)
+		//		kag = 1.0f;
+		//	else if (feature[i] == 3)
+		//		kar = 1.0f;
+		//	if (feature[i] == snappedFeatureId){
+		//		kar += 0.3f, kag += 0.3f, kab += 0.3f;
+		//	}
+		//	qgl->glUniform3f(glProg->uniform("Ka"), kar, kag, kab);
+		//}
 		else
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 

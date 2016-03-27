@@ -1,6 +1,7 @@
 #include "Renderable.h"
 #include "DataMgr.h"
 #include "glwidget.h"
+#include <helper_timer.h>
 
 void Renderable::AllocOutImage() {
     if(h_output != NULL)
@@ -10,7 +11,8 @@ void Renderable::AllocOutImage() {
 }
 
 Renderable::~Renderable() {
-    if(h_output != NULL)
+	sdkDeleteTimer(&timer);
+	if (h_output != NULL)
         delete [] h_output;
 }
 
@@ -24,6 +26,28 @@ void Renderable::draw(float modelview[16], float projection[16])
 {
 }
 
-//void Renderable::GetDataDim(int &nx, int &ny, int &nz) {
-//    dataMgr->GetDataDim(nx, ny, nz);
-//}
+void Renderable::DrawBegin()
+{
+#if ENABLE_TIMER
+	sdkStartTimer(&timer);
+#endif
+}
+
+void Renderable::DrawEnd(const char* rendererName)
+{
+#if ENABLE_TIMER
+	sdkStopTimer(&timer);
+	fpsCount++;
+	if (fpsCount == fpsLimit)
+	{
+		qDebug() << rendererName << " time (ms):\t" << sdkGetAverageTimerValue(&timer);
+		fpsCount = 0;
+		sdkResetTimer(&timer);
+	}
+#endif
+}
+
+Renderable::Renderable()
+{
+	sdkCreateTimer(&timer);
+}

@@ -76,44 +76,31 @@ struct functor_Displace
 		float brightness = 1.0f;
 		float2 screenPos = thrust::get<0>(t);
 		float2 newScreenPos = screenPos;
-		if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		if (thrust::get<5>(t) != snappedGlyphId && 
+			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) 
+			|| (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
 			float4 clipPos = thrust::get<1>(t);
 			float2 lensCen = make_float2(lensX, lensY);
 			float2 vec = screenPos - lensCen;
 			float dis2Cen = length(vec);
-			const float thickDisp = 0.003;
-			const float thickFocus = 0.003;
-			const float dark = 0.05;
+			const float thickDisp = 0.1;//0.003;
+			//const float thickFocus = 0.003;
+			const float dark = 0.1;
 			float outerR = circleR / focusRatio;
-			int myCase = 0;
+			float2 dir = normalize(vec);
 			if (dis2Cen < outerR){
 				if ((lensD - clipPos.z) > thickDisp){
-					myCase = 1;//cutaway
+					//cutaway
+					newScreenPos = dir * outerR + lensCen;
 				}
 				else if (clipPos.z < lensD){
-					myCase = 2;//displace
+					//displace
+					newScreenPos = lensCen + dir * G(dis2Cen / outerR, focusRatio) * outerR;
 				}
-				else if (dis2Cen > circleR){
-					myCase = 3;//turn dark
+				else {
+					//graduately turn dark
+					brightness = max(dark, 1.0 / (300 * (clipPos.z - lensD) + 1.0));
 				}
-				else if ((clipPos.z - lensD) > thickFocus) {
-					myCase = 4;//graduately turn dark
-				}
-			}
-			float2 dir = normalize(vec);
-			switch (myCase){
-			case 1:
-				newScreenPos = dir * outerR + lensCen;
-				break;
-			case 2:
-				newScreenPos = lensCen + dir * G(dis2Cen / outerR, focusRatio) * outerR;
-				break;
-			case 3:
-				brightness = dark;
-				break;
-			case 4:
-				brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
-				break;
 			}
 		}
 

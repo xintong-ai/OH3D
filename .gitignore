@@ -1,5 +1,7 @@
 build*/
 
+*.state
+
 # Compiled Object files
 *.slo
 *.lo

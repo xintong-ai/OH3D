@@ -36,5 +36,8 @@ public:
 	void FinishedScale();
 	float3 DataCenter();
 	void SetViewMat(QMatrix4x4 _m){ viewMat = _m; }
+
+	void SaveState(const char* filename);
+	void LoadState(const char* filename);
 };
 #endif //GL_MATRIX_MANAGER_H
