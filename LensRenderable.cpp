@@ -134,12 +134,12 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glEnableClientState(GL_VERTEX_ARRAY);
 
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		GLSphere sphere(1.0,3);
+		GLSphere sphere(1.0,2);
 		glColor4f(1.0f, 1.0f, 1.0f, 0.9f);
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
 		glTranslatef(l->c.x, l->c.y, l->c.z);
-		glScalef(0.2, 0.2, 0.2);
+		glScalef(0.1, 0.1, 0.1);
 		glVertexPointer(3, GL_FLOAT, 0, sphere.GetVerts());
 		glDrawArrays(GL_QUADS, 0, sphere.GetNumVerts());
 		glPopMatrix();
@@ -206,13 +206,13 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 					glVertex2f(v.x, v.y);
 				glEnd();
 
-				glColor3f(1.0f, 0.2f, 0.2f);
+				glColor3f(0.39f, 0.89f, 0.26f);
 				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
 				glBegin(GL_LINE_LOOP);
 				for (auto v : lensContour)
 					glVertex2f(v.x, v.y);
 				glEnd();
-				glColor3f(0.2f, 0.8f, 0.8f);
+				glColor3f(0.82f, 0.31f, 0.67f);
 				std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
 				glBegin(GL_LINE_LOOP);
 				for (auto v : lensOuterContour)
@@ -417,7 +417,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
 				std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour(eyeWorld, false);
 
-				glColor3f(0.2f, 1.0f, 0.2f);
+				glColor3f(0.39f, 0.89f, 0.26f);
 				for (int i = 0; i < 1; i++){
 					glBegin(GL_LINE_LOOP);
 					for (auto v : lensContour[i]){
@@ -426,7 +426,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 					glEnd();
 				}
 
-				glColor3f(1.0f, 0.2f, 0.2f);
+				glColor3f(0.82f, 0.31f, 0.67f);
 				for (int i = 2; i < 3; i++){
 					glBegin(GL_LINE_LOOP);
 					for (auto v : lensContour[i]){

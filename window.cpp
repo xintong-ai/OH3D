@@ -140,16 +140,19 @@ Window::Window()
 		meshReader = new MeshReader();
 		meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str());
 		polyFeature = new PolyRenderable(meshReader);
+		polyFeature->SetAmbientColor(0.2, 0, 0);
 		openGL->AddRenderable("ventricles", polyFeature);
 
 		meshReader = new MeshReader();
 		meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str());
 		polyFeature = new PolyRenderable(meshReader);
+		polyFeature->SetAmbientColor(0.0, 0.2, 0);
 		openGL->AddRenderable("tumor1", polyFeature);
 
 		meshReader = new MeshReader();
 		meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str());
 		polyFeature = new PolyRenderable(meshReader);
+		polyFeature->SetAmbientColor(0.0, 0.0, 0.2);
 		openGL->AddRenderable("tumor2", polyFeature);
 
 	}

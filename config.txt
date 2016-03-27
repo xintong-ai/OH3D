@@ -1,5 +1,5 @@
-DATA_TYPE=TYPE_SCALAR
-DATA_PATH=D:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
+DATA_TYPE=TYPE_TENSOR
+DATA_PATH=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 VR_SUPPORT=OFF
 FEATURE_PATH=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
 ventricles=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply

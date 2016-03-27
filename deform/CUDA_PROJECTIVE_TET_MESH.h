@@ -268,7 +268,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	}
 
 	for (int j = 0; j < 3; j++) {
-		V[i * 3 + j] += (1000 * (&(lensForce.x))[j]* t);
+		V[i * 3 + j] += (2000 * (&(lensForce.x))[j]* t);
 	}
 
 	//V[i*3+1]+=GRAVITY*t;
