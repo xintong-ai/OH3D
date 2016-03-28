@@ -139,7 +139,10 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	m_vao->bind();
 
 	qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, 10, 1);
-	qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
+	if (isSnapped)
+		qgl->glUniform3f(glProg->uniform("Ka"), ka.x + 0.2, ka.y + 0.2, ka.z + 0.2);
+	else
+		qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
 	qgl->glUniform3f(glProg->uniform("Kd"), 0.6f, 0.6f, 0.6f);
 	qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 	qgl->glUniform1f(glProg->uniform("Shininess"), 1);
@@ -206,4 +209,8 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
 
 	m_vao->release();
+}
+
+float3 PolyRenderable::GetPolyCenter(){
+	return m->center;
 }
