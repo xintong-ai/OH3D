@@ -13,7 +13,13 @@ class LensRenderable :public Renderable
 	int pickedLens = -1;
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
+
+	
 public:
+	float3 snapPos;
+	void SnapLastLens();
+
+
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;

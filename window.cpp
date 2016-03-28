@@ -135,25 +135,24 @@ Window::Window()
 	openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("model", modelGridRenderable.get());
 	if (DATA_TYPE::TYPE_TENSOR == dataType) {
-		PolyRenderable* polyFeature;
 		MeshReader *meshReader;
 		meshReader = new MeshReader();
 		meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str());
-		polyFeature = new PolyRenderable(meshReader);
-		polyFeature->SetAmbientColor(0.2, 0, 0);
-		openGL->AddRenderable("ventricles", polyFeature);
+		polyFeature0 = new PolyRenderable(meshReader);
+		polyFeature0->SetAmbientColor(0.2, 0, 0);
+		openGL->AddRenderable("ventricles", polyFeature0);
 
 		meshReader = new MeshReader();
 		meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str());
-		polyFeature = new PolyRenderable(meshReader);
-		polyFeature->SetAmbientColor(0.0, 0.2, 0);
-		openGL->AddRenderable("tumor1", polyFeature);
+		polyFeature1 = new PolyRenderable(meshReader);
+		polyFeature1->SetAmbientColor(0.0, 0.2, 0);
+		openGL->AddRenderable("tumor1", polyFeature1);
 
 		meshReader = new MeshReader();
 		meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str());
-		polyFeature = new PolyRenderable(meshReader);
-		polyFeature->SetAmbientColor(0.0, 0.0, 0.2);
-		openGL->AddRenderable("tumor2", polyFeature);
+		polyFeature2 = new PolyRenderable(meshReader);
+		polyFeature2->SetAmbientColor(0.0, 0.0, 0.2);
+		openGL->AddRenderable("tumor2", polyFeature2);
 
 	}
 
@@ -232,6 +231,16 @@ Window::Window()
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 
+
+	if (DATA_TYPE::TYPE_TENSOR == dataType) {
+		featuresLw = new QListWidget();
+		featuresLw->addItem(QString("ventricles"));
+		featuresLw->addItem(QString("tumor1"));
+		featuresLw->addItem(QString("tumor2"));
+		featuresLw->setEnabled(false);
+		controlLayout->addWidget(featuresLw);
+		connect(featuresLw, SIGNAL(currentRowChanged(int)), this, SLOT(SlotFeaturesLwRowChanged(int)));
+	}
 	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
@@ -338,6 +347,11 @@ void Window::SlotTogglePickingFeature(bool b)
 		SlotToggleUsingGlyphSnapping(false);
 		usingGlyphPickingCheck->setChecked(false);
 		SlotTogglePickingGlyph(false);
+		featuresLw->setEnabled(true);
+	}
+	else{
+		featuresLw->clearSelection();
+		featuresLw->setEnabled(false);
 	}
 }
 
@@ -371,3 +385,31 @@ void Window::SlotDeformModeChanged(bool clicked)
 		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
 	}
 }
+
+void Window::SlotFeaturesLwRowChanged(int currentRow)
+{
+	if (currentRow == 0){
+		polyFeature0->isSnapped = true;
+		polyFeature1->isSnapped = false;
+		polyFeature2->isSnapped = false;
+		lensRenderable->snapPos = polyFeature0->GetPolyCenter();
+		lensRenderable->SnapLastLens();
+	}
+	else if (currentRow == 1){
+		polyFeature0->isSnapped = false;
+		polyFeature1->isSnapped = true;
+		polyFeature2->isSnapped = false;
+		lensRenderable->snapPos = polyFeature1->GetPolyCenter();
+		lensRenderable->SnapLastLens();
+	}
+	else if (currentRow == 2){
+		polyFeature0->isSnapped = false;
+		polyFeature1->isSnapped = false;
+		polyFeature2->isSnapped = true;
+		lensRenderable->snapPos = polyFeature2->GetPolyCenter();
+		lensRenderable->SnapLastLens();
+	}
+	usingFeaturePickingCheck->setChecked(false);
+	featuresLw->setEnabled(false);
+}
+
