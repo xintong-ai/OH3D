@@ -58,7 +58,6 @@ void GLWidget::initializeGL()
 {
 	makeCurrent();
 	initializeOpenGLFunctions();
-    sdkCreateTimer(&timer);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 }
@@ -70,7 +69,7 @@ void GLWidget::computeFPS()
     if (fpsCount == fpsLimit)
     {
         float ifps = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
-        //qDebug() << "FPS: "<<ifps;
+        qDebug() << "FPS: "<<ifps;
         fpsCount = 0;
 //        fpsLimit = (int)MAX(1.f, ifps);
         sdkResetTimer(&timer);
@@ -79,13 +78,17 @@ void GLWidget::computeFPS()
 
 void GLWidget::TimerStart()
 {
+#if ENABLE_TIMER
     sdkStartTimer(&timer);
+#endif
 }
 
 void GLWidget::TimerEnd()
 {
-    sdkStopTimer(&timer);
-    computeFPS();
+#if ENABLE_TIMER
+	sdkStopTimer(&timer);
+	computeFPS();
+#endif
 }
 
 
@@ -107,7 +110,9 @@ void GLWidget::paintGL() {
 	matrixMgr->GetProjection(projection, width, height);
 	for (auto renderer : renderers)
 	{
+		renderer.second->DrawBegin();
 		renderer.second->draw(modelview, projection);
+		renderer.second->DrawEnd(renderer.first.c_str());
 	}
 
     TimerEnd();
@@ -332,11 +337,10 @@ void GLWidget::UpdateGL()
 
 void GLWidget::animate()
 {
-	for (auto renderer : renderers)
-		renderer.second->animate();
+	//for (auto renderer : renderers)
+	//	renderer.second->animate();
 	update();
 }
-
 
 void GLWidget::UpdateDepthRange()
 {

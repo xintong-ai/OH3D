@@ -3,6 +3,8 @@
 #include <Rotation.h>
 #include <qmatrix4x4.h>
 #include <helper_math.h>
+#include <fstream>
+#include <iostream>
 //
 //void Perspective(float fovyInDegrees, float aspectRatio,
 //	float znear, float zfar)
@@ -116,4 +118,40 @@ void GLMatrixManager::SetVol(float3 posMin, float3 posMax)
 float3 GLMatrixManager::DataCenter()
 {
 	return (dataMin + dataMax) * 0.5;
+}
+
+void GLMatrixManager::SaveState(const char* filename)
+{
+	std::ofstream myfile;
+	myfile.open(filename);
+	for (int i = 0; i < 16; i++){
+		myfile << transRot.constData()[i] << " ";
+	}
+	myfile << std::endl;
+
+	for (int i = 0; i < 3; i++) {
+		myfile << transVec[i] << " ";
+	}
+	myfile << std::endl;
+
+	myfile << transScale << std::endl;
+	myfile.close();
+}
+
+void GLMatrixManager::LoadState(const char* filename)
+{
+	std::ifstream ifs(filename, std::ifstream::in);
+
+	for (int i = 0; i < 16; i++) {
+		ifs >> transRot.data()[i];
+	}
+
+	ifs >> transVec[0];
+	ifs >> transVec[1];
+	ifs >> transVec[2];
+
+	ifs >> transScale;
+
+	ifs.close();
+
 }

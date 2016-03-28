@@ -178,6 +178,23 @@ __global__ void Control_Kernel(float* X, float *more_fixed, const float control_
 	}
 }
 
+__device__ bool PointInsideLens(float3 p, float3 lensCen, float3 lensDir, float lensRadius){
+	bool ret = false;
+	float3 lenCen2P = p - lensCen;
+	float lensCen2PProj = dot(lenCen2P, lensDir);
+	float lensRadiusSq = lensRadius * lensRadius;
+	if (lensCen2PProj > 0 ){
+		float3 moveVec = lenCen2P - lensCen2PProj * lensDir;
+		if (dot(moveVec, moveVec) < lensRadiusSq){
+			ret = true;
+		}
+	}
+	else if (dot(lenCen2P, lenCen2P) < lensRadiusSq){
+		ret = true;
+	}
+	return ret;
+}
+
 __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
 	, const float cen_x, const float cen_y, const float cen_z
 	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, const float radius)
@@ -186,17 +203,11 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 	if (i >= number)	return;
 	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
 	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
-	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
-	float3 lensCen2Vert = vert - lensCen;
-	float vertProjLeng = dot(lensCen2Vert, lensDir);
-	float3 lensForce = make_float3(0, 0, 0);
-	//const float focusRadSqr = 9;
-	float focusRadSqr = radius*radius;
-	float3 projVec = vertProjLeng * lensDir;
-	float3 moveDir = lensCen2Vert - projVec;
-	float dist2RaySqr = dot(moveDir, moveDir);
-	if (vertProjLeng < 0 || dist2RaySqr >((1 / focusRatio / focusRatio)* focusRadSqr)){
-		more_fixed[i] = 10;
+	//float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
+	float3 vertOrig = make_float3(X_Orig[i * 3], X_Orig[i * 3 + 1], X_Orig[i * 3 + 2]);
+	//we have to use the original position here, otherwise the points will vibrate.
+	if (!PointInsideLens(vertOrig, lensCen, lensDir, radius / focusRatio)){
+		more_fixed[i] = 10000000;
 		X[i * 3 + 0] = X_Orig[i * 3 + 0];
 		X[i * 3 + 1] = X_Orig[i * 3 + 1];
 		X[i * 3 + 2] = X_Orig[i * 3 + 2];
@@ -211,53 +222,53 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 ///////////////////////////////////////////////////////////////////////////////////////////
 __global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
 	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z)
+	, const float dir_x, const float dir_y, const float dir_z
+	, const float focusRatio, const float radius)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
 
 	if(fixed[i]!=0)	return;
 
-	if(more_fixed[i]!=0)
-	{
-		//X[i*3+0]+=dir_x;
-		//X[i*3+1]+=dir_y;
-		//X[i*3+2]+=dir_z;
-		V[i*3+0] =0;
-		V[i*3+1] =0;
-		V[i*3+2] =0;
-		return;
-	}
+	if(more_fixed[i]!=0) return;
 
 	//Apply damping
 	V[i*3+0]*=damping;
 	V[i*3+1]*=damping;
 	V[i*3+2]*=damping;
-	//Apply gravity
+	//Apply force
+	float3 lensForce = make_float3(0, 0, 0);
 	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
 	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
-	float3 lensCen2Vert = vert - lensCen;
-	float vertProjLeng = dot(lensCen2Vert, lensDir);
-	float3 lensForce = make_float3( 0, 0, 0 );
-	const float focusRadSqr = 4;
-	float3 projVec = vertProjLeng * lensDir;
-	float3 moveDir = lensCen2Vert - projVec;
-	float dist2RaySqr = dot(moveDir, moveDir);
-#if 1
-	if (vertProjLeng > 0){
-		if (dist2RaySqr < focusRadSqr){
-			lensForce =  10 * (focusRadSqr - dist2RaySqr) * normalize(moveDir);
+	float3 lensCenFront = lensCen + lensDir * radius;
+	//float3 lensCenBack = lensCen - lensDir * radius;
+	float3 lensCenFront2Vert = vert - lensCenFront;
+	float lensCenFront2VertProj = dot(lensCenFront2Vert, lensDir);
+	const float transRad = radius / focusRatio;
+	float3 moveVec = lensCenFront2Vert - lensCenFront2VertProj * lensDir;
+	float3 moveDir = normalize(moveVec);
+	if (lensCenFront2VertProj > 0){
+		float dist2Ray = length(moveVec);
+		if (dist2Ray < radius){
+			lensForce = radius / transRad * moveDir;
+		}
+		else if (dist2Ray < transRad){
+			lensForce = (transRad - dist2Ray) / transRad * moveDir;
 		}
 	}
-#else 
-	if (dist2RaySqr < focusRadSqr && vertProjLeng > 0){
-		lensForce = 0.3 * normalize(lensDir);// *(focusRadSqr - dist2RaySqr);
+	else{
+		float dist2LensCenFront = length(lensCenFront2Vert);
+		if (dist2LensCenFront < radius){
+			lensForce = radius / transRad * moveDir; //normalize(lensCen2Vert);//
+		}
+		else if (dist2LensCenFront < transRad){
+			lensForce = (transRad - dist2LensCenFront) / transRad *  moveDir; //normalize(lensCen2Vert);//
+		}
 	}
 
-#endif
 	for (int j = 0; j < 3; j++) {
-		V[i * 3 + j] += (30 * (&(lensForce.x))[j]* t);
+		V[i * 3 + j] += (2000 * (&(lensForce.x))[j]* t);
 	}
 
 	//V[i*3+1]+=GRAVITY*t;
@@ -458,7 +469,7 @@ public:
 	//by Xin
 	TYPE* EL;
 
-	CUDA_PROJECTIVE_TET_MESH()
+	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH(maxNum)
 	{
 		cost_ptr= 0;
 
@@ -746,7 +757,7 @@ public:
 		// Step 1: Basic update
 		Update_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
 			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2]);
+			, lenDir[0], lenDir[1], lenDir[2], focusRatio, radius);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1/t, number);

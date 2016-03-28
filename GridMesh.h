@@ -106,19 +106,19 @@ public:
 		}
 		number = nStep[0] * nStep[1] * nStep[2];
 		int idx = 0;
-		int end[3] = {0, 0, 0};// whether it is at the two ends of the axis
+		//int end[3] = {0, 0, 0};// whether it is at the two ends of the axis
 		for (int i = 0; i < nStep[0]; i++){
-			end[0] = ((i == 0) || (i == (nStep[0] - 1))) ? 1 : 0;
+			//end[0] = ((i == 0) || (i == (nStep[0] - 1))) ? 1 : 0;
 			for (int j = 0; j < nStep[1]; j++){
-				end[1] = ((j == 0) || (j == (nStep[1] - 1))) ? 1 : 0;
+				//end[1] = ((j == 0) || (j == (nStep[1] - 1))) ? 1 : 0;
 				for (int k = 0; k < nStep[2]; k++){
-					end[2] = ((k == 0) || (k == (nStep[2] - 1))) ? 1 : 0;
+					//end[2] = ((k == 0) || (k == (nStep[2] - 1))) ? 1 : 0;
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 					X[3 * idx + 0] = dmin[0] + i * step;
 					X[3 * idx + 1] = dmin[1] + j * step;
 					X[3 * idx + 2] = dmin[2] + k * step;
-					if ((end[0] + end[1] + end[2]) > 0)
-						fixed[idx] = 10000000;
+					//if ((end[0] + end[1] + end[2]) > 0)
+						//fixed[idx] = 10000000;
 				}
 			}
 		}
@@ -204,7 +204,7 @@ public:
 	}
 
 
-	GridMesh(float dataMin[3], float dataMax[3], int n)
+	GridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH((n + 1) * (n + 1) * (n + 1) * 5)
 	{
 		float3 rangeDiff;
 		float gridMin[3];
@@ -247,7 +247,7 @@ public:
 
 		//elasticity = 1800;// 18000000; //5000000
 		control_mag	= 500;		//500
-		damping		= 0.5;
+		damping = 0.9;
 	}
 
 };

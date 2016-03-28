@@ -7,13 +7,19 @@ class Displace;
 class ShaderProgram;
 class QOpenGLContext;
 class ModelGrid;
+class StopWatchInterface;
 
 class GlyphRenderable: public Renderable
 {
 	Q_OBJECT
 	bool frameBufferObjectInitialized = false;
 
-
+	/****timing****/
+	StopWatchInterface *deformTimer = 0;
+	int fpsCount = 0;        // FPS count for averaging
+	int fpsLimit = 64;        // FPS limit for sampling
+	void StartDeformTimer();
+	void StopDeformTimer();
 public:
 	//used for feature highlight rendering
 	bool isFreezingFeature = false;

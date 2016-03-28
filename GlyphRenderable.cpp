@@ -17,9 +17,32 @@ using namespace std;
 
 #include <QOpenGLFunctions>
 #include "ShaderProgram.h"
+#include <helper_timer.h>
+
+void GlyphRenderable::StartDeformTimer()
+{
+#if ENABLE_TIMER
+	sdkStartTimer(&deformTimer);
+#endif
+}
+
+void GlyphRenderable::StopDeformTimer()
+{
+#if ENABLE_TIMER
+	sdkStopTimer(&deformTimer);
+	fpsCount++;
+	if (fpsCount == fpsLimit)
+	{
+		qDebug() << "Deform time (ms):\t" << sdkGetAverageTimerValue(&deformTimer);
+		fpsCount = 0;
+		sdkResetTimer(&deformTimer);
+	}
+#endif
+}
 
 void GlyphRenderable::ComputeDisplace(float _mv[16])
 {
+	StartDeformTimer();
 	int2 winSize = actor->GetWindowSize();
 	switch (actor->GetDeformModel())
 	{
@@ -57,6 +80,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 		break;
 	}
 	}
+	StopDeformTimer();
 }
 
 void GlyphRenderable::init()
@@ -74,6 +98,8 @@ GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 	displace->LoadOrig(&pos[0], pos.size());
 	glyphSizeScale.assign(pos.size(), 1.0f);
 	glyphBright.assign(pos.size(), 1.0f);
+
+	sdkCreateTimer(&deformTimer);
 }
 
 void GlyphRenderable::SetFeature(std::vector<char> & _feature, std::vector<float3> & _featureCenter)
@@ -88,6 +114,7 @@ void GlyphRenderable::SetFeature(std::vector<char> & _feature, std::vector<float
 
 GlyphRenderable::~GlyphRenderable()
 { 
+	sdkDeleteTimer(&deformTimer);
 	if (nullptr != glProg){
 		delete glProg;
 		glProg = nullptr;
