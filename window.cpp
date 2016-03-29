@@ -102,7 +102,7 @@ Window::Window()
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 	/********GL widget******/
-	matrixMgr = std::make_shared<GLMatrixManager>();
+	matrixMgr = std::make_shared<GLMatrixManager>("ON" == dataMgr->GetConfig("VR_SUPPORT"));
 	openGL = std::make_unique<GLWidget>(matrixMgr);
 	lensRenderable = std::make_unique<LensRenderable>();
 	//lensRenderable->SetDrawScreenSpace(false);
@@ -222,8 +222,10 @@ Window::Window()
 
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
-	connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
-		this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
+	//connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
+	//	this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
+	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
+		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
 	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
@@ -279,10 +281,24 @@ void Window::init()
 }
 
 
-void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
+//void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
+//{
+//	//std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
+//	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
+//}
+
+void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
 {
-	//std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
-	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
+	if (1 == numHands){
+		lensRenderable->SlotOneHandChanged(make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+	}
+	else if(2 == numHands){
+		//
+		lensRenderable->SlotTwoHandChanged(
+			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
+			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+		
+	}
 }
 
 void Window::SlotToggleUsingGlyphSnapping(bool b)

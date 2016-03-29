@@ -83,7 +83,7 @@ struct functor_Displace
 			float2 lensCen = make_float2(lensX, lensY);
 			float2 vec = screenPos - lensCen;
 			float dis2Cen = length(vec);
-			const float thickDisp = 0.1;//0.003;
+			const float thickDisp = 0.003;
 			//const float thickFocus = 0.003;
 			const float dark = 0.1;
 			float outerR = circleR / focusRatio;
@@ -99,7 +99,7 @@ struct functor_Displace
 				}
 				else {
 					//graduately turn dark
-					brightness = max(dark, 1.0 / (300 * (clipPos.z - lensD) + 1.0));
+					brightness = max(dark, 1.0 / (100 * (clipPos.z - lensD) + 1.0));
 				}
 			}
 		}
@@ -226,10 +226,11 @@ struct functor_Displace_LineB
 						}
 					}
 					else{
-						if (abs(disMinor) > lSemiMinorAxis)
-							brightness = dark;
-						else if ((clipPos.z - d) > thickFocus)
-							brightness = max(dark, 1.0 / (1000 * (clipPos.z - d - thickFocus) + 1.0));
+						//if (abs(disMinor) > lSemiMinorAxis)
+						//	brightness = dark;
+						//else if ((clipPos.z - d) > thickFocus)
+						//	brightness = max(dark, 1.0 / (1000 * (clipPos.z - d - thickFocus) + 1.0));
+						brightness = max(dark, 1.0 / (300 * (clipPos.z - d) + 1.0));
 					}
 				}
 			}
@@ -351,11 +352,11 @@ struct functor_Displace_CurveB
 							}
 							else{
 								//brightness = clamp(1.3f - 300 * abs(clipPos.z - lensD), 0.1f, 1.0f);
-								if (abs(disMinor) > width)
-									brightness = dark;
-								else if ((clipPos.z - lensD) > thickFocus)
-									brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
-
+								//if (abs(disMinor) > width)
+								//	brightness = dark;
+								//else if ((clipPos.z - lensD) > thickFocus)
+								//	brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
+								brightness = max(dark, 1.0 / (100 * (clipPos.z - lensD) + 1.0));
 							}
 						}
 					}
@@ -412,10 +413,12 @@ struct functor_Displace_CurveB
 								}
 								else{
 									//brightness = clamp(1.3f - 300 * abs(clipPos.z - lensD), 0.1f, 1.0f);
-									if (abs(disMinor) > width)
-										brightness = dark;
-									else if ((clipPos.z - lensD) > thickFocus)
-										brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
+									//if (abs(disMinor) > width)
+									//	brightness = dark;
+									//else 
+									//if ((clipPos.z - lensD) > thickFocus)
+									//brightness = max(dark, 1.0 / (1000 * (clipPos.z - lensD - thickFocus) + 1.0));
+									brightness = max(dark, 1.0 / (300 * (clipPos.z - lensD) + 1.0));
 								}
 							}
 						}

@@ -14,12 +14,20 @@
 //	xmax = ymax * aspectRatio;
 //	glFrustum(-xmax, xmax, -ymax, ymax, znear, zfar);
 //}
-
-GLMatrixManager::GLMatrixManager()
+GLMatrixManager::GLMatrixManager(bool _vrMode) :vrMode(_vrMode)
 {
 	trackball = new Trackball();
 	rot = new Rotation();
 	transRot.setToIdentity();
+
+	if (vrMode) {
+		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+		transScale = 2;
+	}
+	else{
+		transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
+	}
+
 }
 
 void GLMatrixManager::Rotate(float fromX, float fromY, float toX, float toY)
@@ -41,8 +49,10 @@ void GLMatrixManager::Translate(float x, float y)
 void GLMatrixManager::GetProjection(float ret[16], float width, float height)
 {
 	QMatrix4x4 m;
-	//m.perspective(96.73, (float)width / height, (float)0.1, (float)100);// for VR
-	m.perspective(30, (float)width / height, (float)0.1, (float)100);// for VR
+	if (vrMode)
+		m.perspective(96.73, (float)width / height, (float)0.1, (float)100);// for VR
+	else
+		m.perspective(30, (float)width / height, (float)0.1, (float)100);// for VR
 	m = m.transposed();
 	m.copyDataTo(ret); //this copy is row major, so we need to transpose it first
 }

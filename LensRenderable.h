@@ -13,6 +13,8 @@ class LensRenderable :public Renderable
 	int pickedLens = -1;
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
+
+	void ChangeLensCenterbyLeap(float3 p);
 public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
@@ -41,7 +43,8 @@ public slots:
 	void SlotFocusSizeChanged(int v);
 	void SlotSideSizeChanged(int v);
 	void SlotDelLens();
-	void SlotLensCenterChanged(float3 p);
+	void SlotOneHandChanged(float3 p);
+	void SlotTwoHandChanged(float3 l, float3 r);
 	void adjustOffset();
 	void RefineLensBoundary();
 };

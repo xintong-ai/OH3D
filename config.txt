@@ -1,6 +1,6 @@
-DATA_TYPE=TYPE_TENSOR
-DATA_PATH=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
-VR_SUPPORT=OFF
+DATA_TYPE=TYPE_SCALAR
+DATA_PATH=D:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
+VR_SUPPORT=ON
 FEATURE_PATH=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
 ventricles=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
 tumor1=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_293_region_1.ply
