@@ -653,51 +653,33 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 			l->SetCenter(snapPos);
 		}
 		else if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
-			//GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
-			//Lens* l = lenses[lenses.size() - 1];
-			//float3 center = make_float3(l->GetCenter());
-			//if (glyphRenderable->findClosetFeature(center, snapPos))
-			//	l->SetCenter(snapPos);
-
+			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
-
-			PolyRenderable* r1 = (PolyRenderable*)actor->GetRenderable("ventricles");
-			PolyRenderable* r2 = (PolyRenderable*)actor->GetRenderable("tumor1");
-			PolyRenderable* r3 = (PolyRenderable*)actor->GetRenderable("tumor2");
-			vector<float3> featureCenter;
-			featureCenter.push_back(r1->GetPolyCenter());
-			featureCenter.push_back(r2->GetPolyCenter());
-			featureCenter.push_back(r3->GetPolyCenter());
-			 
 			int resid = -1;
-			float resDistance = 9999999999;
-			for (int i = 0; i < 3; i++){
-				float curRes = length(center - featureCenter[i]);
-				if (curRes < resDistance){
-					resid = i;
-					resDistance = curRes;
-					snapPos = featureCenter[i];
+			if (glyphRenderable->findClosetFeature(center, snapPos, resid))
+			{
+				l->SetCenter(snapPos);
+
+				PolyRenderable* r1 = (PolyRenderable*)actor->GetRenderable("ventricles");
+				PolyRenderable* r2 = (PolyRenderable*)actor->GetRenderable("tumor1");
+				PolyRenderable* r3 = (PolyRenderable*)actor->GetRenderable("tumor2");
+				if (resid == 1){
+					r1->isSnapped = true;
+					r2->isSnapped = false;
+					r3->isSnapped = false;
+				}
+				else if (resid == 2){
+					r1->isSnapped = false;
+					r2->isSnapped = true;
+					r3->isSnapped = false;
+				}
+				else if (resid == 3){
+					r1->isSnapped = false;
+					r2->isSnapped = false;
+					r3->isSnapped = true;
 				}
 			}
-
-			l->SetCenter(snapPos);
-			if (resid == 0){
-				r1->isSnapped = true;
-				r2->isSnapped = false;
-				r3->isSnapped = false;
-			}
-			else if (resid == 1){
-				r1->isSnapped = false;
-				r2->isSnapped = true;
-				r3->isSnapped = false;
-			}
-			else if (resid == 2){
-				r1->isSnapped = false;
-				r2->isSnapped = false;
-				r3->isSnapped = true;
-			}
-
 		}
 		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	}
@@ -742,7 +724,27 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		else if (isSnapToFeature){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			snapPos;
-			glyphRenderable->findClosetFeature(make_float3(lenses[pickedLens]->GetCenter()), snapPos);
+			int resid=-1;
+			glyphRenderable->findClosetFeature(make_float3(lenses[pickedLens]->GetCenter()), snapPos, resid);
+
+			PolyRenderable* r1 = (PolyRenderable*)actor->GetRenderable("ventricles");
+			PolyRenderable* r2 = (PolyRenderable*)actor->GetRenderable("tumor1");
+			PolyRenderable* r3 = (PolyRenderable*)actor->GetRenderable("tumor2");
+			if (resid == 1){
+				r1->isSnapped = true;
+				r2->isSnapped = false;
+				r3->isSnapped = false;
+			}
+			else if (resid == 2){
+				r1->isSnapped = false;
+				r2->isSnapped = true;
+				r3->isSnapped = false;
+			}
+			else if (resid == 3){
+				r1->isSnapped = false;
+				r2->isSnapped = false;
+				r3->isSnapped = true;
+			}
 		}
 		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 		break;

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <helper_math.h>
 #include <vector>
+#include <string>
 
 
 struct matrix3x3{
@@ -81,11 +82,12 @@ public:
 
 	//related to feature input
 	bool useFeature;
-	int featureAmount;
 	std::vector<float3> featureCenter;
 	bool LoadFeature(const char* filename);
-
+	bool LoadFeatureNew(const char* filename); //load feature whose value is binary composition of multiple features assigned
 	
+	bool LoadFeature2(std::vector<std::string>);
+	//this function allows one single voxel to have multiple features assigned. the multiple features will be encoded as one binary number, whose digit i is 1 if feature i is assigned to this voxel
 
 protected:
 	int dataDims;

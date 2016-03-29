@@ -75,8 +75,31 @@ Window::Window()
 		std::vector<float4> pos;
 		std::vector<float> val;
 
-		if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
-			std::vector<char> feature;
+
+
+		//if (true){
+		//				
+		//	std::vector<std::string> featureFiles;
+		//	featureFiles.push_back(dataMgr->GetConfig("ventricles_Feature"));
+		//	featureFiles.push_back(dataMgr->GetConfig("tumor1_Feature"));
+		//	featureFiles.push_back(dataMgr->GetConfig("tumor2_Feature"));
+		//	((DTIVolumeReader*)reader.get())->LoadFeature2(featureFiles);
+
+		//	std::vector<char> feature;
+		//	((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
+		//	glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		//	glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
+		//}
+		//else
+		//{
+		//	((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+		//	glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		//}
+
+
+		//if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
+		if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
+				std::vector<char> feature;
 			((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
 			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
 			glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
@@ -86,6 +109,7 @@ Window::Window()
 			((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
 			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
 		}
+
 		std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 
 	}
@@ -154,6 +178,11 @@ Window::Window()
 		polyFeature2->SetAmbientColor(0.0, 0.0, 0.2);
 		openGL->AddRenderable("tumor2", polyFeature2);
 
+		featuresLw = new QListWidget();
+		featuresLw->addItem(QString("ventricles"));
+		featuresLw->addItem(QString("tumor1"));
+		featuresLw->addItem(QString("tumor2"));
+		featuresLw->setEnabled(false);
 	}
 
 	///********controls******/
@@ -232,12 +261,7 @@ Window::Window()
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 
 
-	if (DATA_TYPE::TYPE_TENSOR == dataType) {
-		featuresLw = new QListWidget();
-		featuresLw->addItem(QString("ventricles"));
-		featuresLw->addItem(QString("tumor1"));
-		featuresLw->addItem(QString("tumor2"));
-		featuresLw->setEnabled(false);
+	if (DATA_TYPE::TYPE_TENSOR == dataType && featuresLw != NULL) {
 		controlLayout->addWidget(featuresLw);
 		connect(featuresLw, SIGNAL(currentRowChanged(int)), this, SLOT(SlotFeaturesLwRowChanged(int)));
 	}
@@ -330,6 +354,7 @@ void Window::SlotToggleUsingFeatureSnapping(bool b)
 	lensRenderable->isSnapToFeature = b;
 	if (!b){
 		glyphRenderable->SetSnappedFeatureId(-1);
+		glyphRenderable->RecomputeTarget();
 	}
 	else{
 		usingGlyphSnappingCheck->setChecked(false);
@@ -392,23 +417,28 @@ void Window::SlotFeaturesLwRowChanged(int currentRow)
 		polyFeature0->isSnapped = true;
 		polyFeature1->isSnapped = false;
 		polyFeature2->isSnapped = false;
-		lensRenderable->snapPos = polyFeature0->GetPolyCenter();
+		glyphRenderable->SetSnappedFeatureId(1);
+		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow];// polyFeature0->GetPolyCenter();
 		lensRenderable->SnapLastLens();
 	}
 	else if (currentRow == 1){
 		polyFeature0->isSnapped = false;
 		polyFeature1->isSnapped = true;
 		polyFeature2->isSnapped = false;
-		lensRenderable->snapPos = polyFeature1->GetPolyCenter();
+		glyphRenderable->SetSnappedFeatureId(2);
+		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature1->GetPolyCenter();
 		lensRenderable->SnapLastLens();
 	}
 	else if (currentRow == 2){
 		polyFeature0->isSnapped = false;
 		polyFeature1->isSnapped = false;
 		polyFeature2->isSnapped = true;
-		lensRenderable->snapPos = polyFeature2->GetPolyCenter();
+		glyphRenderable->SetSnappedFeatureId(3); 
+		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature2->GetPolyCenter();
 		lensRenderable->SnapLastLens();
 	}
+	glyphRenderable->RecomputeTarget();
+	featuresLw->setCurrentRow(-1);
 	usingFeaturePickingCheck->setChecked(false);
 	featuresLw->setEnabled(false);
 }

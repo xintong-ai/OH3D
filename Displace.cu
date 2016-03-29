@@ -76,9 +76,15 @@ struct functor_Displace
 		float brightness = 1.0f;
 		float2 screenPos = thrust::get<0>(t);
 		float2 newScreenPos = screenPos;
-		if (thrust::get<5>(t) != snappedGlyphId && 
-			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) 
-			|| (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		//if (thrust::get<5>(t) != snappedGlyphId && 
+		//	(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) 
+		//	|| (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		if (thrust::get<5>(t) != snappedGlyphId &&
+			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0)
+			|| (snappedFeatureId != -1 && 
+			(thrust::get<4>(t) / ( (int)pow(2, snappedFeatureId - 1) ) )% 2 == 0
+			))){
+
 			float4 clipPos = thrust::get<1>(t);
 			float2 lensCen = make_float2(lensX, lensY);
 			float2 vec = screenPos - lensCen;
@@ -194,9 +200,13 @@ struct functor_Displace_LineB
 		
 		float4 clipPos = thrust::get<1>(t);
 
-		if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		//if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
 
-
+		if (thrust::get<5>(t) != snappedGlyphId &&
+			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0)
+			|| (snappedFeatureId != -1 &&
+			(thrust::get<4>(t) / ((int)pow(2, snappedFeatureId - 1))) % 2 == 0
+			))){
 
 			float2 toPoint = screenCoord - make_float2(x, y);
 			float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
@@ -276,7 +286,12 @@ struct functor_Displace_CurveB
 		float2 ret = screenCoord;
 		float brightness = 1.0f;
 
-		if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		//if (thrust::get<5>(t) != snappedGlyphId && (!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0) || (snappedFeatureId != -1 && thrust::get<4>(t) != snappedFeatureId))){
+		if (thrust::get<5>(t) != snappedGlyphId &&
+			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0)
+			|| (snappedFeatureId != -1 &&
+			(thrust::get<4>(t) / ((int)pow(2, snappedFeatureId - 1))) % 2 == 0
+			))){
 
 			float4 clipPos = thrust::get<1>(t);
 

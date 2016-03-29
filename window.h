@@ -78,7 +78,7 @@ private:
 	std::shared_ptr<ModelGrid> modelGrid;
 
 	PolyRenderable * polyFeature0, *polyFeature1, *polyFeature2;
-	QListWidget *featuresLw;
+	QListWidget *featuresLw = NULL;
 private slots:
 	void AddLens();
 	void AddLineLens();
