@@ -108,8 +108,6 @@ void GlyphRenderable::SetFeature(std::vector<char> & _feature, std::vector<float
 		feature[i] = _feature[i];
 	displace->LoadFeature(&feature[0], feature.size());
 	featureCenter = _featureCenter;
-	//for (int i = 0; i < _featureCenter.size(); i++)
-	//	featureCenter[i] = _featureCenter[i];
 };
 
 GlyphRenderable::~GlyphRenderable()
@@ -183,14 +181,14 @@ float3 GlyphRenderable::findClosetGlyph(float3 aim)
 }
 
 // !!! NOTE: result is not meaningful when no feature is loaded. Need to deal with this situation when calling this function. when no feature is loaded, return false 
-bool GlyphRenderable::findClosetFeature(float3 aim, float3 & result)
+bool GlyphRenderable::findClosetFeature(float3 aim, float3 & result, int & resid)
 {
 	int n = featureCenter.size();
 	if (n < 1){
 		return false;
 	}
 
-	int resid = -1;
+	resid = -1;
 	float resDistance = 9999999999;
 	result = make_float3(0, 0, 0);
 	for (int i=0; i < n; i++){
@@ -203,6 +201,7 @@ bool GlyphRenderable::findClosetFeature(float3 aim, float3 & result)
 	}
 
 	snappedFeatureId = resid + 1;
+	resid = snappedFeatureId;
 	return true;
 }
 

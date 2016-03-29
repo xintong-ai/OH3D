@@ -27,6 +27,8 @@ class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
 class ModelGrid;
+class PolyRenderable;
+class QListWidget;
 namespace Leap{
 	class Controller;
 }
@@ -75,6 +77,8 @@ private:
 
 	std::shared_ptr<ModelGrid> modelGrid;
 
+	PolyRenderable * polyFeature0, *polyFeature1, *polyFeature2;
+	QListWidget *featuresLw = NULL;
 private slots:
 	void AddLens();
 	void AddLineLens();
@@ -97,6 +101,9 @@ private slots:
 
 	void SlotSaveState();
 	void SlotLoadState();
+
+	void SlotFeaturesLwRowChanged(int);
+
 };
 
 #endif

@@ -3,6 +3,7 @@
 #include "Lens.h"
 #include "glwidget.h"
 #include "GLSphere.h"
+#include "PolyRenderable.h"
 
 // !!! may be delete. this class is not used !!!
 class SolidSphere
@@ -648,16 +649,37 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
-			float3 snapPos = glyphRenderable->findClosetGlyph(center);
+			snapPos = glyphRenderable->findClosetGlyph(center);
 			l->SetCenter(snapPos);
 		}
 		else if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
-			float3 snapPos;
-			if (glyphRenderable->findClosetFeature(center, snapPos))
+			int resid = -1;
+			if (glyphRenderable->findClosetFeature(center, snapPos, resid))
+			{
 				l->SetCenter(snapPos);
+
+				PolyRenderable* r1 = (PolyRenderable*)actor->GetRenderable("ventricles");
+				PolyRenderable* r2 = (PolyRenderable*)actor->GetRenderable("tumor1");
+				PolyRenderable* r3 = (PolyRenderable*)actor->GetRenderable("tumor2");
+				if (resid == 1){
+					r1->isSnapped = true;
+					r2->isSnapped = false;
+					r3->isSnapped = false;
+				}
+				else if (resid == 2){
+					r1->isSnapped = false;
+					r2->isSnapped = true;
+					r3->isSnapped = false;
+				}
+				else if (resid == 3){
+					r1->isSnapped = false;
+					r2->isSnapped = false;
+					r3->isSnapped = true;
+				}
+			}
 		}
 		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	}
@@ -701,8 +723,28 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		}
 		else if (isSnapToFeature){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
-			float3 snapPos;
-			glyphRenderable->findClosetFeature(make_float3(lenses[pickedLens]->GetCenter()), snapPos);
+			snapPos;
+			int resid=-1;
+			glyphRenderable->findClosetFeature(make_float3(lenses[pickedLens]->GetCenter()), snapPos, resid);
+
+			PolyRenderable* r1 = (PolyRenderable*)actor->GetRenderable("ventricles");
+			PolyRenderable* r2 = (PolyRenderable*)actor->GetRenderable("tumor1");
+			PolyRenderable* r3 = (PolyRenderable*)actor->GetRenderable("tumor2");
+			if (resid == 1){
+				r1->isSnapped = true;
+				r2->isSnapped = false;
+				r3->isSnapped = false;
+			}
+			else if (resid == 2){
+				r1->isSnapped = false;
+				r2->isSnapped = true;
+				r3->isSnapped = false;
+			}
+			else if (resid == 3){
+				r1->isSnapped = false;
+				r2->isSnapped = false;
+				r3->isSnapped = true;
+			}
 		}
 		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 		break;
@@ -751,6 +793,15 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	return insideAnyLens;
+}
+
+
+void LensRenderable::SnapLastLens()
+{
+	if (lenses.size() > 0){
+		Lens* l = lenses[lenses.size() - 1];
+		l->SetCenter(snapPos);
+	}
 }
 
 void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleFactor)

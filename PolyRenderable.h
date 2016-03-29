@@ -39,6 +39,9 @@ public:
 		ka = make_float3(r, g, b);
 	}
 
+	float3 GetPolyCenter();
+	bool isSnapped = false;
+
 private:
 	void loadShaders();
 

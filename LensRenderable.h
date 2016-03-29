@@ -16,6 +16,10 @@ class LensRenderable :public Renderable
 
 	void ChangeLensCenterbyLeap(float3 p);
 public:
+	float3 snapPos;
+	void SnapLastLens();
+
+
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;

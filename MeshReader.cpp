@@ -1,4 +1,5 @@
 #include "MeshReader.h"
+#include "helper_math.h"
 
 //mesh* SphereMesh(float radius, unsigned int rings, unsigned int sectors);
 
@@ -215,6 +216,8 @@ void MeshReader::LoadPLY(const char* filename)
 			//glVertexPointer(2, GL_FLOAT, 0, 0);
 
 			fclose(file);
+
+			computeCenter();
 		}
 
 		else { printf("File can't be opened\n"); }
@@ -223,6 +226,27 @@ void MeshReader::LoadPLY(const char* filename)
 		printf("File does not have a .PLY extension. ");
 	}
 	return;
+}
+
+
+void MeshReader::computeCenter()
+{
+	float x = 0, y = 0, z = 0;
+	for (int i = 0; i < TotalConnectedTriangles; i++){
+		x += Faces_Triangles[9 * i];
+		x += Faces_Triangles[9 * i + 3];
+		x += Faces_Triangles[9 * i + 6];
+		y += Faces_Triangles[9 * i + 1];
+		y += Faces_Triangles[9 * i + 4];
+		y += Faces_Triangles[9 * i + 7];
+		z += Faces_Triangles[9 * i + 2];
+		z += Faces_Triangles[9 * i + 5];
+		z += Faces_Triangles[9 * i + 8];
+	}
+	x = x / TotalConnectedTriangles/3;
+	y = y / TotalConnectedTriangles/3;
+	z = z / TotalConnectedTriangles/3;
+	center = make_float3(x,y,z);
 }
 
 //The following function is from:

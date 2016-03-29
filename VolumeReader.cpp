@@ -155,7 +155,6 @@ bool VolumeReader::LoadFeature(const char* filename)
 	{
 		fputs("no feature is loaded \n", stderr);
 		memset(feature, 0, num);
-		featureAmount = 0;
 		return false;
 	}
 
@@ -163,9 +162,7 @@ bool VolumeReader::LoadFeature(const char* filename)
 	FEATURE_FILE_TYPE *temp = new FEATURE_FILE_TYPE[num];
 	fread(temp, sizeof(FEATURE_FILE_TYPE), num, pFile);
 
-
-	featureAmount = 0;
-
+	int featureAmount = 0;
 	for (int i = 0; i < num; i++){
 		feature[i] = temp[i];
 		if (feature[i]>featureAmount)
@@ -189,6 +186,88 @@ bool VolumeReader::LoadFeature(const char* filename)
 
 	for (int i = 0; i < featureAmount; i++){
 		featureCenter[i] /= featureCount[i];
+	}
+
+	return true;
+}
+
+bool VolumeReader::LoadFeatureNew(const char* filename)
+{
+	int num = dataSizes.x*dataSizes.y*dataSizes.z;
+	feature = new char[num];
+
+	FILE *pFile;
+	pFile = fopen(filename, "rb");
+	if (pFile == NULL)
+	{
+		fputs("no feature is loaded \n", stderr);
+		memset(feature, 0, num);
+		return false;
+	}
+
+	typedef unsigned char FEATURE_FILE_TYPE;
+	FEATURE_FILE_TYPE *temp = new FEATURE_FILE_TYPE[num];
+	fread(temp, sizeof(FEATURE_FILE_TYPE), num, pFile);
+
+	int featureAmount = 0;
+	for (int i = 0; i < num; i++){
+		feature[i] = temp[i];
+		if (feature[i]>featureAmount)
+			featureAmount = feature[i];
+	}
+	featureAmount = (int)log2(featureAmount) + 1;
+
+	featureCenter.resize(featureAmount, make_float3(0, 0, 0));
+	vector<int> featureCount(featureAmount, 0);
+
+	for (int k = 0; k < dataSizes.z; k++){
+		for (int j = 0; j < dataSizes.y; j += 4) {
+			for (int i = 0; i < dataSizes.x; i += 4){
+				int idx = k * dataSizes.x * dataSizes.y + j * dataSizes.x + i;
+				int v = feature[idx];
+				for (int ff = 0; ff < featureAmount; ff++){
+					if ((v / ((int)pow(2, ff))) % 2){
+						featureCount[ff] ++;
+						featureCenter[ff] += GetDataPos(make_int3(i, j, k));
+					}
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < featureAmount; i++){
+		featureCenter[i] /= featureCount[i];
+	}
+
+	return true;
+}
+
+bool VolumeReader::LoadFeature2(std::vector<std::string> featureFiles)
+{
+	int featureAmount = featureFiles.size();
+	int num = dataSizes.x*dataSizes.y*dataSizes.z;
+	feature = new char[num];
+	memset(feature, 0, num);
+
+	for (int i = 0; i < featureAmount; i++){
+		FILE *pFile;
+		pFile = fopen(featureFiles[i].c_str(), "rb");
+		if (pFile == NULL)
+		{
+			fputs("loading feature failure \n", stderr);
+			memset(feature, 0, num);
+			featureAmount = 0;
+			return false;
+		}
+
+		typedef unsigned char FEATURE_FILE_TYPE;
+		FEATURE_FILE_TYPE *temp = new FEATURE_FILE_TYPE[num];
+		fread(temp, sizeof(FEATURE_FILE_TYPE), num, pFile);
+
+		for (int i = 0; i < num; i++){
+			if (temp[i]>0)
+			feature[i] += pow(2,i);
+		}
 	}
 
 	return true;

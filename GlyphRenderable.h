@@ -21,7 +21,7 @@ class GlyphRenderable: public Renderable
 	void StartDeformTimer();
 	void StopDeformTimer();
 public:
-	//used for feature highlight rendering
+	//used for feature freezing rendering
 	bool isFreezingFeature = false;
 	std::vector<char> feature;
 	std::vector<float3> featureCenter;
@@ -31,7 +31,7 @@ public:
 	bool isPickingFeature = false;
 	int GetSnappedFeatureId(){ return snappedFeatureId; }
 	void SetSnappedFeatureId(int s){ snappedFeatureId = s; }
-	bool findClosetFeature(float3 aim, float3 & result);
+	bool findClosetFeature(float3 aim, float3 & result, int & resid);
 
 	//used for picking and snapping
 	bool isPickingGlyph = false;
