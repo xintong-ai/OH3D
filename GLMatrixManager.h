@@ -19,8 +19,10 @@ class GLMatrixManager{
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
 
+	bool vrMode = false;
+
 public:
-	GLMatrixManager();
+	GLMatrixManager(bool _vrMode = false);
 	void Rotate(float fromX, float fromY, float toX, float toY);
 	void Translate(float x, float y);
 	void Scale(float v);

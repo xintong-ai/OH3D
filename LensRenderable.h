@@ -14,7 +14,7 @@ class LensRenderable :public Renderable
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
 
-	
+	void ChangeLensCenterbyLeap(float3 p);
 public:
 	float3 snapPos;
 	void SnapLastLens();
@@ -47,7 +47,8 @@ public slots:
 	void SlotFocusSizeChanged(int v);
 	void SlotSideSizeChanged(int v);
 	void SlotDelLens();
-	void SlotLensCenterChanged(float3 p);
+	void SlotOneHandChanged(float3 p);
+	void SlotTwoHandChanged(float3 l, float3 r);
 	void adjustOffset();
 	void RefineLensBoundary();
 };

@@ -79,6 +79,6 @@ set(CMAKE_AUTOMOC ON)
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 #qt5_add_resources(QtApp_RCC_SRCS ${Rcs})
 cuda_add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} ${QtApp_RCC_SRCS})
-qt5_use_modules(${PROJECT_NAME} OpenGL Gui)
+qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets  ${SHARED_LIBRARIES} ${Teem_LIBRARY_DIRS}/teem.lib
 ${Leap_IMPORT_LIB_DEBUG} osvr::osvrClientKitCpp)

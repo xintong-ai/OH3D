@@ -877,8 +877,24 @@ inline float3 GetNormalizedLeapPos(float3 p)
 	return leapPos;
 }
 
-void LensRenderable::SlotLensCenterChanged(float3 p)
+void LensRenderable::SlotTwoHandChanged(float3 l, float3 r)
 {
+	//std::cout << "two hands..." << std::endl;
+	if (lenses.size() > 0){
+		ChangeLensCenterbyLeap((l+r) * 0.5);
+		if (LENS_TYPE::TYPE_CIRCLE == lenses.back()->type){
+			((CircleLens*)lenses.back())->radius = length(l-r) * 0.5;
+		}
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		actor->UpdateGL();
+	}
+}
+
+
+void LensRenderable::ChangeLensCenterbyLeap(float3 p)
+{
+	//interaction box
+	//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
 	if (lenses.size() > 0){
 		int2 winSize = actor->GetWindowSize();
 		GLfloat modelview[16];
@@ -893,7 +909,7 @@ void LensRenderable::SlotLensCenterChanged(float3 p)
 		actor->GetDepthRange(depthRange);
 		//pScreen.z = clamp((1.0f - aa * , 0.0f, 1.0f);
 		//std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
-		
+
 		//std::cout << "leapPos:" << leapPos.x << "," << leapPos.y << "," << leapPos.z << std::endl;
 		bool usingVR = true;
 		if (usingVR){
@@ -911,6 +927,15 @@ void LensRenderable::SlotLensCenterChanged(float3 p)
 		//pScreen.z = clamp(aa *(1 - (p.y + 73.5) / 147), 0, 1);
 		//lenses.back()->c.z = pScreen.z;
 		lenses.back()->UpdateCenterByScreenPos(pScreen.x, pScreen.y, modelview, projection, winSize.x, winSize.y);
+	}
+}
+
+
+void LensRenderable::SlotOneHandChanged(float3 p)
+{
+	//std::cout << "one hand..." << std::endl;
+	if (lenses.size() > 0){
+		ChangeLensCenterbyLeap(p);
 		//interaction box
 		//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
 		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
