@@ -225,17 +225,71 @@ bool GLWidget::event(QEvent *event)
 	if (event->type() == QEvent::Gesture)
 		return gestureEvent(static_cast<QGestureEvent*>(event));
 	else if (event->type() == QEvent::TouchBegin)
-		return TouchEvent(static_cast<QTouchEvent*>(event));
+		return TouchBeginEvent(static_cast<QTouchEvent*>(event));
+	else if (event->type() == QEvent::TouchEnd)
+		return TouchEndEvent(static_cast<QTouchEvent*>(event));
+	else if (event->type() == QEvent::TouchUpdate)
+		return TouchUpdateEvent(static_cast<QTouchEvent*>(event));
+
 	return QWidget::event(event);
 }
 
-bool GLWidget::TouchEvent(QTouchEvent *event)
+bool GLWidget::TouchUpdateEvent(QTouchEvent *event)
+{
+	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
+	switch(GetInteractMode())
+	{
+	case INTERACT_MODE::TRANSFORMATION:
+	{
+		if (2 == pts.size()) {
+			QPointF p1 = pixelPosToGLPos(pts.at(0).lastPos());
+			QPointF p2 = pixelPosToGLPos(pts.at(1).lastPos());
+			if (((LensRenderable*)renderers["lenses"])
+				->OnLensInnerBoundary(make_int2(p1.x(), p1.y()), make_int2(p2.x(), p2.y()))){
+				SetInteractMode(INTERACT_MODE::MODIFY_LENS_TWO_FINGERS);
+			}
+			else if (((LensRenderable*)renderers["lenses"])
+				->TwoPointsInsideALens(make_int2(p1.x(), p1.y()), make_int2(p2.x(), p2.y()))){
+				SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
+			}
+		}
+		break;
+	}
+	case INTERACT_MODE::MODIFY_LENS_TWO_FINGERS:
+	{
+		if (2 == pts.size()) {
+			QPointF p1 = pixelPosToGLPos(pts.at(0).lastPos());
+			QPointF p2 = pixelPosToGLPos(pts.at(1).lastPos());
+			((LensRenderable*)renderers["lenses"])
+				->UpdateLensTwoFingers(make_int2(p1.x(), p1.y()), make_int2(p2.x(), p2.y()));
+		}
+		break;
+	}
+	}
+	return true;
+}
+
+
+bool GLWidget::TouchEndEvent(QTouchEvent *event)
+{
+	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
+	//if (0 == pts.size()) {
+	//SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	//}
+	return true;
+}
+
+
+bool GLWidget::TouchBeginEvent(QTouchEvent *event)
 {
 	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
 	QPointF p = pts.back().lastPos();
 	//std::cout << "p:" << p.x() << "," << p.y() << std::endl;
 	QPoint posGL = pixelPosToGLPos(QPoint(p.x(), p.y()));
 	insideLens = ((LensRenderable*)renderers["lenses"])->InsideALens(posGL.x(), posGL.y());
+	//	SetInteractMode(INTERACT_MODE::NO_TRANSFORMATION);
+
+	//std::cout << "pts.size(): " << pts.size() << std::endl;
 
 	return true;
 }
@@ -269,15 +323,24 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 	////std::cout << "gesture->centerPoint():" << .x() << "," << gesture->centerPoint().y() << std::endl;
 	//std::cout << "posGL:" << posGL.x() << "," << posGL.y() << std::endl;
 
-	if (insideLens){
-		interactMode = INTERACT_MODE::MODIFY_LENS_DEPTH;
-		for (auto renderer : renderers)
-			renderer.second->PinchScaleFactorChanged(
-			0,
-			0,
-			gesture->totalScaleFactor());
+	//if (insideLens){
+	//	interactMode = INTERACT_MODE::MODIFY_LENS_DEPTH;
+		//for (auto renderer : renderers)
+		//	renderer.second->PinchScaleFactorChanged(
+		//	0,
+		//	0,
+		//	gesture->totalScaleFactor());
+	//}
+	switch (interactMode)
+	{
+	case INTERACT_MODE::MODIFY_LENS_DEPTH:
+	{
+		((LensRenderable*)renderers["lenses"])->ChangeLensDepth(gesture->totalScaleFactor() > 1 ? 1 : -1);
+		break;
 	}
-	else {
+	case INTERACT_MODE::TRANSFORMATION:
+	{
+		if (insideLens) break;
 		QPinchGesture::ChangeFlags changeFlags = gesture->changeFlags();
 		//if (INTERACT_MODE::TRANSFORMATION == interactMode){
 		if (changeFlags & QPinchGesture::ScaleFactorChanged) {
@@ -299,11 +362,12 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 		if (gesture->state() == Qt::GestureFinished) {
 			matrixMgr->FinishedScale();
 		}
-		//}
-
+		break;
 	}
+	}
+
 	if (gesture->state() == Qt::GestureFinished) {
-		interactMode = INTERACT_MODE::TRANSFORMATION;
+		SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		pinching = false;
 	}
 }
@@ -315,6 +379,11 @@ QPointF GLWidget::pixelPosToViewPos(const QPointF& p)
 }
 
 QPoint GLWidget::pixelPosToGLPos(const QPoint& p)
+{
+	return QPoint(p.x(), height - 1 - p.y());
+}
+
+QPoint GLWidget::pixelPosToGLPos(const QPointF& p)
 {
 	return QPoint(p.x(), height - 1 - p.y());
 }
@@ -387,3 +456,8 @@ void GLWidget::GetProjection(float* m)
 	matrixMgr->GetProjection(m, width, height);
 }
 
+void GLWidget::SetInteractMode(INTERACT_MODE v)
+{ 
+	interactMode = v; 
+	std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; 
+}

@@ -21,11 +21,12 @@ GLMatrixManager::GLMatrixManager(bool _vrMode) :vrMode(_vrMode)
 	transRot.setToIdentity();
 
 	if (vrMode) {
-		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+		transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
 		transScale = 2;
 	}
 	else{
-		transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
+		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+		transScale = 1;
 	}
 
 }

@@ -60,7 +60,8 @@ struct Lens
 	void UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
 	float3 Compute3DPosByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);	
 
-	virtual bool PointInsideLens(int x, int y, float* mv, float* pj, int winW, int winH) = 0;
+	virtual bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) = 0;
+	virtual bool PointInsideFullLens(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointInsideObjectLens(int x, int y, float* mv, float* pj, int winW, int winH) { return false; }
@@ -68,6 +69,7 @@ struct Lens
 	virtual bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	//virtual bool PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
+	virtual void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH){}
 	virtual void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	virtual void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	virtual void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}	
@@ -109,6 +111,14 @@ struct CircleLens :public Lens
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < radius;
 	}
+
+	bool PointInsideFullLens(int _x, int _y, float* mv, float* pj, int winW, int winH)
+	{
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
+		return dis < (radius / focusRatio);
+	}
+
 	
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override
 	{
@@ -127,6 +137,15 @@ struct CircleLens :public Lens
 	bool PointInsideObjectLens(int x, int y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+
+	void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH) override
+	{
+		float dis = length(make_float2(p1) - make_float2(p2));
+		radius = dis * 0.5;
+		float2 center = (make_float2(p1) + make_float2(p2)) * 0.5;
+		UpdateCenterByScreenPos(center.x, center.y, mv, pj, winW, winH);
+	}
+
 	
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
 	{

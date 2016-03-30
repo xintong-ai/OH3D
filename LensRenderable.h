@@ -38,7 +38,11 @@ public:
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int modifier, int delta)  override;
 	void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) override;
+	void ChangeLensDepth(float v);
 	bool InsideALens(int x, int y);
+	bool TwoPointsInsideALens(int2 p1, int2 p2);
+	bool OnLensInnerBoundary(int2 p1, int2 p2);
+	void UpdateLensTwoFingers(int2 p1, int2 p2);
 
 	bool isSnapToGlyph = false;
 	bool isSnapToFeature = false;

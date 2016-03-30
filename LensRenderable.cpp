@@ -534,9 +534,72 @@ bool LensRenderable::InsideALens(int x, int y)
 	bool ret = false;
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+		if (l->PointInsideFullLens(x, y, modelview, projection, winSize.x, winSize.y)) {
 			ret = true;
 			break;
+		}
+	}
+	return ret;
+}
+
+void LensRenderable::UpdateLensTwoFingers(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	if (lenses.size() > 0) {
+		lenses.back()->ChangeLensTwoFingers(p1, p2, modelview, projection, winSize.x, winSize.y);
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		actor->UpdateGL();
+	}
+}
+
+
+bool LensRenderable::TwoPointsInsideALens(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	bool ret = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (l->PointInsideLens(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+			&& l->PointInsideLens(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+			ret = true;
+			break;
+		}
+	}
+	return ret;
+}
+
+
+bool LensRenderable::OnLensInnerBoundary(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	bool ret = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+			if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+				&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+				ret = true;
+				break;
+			}
+		}
+		else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+			if (l->PointOnObjectInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+				&& l->PointOnObjectInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+				ret = true;
+				break;
+			}
 		}
 	}
 	return ret;
@@ -605,16 +668,16 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				break;
 			}
 			///!!! need to modify  for OBJECT_SPACE too!!!
-			else if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-				pickedLens = i;
-				break;
-			}
-			else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointInsideObjectLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-				pickedLens = i;
-				break;
-			}
+			//else if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
+			//	pickedLens = i;
+			//	break;
+			//}
+			//else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointInsideObjectLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
+			//	pickedLens = i;
+			//	break;
+			//}
 		}
 		break;
 	}
@@ -681,9 +744,8 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 				}
 			}
 		}
-		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	}
-
+	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 }
 
@@ -803,6 +865,16 @@ void LensRenderable::SnapLastLens()
 		l->SetCenter(snapPos);
 	}
 }
+
+void LensRenderable::ChangeLensDepth(float v)
+{
+	//float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
+	if (lenses.size() == 0) return;
+	lenses.back()->ChangeClipDepth(v, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	actor->UpdateGL();
+}
+
 
 void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleFactor)
 {

@@ -40,7 +40,7 @@ void Renderable::DrawEnd(const char* rendererName)
 	fpsCount++;
 	if (fpsCount == fpsLimit)
 	{
-		qDebug() << rendererName << " time (ms):\t" << sdkGetAverageTimerValue(&timer);
+		std::cout << rendererName << " time (ms):\t" << sdkGetAverageTimerValue(&timer) << std::endl;;
 		fpsCount = 0;
 		sdkResetTimer(&timer);
 	}
