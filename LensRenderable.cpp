@@ -777,7 +777,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		//lenses[pickedLens]->y += (y - lastPt.y);
 		float2 center = lenses[pickedLens]->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
 		lenses[pickedLens]->UpdateCenterByScreenPos(
-			center.x + (x - lastPt.x), center.y + (y - lastPt.y)
+			//center.x + (x - lastPt.x), center.y + (y - lastPt.y)
+			x , y
 			, modelview, projection, winSize.x, winSize.y);
 		if (isSnapToGlyph){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");

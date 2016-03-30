@@ -77,6 +77,23 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 
 		modelGrid->Update(&lensCen.x, &lensDir.x, focusRatio, radius);
 		modelGrid->UpdatePointCoords(&pos[0], pos.size());
+		const float dark = 0.1;
+		const float transRad = radius / focusRatio;
+		for (int i = 0; i < pos.size(); i++) {
+			float3 vert = make_float3(pos[i]);
+			//float3 lensCenFront = lensCen + lensDir * radius;
+			float3 lensCenBack = lensCen - lensDir * radius;
+			float3 lensCenFront2Vert = vert - lensCenBack;
+			float lensCenFront2VertProj = dot(lensCenFront2Vert, lensDir);
+			float3 moveVec = lensCenFront2Vert - lensCenFront2VertProj * lensDir;
+			glyphBright[i] = 1.0;
+			if (lensCenFront2VertProj < 0){
+				float dist2Ray = length(moveVec);
+				if (dist2Ray < radius / focusRatio){
+					glyphBright[i] = std::max(dark, 1.0f / (0.5f * (- lensCenFront2VertProj) + 1.0f));;
+				}
+			}
+		}
 		break;
 	}
 	}
