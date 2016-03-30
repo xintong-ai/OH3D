@@ -86,7 +86,8 @@ private slots:
 
 	//void animate();
 	void SlotToggleGrid(bool b);
-	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
+	//void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
+	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
 	void SlotToggleUsingGlyphSnapping(bool b);
 	void SlotTogglePickingGlyph(bool b);
 	void SlotToggleFreezingFeature(bool b);

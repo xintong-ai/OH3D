@@ -389,6 +389,7 @@ __global__ void Constraint_2_Kernel(float* prev_X, float* X, float* next_X, floa
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;	
 
+	//change it from 0.666 to smaller value can make it more stable
 	next_X[i*3+0]=(next_X[i*3+0]-X[i*3+0])*0.666+X[i*3+0];
 	next_X[i*3+1]=(next_X[i*3+1]-X[i*3+1])*0.666+X[i*3+1];
 	next_X[i*3+2]=(next_X[i*3+2]-X[i*3+2])*0.666+X[i*3+2];

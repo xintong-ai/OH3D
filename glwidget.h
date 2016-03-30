@@ -18,10 +18,12 @@ enum INTERACT_MODE{
 	MODIFY_LENS_FOCUS_SIZE,
 	MODIFY_LENS_TRANSITION_SIZE,
 	MODIFY_LENS_DEPTH,
+	MODIFY_LENS_TWO_FINGERS,
 	//MODIFY_LENS_DIRECTION,
 	TRANSFORMATION,
 	MODIFYING_LENS,
 	//CUT_LINE,
+//	NO_TRANSFORMATION,
 	//ADD_NODE,
 	//MODIFY_LENS,
 	//DRAW_ELLIPSE,
@@ -73,7 +75,7 @@ public:
 
 	INTERACT_MODE GetInteractMode(){ return interactMode; }
 
-	void SetInteractMode(INTERACT_MODE v) { interactMode = v; }
+	void SetInteractMode(INTERACT_MODE v);// { interactMode = v; std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; }
 
 	void GetModelview(float* m);// { for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
 	void GetProjection(float* m);// { for (int i = 0; i < 16; i++) m[i] = projection[i]; }
@@ -110,10 +112,13 @@ private:
     QPointF pixelPosToViewPos(const QPointF& p);
 
 	QPoint pixelPosToGLPos(const QPoint& p);
+	QPoint pixelPosToGLPos(const QPointF& p);
 
 	bool gestureEvent(QGestureEvent *event);
 
-	bool TouchEvent(QTouchEvent *event);
+	bool TouchBeginEvent(QTouchEvent *event);
+	bool TouchEndEvent(QTouchEvent *event); 
+	bool TouchUpdateEvent(QTouchEvent *event);
 
 	void pinchTriggered(QPinchGesture *gesture/*, QPointF center*/);
 		/*****view*****/

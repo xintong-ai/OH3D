@@ -534,9 +534,72 @@ bool LensRenderable::InsideALens(int x, int y)
 	bool ret = false;
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+		if (l->PointInsideFullLens(x, y, modelview, projection, winSize.x, winSize.y)) {
 			ret = true;
 			break;
+		}
+	}
+	return ret;
+}
+
+void LensRenderable::UpdateLensTwoFingers(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	if (lenses.size() > 0) {
+		lenses.back()->ChangeLensTwoFingers(p1, p2, modelview, projection, winSize.x, winSize.y);
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		actor->UpdateGL();
+	}
+}
+
+
+bool LensRenderable::TwoPointsInsideALens(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	bool ret = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (l->PointInsideLens(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+			&& l->PointInsideLens(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+			ret = true;
+			break;
+		}
+	}
+	return ret;
+}
+
+
+bool LensRenderable::OnLensInnerBoundary(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	bool ret = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+			if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+				&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+				ret = true;
+				break;
+			}
+		}
+		else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+			if (l->PointOnObjectInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+				&& l->PointOnObjectInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+				ret = true;
+				break;
+			}
 		}
 	}
 	return ret;
@@ -605,16 +668,16 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				break;
 			}
 			///!!! need to modify  for OBJECT_SPACE too!!!
-			else if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-				pickedLens = i;
-				break;
-			}
-			else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointInsideObjectLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-				pickedLens = i;
-				break;
-			}
+			//else if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
+			//	pickedLens = i;
+			//	break;
+			//}
+			//else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointInsideObjectLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
+			//	pickedLens = i;
+			//	break;
+			//}
 		}
 		break;
 	}
@@ -681,9 +744,8 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 				}
 			}
 		}
-		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	}
-
+	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 }
 
@@ -715,7 +777,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		//lenses[pickedLens]->y += (y - lastPt.y);
 		float2 center = lenses[pickedLens]->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
 		lenses[pickedLens]->UpdateCenterByScreenPos(
-			center.x + (x - lastPt.x), center.y + (y - lastPt.y)
+			//center.x + (x - lastPt.x), center.y + (y - lastPt.y)
+			x , y
 			, modelview, projection, winSize.x, winSize.y);
 		if (isSnapToGlyph){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
@@ -804,6 +867,16 @@ void LensRenderable::SnapLastLens()
 	}
 }
 
+void LensRenderable::ChangeLensDepth(float v)
+{
+	//float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
+	if (lenses.size() == 0) return;
+	lenses.back()->ChangeClipDepth(v, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	actor->UpdateGL();
+}
+
+
 void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleFactor)
 {
 	//GLfloat modelview[16];
@@ -877,8 +950,24 @@ inline float3 GetNormalizedLeapPos(float3 p)
 	return leapPos;
 }
 
-void LensRenderable::SlotLensCenterChanged(float3 p)
+void LensRenderable::SlotTwoHandChanged(float3 l, float3 r)
 {
+	//std::cout << "two hands..." << std::endl;
+	if (lenses.size() > 0){
+		ChangeLensCenterbyLeap((l+r) * 0.5);
+		if (LENS_TYPE::TYPE_CIRCLE == lenses.back()->type){
+			((CircleLens*)lenses.back())->radius = length(l-r) * 0.5;
+		}
+		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		actor->UpdateGL();
+	}
+}
+
+
+void LensRenderable::ChangeLensCenterbyLeap(float3 p)
+{
+	//interaction box
+	//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
 	if (lenses.size() > 0){
 		int2 winSize = actor->GetWindowSize();
 		GLfloat modelview[16];
@@ -893,7 +982,7 @@ void LensRenderable::SlotLensCenterChanged(float3 p)
 		actor->GetDepthRange(depthRange);
 		//pScreen.z = clamp((1.0f - aa * , 0.0f, 1.0f);
 		//std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
-		
+
 		//std::cout << "leapPos:" << leapPos.x << "," << leapPos.y << "," << leapPos.z << std::endl;
 		bool usingVR = true;
 		if (usingVR){
@@ -911,6 +1000,15 @@ void LensRenderable::SlotLensCenterChanged(float3 p)
 		//pScreen.z = clamp(aa *(1 - (p.y + 73.5) / 147), 0, 1);
 		//lenses.back()->c.z = pScreen.z;
 		lenses.back()->UpdateCenterByScreenPos(pScreen.x, pScreen.y, modelview, projection, winSize.x, winSize.y);
+	}
+}
+
+
+void LensRenderable::SlotOneHandChanged(float3 p)
+{
+	//std::cout << "one hand..." << std::endl;
+	if (lenses.size() > 0){
+		ChangeLensCenterbyLeap(p);
 		//interaction box
 		//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
 		((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();

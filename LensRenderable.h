@@ -14,7 +14,7 @@ class LensRenderable :public Renderable
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
 
-	
+	void ChangeLensCenterbyLeap(float3 p);
 public:
 	float3 snapPos;
 	void SnapLastLens();
@@ -38,7 +38,11 @@ public:
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int modifier, int delta)  override;
 	void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) override;
+	void ChangeLensDepth(float v);
 	bool InsideALens(int x, int y);
+	bool TwoPointsInsideALens(int2 p1, int2 p2);
+	bool OnLensInnerBoundary(int2 p1, int2 p2);
+	void UpdateLensTwoFingers(int2 p1, int2 p2);
 
 	bool isSnapToGlyph = false;
 	bool isSnapToFeature = false;
@@ -47,7 +51,8 @@ public slots:
 	void SlotFocusSizeChanged(int v);
 	void SlotSideSizeChanged(int v);
 	void SlotDelLens();
-	void SlotLensCenterChanged(float3 p);
+	void SlotOneHandChanged(float3 p);
+	void SlotTwoHandChanged(float3 l, float3 r);
 	void adjustOffset();
 	void RefineLensBoundary();
 };
