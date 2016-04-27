@@ -105,7 +105,7 @@ struct functor_Displace
 				}
 				else {
 					//graduately turn dark
-					brightness = max(dark, 1.0 / (100 * (clipPos.z - lensD) + 1.0));
+					brightness = max(dark, 1.0 / (300 * (clipPos.z - lensD) + 1.0));
 				}
 			}
 		}

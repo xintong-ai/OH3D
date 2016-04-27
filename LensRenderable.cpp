@@ -984,7 +984,7 @@ void LensRenderable::ChangeLensCenterbyLeap(float3 p)
 		//std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
 
 		//std::cout << "leapPos:" << leapPos.x << "," << leapPos.y << "," << leapPos.z << std::endl;
-		bool usingVR = true;
+		bool usingVR = false;
 		if (usingVR){
 			pScreen.x = (1.0 - leapPos.x) * winSize.x;
 			pScreen.y = clamp((1.0 - leapPos.z) * 2, 0.0f, 1.0f) * winSize.y;

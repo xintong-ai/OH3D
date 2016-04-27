@@ -1,10 +1,10 @@
 DATA_TYPE=TYPE_SCALAR
-DATA_PATH=D:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
+DATA_PATH=F:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
 VR_SUPPORT=OFF
-FEATURE_PATH=D:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
-ventricles=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
-tumor1=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_293_region_1.ply
-tumor2=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_295_region_3.ply
+FEATURE_PATH=F:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
+ventricles=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
+tumor1=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_293_region_1.ply
+tumor2=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_295_region_3.ply
 
 b= TYPE_VECTOR,,TYPE_TENSOR,TYPE_SCALAR
 a=D:/onedrive/data/plume/15plume3d421-126x126x512.vec

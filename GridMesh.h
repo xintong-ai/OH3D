@@ -209,7 +209,7 @@ public:
 		float3 rangeDiff;
 		float gridMin[3];
 		float gridMax[3];
-		float marginScale = 0.2;
+		float marginScale = 0.1;
 		for (int i = 0; i < 3; i++){
 			float marginSize = (dataMax[i] - dataMin[i]) * marginScale;
 			gridMin[i] = dataMin[i] - marginSize;

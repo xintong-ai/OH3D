@@ -131,7 +131,7 @@ private:
     StopWatchInterface *timer = 0;
     int m_frame;
     int fpsCount = 0;        // FPS count for averaging
-    int fpsLimit = 64;        // FPS limit for sampling
+    int fpsLimit = 128;        // FPS limit for sampling
     unsigned int frameCount = 0;
 
     std::map<std::string,Renderable*> renderers;

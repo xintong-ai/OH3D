@@ -37,7 +37,7 @@ class Renderable: public QObject
 	/****timing****/
 	StopWatchInterface *timer = 0;
 	int fpsCount = 0;        // FPS count for averaging
-	int fpsLimit = 64;        // FPS limit for sampling
+	int fpsLimit = 128;        // FPS limit for sampling
 
 public:
 	Renderable();

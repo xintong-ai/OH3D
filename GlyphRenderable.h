@@ -17,7 +17,7 @@ class GlyphRenderable: public Renderable
 	/****timing****/
 	StopWatchInterface *deformTimer = 0;
 	int fpsCount = 0;        // FPS count for averaging
-	int fpsLimit = 64;        // FPS limit for sampling
+	int fpsLimit = 128;        // FPS limit for sampling
 	void StartDeformTimer();
 	void StopDeformTimer();
 public:

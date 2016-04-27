@@ -335,7 +335,7 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 	{
 	case INTERACT_MODE::MODIFY_LENS_DEPTH:
 	{
-		((LensRenderable*)renderers["lenses"])->ChangeLensDepth(gesture->totalScaleFactor() > 1 ? 1 : -1);
+		((LensRenderable*)renderers["lenses"])->ChangeLensDepth(gesture->totalScaleFactor() > 1 ? 26 : -26);
 		break;
 	}
 	case INTERACT_MODE::TRANSFORMATION:
@@ -345,7 +345,7 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 		//if (INTERACT_MODE::TRANSFORMATION == interactMode){
 		if (changeFlags & QPinchGesture::ScaleFactorChanged) {
 			//currentTransScale = gesture->totalScaleFactor();// exp(/*event->delta()*/gesture->totalScaleFactor() * 0.01);
-			matrixMgr->SetCurrentScale(gesture->totalScaleFactor());
+		//	matrixMgr->SetCurrentScale(gesture->totalScaleFactor());
 			update();
 		}
 

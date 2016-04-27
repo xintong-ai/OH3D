@@ -62,16 +62,20 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	float* lx = modelGrid->GetX();
 	unsigned int* l = modelGrid->GetL();
 	float* e = modelGrid->GetE();
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glBegin(GL_LINES);
 	for (int i = 0; i < modelGrid->GetLNumber(); i++){
-		float cc = e[i / 6] / 100000;
-		glColor3f(cc, 1.0f-cc, 0);
+		float cc = e[i / 6] / 10000;
+		glColor4f(cc, 1.0f-cc, 0, 0.5);
 		//glColor3f(1.0f, 0, 0);
 
 		glVertex3fv(lx + 3 * l[i * 2]);
 		glVertex3fv(lx + 3 * l[i * 2 + 1]);
 	}
 	glEnd();
+	glDisable(GL_BLEND);
 
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
