@@ -42,7 +42,7 @@ set( Srcs main.cpp GLSphere.cpp GLArrow.cpp
 set( Hdrs  
 GLSphere.h
 	window.h glwidget.h Renderable.h trackball.h Rotation.h QuatVector.h
-	DataMgr.h defines.h Reader.h GLArrow.h
+	DataMgr.h Reader.h GLArrow.h
 	BoxRenderable.h ShaderProgram.h ParticleReader.h SphereRenderable.h
 	GlyphRenderable.h LensRenderable.h
 	GridRenderable.h
@@ -57,10 +57,12 @@ GLSphere.h
 	MeshReader.h
     )
 
+configure_file(config.txt config.txt COPYONLY)
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 add_executable(render ${Srcs} ${Hdrs} ${QtApp_RCC_SRCS})
 #qt5_use_modules(render OpenGL Gui Widgets)
 target_link_libraries(render Qt5::Widgets  ${SHARED_LIBRARIES} ${Teem_LIBRARY_DIRS}/teem.lib
-${Leap_IMPORT_LIB_DEBUG} osvr::osvrClientKitCpp shared_lib)
+${Leap_IMPORT_LIB_DEBUG} osvr::osvrClientKitCpp deform_lib)

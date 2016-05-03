@@ -1,5 +1,3 @@
-project(glyph_prog)
-
 cmake_minimum_required(VERSION 2.6)
 
 #Set(CMAKE_PREFIX_PATH "C:/Program Files (x86)/Windows Kits/8.0/Lib/win8/um/x64")
