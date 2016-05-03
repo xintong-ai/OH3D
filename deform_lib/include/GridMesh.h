@@ -3,7 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////
 #ifndef GRID_MESH_H
 #define GRID_MESH_H
-#include "deform/CUDA_PROJECTIVE_TET_MESH.h"
+#include "physics/CUDA_PROJECTIVE_TET_MESH.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <algorithm>

@@ -388,15 +388,11 @@ void Window::SlotTogglePickingFeature(bool b)
 		SlotToggleUsingGlyphSnapping(false);
 		usingGlyphPickingCheck->setChecked(false);
 		SlotTogglePickingGlyph(false);
-		if (featuresLw != NULL){
-			featuresLw->setEnabled(true);
-		}
+		featuresLw->setEnabled(true);
 	}
 	else{
-		if (featuresLw != NULL){
-			featuresLw->clearSelection();
-			featuresLw->setEnabled(false);
-		}
+		featuresLw->clearSelection();
+		featuresLw->setEnabled(false);
 	}
 }
 
@@ -458,12 +454,8 @@ void Window::SlotFeaturesLwRowChanged(int currentRow)
 		lensRenderable->SnapLastLens();
 	}
 	glyphRenderable->RecomputeTarget();
-	if (featuresLw != NULL){
-		featuresLw->setCurrentRow(-1);
-	}
+	featuresLw->setCurrentRow(-1);
 	usingFeaturePickingCheck->setChecked(false);
-	if (featuresLw != NULL){
-		featuresLw->setEnabled(false);
-	}
+	featuresLw->setEnabled(false);
 }
 
