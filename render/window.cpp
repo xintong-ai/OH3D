@@ -13,17 +13,21 @@
 #include "VecReader.h"
 #include "ArrowRenderable.h"
 #include "DataMgr.h"
-#include "VRWidget.h"
-#include "VRGlyphRenderable.h"
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
 
-
+#ifdef USE_LEAP
 #include <LeapListener.h>
 #include <Leap.h>
+#endif
+
+#ifdef USE_OSVR
+#include "VRWidget.h"
+#include "VRGlyphRenderable.h"
+#endif
 
 enum DATA_TYPE
 {
@@ -130,14 +134,14 @@ Window::Window()
 	openGL = std::make_unique<GLWidget>(matrixMgr);
 	lensRenderable = std::make_unique<LensRenderable>();
 	//lensRenderable->SetDrawScreenSpace(false);
-	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
+#ifdef USE_OSVR
 		vrWidget = std::make_unique<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
 		vrGlyphRenderable = std::make_unique<VRGlyphRenderable>(glyphRenderable.get());
 		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
 		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
-	}
+#endif
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
@@ -196,11 +200,12 @@ Window::Window()
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
+#ifdef USE_LEAP
 	listener = new LeapListener();
 	controller = new Leap::Controller();
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
-	
+#endif
 
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
@@ -252,8 +257,10 @@ Window::Window()
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 	//connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
 	//	this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
+#ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
+#endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
 	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
@@ -308,9 +315,10 @@ Window::~Window() {
 
 void Window::init()
 {
-	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
+//	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
+#ifdef USE_OSVR
 		vrWidget->show();
-	}
+#endif
 }
 
 

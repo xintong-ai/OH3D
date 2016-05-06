@@ -10,6 +10,7 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <memory>
+#include <CMakeConfig.h>
 
 enum INTERACT_MODE{
 	//	DRAG_LENS_EDGE,
@@ -37,8 +38,11 @@ enum DEFORM_MODEL{
 
 class StopWatchInterface;
 class Renderable;
-class VRWidget;
 class GLMatrixManager;
+
+#if USE_OSVR
+class VRWidget;
+#endif
 
 class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
@@ -80,7 +84,9 @@ public:
 	void GetModelview(float* m);// { for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
 	void GetProjection(float* m);// { for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 
+#if USE_OSVR
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
+#endif
 
 	void GetDepthRange(float2& v){ v = depthRange; }
 
@@ -100,7 +106,10 @@ protected:
 
 	uint width = 750, height = 900;
 private:
+#if USE_OSVR
 	VRWidget* vrWidget = nullptr;
+#endif
+
     void computeFPS();
 
     void TimerStart();

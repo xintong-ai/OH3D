@@ -116,9 +116,11 @@ void GLWidget::paintGL() {
 	}
 
     TimerEnd();
+#ifdef USE_OSVR
 	if (nullptr != vrWidget){
 		vrWidget->UpdateGL();
 	}
+#endif
 }
 
 

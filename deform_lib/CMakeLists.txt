@@ -12,8 +12,16 @@ else()
 include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc )
 
-set(LIB_SRCS Displace.cu ModelGrid.cu Lens.cpp)
 
-cuda_add_library(deform_lib STATIC ${LIB_SRCS})
+set(SRCS Displace.cu ModelGrid.cu Lens.cpp)
+
+set(HDRS	defines.h
+			Displace.h
+			GridMesh.h
+			Lens.h
+			ModelGrid.h
+			TransformFunc.h)
+
+cuda_add_library(deform_lib STATIC ${HDRS} ${SRCS})
 
 endif()

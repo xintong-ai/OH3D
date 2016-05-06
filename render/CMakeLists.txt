@@ -1,10 +1,18 @@
 cmake_minimum_required(VERSION 2.6)
 
 find_package(OpenGL REQUIRED)
-find_package(Qt5Widgets)
+find_package(Qt5Widgets REQUIRED)
 find_package(Teem)
-find_package(Leap)
-find_package(osvr)
+
+option(USE_OSVR "Enable features that require OSVR" OFF)
+if(USE_OSVR)
+	find_package(osvr REQUIRED)
+endif()
+
+option(USE_LEAP "Enable features that require LEAP MOTION" OFF)
+if(USE_LEAP)
+	find_package(Leap REQUIRED)
+endif()
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
@@ -13,6 +21,7 @@ include_directories(
 	${CUDA_SDK_ROOT_DIR}/common/inc 
 	${Teem_INCLUDE_DIRS} 
 	${Leap_INCLUDE_DIR}
+	${PROJECT_BINARY_DIR}
 	required)
 
 link_directories(${Teem_LIBRARY_DIRS})
@@ -40,14 +49,10 @@ set( Srcs
 	VolumeReader.cpp 
 	DTIVolumeReader.cpp 
 	VecReader.cpp
-	VRWidget.cpp 
-	VRGlyphRenderable.cpp
-	LeapListener.cpp 
     GLMatrixManager.cpp
     ModelGridRenderable.cpp
 	PolyRenderable.cpp
 	MeshReader.cpp
-	
 	)
 set( Hdrs  
 	GLSphere.h
@@ -73,16 +78,22 @@ set( Hdrs
 	VolumeReader.h 
 	DTIVolumeReader.h 
 	VecReader.h
-	VRWidget.h 
-	VRGlyphRenderable.h
-	LeapListener.h 
-	LeapInteraction.h
 	GLMatrixManager.h
 	ModelGridRenderable.h
 	OPENGL_DRIVER.h
 	PolyRenderable.h
 	MeshReader.h
     )
+
+if(USE_OSVR)
+	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h)
+	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp)
+endif()
+
+if(USE_LEAP)
+	set(Hdrs ${Hdrs} LeapListener.h LeapInteraction.h)
+	set(Srcs ${Srcs} LeapListener.cpp)
+endif()
 
 configure_file(config.txt config.txt COPYONLY)
 
@@ -95,6 +106,12 @@ target_link_libraries(render
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
 	${Teem_LIBRARY_DIRS}/teem.lib
-	${Leap_IMPORT_LIB_DEBUG} 
-	osvr::osvrClientKitCpp 
 	deform_lib)
+
+if(USE_OSVR)
+	target_link_libraries(render osvr::osvrClientKitCpp)
+endif()
+
+if(USE_LEAP)
+	target_link_libraries(render ${Leap_IMPORT_LIB_DEBUG})
+endif()

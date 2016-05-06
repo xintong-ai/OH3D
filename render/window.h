@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <memory>
+#include "CMakeConfig.h"
 
 class DataMgr;
 class GLWidget;
@@ -20,8 +21,6 @@ class QRadioButton;
 class QTimer;
 class LensRenderable;
 class GridRenderable;
-class VRWidget;
-class VRGlyphRenderable;
 class LeapListener;
 class DataMgr;
 class GLMatrixManager;
@@ -29,6 +28,12 @@ class ModelGridRenderable;
 class ModelGrid;
 class PolyRenderable;
 class QListWidget;
+
+#ifdef USE_OSVR
+class VRWidget;
+class VRGlyphRenderable;
+#endif
+
 namespace Leap{
 	class Controller;
 }
@@ -42,7 +47,6 @@ public:
 
 private:
     std::unique_ptr<GLWidget> openGL;
-	std::unique_ptr<VRWidget> vrWidget;
 	Cubemap* cubemap;
 	QTimer *aTimer;
 	const int nScale = 20;
@@ -65,7 +69,10 @@ private:
 	std::unique_ptr<GlyphRenderable> glyphRenderable;
 	std::unique_ptr<LensRenderable> lensRenderable;
 	std::unique_ptr<GridRenderable> gridRenderable;
+#ifdef USE_OSVR
+	std::unique_ptr<VRWidget> vrWidget;
 	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
+#endif
 	std::unique_ptr<ModelGridRenderable> modelGridRenderable;
 	std::unique_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
