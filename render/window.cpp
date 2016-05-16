@@ -2,16 +2,19 @@
 #include "glwidget.h"
 //#include "VecReader.h"
 #include "BoxRenderable.h"
-#include "ParticleReader.h"
-#include "DTIVolumeReader.h"
-#include "SphereRenderable.h"
-#include "SQRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
 #include "Displace.h"
 
-#include "VecReader.h"
-#include "ArrowRenderable.h"
+#ifdef USE_PARTICLE
+#include "SphereRenderable.h"
+#include "ParticleReader.h"
+#else
+#include "DTIVolumeReader.h"
+#include "SQRenderable.h"
+#endif
+//#include "VecReader.h"
+//#include "ArrowRenderable.h"
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
@@ -55,82 +58,63 @@ Window::Window()
 	//QSizePolicy fixedPolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
 	std::unique_ptr<Reader> reader;
 
-	DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE; //DATA_TYPE::TYPE_VECTOR;//DATA_TYPE::TYPE_TENSOR; //
-	if ("TYPE_PARTICLE" == dataMgr->GetConfig("DATA_TYPE")){
-		dataType = DATA_TYPE::TYPE_PARTICLE;
-	}
-	else if ("TYPE_VECTOR" == dataMgr->GetConfig("DATA_TYPE")){
-		dataType = DATA_TYPE::TYPE_VECTOR;
-	}
-	else if ("TYPE_TENSOR" == dataMgr->GetConfig("DATA_TYPE")){
-		dataType = DATA_TYPE::TYPE_TENSOR;
-	}
+	//DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE; //DATA_TYPE::TYPE_VECTOR;//DATA_TYPE::TYPE_TENSOR; //
+	//if ("TYPE_PARTICLE" == dataMgr->GetConfig("DATA_TYPE")){
+	//	dataType = DATA_TYPE::TYPE_PARTICLE;
+	//}
+	//else if ("TYPE_VECTOR" == dataMgr->GetConfig("DATA_TYPE")){
+	//	dataType = DATA_TYPE::TYPE_VECTOR;
+	//}
+	//else if ("TYPE_TENSOR" == dataMgr->GetConfig("DATA_TYPE")){
+	//	dataType = DATA_TYPE::TYPE_TENSOR;
+	//}
+#ifdef USE_PARTICLE
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
+	reader = std::make_unique<ParticleReader>(dataPath.c_str());
+	glyphRenderable = std::make_unique<SphereRenderable>(
+		((ParticleReader*)reader.get())->GetPos(),
+		((ParticleReader*)reader.get())->GetVal());
+	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
+#else
+	const std::string dataPath = dataMgr->GetConfig("DATA_PATH_TENSOR");
+	reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
+	std::vector<float4> pos;
+	std::vector<float> val;
 
-	if (DATA_TYPE::TYPE_PARTICLE == dataType) {
-		reader = std::make_unique<ParticleReader>(dataPath.c_str());
-		glyphRenderable = std::make_unique<SphereRenderable>(
-			((ParticleReader*)reader.get())->GetPos(),
-			((ParticleReader*)reader.get())->GetVal());
-		std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
+	//if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
+	if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
+			std::vector<char> feature;
+		((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
+		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
 	}
-	else if (DATA_TYPE::TYPE_TENSOR == dataType) {
-		reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
-		std::vector<float4> pos;
-		std::vector<float> val;
-
-
-
-		//if (true){
-		//				
-		//	std::vector<std::string> featureFiles;
-		//	featureFiles.push_back(dataMgr->GetConfig("ventricles_Feature"));
-		//	featureFiles.push_back(dataMgr->GetConfig("tumor1_Feature"));
-		//	featureFiles.push_back(dataMgr->GetConfig("tumor2_Feature"));
-		//	((DTIVolumeReader*)reader.get())->LoadFeature2(featureFiles);
-
-		//	std::vector<char> feature;
-		//	((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
-		//	glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-		//	glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
-		//}
-		//else
-		//{
-		//	((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		//	glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-		//}
-
-
-		//if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
-		if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
-				std::vector<char> feature;
-			((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
-			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-			glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
-		}
-		else
-		{
-			((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-			glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-		}
-
-		std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
-
+	else
+	{
+		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
 	}
-	else if (DATA_TYPE::TYPE_VECTOR == dataType) {
-		reader = std::make_unique<VecReader>(dataPath.c_str());
-		std::vector<float4> pos;
-		std::vector<float3> vec;
-		std::vector<float> val;
-		((VecReader*)reader.get())->GetSamples(pos, vec, val);
-		glyphRenderable = std::make_unique<ArrowRenderable>(pos, vec, val);
 
-		std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
-	}
+	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
+
+#endif
+	//else if (DATA_TYPE::TYPE_VECTOR == dataType) {
+	//	reader = std::make_unique<VecReader>(dataPath.c_str());
+	//	std::vector<float4> pos;
+	//	std::vector<float3> vec;
+	//	std::vector<float> val;
+	//	((VecReader*)reader.get())->GetSamples(pos, vec, val);
+	//	glyphRenderable = std::make_unique<ArrowRenderable>(pos, vec, val);
+
+	//	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
+	//}
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 	/********GL widget******/
-	matrixMgr = std::make_shared<GLMatrixManager>("ON" == dataMgr->GetConfig("VR_SUPPORT"));
+#ifdef USE_OSVR
+	matrixMgr = std::make_shared<GLMatrixManager>(true);
+#else
+	matrixMgr = std::make_shared<GLMatrixManager>(false);
+#endif
 	openGL = std::make_unique<GLWidget>(matrixMgr);
 	lensRenderable = std::make_unique<LensRenderable>();
 	//lensRenderable->SetDrawScreenSpace(false);
@@ -162,32 +146,32 @@ Window::Window()
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("model", modelGridRenderable.get());
-	if (DATA_TYPE::TYPE_TENSOR == dataType) {
-		MeshReader *meshReader;
-		meshReader = new MeshReader();
-		meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str());
-		polyFeature0 = new PolyRenderable(meshReader);
-		polyFeature0->SetAmbientColor(0.2, 0, 0);
-		openGL->AddRenderable("ventricles", polyFeature0);
+#ifndef USE_PARTICLE
+	MeshReader *meshReader;
+	meshReader = new MeshReader();
+	meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str());
+	polyFeature0 = new PolyRenderable(meshReader);
+	polyFeature0->SetAmbientColor(0.2, 0, 0);
+	openGL->AddRenderable("ventricles", polyFeature0);
 
-		meshReader = new MeshReader();
-		meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str());
-		polyFeature1 = new PolyRenderable(meshReader);
-		polyFeature1->SetAmbientColor(0.0, 0.2, 0);
-		openGL->AddRenderable("tumor1", polyFeature1);
+	meshReader = new MeshReader();
+	meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str());
+	polyFeature1 = new PolyRenderable(meshReader);
+	polyFeature1->SetAmbientColor(0.0, 0.2, 0);
+	openGL->AddRenderable("tumor1", polyFeature1);
 
-		meshReader = new MeshReader();
-		meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str());
-		polyFeature2 = new PolyRenderable(meshReader);
-		polyFeature2->SetAmbientColor(0.0, 0.0, 0.2);
-		openGL->AddRenderable("tumor2", polyFeature2);
+	meshReader = new MeshReader();
+	meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str());
+	polyFeature2 = new PolyRenderable(meshReader);
+	polyFeature2->SetAmbientColor(0.0, 0.0, 0.2);
+	openGL->AddRenderable("tumor2", polyFeature2);
 
-		featuresLw = new QListWidget();
-		featuresLw->addItem(QString("ventricles"));
-		featuresLw->addItem(QString("tumor1"));
-		featuresLw->addItem(QString("tumor2"));
-		featuresLw->setEnabled(false);
-	}
+	featuresLw = new QListWidget();
+	featuresLw->addItem(QString("ventricles"));
+	featuresLw->addItem(QString("tumor1"));
+	featuresLw->addItem(QString("tumor2"));
+	featuresLw->setEnabled(false);
+#endif
 
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
@@ -269,11 +253,12 @@ Window::Window()
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 
-
-	if (DATA_TYPE::TYPE_TENSOR == dataType && featuresLw != NULL) {
+#ifndef USE_PARTICLE
+	if (featuresLw != NULL) {
 		controlLayout->addWidget(featuresLw);
 		connect(featuresLw, SIGNAL(currentRowChanged(int)), this, SLOT(SlotFeaturesLwRowChanged(int)));
 	}
+#endif
 	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
