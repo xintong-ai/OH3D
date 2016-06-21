@@ -40,7 +40,7 @@ class StopWatchInterface;
 class Renderable;
 class GLMatrixManager;
 
-#if USE_OSVR
+#ifdef USE_OSVR
 class VRWidget;
 #endif
 
@@ -84,7 +84,7 @@ public:
 	void GetModelview(float* m);// { for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
 	void GetProjection(float* m);// { for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 
-#if USE_OSVR
+#ifdef USE_OSVR
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 #endif
 
@@ -106,7 +106,7 @@ protected:
 
 	uint width = 750, height = 900;
 private:
-#if USE_OSVR
+#ifdef USE_OSVR
 	VRWidget* vrWidget = nullptr;
 #endif
 
