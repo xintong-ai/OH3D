@@ -1,20 +1,12 @@
 #include "window.h"
 #include "glwidget.h"
-//#include "VecReader.h"
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
 #include "Displace.h"
 
-#ifdef USE_PARTICLE
 #include "SphereRenderable.h"
 #include "ParticleReader.h"
-#else
-#include "DTIVolumeReader.h"
-#include "SQRenderable.h"
-#endif
-//#include "VecReader.h"
-//#include "ArrowRenderable.h"
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
@@ -32,13 +24,6 @@
 #include "VRGlyphRenderable.h"
 #endif
 
-enum DATA_TYPE
-{
-	TYPE_PARTICLE,
-	TYPE_TENSOR,
-	TYPE_VECTOR,
-};
-
 QSlider* CreateSlider()
 {
 	QSlider* slider = new QSlider(Qt::Horizontal);
@@ -55,58 +40,14 @@ Window::Window()
 
 	dataMgr = std::make_unique<DataMgr>();
 	
-	//QSizePolicy fixedPolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
 	std::unique_ptr<Reader> reader;
 
-	//DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE; //DATA_TYPE::TYPE_VECTOR;//DATA_TYPE::TYPE_TENSOR; //
-	//if ("TYPE_PARTICLE" == dataMgr->GetConfig("DATA_TYPE")){
-	//	dataType = DATA_TYPE::TYPE_PARTICLE;
-	//}
-	//else if ("TYPE_VECTOR" == dataMgr->GetConfig("DATA_TYPE")){
-	//	dataType = DATA_TYPE::TYPE_VECTOR;
-	//}
-	//else if ("TYPE_TENSOR" == dataMgr->GetConfig("DATA_TYPE")){
-	//	dataType = DATA_TYPE::TYPE_TENSOR;
-	//}
-#ifdef USE_PARTICLE
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
 	reader = std::make_unique<ParticleReader>(dataPath.c_str());
 	glyphRenderable = std::make_unique<SphereRenderable>(
 		((ParticleReader*)reader.get())->GetPos(),
 		((ParticleReader*)reader.get())->GetVal());
 	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
-#else
-	const std::string dataPath = dataMgr->GetConfig("DATA_PATH_TENSOR");
-	reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
-	std::vector<float4> pos;
-	std::vector<float> val;
-
-	//if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
-	if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
-			std::vector<char> feature;
-		((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
-		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-		glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
-	}
-	else
-	{
-		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
-	}
-
-	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
-
-#endif
-	//else if (DATA_TYPE::TYPE_VECTOR == dataType) {
-	//	reader = std::make_unique<VecReader>(dataPath.c_str());
-	//	std::vector<float4> pos;
-	//	std::vector<float3> vec;
-	//	std::vector<float> val;
-	//	((VecReader*)reader.get())->GetSamples(pos, vec, val);
-	//	glyphRenderable = std::make_unique<ArrowRenderable>(pos, vec, val);
-
-	//	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
-	//}
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 	/********GL widget******/
@@ -146,33 +87,6 @@ Window::Window()
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("model", modelGridRenderable.get());
-#ifndef USE_PARTICLE
-	MeshReader *meshReader;
-	meshReader = new MeshReader();
-	meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str());
-	polyFeature0 = new PolyRenderable(meshReader);
-	polyFeature0->SetAmbientColor(0.2, 0, 0);
-	openGL->AddRenderable("ventricles", polyFeature0);
-
-	meshReader = new MeshReader();
-	meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str());
-	polyFeature1 = new PolyRenderable(meshReader);
-	polyFeature1->SetAmbientColor(0.0, 0.2, 0);
-	openGL->AddRenderable("tumor1", polyFeature1);
-
-	meshReader = new MeshReader();
-	meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str());
-	polyFeature2 = new PolyRenderable(meshReader);
-	polyFeature2->SetAmbientColor(0.0, 0.0, 0.2);
-	openGL->AddRenderable("tumor2", polyFeature2);
-
-	featuresLw = new QListWidget();
-	featuresLw->addItem(QString("ventricles"));
-	featuresLw->addItem(QString("tumor1"));
-	featuresLw->addItem(QString("tumor2"));
-	featuresLw->setEnabled(false);
-#endif
-
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add straight band lens");
@@ -202,12 +116,8 @@ Window::Window()
 
 	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph", this);
 	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
-	freezingFeatureCheck = new QCheckBox("Freezing Feature", this);
-	usingFeatureSnappingCheck = new QCheckBox("Snapping Feature", this);
-	usingFeaturePickingCheck = new QCheckBox("Picking Feature", this);
 
 	connect(glyphRenderable.get(), SIGNAL(glyphPickingFinished()), this, SLOT(SlotToggleGlyphPickingFinished()));
-	connect(glyphRenderable.get(), SIGNAL(featurePickingFinished()), this, SLOT(SlotToggleFeaturePickingFinished()));
 
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
@@ -223,9 +133,6 @@ Window::Window()
 	controlLayout->addWidget(transSizeSlider);
 	controlLayout->addWidget(usingGlyphSnappingCheck);
 	controlLayout->addWidget(usingGlyphPickingCheck);
-	controlLayout->addWidget(freezingFeatureCheck);
-	controlLayout->addWidget(usingFeatureSnappingCheck); 
-	controlLayout->addWidget(usingFeaturePickingCheck);
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addStretch();
 
@@ -239,26 +146,14 @@ Window::Window()
 
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
-	//connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
-	//	this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 #ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
-	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
-	connect(usingFeatureSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingFeatureSnapping(bool)));
-	connect(usingFeaturePickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingFeature(bool)));
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
-
-#ifndef USE_PARTICLE
-	if (featuresLw != NULL) {
-		controlLayout->addWidget(featuresLw);
-		connect(featuresLw, SIGNAL(currentRowChanged(int)), this, SLOT(SlotFeaturesLwRowChanged(int)));
-	}
-#endif
 	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
@@ -281,14 +176,20 @@ void Window::AddCurveBLens()
 	lensRenderable->AddCurveBLens();
 }
 
-//void Window::animate()
-//{
-//	//int v = heightScaleSlider->value();
-//	//v = (v + 1) % nHeightScale;
-//	//heightScaleSlider->setValue(v);
-//	openGL->animate();
-//}
-//
+
+void Window::SlotTogglePickingGlyph(bool b)
+{
+	glyphRenderable->isPickingGlyph = b;
+}
+
+
+void Window::SlotToggleUsingGlyphSnapping(bool b)
+{
+	lensRenderable->isSnapToGlyph = b;
+	if (!b){
+		glyphRenderable->SetSnappedGlyphId(-1);
+	}
+}
 
 void Window::SlotToggleGrid(bool b)
 {
@@ -300,18 +201,11 @@ Window::~Window() {
 
 void Window::init()
 {
-//	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
 #ifdef USE_OSVR
 		vrWidget->show();
 #endif
 }
 
-
-//void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
-//{
-//	//std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
-//	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
-//}
 #ifdef USE_LEAP
 void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
 {
@@ -327,67 +221,6 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 	}
 }
 #endif
-void Window::SlotToggleUsingGlyphSnapping(bool b)
-{
-	lensRenderable->isSnapToGlyph = b;
-	if (!b){
-		glyphRenderable->SetSnappedGlyphId(-1);
-	}
-	else{
-		usingFeatureSnappingCheck->setChecked(false);
-		SlotToggleUsingFeatureSnapping(false);
-		usingFeaturePickingCheck->setChecked(false);
-		SlotTogglePickingFeature(false);
-	}
-}
-
-void Window::SlotTogglePickingGlyph(bool b)
-{
-	glyphRenderable->isPickingGlyph = b;
-	if (b){
-		usingFeatureSnappingCheck->setChecked(false);
-		SlotToggleUsingFeatureSnapping(false);
-		usingFeaturePickingCheck->setChecked(false);
-		SlotTogglePickingFeature(false);
-	}
-}
-
-void Window::SlotToggleFreezingFeature(bool b)
-{
-	glyphRenderable->isFreezingFeature = b;
-	glyphRenderable->RecomputeTarget();
-}
-
-void Window::SlotToggleUsingFeatureSnapping(bool b)
-{
-	lensRenderable->isSnapToFeature = b;
-	if (!b){
-		glyphRenderable->SetSnappedFeatureId(-1);
-		glyphRenderable->RecomputeTarget();
-	}
-	else{
-		usingGlyphSnappingCheck->setChecked(false);
-		SlotToggleUsingGlyphSnapping(false);
-		usingGlyphPickingCheck->setChecked(false);
-		SlotTogglePickingGlyph(false);
-	}
-}
-
-void Window::SlotTogglePickingFeature(bool b)
-{
-	glyphRenderable->isPickingFeature = b;
-	if (b){
-		usingGlyphSnappingCheck->setChecked(false);
-		SlotToggleUsingGlyphSnapping(false);
-		usingGlyphPickingCheck->setChecked(false);
-		SlotTogglePickingGlyph(false);
-		featuresLw->setEnabled(true);
-	}
-	else{
-		featuresLw->clearSelection();
-		featuresLw->setEnabled(false);
-	}
-}
 
 void Window::SlotSaveState()
 {
@@ -405,11 +238,6 @@ void Window::SlotToggleGlyphPickingFinished()
 	usingGlyphPickingCheck->setChecked(false);
 }
 
-void Window::SlotToggleFeaturePickingFinished()
-{
-	usingFeaturePickingCheck->setChecked(false);
-}
-
 void Window::SlotDeformModeChanged(bool clicked)
 {
 	if (radioDeformScreen->isChecked()){
@@ -418,37 +246,5 @@ void Window::SlotDeformModeChanged(bool clicked)
 	else if (radioDeformObject->isChecked()){
 		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
 	}
-}
-
-void Window::SlotFeaturesLwRowChanged(int currentRow)
-{
-	if (currentRow == 0){
-		polyFeature0->isSnapped = true;
-		polyFeature1->isSnapped = false;
-		polyFeature2->isSnapped = false;
-		glyphRenderable->SetSnappedFeatureId(1);
-		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow];// polyFeature0->GetPolyCenter();
-		lensRenderable->SnapLastLens();
-	}
-	else if (currentRow == 1){
-		polyFeature0->isSnapped = false;
-		polyFeature1->isSnapped = true;
-		polyFeature2->isSnapped = false;
-		glyphRenderable->SetSnappedFeatureId(2);
-		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature1->GetPolyCenter();
-		lensRenderable->SnapLastLens();
-	}
-	else if (currentRow == 2){
-		polyFeature0->isSnapped = false;
-		polyFeature1->isSnapped = false;
-		polyFeature2->isSnapped = true;
-		glyphRenderable->SetSnappedFeatureId(3); 
-		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature2->GetPolyCenter();
-		lensRenderable->SnapLastLens();
-	}
-	glyphRenderable->RecomputeTarget();
-	featuresLw->setCurrentRow(-1);
-	usingFeaturePickingCheck->setChecked(false);
-	featuresLw->setEnabled(false);
 }
 
