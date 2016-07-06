@@ -29,6 +29,8 @@ class ModelGrid;
 class PolyRenderable;
 class QListWidget;
 
+#define USE_PARTICLE
+
 #ifdef USE_OSVR
 class VRWidget;
 class VRGlyphRenderable;
@@ -94,7 +96,9 @@ private slots:
 	//void animate();
 	void SlotToggleGrid(bool b);
 	//void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
+#ifdef USE_LEAP
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+#endif
 	void SlotToggleUsingGlyphSnapping(bool b);
 	void SlotTogglePickingGlyph(bool b);
 	void SlotToggleFreezingFeature(bool b);

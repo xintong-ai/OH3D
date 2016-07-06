@@ -312,7 +312,7 @@ void Window::init()
 //	//std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
 //	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
 //}
-
+#ifdef USE_LEAP
 void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
 {
 	if (1 == numHands){
@@ -326,7 +326,7 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 		
 	}
 }
-
+#endif
 void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
 	lensRenderable->isSnapToGlyph = b;

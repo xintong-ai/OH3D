@@ -31,6 +31,8 @@ add_subdirectory(io)
 
 add_subdirectory(render)
 
+add_subdirectory(programs)
+
 configure_file (
   "${PROJECT_SOURCE_DIR}/CMakeConfig.h.in"
   "${PROJECT_BINARY_DIR}/CMakeConfig.h"
