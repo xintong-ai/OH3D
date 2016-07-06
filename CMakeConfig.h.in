@@ -3,6 +3,7 @@
 
 #cmakedefine USE_OSVR
 #cmakedefine USE_LEAP
+#cmakedefine USE_TOUCH
 #cmakedefine USE_PARTICLE
 
 #endif//CMAKE_CONFIG_H

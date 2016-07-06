@@ -4,18 +4,13 @@ find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
 
-option(USE_SUPERQUADRIC "Enable features that require TEEM" OFF)
-if(USE_SUPERQUADRIC)
-	find_package(Teem REQUIRED)
-endif()
-
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc 
 	# ${Leap_INCLUDE_DIR}
-	# ${PROJECT_BINARY_DIR}
+	${CMAKE_BINARY_DIR}
 	required)
 
 if(USE_SUPERQUADRIC)
@@ -39,7 +34,6 @@ set( Srcs
     ModelGridRenderable.cpp
 	GLSphere.cpp 
 	SphereRenderable.cpp
-	SQRenderable.cpp 
 	PolyRenderable.cpp
 	)
 set( Hdrs  
@@ -58,13 +52,17 @@ set( Hdrs
 	OPENGL_DRIVER.h
 	GLSphere.h
 	SphereRenderable.h 
-	SQRenderable.h 
     PolyRenderable.h
 	)
 
 if(USE_OSVR)
 	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h)
 	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp)
+endif()
+
+if(USE_SUPERQUADRIC)
+	set(Hdrs ${Hdrs} SQRenderable.h)
+	set(Srcs ${Srcs} SQRenderable.cpp)
 endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)

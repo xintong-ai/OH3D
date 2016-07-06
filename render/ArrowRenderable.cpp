@@ -1,5 +1,5 @@
 #include "ArrowRenderable.h"
-#include <teem/ten.h>
+//#include <teem/ten.h>
 //http://www.sci.utah.edu/~gk/vissym04/index.html
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>

@@ -1,6 +1,6 @@
 #include <GLMatrixManager.h>
-#include <Trackball.h>
-#include <Rotation.h>
+#include <mouse/trackball.h>
+#include <mouse/Rotation.h>
 #include <qmatrix4x4.h>
 #include <helper_math.h>
 #include <fstream>
