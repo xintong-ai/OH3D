@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstdint>
 #include <vector_functions.h>
+#include <helper_math.h>
 #define PI 3.1415926
 // a simple class to encapsulate a single timestep;
 // the constructor loads the timestep data from the specified file
@@ -144,12 +145,28 @@ void FlightReader::Load()
 		pos.push_back(make_float4(x, y, z, 1.0f));
 		val.push_back(flt);
 	}
+	TranslateToCenter();
 	//delete ts;
 	//float a, b;
 	//GetValRange(a, b);
 	//float3 pMin, pMax;
 	//GetDataRange(pMin, pMax);
 }
+
+void FlightReader::TranslateToCenter()
+{
+	float4 avg = make_float4(0, 0, 0, 0);
+	for (auto& p : pos){
+		avg += p;
+	}
+	avg /= pos.size();
+	for (auto& p : pos){
+		p.x = (p.x - avg.x) * 0.1;
+		p.y = (p.y - avg.y) * 0.1;
+		p.z = (p.z - avg.z) * 0.1;
+	}
+}
+
 
 void FlightReader::GetValRange(float& vMin, float& vMax)
 {

@@ -47,7 +47,8 @@ Window::Window()
 	glyphRenderable = std::make_unique<SphereRenderable>(
 		((FlightReader*)reader.get())->GetPos(),
 		((FlightReader*)reader.get())->GetVal());
-	glyphRenderable->SetGlyphSizeAdjust(10);
+	glyphRenderable->SetGlyphSizeAdjust(6);
+	glyphRenderable->EnableDisplace(false);
 	std::cout << "number of rendered glyphs: " << (((FlightReader*)reader.get())->GetVal()).size() << std::endl;
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 

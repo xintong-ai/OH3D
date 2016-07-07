@@ -8,6 +8,10 @@ if(USE_SUPERQUADRIC)
 	find_package(Teem REQUIRED)
 endif()
 
+option(USE_OSVR "Enable features that require OSVR" OFF)
+if(USE_OSVR)
+	find_package(osvr REQUIRED)
+endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 

@@ -3,6 +3,10 @@ project(render)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
+#if(USE_OSVR)
+#	find_package(osvr)
+#endif
+
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
@@ -11,6 +15,8 @@ include_directories(
 	${CUDA_SDK_ROOT_DIR}/common/inc 
 	# ${Leap_INCLUDE_DIR}
 	${CMAKE_BINARY_DIR}
+	${Boost_INCLUDE_DIR}
+	${osvr_DIR}/../../../include
 	required)
 
 if(USE_SUPERQUADRIC)

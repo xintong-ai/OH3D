@@ -20,6 +20,7 @@ class FlightReader :public Reader
 	//float4* pos;
 	timestep* ts;
 	std::vector<float> val;
+	void TranslateToCenter();
 public:
 	FlightReader(const char* filename) :Reader(filename){ Load(); }
 	//float4* GetPos();

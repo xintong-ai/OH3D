@@ -42,6 +42,7 @@ void GlyphRenderable::StopDeformTimer()
 
 void GlyphRenderable::ComputeDisplace(float _mv[16])
 {
+	if (!displaceEnabled) return;
 	StartDeformTimer();
 	int2 winSize = actor->GetWindowSize();
 	switch (actor->GetDeformModel())

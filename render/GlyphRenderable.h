@@ -20,6 +20,7 @@ class GlyphRenderable: public Renderable
 	int fpsLimit = 128;        // FPS limit for sampling
 	void StartDeformTimer();
 	void StopDeformTimer();
+	bool displaceEnabled = true;
 public:
 	//used for feature freezing rendering
 	bool isFreezingFeature = false;
@@ -40,6 +41,7 @@ public:
 	float3 findClosetGlyph(float3 aim);
 	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 
+	void EnableDisplace(bool v){ displaceEnabled = v; }
 
 protected:
 	std::vector<float4> pos; 

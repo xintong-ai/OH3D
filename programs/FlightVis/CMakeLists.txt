@@ -5,10 +5,7 @@ PROJECT (FlightVis)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
-# option(USE_OSVR "Enable features that require OSVR" OFF)
-# if(USE_OSVR)
-	# find_package(osvr REQUIRED)
-# endif()
+
 
 # option(USE_LEAP "Enable features that require LEAP MOTION" OFF)
 # if(USE_LEAP)
