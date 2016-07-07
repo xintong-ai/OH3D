@@ -184,11 +184,11 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 		if (snappedGlyphId != i){
 			qgl->glUniform3fv(glProg->uniform("Ka"), 1, &sphereColor[i].x);
-			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
 		}
 		else{
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.95f, 0.95f, 0.95f);
-			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust*2);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust*2);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
 		}
 
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);

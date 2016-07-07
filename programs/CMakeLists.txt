@@ -4,7 +4,10 @@ PROJECT(programs)
 
 add_subdirectory(ParticleVis)
 
+add_subdirectory(FlightVis)
+
 if(USE_SUPERQUADRIC)
 	add_subdirectory(TensorVis)
 endif()
+
 # add_subdirectory(StreamVis)
