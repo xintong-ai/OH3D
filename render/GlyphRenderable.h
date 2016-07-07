@@ -48,7 +48,7 @@ protected:
 	ModelGrid* modelGrid;
 	std::vector<float> glyphSizeScale;
 	std::vector<float> glyphBright;
-	float glyphSizeAdjust = 0.5;
+	float glyphSizeAdjust = 1.0f;
 	ShaderProgram* glProg = nullptr;
 	//bool displaceOn = true;
 	void ComputeDisplace(float _mv[16]);
@@ -74,7 +74,7 @@ public:
 	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
 	//void SetDispalceOn(bool b) { displaceOn = b; }
-
+	void SetGlyphSizeAdjust(float v){ glyphSizeAdjust = v; }
 
 	int GetNumOfGlyphs(){ return pos.size(); }
 
