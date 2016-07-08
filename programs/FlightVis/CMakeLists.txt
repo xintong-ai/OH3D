@@ -40,7 +40,7 @@ qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
-	deform_lib
+	deform
 	io
 	interact
 	render

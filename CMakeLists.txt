@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
 
-find_package(CUDA REQUIRED)
-
-
 option(USE_SUPERQUADRIC "Enable features that require TEEM" OFF)
 if(USE_SUPERQUADRIC)
 	find_package(Teem REQUIRED)
@@ -15,7 +12,7 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
-set(DEFORM_DIR		"${CMAKE_SOURCE_DIR}/deform_lib")
+set(DEFORM_DIR		"${CMAKE_SOURCE_DIR}/deform")
 set(INTERACT_DIR	"${CMAKE_SOURCE_DIR}/interact")
 set(IO_DIR			"${CMAKE_SOURCE_DIR}/io")
 set(RENDER_DIR		"${CMAKE_SOURCE_DIR}/render")
@@ -27,7 +24,11 @@ include_directories(
 	${RENDER_DIR}
 	)
 
-add_subdirectory(deform_lib)
+option(USE_DEFORM "Enable deformation" ON)
+if(USE_DEFORM)
+	add_subdirectory(deform)
+endif()
+
 
 add_subdirectory(interact)
 
