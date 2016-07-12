@@ -73,7 +73,7 @@ const float4 GetBarycentricCoordinate(const float3& v0_,
 
 ModelGrid::ModelGrid(float dmin[3], float dmax[3], int n)
 {
-	gridMesh = new GridMesh<float>(dmin, dmax, n);
+	gridMesh = new GridMesh<float>(dmin, dmax, static_cast<float>(n));
 }
 
 void ModelGrid::UpdatePointCoords(float4* v, int n)

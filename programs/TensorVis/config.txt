@@ -1,5 +1,5 @@
 DATA_PATH=F:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
-DATA_PATH_TENSOR=F:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
+DATA_PATH_TENSOR=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 FEATURE_PATH=F:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
 ventricles=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
 tumor1=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_293_region_1.ply

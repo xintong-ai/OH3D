@@ -422,6 +422,23 @@ template <class TYPE>
 class CUDA_PROJECTIVE_TET_MESH: public TET_MESH<TYPE> 
 {
 public:
+	
+  using TET_MESH<TYPE>::tet_number;
+  using TET_MESH<TYPE>::number;
+  using TET_MESH<TYPE>::Tet;
+  using TET_MESH<TYPE>::inv_Dm;
+  using TET_MESH<TYPE>::Vol;
+  using TET_MESH<TYPE>::X;
+  using TET_MESH<TYPE>::Dm;
+  using TET_MESH<TYPE>::max_number;
+  using TET_MESH<TYPE>::M;
+  using TET_MESH<TYPE>::t_number;
+  using TET_MESH<TYPE>::T;
+  using TET_MESH<TYPE>::VN;
+  using TET_MESH<TYPE>::TN;
+  using TET_MESH<TYPE>::l_number;
+  using TET_MESH<TYPE>::L;
+
 	TYPE	cost[8];
 	int		cost_ptr;
 	TYPE	fps;
@@ -470,6 +487,7 @@ public:
 	//by Xin
 	TYPE* EL;
 
+  template <class TYPE>
 	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH(maxNum)
 	{
 		cost_ptr= 0;

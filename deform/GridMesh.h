@@ -29,7 +29,28 @@ inline void Copy3(TYPE from[3], TYPE to[3])
 template <class TYPE>
 class GridMesh: public CUDA_PROJECTIVE_TET_MESH<TYPE> 
 {
+
+  
 public:
+  using TET_MESH<TYPE>::tet_number;
+  using TET_MESH<TYPE>::number;
+  using TET_MESH<TYPE>::Tet;
+  using TET_MESH<TYPE>::inv_Dm;
+  using TET_MESH<TYPE>::Vol;
+  using TET_MESH<TYPE>::X;
+  using TET_MESH<TYPE>::Dm;
+  using CUDA_PROJECTIVE_TET_MESH<TYPE>::control_mag;
+  using TET_MESH<TYPE>::max_number;
+  using TET_MESH<TYPE>::M;
+  using TET_MESH<TYPE>::t_number;
+  using TET_MESH<TYPE>::T;
+  using TET_MESH<TYPE>::VN;
+  using TET_MESH<TYPE>::TN;
+  using TET_MESH<TYPE>::l_number;
+  using TET_MESH<TYPE>::L;
+  using CUDA_PROJECTIVE_TET_MESH<TYPE>::damping;
+  
+  
 	float3 gridMin, gridMax;
 	int nStep[3];
 	float step;
@@ -203,7 +224,7 @@ public:
 		//PrintMesh();
 	}
 
-
+  template <class TYPE>
 	GridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH((n + 1) * (n + 1) * (n + 1) * 5)
 	{
 		float3 rangeDiff;
