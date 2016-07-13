@@ -1,7 +1,11 @@
 #include "GLSphere.h"
 #include "vector_types.h"
 #include "vector_functions.h"
-#include "helper_math.h"// to define normalize()
+//for linux
+#define _USE_MATH_DEFINES
+#include <cmath>
+using namespace std;
+#include "helper_math.h"
 
 GLSphere::GLSphere(float r, int n)
 {

@@ -53,10 +53,10 @@ Window::Window()
     setWindowTitle(tr("Interactive Glyph Visualization"));
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
-	dataMgr = std::make_unique<DataMgr>();
+	dataMgr = std::make_shared<DataMgr>();
 	
 	//QSizePolicy fixedPolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-	std::unique_ptr<Reader> reader;
+	std::shared_ptr<Reader> reader;
 
 	//DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE; //DATA_TYPE::TYPE_VECTOR;//DATA_TYPE::TYPE_TENSOR; //
 	//if ("TYPE_PARTICLE" == dataMgr->GetConfig("DATA_TYPE")){
@@ -70,14 +70,14 @@ Window::Window()
 	//}
 #ifdef USE_PARTICLE
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-	reader = std::make_unique<ParticleReader>(dataPath.c_str());
-	glyphRenderable = std::make_unique<SphereRenderable>(
+	reader = std::make_shared<ParticleReader>(dataPath.c_str());
+	glyphRenderable = std::make_shared<SphereRenderable>(
 		((ParticleReader*)reader.get())->GetPos(),
 		((ParticleReader*)reader.get())->GetVal());
 	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
 #else
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH_TENSOR");
-	reader = std::make_unique<DTIVolumeReader>(dataPath.c_str());
+	reader = std::make_shared<DTIVolumeReader>(dataPath.c_str());
 	std::vector<float4> pos;
 	std::vector<float> val;
 
@@ -85,25 +85,25 @@ Window::Window()
 	if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
 			std::vector<char> feature;
 		((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
-		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		glyphRenderable = std::make_shared<SQRenderable>(pos, val);
 		glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
 	}
 	else
 	{
 		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		glyphRenderable = std::make_unique<SQRenderable>(pos, val);
+		glyphRenderable = std::make_shared<SQRenderable>(pos, val);
 	}
 
 	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 
 #endif
 	//else if (DATA_TYPE::TYPE_VECTOR == dataType) {
-	//	reader = std::make_unique<VecReader>(dataPath.c_str());
+	//	reader = std::make_shared<VecReader>(dataPath.c_str());
 	//	std::vector<float4> pos;
 	//	std::vector<float3> vec;
 	//	std::vector<float> val;
 	//	((VecReader*)reader.get())->GetSamples(pos, vec, val);
-	//	glyphRenderable = std::make_unique<ArrowRenderable>(pos, vec, val);
+	//	glyphRenderable = std::make_shared<ArrowRenderable>(pos, vec, val);
 
 	//	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 	//}
@@ -115,13 +115,13 @@ Window::Window()
 #else
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
-	openGL = std::make_unique<GLWidget>(matrixMgr);
-	lensRenderable = std::make_unique<LensRenderable>();
+	openGL = std::make_shared<GLWidget>(matrixMgr);
+	lensRenderable = std::make_shared<LensRenderable>();
 	//lensRenderable->SetDrawScreenSpace(false);
 #ifdef USE_OSVR
-		vrWidget = std::make_unique<VRWidget>(matrixMgr, openGL.get());
+		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
-		vrGlyphRenderable = std::make_unique<VRGlyphRenderable>(glyphRenderable.get());
+		vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
 		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
 		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
@@ -136,10 +136,10 @@ Window::Window()
 
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
-	gridRenderable = std::make_unique<GridRenderable>(64);
+	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
-	modelGridRenderable = std::make_unique<ModelGridRenderable>(modelGrid.get());
+	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
@@ -176,10 +176,10 @@ Window::Window()
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add straight band lens");
-	delLensBtn = std::make_unique<QPushButton>("Delete a lens");
+	delLensBtn = std::make_shared<QPushButton>("Delete a lens");
 	addCurveBLensBtn = new QPushButton("Add curved band lens");
-	saveStateBtn = std::make_unique<QPushButton>("Save State");
-	loadStateBtn = std::make_unique<QPushButton>("Load State");
+	saveStateBtn = std::make_shared<QPushButton>("Save State");
+	loadStateBtn = std::make_shared<QPushButton>("Load State");
 
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
@@ -193,8 +193,8 @@ Window::Window()
 
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	radioDeformScreen = std::make_unique<QRadioButton>(tr("&screen space"));
-	radioDeformObject = std::make_unique<QRadioButton>(tr("&object space"));
+	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
+	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
 	radioDeformScreen->setChecked(true);
 	deformModeLayout->addWidget(radioDeformScreen.get());
 	deformModeLayout->addWidget(radioDeformObject.get());

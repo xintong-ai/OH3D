@@ -15,7 +15,7 @@ public:
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val);
+	SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val);
 
 protected:
 	void initPickingDrawingObjects();
@@ -27,8 +27,8 @@ private:
 	void GenVertexBuffer(int nv, float* vertex);
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
 	unsigned int vbo_vert;
-	std::unique_ptr<GLSphere> glyphMesh;
-	//std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
+	std::shared_ptr<GLSphere> glyphMesh;
+	//std::shared_ptr<QOpenGLVertexArrayObject> m_vao;
 	bool updated = false;
 };
 #endif //SPHERE_RENDERABLE_H

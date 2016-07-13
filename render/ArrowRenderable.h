@@ -26,8 +26,8 @@ class ArrowRenderable :public GlyphRenderable
 	unsigned int vbo_indices;
 	unsigned int vbo_colors;
 	unsigned int vbo_normals;
-	//std::unique_ptr<QOpenGLVertexArrayObject> m_vao;
-	std::unique_ptr<GLArrow> glyphMesh;
+	//std::shared_ptr<QOpenGLVertexArrayObject> m_vao;
+	std::shared_ptr<GLArrow> glyphMesh;
 
 	bool initialized = false;
 

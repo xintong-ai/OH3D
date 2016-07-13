@@ -38,13 +38,13 @@ Window::Window()
     setWindowTitle(tr("Interactive Glyph Visualization"));
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
-	dataMgr = std::make_unique<DataMgr>();
+	dataMgr = std::make_shared<DataMgr>();
 	
-	std::unique_ptr<Reader> reader;
+	std::shared_ptr<Reader> reader;
 
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-	reader = std::make_unique<ParticleReader>(dataPath.c_str());
-	glyphRenderable = std::make_unique<SphereRenderable>(
+	reader = std::make_shared<ParticleReader>(dataPath.c_str());
+	glyphRenderable = std::make_shared<SphereRenderable>(
 		((ParticleReader*)reader.get())->GetPos(),
 		((ParticleReader*)reader.get())->GetVal());
 	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
@@ -56,13 +56,13 @@ Window::Window()
 #else
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
-	openGL = std::make_unique<GLWidget>(matrixMgr);
-	lensRenderable = std::make_unique<LensRenderable>();
+	openGL = std::make_shared<GLWidget>(matrixMgr);
+	lensRenderable = std::make_shared<LensRenderable>();
 	//lensRenderable->SetDrawScreenSpace(false);
 #ifdef USE_OSVR
-		vrWidget = std::make_unique<VRWidget>(matrixMgr, openGL.get());
+		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
-		vrGlyphRenderable = std::make_unique<VRGlyphRenderable>(glyphRenderable.get());
+		vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
 		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
 		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
@@ -77,10 +77,10 @@ Window::Window()
 
 	float3 posMin, posMax;
 	reader->GetPosRange(posMin, posMax);
-	gridRenderable = std::make_unique<GridRenderable>(64);
+	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
-	modelGridRenderable = std::make_unique<ModelGridRenderable>(modelGrid.get());
+	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
@@ -90,10 +90,10 @@ Window::Window()
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add straight band lens");
-	delLensBtn = std::make_unique<QPushButton>("Delete a lens");
+	delLensBtn = std::make_shared<QPushButton>("Delete a lens");
 	addCurveBLensBtn = new QPushButton("Add curved band lens");
-	saveStateBtn = std::make_unique<QPushButton>("Save State");
-	loadStateBtn = std::make_unique<QPushButton>("Load State");
+	saveStateBtn = std::make_shared<QPushButton>("Save State");
+	loadStateBtn = std::make_shared<QPushButton>("Load State");
 
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
@@ -107,8 +107,8 @@ Window::Window()
 
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	radioDeformScreen = std::make_unique<QRadioButton>(tr("&screen space"));
-	radioDeformObject = std::make_unique<QRadioButton>(tr("&object space"));
+	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
+	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
 	radioDeformScreen->setChecked(true);
 	deformModeLayout->addWidget(radioDeformScreen.get());
 	deformModeLayout->addWidget(radioDeformObject.get());

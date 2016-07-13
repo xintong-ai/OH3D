@@ -121,8 +121,8 @@ private:
 	GLWidget* mainGLWidget;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
-	std::unique_ptr<osvr::clientkit::ClientContext> ctx;// ("com.osvr.example.SDLOpenGL");
-	std::unique_ptr<osvr::clientkit::DisplayConfig> display;// (ctx);
+	std::shared_ptr<osvr::clientkit::ClientContext> ctx;// ("com.osvr.example.SDLOpenGL");
+	std::shared_ptr<osvr::clientkit::DisplayConfig> display;// (ctx);
 
 	//bool pinching = false;
 	////mark whether there is any pinching gesture in this sequence of gestures.

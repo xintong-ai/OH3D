@@ -1,6 +1,9 @@
 #include "MeshReader.h"
 #include "helper_math.h"
 
+//for linux
+#include <string.h>
+#include <float.h>
 //mesh* SphereMesh(float radius, unsigned int rings, unsigned int sectors);
 
 void MeshReader::LoadPLY(const char* filename)

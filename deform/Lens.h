@@ -1,11 +1,14 @@
 #ifndef LENS_H
 #define LENS_H
 #include <vector_types.h>
+#include <vector_functions.h>
+#include <cmath>
+using namespace std;
 #include <helper_math.h>
 #include <vector>
 
 #include <iostream>
-using namespace std;
+//using namespace std;
 
 enum LENS_TYPE{
 	TYPE_CIRCLE,
@@ -75,9 +78,9 @@ struct Lens
 	virtual void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}	
 	virtual void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	//virtual void ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
-	virtual vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
-	virtual vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
-	virtual vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
+	virtual std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
+	virtual std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
+	virtual std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
 	void ChangeClipDepth(int v, float* mv, float* pj);
 	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
@@ -124,14 +127,14 @@ struct CircleLens :public Lens
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
-		return abs(dis - radius) < eps_pixel;
+		return std::abs(dis - radius) < eps_pixel;
 	}
 
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override
 	{ 
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
-		return abs(dis - radius / focusRatio) < eps_pixel;
+		return std::abs(dis - radius / focusRatio) < eps_pixel;
 	}
 	
 	bool PointInsideObjectLens(int x, int y, float* mv, float* pj, int winW, int winH) override;
@@ -164,8 +167,8 @@ struct CircleLens :public Lens
 	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
 
-	vector<float2> GetContourTemplate(int rr, float* mv, float* pj, int winW, int winH) {
-		vector<float2> ret;
+	std::vector<float2> GetContourTemplate(int rr, float* mv, float* pj, int winW, int winH) {
+		std::vector<float2> ret;
 		const int num_segments = 32;
 		for (int ii = 0; ii < num_segments; ii++)
 		{
@@ -179,20 +182,20 @@ struct CircleLens :public Lens
 		return ret;
 	}
 
-	vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
+	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
 		return GetContourTemplate(radius, mv, pj, winW, winH);
 	}
 
-	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
+	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
 		return GetContourTemplate(radius / focusRatio, mv, pj, winW, winH);
 	}
 
-	vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
-		vector<float2> res(0);
+	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
+		std::vector<float2> res(0);
 		return res;
 	}
 
-	vector<vector<float3>> Get3DContour(float3 eyeWorld, bool isScreenDeformingLens);
+	std::vector<std::vector<float3>> Get3DContour(float3 eyeWorld, bool isScreenDeformingLens);
 
 
 };
@@ -223,7 +226,7 @@ struct LineLens :public Lens
 		float2 toPoint = make_float2(_x - center.x, _y - center.y);
 		float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
 
-		if (abs(disMajor) < lSemiMajorAxis) {
+		if (std::abs(disMajor) < lSemiMajorAxis) {
 			float2 minorDirection = make_float2(-direction.y, direction.x);
 			//dot product of (_x-x, _y-y) and minorDirection
 			float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
@@ -237,25 +240,25 @@ struct LineLens :public Lens
 				disSigmoid = 1 / (1 + exp(40 * (disMajorRatio - 0.8))) ;
 			}
 
-			if (abs(disMinor) < disSigmoid*lSemiMinorAxis)
+			if (std::abs(disMinor) < disSigmoid*lSemiMinorAxis)
 				return true;
 		}
 		return false;
 	}
 
-	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
-		vector<float2> ret;
+	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
+		std::vector<float2> ret;
 		return ret;
 	}
 
-	vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
+	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
 		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
 		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
 		float sigmoidCutOff = 0.4f; // assuming the sigmoid function value is constant when input is larger than sigmoidCutOff
 
 		float2 minorDirection = make_float2(-direction.y, direction.x);
 
-		vector<float2> ret;
+		std::vector<float2> ret;
 
 		const int num_segments = 20;
 		for (int ii = 0; ii < num_segments; ii++)
@@ -294,8 +297,8 @@ struct LineLens :public Lens
 		return ret;
 	}
 
-	vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
-		vector<float2> res(0);
+	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
+		std::vector<float2> res(0);
 		return res;
 	}
 };
@@ -329,11 +332,11 @@ struct LineBLens :public Lens
 
 	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
-	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
 
-	vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
 
-	vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
 
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
@@ -360,19 +363,19 @@ public:
 	float outerWidth;
 
 	int numCtrlPoints;
-	vector<float2> ctrlPoints; //used during constructing
-	vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
+	std::vector<float2> ctrlPoints; //used during constructing
+	std::vector<float2> ctrlPointsAbs; //used during constructing to improve accuracy. will not be used after constructing
 
-	vector<float2> BezierPoints; //sampled points on the curve for drawing
-	vector<float2> BezierNormals; //sampled points on the curve for drawing
+	std::vector<float2> BezierPoints; //sampled points on the curve for drawing
+	std::vector<float2> BezierNormals; //sampled points on the curve for drawing
 
-	vector<float2> subCtrlPointsPos; //may contain more number than numCtrlPoints, used for refining
-	vector<float2> subCtrlPointsNeg; //may contain more number than numCtrlPoints, used for refining
+	std::vector<float2> subCtrlPointsPos; //may contain more number than numCtrlPoints, used for refining
+	std::vector<float2> subCtrlPointsNeg; //may contain more number than numCtrlPoints, used for refining
 
-	vector<float2> posOffsetCtrlPoints;
-	vector<float2> negOffsetCtrlPoints;
-	vector<float2> posOffsetBezierPoints;
-	vector<float2> negOffsetBezierPoints;
+	std::vector<float2> posOffsetCtrlPoints;
+	std::vector<float2> negOffsetCtrlPoints;
+	std::vector<float2> posOffsetBezierPoints;
+	std::vector<float2> negOffsetBezierPoints;
 
 	CurveBLensInfo curveBLensInfo;
 
@@ -410,13 +413,13 @@ public:
 	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
 	void FinishConstructing(float* mv, float* pj, int winW, int winH);
-	vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
-	vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
-	vector<float2> GetOuterContourold();
-	vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
-	vector<float2> GetCenterLineForRendering(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetOuterContourold();
+	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetCenterLineForRendering(float* mv, float* pj, int winW, int winH);
 
-	vector<float2> removeSelfIntersection(vector<float2> p, bool isDuplicating);
+	std::vector<float2> removeSelfIntersection(std::vector<float2> p, bool isDuplicating);
 	bool adjustOffset();
 	int refinedRoundPos;
 	int refinedRoundNeg;
@@ -452,7 +455,7 @@ public:
 		float A1 = p2.y - p1.y, B1 = -(p2.x - p1.x), C1 = p1.x*(p2.y - p1.y) - p1.y*(p2.x - p1.x);
 		float A2 = p4.y - p3.y, B2 = -(p4.x - p3.x), C2 = p3.x*(p4.y - p3.y) - p3.y*(p4.x - p3.x);
 		float delta = A1*B2 - A2*B1;
-		if (abs(delta) < 0.000001){
+		if (std::abs((long)delta) < 0.000001){
 			ret = (p2 + p3) / 2;
 		}
 		else{
@@ -466,10 +469,10 @@ public:
 		//curveLensCtrlPoints.focusRatio = focusRatio;
 	}
 
-	vector<float2> BezierOneSubdivide(vector<float2> p, vector<float2> poly1, vector<float2> poly2, float u);
-	vector<float2> BezierSubdivide(vector<float2> p, int m, float u);
-	vector<float2> BezierSmaple(vector<float2> p, int bezierSampleAccuracyRate = 1);
-	vector<float2> BezierSmaple(vector<float2> p, vector<float> us);//for computing the tangent
+	std::vector<float2> BezierOneSubdivide(std::vector<float2> p, std::vector<float2> poly1, std::vector<float2> poly2, float u);
+	std::vector<float2> BezierSubdivide(std::vector<float2> p, int m, float u);
+	std::vector<float2> BezierSmaple(std::vector<float2> p, int bezierSampleAccuracyRate = 1);
+	std::vector<float2> BezierSmaple(std::vector<float2> p, std::vector<float> us);//for computing the tangent
 
 };
 

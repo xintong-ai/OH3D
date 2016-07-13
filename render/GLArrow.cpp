@@ -2,8 +2,7 @@
 #include "vector_types.h"
 #include "vector_functions.h"
 
-#define _USE_MATH_DEFINES
-#include <math.h>
+
 
 GLArrow::GLArrow()
 {

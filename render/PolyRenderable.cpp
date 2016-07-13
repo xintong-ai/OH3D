@@ -7,7 +7,7 @@
 
 #define qgl	QOpenGLContext::currentContext()->functions()
 
-#include "shaderprogram.h"
+#include "ShaderProgram.h"
 #include "PolyRenderable.h"
 #include <QMatrix4x4>
 #include "MeshReader.h"

@@ -43,34 +43,34 @@ public:
 	void init();
 
 private:
-    std::unique_ptr<GLWidget> openGL;
+    std::shared_ptr<GLWidget> openGL;
 	QTimer *aTimer;
 	const int nScale = 20;
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
-	std::unique_ptr<QPushButton> delLensBtn;
-	std::unique_ptr<QRadioButton> radioDeformScreen;
-	std::unique_ptr<QRadioButton> radioDeformObject;
+	std::shared_ptr<QPushButton> delLensBtn;
+	std::shared_ptr<QRadioButton> radioDeformScreen;
+	std::shared_ptr<QRadioButton> radioDeformObject;
 
-	std::unique_ptr<QPushButton> saveStateBtn;
-	std::unique_ptr<QPushButton> loadStateBtn;
+	std::shared_ptr<QPushButton> saveStateBtn;
+	std::shared_ptr<QPushButton> loadStateBtn;
 
 	QCheckBox* usingGlyphSnappingCheck;
 	QCheckBox* usingGlyphPickingCheck;
 
-	std::unique_ptr<GlyphRenderable> glyphRenderable;
-	std::unique_ptr<LensRenderable> lensRenderable;
-	std::unique_ptr<GridRenderable> gridRenderable;
-	std::unique_ptr<ModelGridRenderable> modelGridRenderable;
-	std::unique_ptr<DataMgr> dataMgr;
+	std::shared_ptr<GlyphRenderable> glyphRenderable;
+	std::shared_ptr<LensRenderable> lensRenderable;
+	std::shared_ptr<GridRenderable> gridRenderable;
+	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
+	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveBLensBtn;
 	std::shared_ptr<ModelGrid> modelGrid;
 
 #ifdef USE_OSVR
-	std::unique_ptr<VRWidget> vrWidget;
-	std::unique_ptr<VRGlyphRenderable> vrGlyphRenderable;
+	std::shared_ptr<VRWidget> vrWidget;
+	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
 #endif
 #ifdef USE_LEAP
 	LeapListener* listener;

@@ -226,7 +226,7 @@ public:
 	}
 
   //template <class TYPE>
-	GridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH((n + 1) * (n + 1) * (n + 1) * 5)
+	GridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1) * 5)
 	{
 		float3 rangeDiff;
 		float gridMin[3];

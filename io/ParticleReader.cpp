@@ -4,6 +4,10 @@
 #include <fstream>
 #include <cstdint>
 #include <vector_functions.h>
+
+//for linux
+#include <float.h>
+#include <stdexcept>
 // a simple class to encapsulate a single timestep;
 // the constructor loads the timestep data from the specified file
 // into three vectors

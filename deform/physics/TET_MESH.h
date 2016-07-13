@@ -357,16 +357,21 @@ public:
 		int temp_value;
 		int bound;
 
-		sprintf_s(filename, sizeof(filename), "%s.node", name);
+		snprintf(filename, sizeof(filename), "%s.node", name);
 		FILE *fp;
-		fopen_s(&fp, filename, "r+");
+		#ifdef _WIN32 
+			fopen_s(&fp, filename, "r+");
+		#elif __linux__
+		    fp = fopen(filename, "r+");
+		#endif
+		
 		if(fp==NULL)	{printf("ERROR: file %s not open.\n", filename); return;}
-		fscanf_s(fp, "%d %d %d %d\n", &number, &temp_value, &temp_value, &bound);
+		fscanf(fp, "%d %d %d %d\n", &number, &temp_value, &temp_value, &bound);
 		if(bound==0)
 			for(int i=0; i<number; i++)
 			{
 				float temp_x0, temp_x1, temp_x2;
-				fscanf_s(fp, "%d %f %f %f\n", &temp_value, &temp_x0, &temp_x1, &temp_x2);
+				fscanf(fp, "%d %f %f %f\n", &temp_value, &temp_x0, &temp_x1, &temp_x2);
 				X[i*3+0]=temp_x0;
 				X[i*3+1]=temp_x1;
 				X[i*3+2]=temp_x2;
@@ -375,7 +380,7 @@ public:
 			for(int i=0; i<number; i++)
 			{
 				float temp_x0, temp_x1, temp_x2;
-				fscanf_s(fp, "%d %f %f %f %d\n", &temp_value, &temp_x0, &temp_x1, &temp_x2, &temp_value);
+				fscanf(fp, "%d %f %f %f %d\n", &temp_value, &temp_x0, &temp_x1, &temp_x2, &temp_value);
 				X[i*3+0]=temp_x0;
 				X[i*3+1]=temp_x1;
 				X[i*3+2]=temp_x2;
@@ -383,17 +388,22 @@ public:
 
 		fclose(fp);
 
-		sprintf_s(filename, sizeof(filename), "%s.ele", name);
-		fopen_s(&fp, filename, "r+");
+		snprintf(filename, sizeof(filename), "%s.ele", name);
+		
+		#ifdef _WIN32 
+			fopen_s(&fp, filename, "r+");
+		#elif __linux__
+			fp = fopen(filename, "r+");
+		#endif
 		if(fp==NULL)	{printf("ERROR: file %s not open.\n", filename); return;}
-		fscanf_s(fp, "%d %d %d\n", &tet_number, &temp_value, &bound);
+		fscanf(fp, "%d %d %d\n", &tet_number, &temp_value, &bound);
 		
 		if(bound==0)
 			for(int i=0; i<tet_number; i++)
-				fscanf_s(fp, "%d %d %d %d %d\n", &temp_value, &Tet[i * 4 + 0], &Tet[i * 4 + 1], &Tet[i * 4 + 2], &Tet[i * 4 + 3]);
+				fscanf(fp, "%d %d %d %d %d\n", &temp_value, &Tet[i * 4 + 0], &Tet[i * 4 + 1], &Tet[i * 4 + 2], &Tet[i * 4 + 3]);
 		else if(bound==1)
 			for(int i=0; i<tet_number; i++)
-				fscanf_s(fp, "%d %d %d %d %d %d\n", &temp_value, &Tet[i * 4 + 0], &Tet[i * 4 + 1], &Tet[i * 4 + 2], &Tet[i * 4 + 3], &temp_value);
+				fscanf(fp, "%d %d %d %d %d %d\n", &temp_value, &Tet[i * 4 + 0], &Tet[i * 4 + 1], &Tet[i * 4 + 2], &Tet[i * 4 + 3], &temp_value);
 		fclose(fp);
 
 		for(int i=0; i<tet_number; i++)
@@ -410,17 +420,26 @@ public:
 	{
 		char filename[1024];
 
-		sprintf_s(filename, sizeof(filename), "%s.node", name);
+		snprintf(filename, sizeof(filename), "%s.node", name);
 		FILE *fp;
-		fopen_s(&fp, filename, "w+");
+		#ifdef _WIN32 
+			fopen_s(&fp, filename, "w+");
+		#elif __linux__
+			fp = fopen(filename, "w+");
+		#endif
 		if(fp==NULL)	{printf("ERROR: file %s not open.\n", filename); return;}
 		fprintf(fp, "%d %d %d %d\n", number, 3, 0, 0);
 		for(int i=0; i<number; i++)
 			fprintf(fp, "%d %f %f %f\n", i+1, X[i*3+0], X[i*3+1], X[i*3+2]);
 		fclose(fp);
 
-		sprintf_s(filename, sizeof(filename), "%s.ele", name);
-		fopen_s(&fp, filename, "w+");
+		snprintf(filename, sizeof(filename), "%s.ele", name);
+		
+		#ifdef _WIN32 
+			fopen_s(&fp, filename, "w+");
+		#elif __linux__
+			fp = fopen(filename, "w+");
+		#endif
 		if(fp==NULL)	{printf("ERROR: file %s not open.\n", filename); return;}
 		fprintf(fp, "%d %d %d\n", tet_number, 4, 0);
 
@@ -437,11 +456,16 @@ public:
 		int* p=new int[number];
 		int *q=new int[number];
 		FILE *fp;
-		fopen_s(&fp, filename, "r+");
+		#ifdef _WIN32 
+			fopen_s(&fp, filename, "r+");
+		#elif __linux__
+			fp = fopen(filename, "r+");
+		#endif
+		
 		if(fp==NULL)	{printf("ERROR: file %s not open.\n", filename); return;}
 		for(int i=0; i<number; i++)
 		{
-			fscanf_s(fp, "%d", &p[i]);
+			fscanf(fp, "%d", &p[i]);
 			p[i]-=1;
 			//printf("read %d: %d\n", i, p[i]);
 			q[p[i]]=i;
@@ -480,60 +504,60 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Rendering functions
 ///////////////////////////////////////////////////////////////////////////////////////////
-	void Render(int visual_mode=0, int render_mode=0)
-	{
-		Build_VN();
+	// void Render(int visual_mode=0, int render_mode=0)
+	// {
+	// 	Build_VN();
 
-		if(visual_mode==0)
-		{			
-			/*glDisable(GL_LIGHTING);
-			glColor3f(1, 0, 0);
-			for(int v=0; v<number; v++)
-			{
-				if(v!=0)	continue;
+	// 	if(visual_mode==0)
+	// 	{			
+	// 		glDisable(GL_LIGHTING);
+	// 		glColor3f(1, 0, 0);
+	// 		for(int v=0; v<number; v++)
+	// 		{
+	// 			if(v!=0)	continue;
 
-				glPushMatrix();
-				glTranslatef(X[v*3+0], X[v*3+1], X[v*3+2]);
-				glutSolidSphere(0.01, 5, 5);
-				glPopMatrix();
-			}			
-			for(int t=0; t<tet_number; t++)
-			{
-				int v0=Tet[t*4+0];
-				int v1=Tet[t*4+1];
-				int v2=Tet[t*4+2];
-				int v3=Tet[t*4+3];
-				glBegin(GL_LINES);
-				glVertex3dv(&X[v0*3]);	glVertex3dv(&X[v1*3]);
-				glVertex3dv(&X[v0*3]);	glVertex3dv(&X[v2*3]);
-				glVertex3dv(&X[v0*3]);	glVertex3dv(&X[v3*3]);
-				glVertex3dv(&X[v1*3]);	glVertex3dv(&X[v2*3]);
-				glVertex3dv(&X[v1*3]);	glVertex3dv(&X[v3*3]);
-				glVertex3dv(&X[v2*3]);	glVertex3dv(&X[v3*3]);
-				glEnd();
-			}*/
+	// 			glPushMatrix();
+	// 			glTranslatef(X[v*3+0], X[v*3+1], X[v*3+2]);
+	// 			glutSolidSphere(0.01, 5, 5);
+	// 			glPopMatrix();
+	// 		}			
+	// 		for(int t=0; t<tet_number; t++)
+	// 		{
+	// 			int v0=Tet[t*4+0];
+	// 			int v1=Tet[t*4+1];
+	// 			int v2=Tet[t*4+2];
+	// 			int v3=Tet[t*4+3];
+	// 			glBegin(GL_LINES);
+	// 			glVertex3dv(&X[v0*3]);	glVertex3dv(&X[v1*3]);
+	// 			glVertex3dv(&X[v0*3]);	glVertex3dv(&X[v2*3]);
+	// 			glVertex3dv(&X[v0*3]);	glVertex3dv(&X[v3*3]);
+	// 			glVertex3dv(&X[v1*3]);	glVertex3dv(&X[v2*3]);
+	// 			glVertex3dv(&X[v1*3]);	glVertex3dv(&X[v3*3]);
+	// 			glVertex3dv(&X[v2*3]);	glVertex3dv(&X[v3*3]);
+	// 			glEnd();
+	// 		}
 
-			glEnable(GL_LIGHTING);		
-			float diffuse_color[3]={0.7, 0.7, 1.0};
-			glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse_color);
-			for(int i=0; i<t_number; i++)
-			{
-				TYPE *p0=&X[T[i*3+0]*3];
-				TYPE *p1=&X[T[i*3+1]*3];
-				TYPE *p2=&X[T[i*3+2]*3];
+	// 		glEnable(GL_LIGHTING);		
+	// 		float diffuse_color[3]={0.7, 0.7, 1.0};
+	// 		glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse_color);
+	// 		for(int i=0; i<t_number; i++)
+	// 		{
+	// 			TYPE *p0=&X[T[i*3+0]*3];
+	// 			TYPE *p1=&X[T[i*3+1]*3];
+	// 			TYPE *p2=&X[T[i*3+2]*3];
 
-				if(render_mode==0)	glNormal3f(TN[i*3+0], TN[i*3+1], TN[i*3+2]);
-				glBegin(GL_TRIANGLES);
-				if(render_mode)		glNormal3f(VN[T[i*3+0]*3+0], VN[T[i*3+0]*3+1], VN[T[i*3+0]*3+2]);
-				glVertex3d(p0[0], p0[1], p0[2]);
-				if(render_mode)		glNormal3f(VN[T[i*3+1]*3+0], VN[T[i*3+1]*3+1], VN[T[i*3+1]*3+2]);
-				glVertex3d(p1[0], p1[1], p1[2]);
-				if(render_mode)		glNormal3f(VN[T[i*3+2]*3+0], VN[T[i*3+2]*3+1], VN[T[i*3+2]*3+2]);
-				glVertex3d(p2[0], p2[1], p2[2]);
-				glEnd();
-			}
-		}
-	}
+	// 			if(render_mode==0)	glNormal3f(TN[i*3+0], TN[i*3+1], TN[i*3+2]);
+	// 			glBegin(GL_TRIANGLES);
+	// 			if(render_mode)		glNormal3f(VN[T[i*3+0]*3+0], VN[T[i*3+0]*3+1], VN[T[i*3+0]*3+2]);
+	// 			glVertex3d(p0[0], p0[1], p0[2]);
+	// 			if(render_mode)		glNormal3f(VN[T[i*3+1]*3+0], VN[T[i*3+1]*3+1], VN[T[i*3+1]*3+2]);
+	// 			glVertex3d(p1[0], p1[1], p1[2]);
+	// 			if(render_mode)		glNormal3f(VN[T[i*3+2]*3+0], VN[T[i*3+2]*3+1], VN[T[i*3+2]*3+2]);
+	// 			glVertex3d(p2[0], p2[1], p2[2]);
+	// 			glEnd();
+	// 		}
+	// 	}
+	// }
 
 	void Build_TN()
 	{

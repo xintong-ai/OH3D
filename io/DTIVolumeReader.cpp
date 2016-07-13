@@ -95,7 +95,7 @@ float* DTIVolumeReader::GetFractionalAnisotropy()
 	return fracAnis;
 }
 
-inline float4 float3To4(float3& v)
+inline float4 float3To4(float3 v)
 {
 	return make_float4(v.x, v.y, v.z, 1.0f);
 }

@@ -79,7 +79,8 @@ add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
-	# deform_lib
+	deform
+	interact
 	)
 
 if(USE_SUPERQUADRIC)

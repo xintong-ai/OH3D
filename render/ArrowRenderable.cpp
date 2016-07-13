@@ -26,7 +26,7 @@ GlyphRenderable(_pos)
 	//val = &_val; //consider about the color later
 	/* input variables */
 	lMax = -1, lMin = 999999;
-	glyphMesh = std::make_unique<GLArrow>();
+	glyphMesh = std::make_shared<GLArrow>();
 	float3 orientation = glyphMesh->orientation;
 
 	for (int i = 0; i < pos.size(); i++) {

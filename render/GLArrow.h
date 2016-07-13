@@ -3,6 +3,11 @@
 #define GLARROW_H
 #include "vector_types.h"
 #include <vector>
+
+//for linux
+#define _USE_MATH_DEFINES
+#include <cmath>
+using namespace std;
 #include "helper_math.h"
 
 class GLArrow

@@ -30,7 +30,7 @@
 #include <limits.h>
 #include <cmath>
 
-#include "Trackball.h" // Class definition
+#include "trackball.h" // Class definition
 #include "Rotation.h"  // For member operations
 
 

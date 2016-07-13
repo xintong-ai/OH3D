@@ -58,8 +58,8 @@ void VRWidget::initializeGL()
 
 	//Start OSVR and get OSVR display config
 
-	ctx = std::make_unique<osvr::clientkit::ClientContext>("com.osvr.example.SDLOpenGL");
-	display = std::make_unique<osvr::clientkit::DisplayConfig>(*ctx.get());
+	ctx = std::make_shared<osvr::clientkit::ClientContext>("com.osvr.example.SDLOpenGL");
+	display = std::make_shared<osvr::clientkit::DisplayConfig>(*ctx.get());
 	if (!display->valid()) {
 		std::cerr << "\nCould not get display config (server probably not "
 			"running or not behaving), exiting."

@@ -108,7 +108,7 @@ void SQRenderable::init()
 {
 	GlyphRenderable::init();
 	LoadShaders(glProg);
-	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
+	//m_vao = std::make_shared<QOpenGLVertexArrayObject>();
 	//m_vao->create();
 
 	//m_vao->bind();

@@ -22,10 +22,13 @@ using namespace std;
 #include <helper_math.h>
 #include <ColorGradient.h>
 
+//for linux
+#include <float.h>
+
 //void LoadPickingShaders(ShaderProgram*& shaderProg)
 
 
-SphereRenderable::SphereRenderable(std::vector<float4>& _spherePos, std::vector<float> _val)
+SphereRenderable::SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val)
 //SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
 :GlyphRenderable(_spherePos)
 {
@@ -54,10 +57,10 @@ void SphereRenderable::init()
 {
 	GlyphRenderable::init();
 	LoadShaders(glProg);
-	//m_vao = std::make_unique<QOpenGLVertexArrayObject>();
+	//m_vao = std::make_shared<QOpenGLVertexArrayObject>();
 	//m_vao->create();
 
-	glyphMesh = std::make_unique<GLSphere>(1, 8);
+	glyphMesh = std::make_shared<GLSphere>(1, 8);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	GenVertexBuffer(glyphMesh->GetNumVerts(),

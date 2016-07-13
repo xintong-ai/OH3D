@@ -2,7 +2,7 @@
 #define MODES_H
 
 #include "vector_types.h"
-#include <stdio.h>
+//#include <stdio.h>
 #include <string.h>
 
 struct matrix4x4

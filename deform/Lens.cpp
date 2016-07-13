@@ -1,8 +1,7 @@
 #include "Lens.h"
 #include "TransformFunc.h"
-#include <vector_functions.h>
-#include <helper_math.h>
 #include <iostream>
+#include <algorithm>
 
 float Lens::GetClipDepth(float* mv, float* pj)
 {
@@ -79,9 +78,9 @@ void Lens::ChangeClipDepth(int v, float* mv, float* pj)
 
 
 
-vector<vector<float3>> CircleLens::Get3DContour(float3 eyeWorld, bool isScreenDeformingLens)
+std::vector<std::vector<float3>> CircleLens::Get3DContour(float3 eyeWorld, bool isScreenDeformingLens)
 {
-	vector<vector<float3>> contour3D;
+	std::vector<std::vector<float3>> contour3D;
 	//return contour3D;
 
 	if (isScreenDeformingLens){ //draw screen-space deformed circle lens
@@ -93,10 +92,10 @@ vector<vector<float3>> CircleLens::Get3DContour(float3 eyeWorld, bool isScreenDe
 		float3 xdir = cross(tempdir, v);
 		float3 ydir = cross(xdir, v);
 
-		vector<float3> innerContour;
-		vector<float3> outerContour;
-		vector<float3> bottomContour;
-		vector<float3> connection;
+		std::vector<float3> innerContour;
+		std::vector<float3> outerContour;
+		std::vector<float3> bottomContour;
+		std::vector<float3> connection;
 
 		float rr = 2; //need to transfer screen radius to object radias
 		float d1 = 2, d2 = 2;
@@ -141,12 +140,12 @@ vector<vector<float3>> CircleLens::Get3DContour(float3 eyeWorld, bool isScreenDe
 		float3 xdir = cross(tempdir, v);
 		float3 ydir = cross(xdir, v);
 
-		vector<float3> innerContour;
-		vector<float3> outerContour;
-		vector<float3> topInnerContour;
-		vector<float3> topOuterContour;
-		vector<float3> innerConnection;
-		vector<float3> outerConnection;
+		std::vector<float3> innerContour;
+		std::vector<float3> outerContour;
+		std::vector<float3> topInnerContour;
+		std::vector<float3> topOuterContour;
+		std::vector<float3> innerConnection;
+		std::vector<float3> outerConnection;
 
 		float rr = objectRadius;
 		float d1 = 10;// , d2 = 20;
@@ -201,7 +200,7 @@ bool CircleLens::PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj
 	float3 clickPoint = Compute3DPosByScreenPos(_x, _y, mv, pj, winW, winH);
 	float eps_dis = objectRadius*0.1;
 	float dis = length(c - clickPoint);
-	return abs(dis - objectRadius) < eps_dis;
+	return std::abs(dis - objectRadius) < eps_dis;
 }
 
 bool CircleLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
@@ -209,7 +208,7 @@ bool CircleLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj
 	float3 clickPoint = Compute3DPosByScreenPos(_x, _y, mv, pj, winW, winH);
 	float eps_dis = objectRadius*0.1 / focusRatio;
 	float dis = length(c - clickPoint);
-	return abs(dis - objectRadius/focusRatio) < eps_dis;
+	return std::abs(dis - objectRadius/focusRatio) < eps_dis;
 }
 
 void CircleLens::ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
@@ -236,11 +235,11 @@ bool LineBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, 
 	float2 toPoint = make_float2(_x - center.x, _y - center.y);
 	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
 
-	if (abs(disMajor) < lSemiMajorAxis) {
+	if (std::abs(disMajor) < lSemiMajorAxis) {
 		float2 minorDirection = make_float2(-direction.y, direction.x);
 		//dot product of (_x-x, _y-y) and minorDirection
 		float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
-		if (abs(disMinor) < lSemiMinorAxis)
+		if (std::abs(disMinor) < lSemiMinorAxis)
 			return true;
 	}
 	return false;
@@ -248,9 +247,9 @@ bool LineBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, 
 
 
 
-vector<float2> LineBLens::GetContour(float* mv, float* pj, int winW, int winH)
+std::vector<float2> LineBLens::GetContour(float* mv, float* pj, int winW, int winH)
 {
-	vector<float2> ret;
+	std::vector<float2> ret;
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 	float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
 	float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
@@ -265,9 +264,9 @@ vector<float2> LineBLens::GetContour(float* mv, float* pj, int winW, int winH)
 	return ret;
 }
 
-vector<float2> LineBLens::GetOuterContour(float* mv, float* pj, int winW, int winH)
+std::vector<float2> LineBLens::GetOuterContour(float* mv, float* pj, int winW, int winH)
 {
-	vector<float2> ret;
+	std::vector<float2> ret;
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 	float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
 	float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
@@ -313,8 +312,8 @@ void LineBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
 	isConstructing = false;
 }
 
-vector<float2> LineBLens::GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
-	vector<float2> res;
+std::vector<float2> LineBLens::GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
+	std::vector<float2> res;
 	if (isConstructing){
 		res.push_back(ctrlPoint1Abs);
 		res.push_back(ctrlPoint2Abs);
@@ -340,12 +339,12 @@ bool LineBLens::PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int w
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	return (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
-		|| (abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
+	return (std::abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
+		|| (std::abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
 }
 
 
@@ -354,12 +353,12 @@ bool LineBLens::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int w
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	return (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs > lSemiMinorAxis && disMinorAbs <= lSemiMinorAxis / focusRatio)
-		|| (abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
+	return (std::abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs > lSemiMinorAxis && disMinorAbs <= lSemiMinorAxis / focusRatio)
+		|| (std::abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
 }
 
 /*
@@ -370,12 +369,12 @@ bool LineBLens::PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int win
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	return (abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr)
-		|| (abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr);
+	return (std::abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr)
+		|| (std::abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr);
 }
 */
 
@@ -390,19 +389,19 @@ void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, 
 	float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
 
 
-	if (abs(disMajor - lSemiMajorAxis) < eps_pixel && abs(disMinor) <= lSemiMinorAxis){
+	if (std::abs(disMajor - lSemiMajorAxis) < eps_pixel && std::abs(disMinor) <= lSemiMinorAxis){
 		float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
 		float2 newctrlPoint2 = ctrlPoint2 + (make_float2(_x, _y) - make_float2(_prex, _prey));
 		lSemiMajorAxis = length(newctrlPoint2 - center);
 		direction = normalize(newctrlPoint2 - center);
 	}
-	else if (abs(-disMajor - lSemiMajorAxis) < eps_pixel && abs(disMinor) <= lSemiMinorAxis){
+	else if (std::abs(-disMajor - lSemiMajorAxis) < eps_pixel && std::abs(disMinor) <= lSemiMinorAxis){
 		float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
 		float2 newctrlPoint1 = ctrlPoint1 + (make_float2(_x, _y) - make_float2(_prex, _prey));
 		lSemiMajorAxis = length(newctrlPoint1 - center);
-		direction = -normalize(newctrlPoint1 - center);
+		direction = normalize(center - newctrlPoint1);
 	}
-	else if (abs(disMinor - lSemiMinorAxis) < eps_pixel && abs(disMajor) <= lSemiMajorAxis){
+	else if (std::abs(disMinor - lSemiMinorAxis) < eps_pixel && std::abs(disMajor) <= lSemiMajorAxis){
 		float2 minorCtrlPoint2 = center + minorDirection*lSemiMinorAxis;
 		float2 newminorCtrlPoint2 = minorCtrlPoint2 + (make_float2(_x, _y) - make_float2(_prex, _prey));;
 		lSemiMinorAxis = length(newminorCtrlPoint2 - center);
@@ -411,7 +410,7 @@ void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, 
 		float2 newd = make_float2(-newmd.y, newmd.x);
 		direction = newd;
 	}
-	else if (abs(-disMinor - lSemiMinorAxis) < eps_pixel && abs(disMajor) <= lSemiMajorAxis){
+	else if (std::abs(-disMinor - lSemiMinorAxis) < eps_pixel && std::abs(disMajor) <= lSemiMajorAxis){
 		float2 minorCtrlPoint1 = center - minorDirection*lSemiMinorAxis;
 		float2 newminorCtrlPoint1 = minorCtrlPoint1 + (make_float2(_x, _y) - make_float2(_prex, _prey));;
 		lSemiMinorAxis = length(newminorCtrlPoint1 - center);
@@ -427,13 +426,13 @@ void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, 
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	if (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
+	if (std::abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
 		lSemiMajorAxis = disMajorAbs;
-	else if(abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
+	else if(std::abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
 		lSemiMinorAxis = disMinorAbs;
 		*/
 }
@@ -443,11 +442,11 @@ void LineBLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	if (abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
+	if (std::abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
 	{
 		if (disMinorAbs > lSemiMinorAxis + eps_pixel + 1)
 			focusRatio = lSemiMinorAxis / disMinorAbs;
@@ -463,18 +462,18 @@ void LineBLens::ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv,
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	if (abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr){
+	if (std::abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr){
 		float2 newd = normalize(make_float2(_x, _y) - center);
 		if (dot(newd, direction) < 0)
 			direction = -newd;
 		else
 			direction = newd;
 	}
-	else if (abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr){
+	else if (std::abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr){
 		float2 newmd = normalize(make_float2(_x, _y) - center);
 		float2 newd = make_float2(-newmd.y, newmd.x);
 		if (dot(newd, direction) < 0)
@@ -485,11 +484,11 @@ void LineBLens::ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv,
 }
 */
 
-void redistributePoints(vector<float2> & p)
+void redistributePoints(std::vector<float2> & p)
 {
 	int n = p.size();
 	if (n > 2){
-		vector<float2> orip = p;
+		std::vector<float2> orip = p;
 		float totalDis = 0;
 		for (int i = 1; i < n; i++){
 			totalDis += length(p[i] - p[i - 1]);
@@ -543,7 +542,7 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
 				ctrlPointsAbs[i] = ctrlPointsAbs[end2ind] + dis*(i - end2ind) / end1ind*dir;
 			}
 		}
-		//cout << numCtrlPoints << " " << end1ind << " " << end2ind << endl;
+		//std::cout << numCtrlPoints << " " << end1ind << " " << end2ind << std::endl;
 
 
 		//remove self intersection
@@ -553,7 +552,7 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
 		//compute center and relative positions
 		float sumx = 0, sumy = 0;
 		for (int ii = 0; ii < numCtrlPoints; ii++) {
-			sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of absolute position
+			sumx += ctrlPointsAbs[ii].x, sumy += ctrlPointsAbs[ii].y;  //sum of std::absolute position
 		}
 		UpdateCenterByScreenPos(sumx / numCtrlPoints, sumy / numCtrlPoints, mv, pj, winW, winH);
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);// make_float2(x, y);
@@ -565,7 +564,7 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
 		//optional: refine the control points shape and reduce the number, by the Bezier Curve
 		//better strategy is to check methods about bezier down degree with minimum shape loss
 		if (0){
-			vector<float2> BezierSmapleOri = BezierSmaple(ctrlPoints);
+			std::vector<float2> BezierSmapleOri = BezierSmaple(ctrlPoints);
 			numCtrlPoints = numCtrlPoints / 2;
 			ctrlPoints.resize(numCtrlPoints);
 			for (int ii = 0; ii < numCtrlPoints; ii++) {
@@ -575,8 +574,8 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
 
 		//compute the BezierPoints used to draw the curve, as well as the normals
 		BezierPoints = BezierSmaple(ctrlPoints);
-		vector<float2> Q;
-		vector<float> us;
+		std::vector<float2> Q;
+		std::vector<float> us;
 		int numBP = BezierPoints.size();
 		for (int i = 0; i < numBP - 1; i++){
 			Q.push_back((BezierPoints[i + 1] - BezierPoints[i])*numBP);
@@ -584,7 +583,7 @@ void CurveBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
 		for (int i = 0; i < numBP; i++){
 			us.push_back(i*1.0 / (numBP-1));
 		}
-		vector<float2> BezierTangets;
+		std::vector<float2> BezierTangets;
 		//see: http://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/spline/Bezier/bezier-der.html
 		BezierTangets = BezierSmaple(Q,us);
 		for (int i = 0; i < numBP; i++){
@@ -647,7 +646,7 @@ void CurveBLens::offsetControlPointsPos()
 	float2 dir;
 
 	int np = subCtrlPointsPos.size();
-	posOffsetCtrlPoints.clear(); //!!! maybe can improve performance by using vector<>::reserve
+	posOffsetCtrlPoints.clear(); //!!! maybe can improve performance by using std::vector<>::reserve
 
 	dir = normalize(subCtrlPointsPos[1] - subCtrlPointsPos[0]);
 	normal = make_float2(-dir.y, dir.x);
@@ -704,10 +703,10 @@ void CurveBLens::computeBoundaryPos()
 	int numberPosBezierPart = pow(2, refinedRoundPos);
 	posOffsetBezierPoints.clear();
 	for (int i = 0; i < numberPosBezierPart; i++){
-		vector<float2> curPart(
+		std::vector<float2> curPart(
 			posOffsetCtrlPoints.begin() + (np - 1) / numberPosBezierPart*i,
 			posOffsetCtrlPoints.begin() + (np - 1) / numberPosBezierPart*(i + 1) + 1);
-		vector<float2> curBezierPart = BezierSmaple(curPart);
+		std::vector<float2> curBezierPart = BezierSmaple(curPart);
 		if (i == 0)
 			posOffsetBezierPoints.insert(posOffsetBezierPoints.end(), curBezierPart.begin(), curBezierPart.end());
 		else
@@ -722,10 +721,10 @@ void CurveBLens::computeBoundaryNeg()
 	int numberNegBezierPart = pow(2, refinedRoundNeg);
 	negOffsetBezierPoints.clear();
 	for (int i = 0; i < numberNegBezierPart; i++){
-		vector<float2> curPart(
+		std::vector<float2> curPart(
 			negOffsetCtrlPoints.begin() + (nn - 1) / numberNegBezierPart*i,
 			negOffsetCtrlPoints.begin() + (nn - 1) / numberNegBezierPart*(i + 1) + 1);
-		vector<float2> curBezierPart = BezierSmaple(curPart);
+		std::vector<float2> curBezierPart = BezierSmaple(curPart);
 		if (i == 0)
 			negOffsetBezierPoints.insert(negOffsetBezierPoints.end(), curBezierPart.begin(), curBezierPart.end());
 		else
@@ -740,10 +739,10 @@ void CurveBLens::computeRenderingBoundaryPos(std::vector<float2> &ret, int bezie
 	int numberPosBezierPart = pow(2, refinedRoundPos);
 	ret.clear();
 	for (int i = 0; i < numberPosBezierPart; i++){
-		vector<float2> curPart(
+		std::vector<float2> curPart(
 			posOffsetCtrlPoints.begin() + (np - 1) / numberPosBezierPart*i,
 			posOffsetCtrlPoints.begin() + (np - 1) / numberPosBezierPart*(i + 1) + 1);
-		vector<float2> curBezierPart = BezierSmaple(curPart, bezierSampleAccuracyRate);
+		std::vector<float2> curBezierPart = BezierSmaple(curPart, bezierSampleAccuracyRate);
 		if (i == 0)
 			ret.insert(ret.end(), curBezierPart.begin(), curBezierPart.end());
 		else
@@ -758,10 +757,10 @@ void CurveBLens::computeRenderingBoundaryNeg(std::vector<float2> &ret, int bezie
 	int numberNegBezierPart = pow(2, refinedRoundNeg);
 	ret.clear();
 	for (int i = 0; i < numberNegBezierPart; i++){
-		vector<float2> curPart(
+		std::vector<float2> curPart(
 			negOffsetCtrlPoints.begin() + (nn - 1) / numberNegBezierPart*i,
 			negOffsetCtrlPoints.begin() + (nn - 1) / numberNegBezierPart*(i + 1) + 1);
-		vector<float2> curBezierPart = BezierSmaple(curPart, bezierSampleAccuracyRate);
+		std::vector<float2> curBezierPart = BezierSmaple(curPart, bezierSampleAccuracyRate);
 		if (i == 0)
 			ret.insert(ret.end(), curBezierPart.begin(), curBezierPart.end());
 		else
@@ -857,7 +856,7 @@ std::vector<float2> CurveBLens::GetContour(float* mv, float* pj, int winW, int w
 }
 
 
-vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, int winH){
+std::vector<float2> CurveBLens::GetOuterContour(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> ret;
 	if (!isConstructing && posOffsetBezierPoints.size()>2){
 
@@ -933,7 +932,7 @@ bool CurveBLens::adjustOffset()
 		int posOBPsize = posOffsetBezierPoints.size();
 		for (int i = 0; i < oriN; i++){
 			//may need to be improved !!!
-			if (abs(length(BezierPoints[i] - posOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(posOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
+			if (std::abs(length(BezierPoints[i] - posOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(posOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
 				//newRationalCtrlPoints.push_back(subCtrlPointsPos[i]);
 			}
 			else{
@@ -944,12 +943,12 @@ bool CurveBLens::adjustOffset()
 			int m = subCtrlPointsPos.size();
 			int numberPosBezierPart = pow(2, refinedRoundPos);
 
-			vector<float2> newRCP;
+			std::vector<float2> newRCP;
 			for (int i = 0; i < numberPosBezierPart; i++){
-				vector<float2> curPart(
+				std::vector<float2> curPart(
 					subCtrlPointsPos.begin() + (m - 1) / numberPosBezierPart*i,
 					subCtrlPointsPos.begin() + (m - 1) / numberPosBezierPart*(i + 1) + 1);
-				vector<float2> refinedCurPart = BezierSubdivide(curPart, 1, 0.5);
+				std::vector<float2> refinedCurPart = BezierSubdivide(curPart, 1, 0.5);
 				if (i == 0)
 					newRCP.insert(newRCP.end(), refinedCurPart.begin(), refinedCurPart.end());
 				else
@@ -962,10 +961,10 @@ bool CurveBLens::adjustOffset()
 			offsetControlPointsPos();
 			computeBoundaryPos();
 
-			cout << "refine for pos boundary once! count boundary points: " << subCtrlPointsPos.size() << endl;
+			std::cout << "refine for pos boundary once! count boundary points: " << subCtrlPointsPos.size() << std::endl;
 		}
 		else{
-			cout << "pos converged!" << endl;
+			std::cout << "pos converged!" << std::endl;
 		}
 	}
 
@@ -976,7 +975,7 @@ bool CurveBLens::adjustOffset()
 		int negOBPsize = negOffsetBezierPoints.size();
 		for (int i = 0; i < oriN; i++){
 			//may need to be improved !!!
-			if (abs(length(BezierPoints[i] - negOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(negOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
+			if (std::abs(length(BezierPoints[i] - negOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(negOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
 				//newRationalCtrlPoints.push_back(subCtrlPointsPos[i]);
 			}
 			else{
@@ -987,12 +986,12 @@ bool CurveBLens::adjustOffset()
 			int m = subCtrlPointsNeg.size();
 			int numberNegBezierPart = pow(2, refinedRoundNeg);
 
-			vector<float2> newRCP;
+			std::vector<float2> newRCP;
 			for (int i = 0; i < numberNegBezierPart; i++){
-				vector<float2> curPart(
+				std::vector<float2> curPart(
 					subCtrlPointsNeg.begin() + (m - 1) / numberNegBezierPart*i,
 					subCtrlPointsNeg.begin() + (m - 1) / numberNegBezierPart*(i + 1) + 1);
-				vector<float2> refinedCurPart = BezierSubdivide(curPart, 1, 0.5);
+				std::vector<float2> refinedCurPart = BezierSubdivide(curPart, 1, 0.5);
 				if (i == 0)
 					newRCP.insert(newRCP.end(), refinedCurPart.begin(), refinedCurPart.end());
 				else
@@ -1005,10 +1004,10 @@ bool CurveBLens::adjustOffset()
 			offsetControlPointsNeg();
 			computeBoundaryNeg();
 
-			cout << "refine for neg boundary once! count boundary points:" << subCtrlPointsNeg.size() << endl;
+			std::cout << "refine for neg boundary once! count boundary points:" << subCtrlPointsNeg.size() << std::endl;
 		}
 		else{
-			cout << "neg converged!" << endl;
+			std::cout << "neg converged!" << std::endl;
 		}
 	}
 	if (!convergedPos || !convergedNeg)
@@ -1026,7 +1025,7 @@ void CurveBLens::RefineLensBoundary()
 	computeBoundaryNeg();
 }
 
-vector<float2> CurveBLens::removeSelfIntersection(vector<float2> p, bool isDuplicating)
+std::vector<float2> CurveBLens::removeSelfIntersection(std::vector<float2> p, bool isDuplicating)
 {
 	int n = p.size();
 	bool *skipped = new bool[n];
@@ -1060,13 +1059,13 @@ vector<float2> CurveBLens::removeSelfIntersection(vector<float2> p, bool isDupli
 	}
 
 	if (notFoundOverall){
-		cout << "no self intersection" << endl;
+		std::cout << "no self intersection" << std::endl;
 		return p;
 	}
 	else
 	{
-		cout << "did self intersection removal once!" << endl;
-		vector<float2> newp;
+		std::cout << "did self intersection removal once!" << std::endl;
+		std::vector<float2> newp;
 		newp.push_back(p[0]);
 		if (isDuplicating){
 			for (int i = 0; i < n - 2; i++){
@@ -1099,9 +1098,9 @@ vector<float2> CurveBLens::removeSelfIntersection(vector<float2> p, bool isDupli
 }
 
 
-vector<float2> CurveBLens::BezierOneSubdivide(vector<float2> p, vector<float2> poly1, vector<float2> poly2, float u)
+std::vector<float2> CurveBLens::BezierOneSubdivide(std::vector<float2> p, std::vector<float2> poly1, std::vector<float2> poly2, float u)
 {
-	vector<float2> res;
+	std::vector<float2> res;
 	int n = p.size();
 	if (n == 1)
 	{
@@ -1111,11 +1110,11 @@ vector<float2> CurveBLens::BezierOneSubdivide(vector<float2> p, vector<float2> p
 	}
 	else if (p.size() > 1){
 		poly1.push_back(p[0]);
-		vector<float2> newpoly2;
+		std::vector<float2> newpoly2;
 		newpoly2.push_back(p[n - 1]);
 		newpoly2.insert(newpoly2.end(), poly2.begin(), poly2.end());
 
-		vector<float2> newp;
+		std::vector<float2> newp;
 		for (int i = 0; i < n - 1; i++) {
 			newp.push_back(p[i] + u*(p[i + 1] - p[i]));
 		}
@@ -1126,23 +1125,23 @@ vector<float2> CurveBLens::BezierOneSubdivide(vector<float2> p, vector<float2> p
 
 }
 
-vector<float2> CurveBLens::BezierSubdivide(vector<float2> p, int m, float u)
+std::vector<float2> CurveBLens::BezierSubdivide(std::vector<float2> p, int m, float u)
 {
-	vector<float2> res;
+	std::vector<float2> res;
 	if (m == 1) {
-		vector<float2> poly1(0), poly2(0);
+		std::vector<float2> poly1(0), poly2(0);
 		res = BezierOneSubdivide(p, poly1, poly2, u);
 	}
 	else {
-		vector<float2> poly1(0), poly2(0);
-		vector<float2> doubledp = BezierOneSubdivide(p, poly1, poly2, u);
+		std::vector<float2> poly1(0), poly2(0);
+		std::vector<float2> doubledp = BezierOneSubdivide(p, poly1, poly2, u);
 
 		int n = (doubledp.size() + 1) / 2;
-		vector<float2> newpLeft(doubledp.begin(), doubledp.begin() + n);
-		vector<float2> newpRight(doubledp.begin() + n - 1, doubledp.end());
+		std::vector<float2> newpLeft(doubledp.begin(), doubledp.begin() + n);
+		std::vector<float2> newpRight(doubledp.begin() + n - 1, doubledp.end());
 
-		vector<float2> respLeft = BezierSubdivide(newpLeft, m - 1, u);
-		vector<float2> respRight = BezierSubdivide(newpRight, m - 1, u);
+		std::vector<float2> respLeft = BezierSubdivide(newpLeft, m - 1, u);
+		std::vector<float2> respRight = BezierSubdivide(newpRight, m - 1, u);
 
 		res.insert(res.begin(), respLeft.begin(), respLeft.end());
 		res.insert(res.end(), respRight.begin() + 1, respRight.end());
@@ -1150,9 +1149,9 @@ vector<float2> CurveBLens::BezierSubdivide(vector<float2> p, int m, float u)
 	return res;
 }
 
-vector<float2> CurveBLens::BezierSmaple(vector<float2> p, int bezierSampleAccuracyRate)
+std::vector<float2> CurveBLens::BezierSmaple(std::vector<float2> p, int bezierSampleAccuracyRate)
 {
-	vector<float2> res;
+	std::vector<float2> res;
 	if (p.size() >= 2){
 		int n = p.size() - 1;
 
@@ -1182,9 +1181,9 @@ vector<float2> CurveBLens::BezierSmaple(vector<float2> p, int bezierSampleAccura
 	return res;
 }
 
-vector<float2> CurveBLens::BezierSmaple(vector<float2> p, vector<float> us)//for computing the tangent. bezierSampleAccuracyRate is always 1 in this function
+std::vector<float2> CurveBLens::BezierSmaple(std::vector<float2> p, std::vector<float> us)//for computing the tangent. bezierSampleAccuracyRate is always 1 in this function
 {
-	vector<float2> res;
+	std::vector<float2> res;
 	if (p.size() >= 2){
 		int n = p.size() - 1;
 

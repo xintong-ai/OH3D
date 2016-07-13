@@ -488,7 +488,7 @@ public:
 	TYPE* EL;
 
   //template <class TYPE>
-	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH(maxNum)
+	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH<TYPE>(maxNum)
 	{
 		cost_ptr= 0;
 
