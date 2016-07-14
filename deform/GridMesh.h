@@ -120,6 +120,7 @@ public:
 		}
 	}
 
+	//template <class TYPE>
 	void BuildMesh(TYPE dmin[3], TYPE dmax[3], TYPE step)
 	{
 		for (int i = 0; i < 3; i++){
@@ -224,7 +225,7 @@ public:
 		//PrintMesh();
 	}
 
-  template <class TYPE>
+  //template <class TYPE>
 	GridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH((n + 1) * (n + 1) * (n + 1) * 5)
 	{
 		float3 rangeDiff;

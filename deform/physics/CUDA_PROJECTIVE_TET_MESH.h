@@ -487,7 +487,7 @@ public:
 	//by Xin
 	TYPE* EL;
 
-  template <class TYPE>
+  //template <class TYPE>
 	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH(maxNum)
 	{
 		cost_ptr= 0;
