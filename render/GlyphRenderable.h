@@ -53,7 +53,7 @@ protected:
 	float glyphSizeAdjust = 1.0f;
 	ShaderProgram* glProg = nullptr;
 	//bool displaceOn = true;
-	void ComputeDisplace(float _mv[16]);
+	void ComputeDisplace(float _mv[16], float pj[16]);
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
 	void init() override;

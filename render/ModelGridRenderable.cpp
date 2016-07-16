@@ -82,3 +82,8 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 }
+
+void ModelGridRenderable::mouseRelease(int x, int y, int modifier)
+{
+	modelGrid->setReinitiationNeed();
+}

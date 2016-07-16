@@ -55,6 +55,9 @@ public:
 	float3 gridMin, gridMax;
 	int nStep[3];
 	float step;
+
+	int cutX;
+
 	void Build_Boundary_Triangles2()
 	{
 		t_number = tet_number * 4;
@@ -115,6 +118,113 @@ public:
 							std::cout << Tet[4 * 5 * idx + 4 * t + v] << " ";
 						}
 						std::cout << ";" << std::endl;
+					}
+				}
+			}
+		}
+	}
+
+	void computeShapeInfo(float dataMin[3], float dataMax[3], int n)
+	{
+		float3 rangeDiff;
+		float gridMinInit[3];
+		float gridMaxInit[3];
+		float marginScale = 0.1;
+		for (int i = 0; i < 3; i++){
+			float marginSize = (dataMax[i] - dataMin[i]) * marginScale;
+			gridMinInit[i] = dataMin[i] - marginSize;
+			gridMaxInit[i] = dataMax[i] + marginSize;
+		}
+		rangeDiff = make_float3(
+			gridMaxInit[0] - gridMinInit[0],
+			gridMaxInit[1] - gridMinInit[1],
+			gridMaxInit[2] - gridMinInit[2]);
+		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
+		step = (maxDiff / n) * 1.01;
+
+		for (int i = 0; i < 3; i++){
+			nStep[i] = ceil((gridMaxInit[i] - gridMinInit[i]) / step) + 1;
+		}
+		number = nStep[0] * nStep[1] * nStep[2];
+		gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
+		gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
+
+
+		cutX = nStep[0] / 2;
+	}
+
+	void BuildTet()
+	{
+		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
+
+		int3 vc[8];
+		vc[0] = make_int3(0, 0, 0);
+		vc[1] = make_int3(1, 0, 0);
+		vc[2] = make_int3(0, 1, 0);
+		vc[3] = make_int3(1, 1, 0);
+		vc[4] = make_int3(0, 0, 1);
+		vc[5] = make_int3(1, 0, 1);
+		vc[6] = make_int3(0, 1, 1);
+		vc[7] = make_int3(1, 1, 1);
+
+		int idx, idx2;
+		for (int i = 0; i < (nStep[0] - 1); i++){
+			for (int j = 0; j < (nStep[1] - 1); j++){
+				for (int k = 0; k < (nStep[2] - 1); k++){
+					idx = i * (nStep[1] - 1) * (nStep[2] - 1) + j * (nStep[2] - 1) + k;
+					idx2 = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+					if ((i + j + k) % 2 == 0) {
+						Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConv(idx2, nStep, vc[0]);
+						Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConv(idx2, nStep, vc[1]);
+						Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConv(idx2, nStep, vc[2]);
+						Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConv(idx2, nStep, vc[4]);
+
+						Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConv(idx2, nStep, vc[3]);
+						Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConv(idx2, nStep, vc[1]);
+						Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConv(idx2, nStep, vc[2]);
+						Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConv(idx2, nStep, vc[7]);
+
+						Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConv(idx2, nStep, vc[4]);
+						Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConv(idx2, nStep, vc[5]);
+						Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConv(idx2, nStep, vc[1]);
+						Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConv(idx2, nStep, vc[7]);
+
+						Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConv(idx2, nStep, vc[2]);
+						Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConv(idx2, nStep, vc[4]);
+						Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConv(idx2, nStep, vc[6]);
+						Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConv(idx2, nStep, vc[7]);
+
+						Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConv(idx2, nStep, vc[1]);
+						Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConv(idx2, nStep, vc[2]);
+						Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConv(idx2, nStep, vc[4]);
+						Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConv(idx2, nStep, vc[7]);
+					}
+					else{
+						Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConv(idx2, nStep, vc[0]);
+						Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConv(idx2, nStep, vc[1]);
+						Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConv(idx2, nStep, vc[3]);
+						Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConv(idx2, nStep, vc[5]);
+
+						Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConv(idx2, nStep, vc[0]);
+						Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConv(idx2, nStep, vc[2]);
+						Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConv(idx2, nStep, vc[3]);
+						Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConv(idx2, nStep, vc[6]);
+
+						Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConv(idx2, nStep, vc[0]);
+						Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConv(idx2, nStep, vc[4]);
+						Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConv(idx2, nStep, vc[5]);
+						Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConv(idx2, nStep, vc[6]);
+
+						Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConv(idx2, nStep, vc[3]);
+						Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConv(idx2, nStep, vc[5]);
+						Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConv(idx2, nStep, vc[6]);
+						Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConv(idx2, nStep, vc[7]);
+
+						Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConv(idx2, nStep, vc[0]);
+						Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConv(idx2, nStep, vc[3]);
+						Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConv(idx2, nStep, vc[5]);
+						Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConv(idx2, nStep, vc[6]);
+
 					}
 				}
 			}
@@ -229,6 +339,18 @@ public:
 	//template <class TYPE>
 	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1) * 5)
 	{
+
+		computeShapeInfo(dataMin, dataMax, n);
+		BuildTet();
+		Build_Boundary_Lines();
+
+
+		printf("N: %d, %d\n", number, tet_number);
+
+		control_mag = 500;		//500
+		damping = 0.9;
+		return;
+
 		float3 rangeDiff;
 		float gridMin[3];
 		float gridMax[3];
@@ -244,35 +366,47 @@ public:
 			gridMax[2] - gridMin[2]);
 		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
 		step = (maxDiff / n) * 1.01;
-		//Read_Original_File("sorted_armadillo");
-		//Read_Original_File("armadillo_10k.1");
-		//float dataMin[3] = { -0.50, -0.50, -0.50 };
-		//float dataMax[3] = { 0.50, 0.50, 0.50 };
+
 		BuildMesh(gridMin, gridMax, step);
-		//Scale(0.008);
-		//Centralize(); 
+
 		printf("N: %d, %d\n", number, tet_number);
 
-		//Set fixed nodes
-		//Rotate_X(-0.2);
-		//for(int v=0; v<number; v++)
-		//	//if(X[v*3+1]>-0.04 && X[v*3+1]<0)		
-		//	//	if(fabsf(X[v*3+1]+0.01)<1*(X[v*3+2]-0.1))
-		//	if(fabsf(X[v*3+1]+0.01)<2*(X[v*3+2]-0.2))
-		//		fixed[v]=10000000;
-		//Rotate_X(1.2);
-
-		//for(int v=0; v<number; v++)
-		//	if (X[v * 3 + 0] < (gridMin.x + 0.0001) || X[v * 3 + 0] > (gridMax.x - 0.0001)
-		//		|| X[v * 3 + 1] < (gridMin.y + 0.0001) || X[v * 3 + 1] > (gridMax.x - 0.0001)
-		//		|| X[v * 3 + 2] < (gridMin.z + 0.0001) || X[v * 3 + 2] > (gridMax.x - 0.0001))
-		//		fixed[v]=10000000;
-
-		//elasticity = 1800;// 18000000; //5000000
 		control_mag = 500;		//500
 		damping = 0.9;
 	}
 
+	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio)
+	{
+		int idx;
+		for (int i = 0; i <= cutX; i++){
+			for (int j = 0; j < nStep[1]; j++){
+				for (int k = 0; k < nStep[2]; k++){
+					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+					X[3 * idx + 0] = gridMin.x + i * step;
+					X[3 * idx + 1] = gridMin.y + j * step;
+					X[3 * idx + 2] = gridMin.z + k * step;
+				}
+			}
+		}
+		std::cout <<"step "<< step << std::endl;
+		
+		for (int i = cutX+1; i < nStep[0]; i++){
+			for (int j = 0; j < nStep[1]; j++){
+				for (int k = 0; k < nStep[2]; k++){
+					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+					X[3 * idx + 0] = gridMin.x + (i-1) * step;
+					X[3 * idx + 1] = gridMin.y + j * step;
+					X[3 * idx + 2] = gridMin.z + k * step;
+				}
+			}
+		}
+	}
+
+	void ReinitiateMeshCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio)
+	{
+		//can be placed on CUDA
+		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio);
+	}
 };
 
 

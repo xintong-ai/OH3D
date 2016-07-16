@@ -44,24 +44,24 @@ public:
 	int		max_number;
 
 	// Vertices
-	int		number;
+	int		number = 0;
 	TYPE*	X;
 	TYPE*	M;
 	// Tetrahedra
 	int*	Tet;
-	int		tet_number;
+	int		tet_number = 0;
 	TYPE*	Dm;
 	TYPE*	inv_Dm;
 	TYPE*	Vol;
 	
 	// triangles (for rendering)
-	int		t_number;
+	int		t_number = 0;
 	int*	T;
 	TYPE*	VN;		//Vertex Normal
 	TYPE*	TN;		//Triangle Normal
 
 	//lines
-	int l_number;
+	int l_number = 0;
 	unsigned int* L;
 
 	TET_MESH(int maxNum): number(0)

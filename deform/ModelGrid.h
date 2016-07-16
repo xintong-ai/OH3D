@@ -1,26 +1,40 @@
 #ifndef MODEL_GRID_H
 #define MODEL_GRID_H
 #include <vector>
+
 template <class TYPE>
 class GridMesh;
 template <class TYPE>
 class LineSplitGridMesh;
+
+enum GRID_TYPE{
+	UNIFORM_GRID,
+	LINESPLIT_UNIFORM_GRID
+};
 class ModelGrid
 {
 	GridMesh<float>* gridMesh;
 	LineSplitGridMesh<float>* lsgridMesh;
-
+	bool bMeshNeedReinitiation = false;
 
 	std::vector<float4> vBaryCoord;
 	std::vector<int> vIdx;
 	const float	time_step = 1 / 30.0;
-public:
 
-	bool useLineSplitGridMesh = false;
+public:
+	GRID_TYPE gridType = UNIFORM_GRID;
+
 
 	ModelGrid(float dmin[3], float dmax[3], int n);
+	ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridMesh);
+
 	void UpdatePointCoords(float4* v, int n);
 	void InitGridDensity(float4* v, int n);
+	
+	void ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, //suppose normalized
+	float focusRatio);
+
+	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 
 	int GetTNumber();
 	int* GetT();

@@ -8,6 +8,7 @@
 #include <LensRenderable.h>
 #include <ModelGridRenderable.h>
 #include <ModelGrid.h>
+#include <TransformFunc.h>
 
 #ifdef WIN32
 #include "windows.h"
@@ -40,7 +41,7 @@ void GlyphRenderable::StopDeformTimer()
 #endif
 }
 
-void GlyphRenderable::ComputeDisplace(float _mv[16])
+void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (!displaceEnabled) return;
 	StartDeformTimer();
@@ -57,43 +58,78 @@ void GlyphRenderable::ComputeDisplace(float _mv[16])
 	{
 		if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().size() < 1)
 			return;
-		//convert the camera location from camera space to object space
-		//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
-		QMatrix4x4 q_modelview = QMatrix4x4(_mv);
-		q_modelview = q_modelview.transposed();
-		QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
-		cameraObj = cameraObj / cameraObj.w();
-		float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
-		float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
-		float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
 
-		float3 lensDir = make_float3(
-			cameraObj.x() - lensCen.x,
-			cameraObj.y() - lensCen.y,
-			cameraObj.z() - lensCen.z);
-		lensDir = normalize(lensDir);
-		//std::cout << "cameraObj:" << cameraObj.x() << "," << cameraObj.y() << "," << cameraObj.z() << std::endl;
-		//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
-		//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
+		Lens *l = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back();
+		
+		if (l->type == TYPE_CIRCLE && modelGrid->gridType == UNIFORM_GRID){
+			//convert the camera location from camera space to object space
+			//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
+			QMatrix4x4 q_modelview = QMatrix4x4(_mv);
+			q_modelview = q_modelview.transposed();
+			QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
+			cameraObj = cameraObj / cameraObj.w();
+			float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+			float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
+			float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
 
-		modelGrid->Update(&lensCen.x, &lensDir.x, focusRatio, radius);
-		modelGrid->UpdatePointCoords(&pos[0], pos.size());
-		const float dark = 0.1;
-		const float transRad = radius / focusRatio;
-		for (int i = 0; i < pos.size(); i++) {
-			float3 vert = make_float3(pos[i]);
-			//float3 lensCenFront = lensCen + lensDir * radius;
-			float3 lensCenBack = lensCen - lensDir * radius;
-			float3 lensCenFront2Vert = vert - lensCenBack;
-			float lensCenFront2VertProj = dot(lensCenFront2Vert, lensDir);
-			float3 moveVec = lensCenFront2Vert - lensCenFront2VertProj * lensDir;
-			glyphBright[i] = 1.0;
-			if (lensCenFront2VertProj < 0){
-				float dist2Ray = length(moveVec);
-				if (dist2Ray < radius / focusRatio){
-					glyphBright[i] = std::max(dark, 1.0f / (0.5f * (- lensCenFront2VertProj) + 1.0f));;
+			float3 lensDir = make_float3(
+				cameraObj.x() - lensCen.x,
+				cameraObj.y() - lensCen.y,
+				cameraObj.z() - lensCen.z);
+			lensDir = normalize(lensDir);
+			//std::cout << "cameraObj:" << cameraObj.x() << "," << cameraObj.y() << "," << cameraObj.z() << std::endl;
+			//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
+			//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
+
+			modelGrid->Update(&lensCen.x, &lensDir.x, focusRatio, radius);
+			modelGrid->UpdatePointCoords(&pos[0], pos.size());
+			const float dark = 0.1;
+			const float transRad = radius / focusRatio;
+			for (int i = 0; i < pos.size(); i++) {
+				float3 vert = make_float3(pos[i]);
+				//float3 lensCenFront = lensCen + lensDir * radius;
+				float3 lensCenBack = lensCen - lensDir * radius;
+				float3 lensCenFront2Vert = vert - lensCenBack;
+				float lensCenFront2VertProj = dot(lensCenFront2Vert, lensDir);
+				float3 moveVec = lensCenFront2Vert - lensCenFront2VertProj * lensDir;
+				glyphBright[i] = 1.0;
+				if (lensCenFront2VertProj < 0){
+					float dist2Ray = length(moveVec);
+					if (dist2Ray < radius / focusRatio){
+						glyphBright[i] = std::max(dark, 1.0f / (0.5f * (-lensCenFront2VertProj) + 1.0f));;
+					}
 				}
 			}
+		}
+		else if (l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+
+			//LineBLens has info on the screen space. need to compute info on the world space
+
+			//std::cout << "lSemiMajorAxis " << ((LineBLens*)l)->lSemiMajorAxis << std::endl;
+			//std::cout << "lSemiMinorAxis " << ((LineBLens*)l)->lSemiMinorAxis << std::endl;
+			//std::cout << "direction " << ((LineBLens*)l)->direction.x << " " << ((LineBLens*)l)->direction.y << std::endl;
+
+			//screen length to object
+			int winWidth, winHeight;
+			actor->GetWindowSize(winWidth, winHeight);
+			
+			float2 centerScreen = l->GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
+			float2 endPointSemiMajorAxisScreen = centerScreen + ((LineBLens*)l)->lSemiMajorAxis*((LineBLens*)l)->direction;
+			float2 endPointSemiMinorAxisScreen = centerScreen + ((LineBLens*)l)->lSemiMinorAxis*make_float2(-((LineBLens*)l)->direction.y, ((LineBLens*)l)->direction.x);
+				
+			float4 centerInClip = Object2Clip(make_float4(l->c, 1), _mv, _pj);
+
+			float3 endPointSemiMajorAxisClip = make_float3(Screen2Clip(endPointSemiMajorAxisScreen, winWidth, winHeight), centerInClip.z);
+			float3 endPointSemiMinorAxisClip = make_float3(Screen2Clip(endPointSemiMinorAxisScreen, winWidth, winHeight), centerInClip.z);
+
+			float3 centerScreenClip = make_float3(Screen2Clip(centerScreen, winWidth, winHeight), centerInClip.z);
+
+			float3 endPointSemiMajorAxisGlobal = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip, 1), _mv, _pj));
+			float3 endPointSemiMinorAxisGlobal = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMinorAxisClip, 1), _mv, _pj));
+
+			float3 centerScreenGlobal = make_float3(Clip2ObjectGlobal(make_float4(centerScreenClip, 1), _mv, _pj));
+
+			modelGrid->ReinitiateMesh(l->c, length(endPointSemiMajorAxisGlobal - centerScreenGlobal), length(endPointSemiMinorAxisGlobal - centerScreenGlobal), normalize(endPointSemiMajorAxisGlobal - centerScreenGlobal), ((LineBLens*)l)->focusRatio);
 		}
 		break;
 	}

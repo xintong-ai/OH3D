@@ -224,7 +224,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 
 	RecordMatrix(modelview, projection);
-	ComputeDisplace(modelview);
+	ComputeDisplace(modelview, projection);
 
 
 	if (!visible)

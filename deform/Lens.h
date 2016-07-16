@@ -308,7 +308,7 @@ struct LineBLens :public Lens
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction; //suppose normalized
 	
-	LineBLensInfo lineBLensInfo;
+	LineBLensInfo lineBLensInfo; //for coding easiness, but actually duplicate the related storage
 
 	float2 ctrlPoint1Abs, ctrlPoint2Abs; //only used during construction/transfornation. afterwards the center, direction, lSemiMajorAxis, and lSemiMinorAxis will be computed and recorded
 
