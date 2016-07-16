@@ -1,5 +1,6 @@
 #include <ModelGrid.h>
 #include <GridMesh.h>
+#include <ModelLineSplitGrid.h>
 
 //the algorithm of converting from Cartesian to Barycentric coordinates is from
 //http://dennis2society.de/painless-tetrahedral-barycentric-mapping

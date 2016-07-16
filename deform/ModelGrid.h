@@ -3,14 +3,21 @@
 #include <vector>
 template <class TYPE>
 class GridMesh;
-
+template <class TYPE>
+class LineSplitGridMesh;
 class ModelGrid
 {
 	GridMesh<float>* gridMesh;
+	LineSplitGridMesh<float>* lsgridMesh;
+
+
 	std::vector<float4> vBaryCoord;
 	std::vector<int> vIdx;
 	const float	time_step = 1 / 30.0;
 public:
+
+	bool useLineSplitGridMesh = false;
+
 	ModelGrid(float dmin[3], float dmax[3], int n);
 	void UpdatePointCoords(float4* v, int n);
 	void InitGridDensity(float4* v, int n);

@@ -5,6 +5,7 @@ PROJECT(programs)
 
 if(USE_DEFORM)
 	add_subdirectory(ParticleVis)
+	add_subdirectory(ParticleVis2)
 	if(USE_SUPERQUADRIC)
 		add_subdirectory(TensorVis)
 	endif()
