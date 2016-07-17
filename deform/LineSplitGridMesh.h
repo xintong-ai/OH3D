@@ -8,6 +8,10 @@
 #include <vector_functions.h>
 #include <algorithm>
 
+#include "D:\Library\OpenGL\glm\glm\glm.hpp"
+
+//#include <D:/Library/OpenGL/glm/glm/gtc/matrix_transform.hpp>
+#include <D:/Library/OpenGL/glm/glm/gtx/transform.hpp>
 
 template <class TYPE>
 class LineSplitGridMesh : public CUDA_PROJECTIVE_TET_MESH<TYPE>
@@ -375,16 +379,32 @@ public:
 		damping = 0.9;
 	}
 
-	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio)
+	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)
 	{
+		float3 rotateAxis = cross(make_float3(1, 0, 0), direction);
+		//glm::mat4 r = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), direction)) * 180 / 3.1415926535), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
+		glm::mat4 r = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), direction)) ), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
+		
+		float3 oriMeshCenter = (gridMin + gridMax) / 2;
+		float3 transVec = lensCenter + dot(negZAxisClipInGlobal, oriMeshCenter - lensCenter)*negZAxisClipInGlobal - oriMeshCenter;
+
+		glm::mat4 t = glm::translate(glm::vec3(transVec.x, transVec.y, transVec.z));
+
+		glm::mat4 transform = t*r;
+
 		int idx;
 		for (int i = 0; i <= cutX; i++){
 			for (int j = 0; j < nStep[1]; j++){
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
-					X[3 * idx + 0] = gridMin.x + i * step;
-					X[3 * idx + 1] = gridMin.y + j * step;
-					X[3 * idx + 2] = gridMin.z + k * step;
+
+					//X[3 * idx + 0] = gridMin.x + i * step;
+					//X[3 * idx + 1] = gridMin.y + j * step;
+					//X[3 * idx + 2] = gridMin.z + k * step;
+					glm::vec4 res = t*(r*(glm::vec4(glm::vec3(gridMin.x + i * step, gridMin.y + j * step, gridMin.z + k * step) - glm::vec3(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z), 1.0f) + glm::vec4(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z, 0.0f)));
+					X[3 * idx + 0] = res.x;
+					X[3 * idx + 1] = res.y;
+					X[3 * idx + 2] = res.z;
 				}
 			}
 		}
@@ -394,18 +414,22 @@ public:
 			for (int j = 0; j < nStep[1]; j++){
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
-					X[3 * idx + 0] = gridMin.x + (i-1) * step;
-					X[3 * idx + 1] = gridMin.y + j * step;
-					X[3 * idx + 2] = gridMin.z + k * step;
+					//X[3 * idx + 0] = gridMin.x + (i-1) * step;
+					//X[3 * idx + 1] = gridMin.y + j * step;
+					//X[3 * idx + 2] = gridMin.z + k * step;
+					glm::vec4 res = t*(r*(glm::vec4(glm::vec3(gridMin.x + (i-1) * step, gridMin.y + j * step, gridMin.z + k * step) - glm::vec3(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z), 1.0f) + glm::vec4(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z, 0.0f)));
+					X[3 * idx + 0] = res.x;
+					X[3 * idx + 1] = res.y;
+					X[3 * idx + 2] = res.z;
 				}
 			}
 		}
 	}
 
-	void ReinitiateMeshCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio)
+	void ReinitiateMeshCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)
 	{
 		//can be placed on CUDA
-		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio);
+		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal);
 	}
 };
 

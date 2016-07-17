@@ -4,6 +4,7 @@
 #include "LensRenderable.h"
 #include "GridRenderable.h"
 #include "Displace.h"
+#include <iostream>
 
 #include "SphereRenderable.h"
 #include "ParticleReader.h"
@@ -94,7 +95,8 @@ Window::Window()
 	addCurveBLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
-
+std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
+std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();

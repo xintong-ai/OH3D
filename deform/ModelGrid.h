@@ -32,7 +32,7 @@ public:
 	void InitGridDensity(float4* v, int n);
 	
 	void ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, //suppose normalized
-	float focusRatio);
+		float focusRatio, float3 negZAxisClipInGlobal);
 
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 

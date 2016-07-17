@@ -124,12 +124,25 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 
 			float3 centerScreenClip = make_float3(Screen2Clip(centerScreen, winWidth, winHeight), centerInClip.z);
 
-			float3 endPointSemiMajorAxisGlobal = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip, 1), _mv, _pj));
-			float3 endPointSemiMinorAxisGlobal = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMinorAxisClip, 1), _mv, _pj));
+			QMatrix4x4 q_modelview = QMatrix4x4(_mv);
+			q_modelview = q_modelview.transposed();
+			QMatrix4x4 q_inv_modelview = q_modelview.inverted();
+			QMatrix4x4 q_projection = QMatrix4x4(_pj);
+			q_projection = q_projection.transposed();
+			QMatrix4x4 q_inv_projection = q_projection.inverted();
+			float *_invmv = q_inv_modelview.data();
+			float *_inpj = q_inv_projection.data();
+			
+			QMatrix4x4 q_inv_mvp = q_inv_modelview*q_inv_projection;
+			QVector4D q_negZAxisClipInGlobal = q_inv_mvp*QVector4D(0, 0, -1, 0);
+			float3 negZAxisClipInGlobal = normalize(make_float3(q_negZAxisClipInGlobal[0], q_negZAxisClipInGlobal[1], q_negZAxisClipInGlobal[2]));
 
-			float3 centerScreenGlobal = make_float3(Clip2ObjectGlobal(make_float4(centerScreenClip, 1), _mv, _pj));
+			float3 endPointSemiMajorAxisGlobal = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip, 1), _invmv, _inpj));
+			float3 endPointSemiMinorAxisGlobal = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMinorAxisClip, 1), _invmv, _inpj));
 
-			modelGrid->ReinitiateMesh(l->c, length(endPointSemiMajorAxisGlobal - centerScreenGlobal), length(endPointSemiMinorAxisGlobal - centerScreenGlobal), normalize(endPointSemiMajorAxisGlobal - centerScreenGlobal), ((LineBLens*)l)->focusRatio);
+			float3 centerScreenGlobal = make_float3(Clip2ObjectGlobal(make_float4(centerScreenClip, 1), _invmv, _inpj));
+
+			modelGrid->ReinitiateMesh(l->c, length(endPointSemiMajorAxisGlobal - centerScreenGlobal), length(endPointSemiMinorAxisGlobal - centerScreenGlobal), normalize(endPointSemiMajorAxisGlobal - centerScreenGlobal), ((LineBLens*)l)->focusRatio, negZAxisClipInGlobal);
 		}
 		break;
 	}

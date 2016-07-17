@@ -173,7 +173,7 @@ void ModelGrid::InitGridDensity(float4* v, int n)
 }
 
 
-void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio)
+void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)
 {
 	if (!bMeshNeedReinitiation)
 		return;
@@ -192,7 +192,7 @@ void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lS
 		<< std::endl;
 
 
-	lsgridMesh->ReinitiateMeshCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio);
+	lsgridMesh->ReinitiateMeshCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal);
 
 	matrix4x4 r;
 
