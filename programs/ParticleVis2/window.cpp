@@ -80,7 +80,7 @@ Window::Window()
 	reader->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 10, true);
+	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 20, true);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);

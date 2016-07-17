@@ -142,7 +142,29 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 
 			float3 centerScreenGlobal = make_float3(Clip2ObjectGlobal(make_float4(centerScreenClip, 1), _invmv, _inpj));
 
-			modelGrid->ReinitiateMesh(l->c, length(endPointSemiMajorAxisGlobal - centerScreenGlobal), length(endPointSemiMinorAxisGlobal - centerScreenGlobal), normalize(endPointSemiMajorAxisGlobal - centerScreenGlobal), ((LineBLens*)l)->focusRatio, negZAxisClipInGlobal);
+			float lSemiMajorAxisGlobal = length(endPointSemiMajorAxisGlobal - centerScreenGlobal);
+			float lSemiMinorAxisGlobal = length(endPointSemiMinorAxisGlobal - centerScreenGlobal);
+			float3 majorAxisGlobal = normalize(endPointSemiMajorAxisGlobal - centerScreenGlobal);
+			modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, negZAxisClipInGlobal);
+
+
+
+			QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
+			cameraObj = cameraObj / cameraObj.w();
+			float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+			float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
+			float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
+
+			float3 lensDir = make_float3(
+				cameraObj.x() - lensCen.x,
+				cameraObj.y() - lensCen.y,
+				cameraObj.z() - lensCen.z);
+			lensDir = normalize(lensDir);
+			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, radius, majorAxisGlobal);
+
+
+			modelGrid->UpdatePointCoords(&pos[0], pos.size(), &posOrig[0], true);
+
 		}
 		break;
 	}

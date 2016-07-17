@@ -155,7 +155,8 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 	}
 
-	if (DEFORM_MODEL::SCREEN_SPACE == actor->GetDeformModel()){
+	//temporarily changed for line lens object space debugging
+	if (true){//DEFORM_MODEL::SCREEN_SPACE == actor->GetDeformModel()){
 		int2 winSize = actor->GetWindowSize();
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
@@ -415,7 +416,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glDisable(GL_POINT_SMOOTH);
 
 
-			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
+			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINEB){
 				std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour(eyeWorld, false);
 
 				glColor3f(0.39f, 0.89f, 0.26f);

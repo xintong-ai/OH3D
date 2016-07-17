@@ -9,8 +9,6 @@
 #include <algorithm>
 
 #include "D:\Library\OpenGL\glm\glm\glm.hpp"
-
-//#include <D:/Library/OpenGL/glm/glm/gtc/matrix_transform.hpp>
 #include <D:/Library/OpenGL/glm/glm/gtx/transform.hpp>
 
 template <class TYPE>
@@ -60,7 +58,9 @@ public:
 	int nStep[3];
 	float step;
 
-	int cutX;
+	float3 meshCenter;
+	int cutY;
+	float3 oriMeshCenter;
 
 	void Build_Boundary_Triangles2()
 	{
@@ -154,7 +154,7 @@ public:
 		gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
 
 
-		cutX = nStep[0] / 2;
+		cutY = nStep[1] / 2;
 	}
 
 	void BuildTet()
@@ -354,82 +354,89 @@ public:
 		control_mag = 500;		//500
 		damping = 0.9;
 		return;
-
-		float3 rangeDiff;
-		float gridMin[3];
-		float gridMax[3];
-		float marginScale = 0.1;
-		for (int i = 0; i < 3; i++){
-			float marginSize = (dataMax[i] - dataMin[i]) * marginScale;
-			gridMin[i] = dataMin[i] - marginSize;
-			gridMax[i] = dataMax[i] + marginSize;
-		}
-		rangeDiff = make_float3(
-			gridMax[0] - gridMin[0],
-			gridMax[1] - gridMin[1],
-			gridMax[2] - gridMin[2]);
-		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
-		step = (maxDiff / n) * 1.01;
-
-		BuildMesh(gridMin, gridMax, step);
-
-		printf("N: %d, %d\n", number, tet_number);
-
-		control_mag = 500;		//500
-		damping = 0.9;
 	}
 
-	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)
+
+
+	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal, glm::mat4 &meshTransMat)
 	{
+		oriMeshCenter = make_float3(gridMin.x + (nStep[0] / 2) * step, gridMin.y + cutY * step, gridMin.z + (nStep[2] / 2) * step);
+
+		glm::vec3 glm_oriMeshCenter = glm::vec3(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z);//also rotation center
+
+		//translate to the relative position of the rotation center
+		glm::mat4 t1 = glm::translate(-glm_oriMeshCenter);
+
+		//rotation
 		float3 rotateAxis = cross(make_float3(1, 0, 0), direction);
-		//glm::mat4 r = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), direction)) * 180 / 3.1415926535), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
-		glm::mat4 r = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), direction)) ), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
-		
-		float3 oriMeshCenter = (gridMin + gridMax) / 2;
-		float3 transVec = lensCenter + dot(negZAxisClipInGlobal, oriMeshCenter - lensCenter)*negZAxisClipInGlobal - oriMeshCenter;
+		glm::mat4 r = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), direction))), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
 
-		glm::mat4 t = glm::translate(glm::vec3(transVec.x, transVec.y, transVec.z));
+		//translate back to original coordinate system
+		glm::mat4 t2 = glm::translate(glm_oriMeshCenter);
 
-		glm::mat4 transform = t*r;
+		meshCenter = lensCenter + dot(negZAxisClipInGlobal, oriMeshCenter - lensCenter)*negZAxisClipInGlobal;
+		float3 transVec = meshCenter - oriMeshCenter;
+
+		//translate to lens center
+		glm::mat4 t3 = glm::translate(glm::vec3(transVec.x, transVec.y, transVec.z));
+
+		meshTransMat = t3*t2*r*t1;
 
 		int idx;
-		for (int i = 0; i <= cutX; i++){
-			for (int j = 0; j < nStep[1]; j++){
+		for (int i = 0; i <= nStep[0]; i++){
+			for (int j = 0; j <= cutY; j++){
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 
-					//X[3 * idx + 0] = gridMin.x + i * step;
-					//X[3 * idx + 1] = gridMin.y + j * step;
-					//X[3 * idx + 2] = gridMin.z + k * step;
-					glm::vec4 res = t*(r*(glm::vec4(glm::vec3(gridMin.x + i * step, gridMin.y + j * step, gridMin.z + k * step) - glm::vec3(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z), 1.0f) + glm::vec4(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z, 0.0f)));
+					glm::vec4 res = meshTransMat*glm::vec4(gridMin.x + i * step, gridMin.y + j * step, gridMin.z + k * step, 1.0f);
+						
 					X[3 * idx + 0] = res.x;
 					X[3 * idx + 1] = res.y;
 					X[3 * idx + 2] = res.z;
 				}
 			}
-		}
-		std::cout <<"step "<< step << std::endl;
-		
-		for (int i = cutX+1; i < nStep[0]; i++){
-			for (int j = 0; j < nStep[1]; j++){
+			for (int j = cutY+1; j < nStep[1]; j++){
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
-					//X[3 * idx + 0] = gridMin.x + (i-1) * step;
-					//X[3 * idx + 1] = gridMin.y + j * step;
-					//X[3 * idx + 2] = gridMin.z + k * step;
-					glm::vec4 res = t*(r*(glm::vec4(glm::vec3(gridMin.x + (i-1) * step, gridMin.y + j * step, gridMin.z + k * step) - glm::vec3(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z), 1.0f) + glm::vec4(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z, 0.0f)));
+
+					glm::vec4 res = meshTransMat*glm::vec4(gridMin.x + i * step, gridMin.y + (j - 1+0.01) * step, gridMin.z + k * step, 1.0f);
+
 					X[3 * idx + 0] = res.x;
 					X[3 * idx + 1] = res.y;
 					X[3 * idx + 2] = res.z;
 				}
 			}
 		}
+	
 	}
 
 	void ReinitiateMeshCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)
 	{
 		//can be placed on CUDA
-		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal);
+		//computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal);
+	}
+
+
+
+
+	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1) * 5)
+	{
+
+		computeShapeInfo(dataMin, dataMax, n);
+		BuildTet();
+		Build_Boundary_Lines();
+
+
+		printf("N: %d, %d\n", number, tet_number);
+
+		control_mag = 500;		//500
+		damping = 0.9;
+		
+		
+		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal, meshTransMat);
+		
+		return;
+
 	}
 };
 

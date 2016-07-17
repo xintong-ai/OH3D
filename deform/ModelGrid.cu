@@ -79,11 +79,19 @@ ModelGrid::ModelGrid(float dmin[3], float dmax[3], int n)
 	if (gridType == GRID_TYPE::UNIFORM_GRID)
 		gridMesh = new GridMesh<float>(dmin, dmax, n);
 	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh = new LineSplitGridMesh<float>(dmin, dmax, n);
+		lsgridMesh = new LineSplitGridMesh<float>(dmin, dmax, n); //can be removed later. may only init when needed. currently just to make gridRenderable not crash
 }
 
 ModelGrid::ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridMesh)
 {
+	_n = n;
+	_dmin[0] = dmin[0];
+	_dmin[1] = dmin[1];
+	_dmin[2] = dmin[2];
+	_dmax[0] = dmax[0];
+	_dmax[1] = dmax[1];
+	_dmax[2] = dmax[2];
+
 	if (useLineSplitGridMesh)
 		gridType = LINESPLIT_UNIFORM_GRID;
 	if (gridType == GRID_TYPE::UNIFORM_GRID)
@@ -92,32 +100,116 @@ ModelGrid::ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridM
 		lsgridMesh = new LineSplitGridMesh<float>(dmin, dmax, n);
 
 }
-void ModelGrid::UpdatePointCoords(float4* v, int n)
+
+float3 regularMeshVertCoord(int iv, int3 nStep, int cutY, float3 gridMin, float step){
+	int i = iv / (nStep.y * nStep.z);
+	int j = (iv - i* nStep.y * nStep.z) / nStep.z;
+	int k = iv - i * nStep.y * nStep.z - j * nStep.z;
+	if (j <= cutY){
+		return make_float3(gridMin.x + i * step, gridMin.y + j * step, gridMin.z + k * step);
+	}
+	else{
+		return make_float3(gridMin.x + i * step, gridMin.y + (j - 1 + 0.01) * step, gridMin.z + k * step);
+	}
+
+}
+
+
+void ModelGrid::UpdatePointTetId(float4* v, int n)
 {
+	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
+	vIdx.resize(n);
+	vBaryCoord.resize(n);
+
+	float3 gridMin = GetGridMin();
+	float3 gridMax = GetGridMax();
+	int3 nStep = GetNumSteps();
+	float step = GetStep();
 	int* tet = GetTet();
-	float* X = GetX();
+	//float* X = GetX();
+
 	for (int i = 0; i < n; i++){
-		int vi = vIdx[i];
-		float4 vb = vBaryCoord[i];
-		float3 vv[4];
-		for (int k = 0; k < 4; k++){
-			int iv = tet[vi * 4 + k];
-			vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
+		glm::vec4 g_vcOri = glm::vec4(v[i].x, v[i].y, v[i].z, 1.0);
+		glm::vec4 g_vcTransformed = invMeshTransMat*g_vcOri;
+
+		float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
+		float3 tmp = (vc - gridMin) / step;
+		int3 idx3 = make_int3(tmp.x, tmp.y, tmp.z);
+		if (idx3.y >= lsgridMesh->cutY) //has a slight error
+			idx3.y++;
+
+		if (idx3.x < 0 || idx3.y < 0 || idx3.z < 0 || idx3.x >= nStep.x - 1 || idx3.y >= nStep.y - 1 || idx3.z >= nStep.z - 1){
+			vIdx[i] = -1;
 		}
-		v[i] = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
+		else{
+			int idx = idx3.x * (nStep.y - 1) * (nStep.z - 1)
+				+ idx3.y * (nStep.z - 1) + idx3.z;
+
+			int j = 0;
+			for (j = 0; j < 5; j++){
+				float3 vv[4];
+				int tetId = idx * 5 + j;
+				for (int k = 0; k < 4; k++){
+					int iv = tet[tetId * 4 + k];
+
+
+
+					vv[k] = regularMeshVertCoord(iv, nStep, lsgridMesh->cutY, gridMin, step);
+					//vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
+				}
+				float4 bary = GetBarycentricCoordinate(vv[0], vv[1], vv[2], vv[3], vc);
+				if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
+					vIdx[i] = idx * 5 + j;
+					vBaryCoord[i] = bary;
+					break;
+				}
+			}
+			if (j == 6){ //need to be handle later
+				vIdx[i] = -1;
+			}
+		}
 	}
 }
 
 
-int ModelGrid::GetTNumber()
+void ModelGrid::UpdatePointCoords(float4* v, int n, float4* vOri, bool needUpdateTetId)
 {
-	if (gridType == GRID_TYPE::UNIFORM_GRID)
-		return gridMesh->t_number;
-	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		return lsgridMesh->t_number;
-	else
-		return -1;
+
+
+	if (needUpdateTetId) { //whether need to update the tet ids of the points
+		UpdatePointTetId(v, n);
+	}
+
+	//for (int i = 0; i < n; i++){
+
+	//	v[i] = vOri[i];
+	//}
+	//return;
+
+	int tet_number = GetTNumber();
+
+	int* tet = GetTet();
+	float* X = GetX();
+	for (int i = 0; i < n; i++){
+		int vi = vIdx[i];
+		if (vi >= 0 && vi < tet_number){
+			float4 vb = vBaryCoord[i];
+			float3 vv[4];
+			for (int k = 0; k < 4; k++){
+				int iv = tet[vi * 4 + k];
+				vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
+			}
+			v[i] = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
+		}
+		else if (vOri != 0){
+			v[i] = vOri[i];
+		}
+		//others should not happen
+	}
 }
+
+
+
 
 void ModelGrid::InitGridDensity(float4* v, int n)
 {
@@ -181,30 +273,70 @@ void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lS
 	if (gridType != GRID_TYPE::LINESPLIT_UNIFORM_GRID)
 		return;
 
+	//std::cout << "lensCenter " << lensCenter.x << " " << lensCenter.y << " " << lensCenter.z
+	//	<< std::endl;
 
+	//std::cout << "lSemiMajorAxis " << lSemiMajorAxis << std::endl;
+	//std::cout << "lSemiMinorAxis " << lSemiMinorAxis << std::endl;
+	//std::cout << "direction " << direction.x << " " << direction.y << " " << direction.z
+	//	<< std::endl;
 
-	std::cout << "lensCenter " << lensCenter.x << " " << lensCenter.y << " " << lensCenter.z
-		<< std::endl;
-
-	std::cout << "lSemiMajorAxis " << lSemiMajorAxis << std::endl;
-	std::cout << "lSemiMinorAxis " << lSemiMinorAxis << std::endl;
-	std::cout << "direction " << direction.x << " " << direction.y << " " << direction.z
-		<< std::endl;
-
-
-	lsgridMesh->ReinitiateMeshCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal);
-
-	matrix4x4 r;
+	if (lsgridMesh != 0)
+		delete lsgridMesh;
+	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal, meshTransMat);
+	SetElasticitySimple();
+	lsgridMesh->Initialize(time_step);
 
 	bMeshNeedReinitiation = false;
 }
 
 
 
+void ModelGrid::SetElasticitySimple()
+{
+	std::vector<float> density;
+	density.resize(lsgridMesh->tet_number);
+	for (int i = 0; i < density.size(); i++) {
+		density[i] = 10.1; //the higher density, the more deformation is reached
+	}
+	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
+}
 
+void ModelGrid::Initialize(float time_step)
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		gridMesh->Initialize(time_step);
+	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		lsgridMesh->Initialize(time_step);
+	else
+		return;
+}
 
+void ModelGrid::Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius)
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		gridMesh->Update(time_step, 64, lensCenter, lenDir, focusRatio, radius);
+	return;
+}
+
+void ModelGrid::Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float radius, float3 majorAxisGlobal)
+{
+	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		lsgridMesh->Update(time_step, 1, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, radius, majorAxisGlobal);
+	return;
+}
 
 /////////////////////////////////////// attributes getters /////////////////////
+
+int ModelGrid::GetTNumber()
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		return gridMesh->t_number;
+	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		return lsgridMesh->t_number;
+	else
+		return -1;
+}
 
 int* ModelGrid::GetT()
 {
@@ -256,7 +388,6 @@ float* ModelGrid::GetE()
 		return NULL;
 }
 
-
 int ModelGrid::GetLNumber()
 {
 	if (gridType == GRID_TYPE::UNIFORM_GRID)
@@ -265,26 +396,6 @@ int ModelGrid::GetLNumber()
 		return lsgridMesh->l_number;
 	else
 		return 0;
-}
-
-void ModelGrid::Initialize(float time_step)
-{
-	if (gridType == GRID_TYPE::UNIFORM_GRID)
-		gridMesh->Initialize(time_step);
-	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->Initialize(time_step);
-	else
-		return;
-}
-
-void ModelGrid::Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius)
-{
-	if (gridType == GRID_TYPE::UNIFORM_GRID)
-		gridMesh->Update(time_step, 64, lensCenter, lenDir, focusRatio, radius);
-	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->Update(time_step, 64, lensCenter, lenDir, focusRatio, radius);
-	else
-		return;
 }
 
 float3 ModelGrid::GetGridMin()
@@ -342,6 +453,16 @@ int* ModelGrid::GetTet()
 		return gridMesh->Tet;
 	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
 		return lsgridMesh->Tet;
+	else
+		return NULL;
+}
+
+int ModelGrid::GetTetNumber()
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		return gridMesh->tet_number;
+	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		return lsgridMesh->tet_number;
 	else
 		return NULL;
 }
