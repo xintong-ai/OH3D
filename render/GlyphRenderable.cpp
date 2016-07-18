@@ -145,7 +145,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 			float lSemiMajorAxisGlobal = length(endPointSemiMajorAxisGlobal - centerScreenGlobal);
 			float lSemiMinorAxisGlobal = length(endPointSemiMinorAxisGlobal - centerScreenGlobal);
 			float3 majorAxisGlobal = normalize(endPointSemiMajorAxisGlobal - centerScreenGlobal);
-			modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, negZAxisClipInGlobal);
+			modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, negZAxisClipInGlobal, &posOrig[0], pos.size());
 
 
 
@@ -160,10 +160,9 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 				cameraObj.y() - lensCen.y,
 				cameraObj.z() - lensCen.z);
 			lensDir = normalize(lensDir);
+
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, radius, majorAxisGlobal);
-
-
-			modelGrid->UpdatePointCoords(&pos[0], pos.size(), &posOrig[0], true);
+			modelGrid->UpdatePointCoords(&pos[0], pos.size(), &posOrig[0]);
 
 		}
 		break;

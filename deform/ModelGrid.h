@@ -36,12 +36,12 @@ public:
 	ModelGrid(float dmin[3], float dmax[3], int n);
 	ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridMesh);
 
-	void UpdatePointCoords(float4* v, int n, float4* vOri = 0, bool needUpdateTetId = false);
+	void UpdatePointCoords(float4* v, int n, float4* vOri = 0);
 	void InitGridDensity(float4* v, int n);
 	void UpdatePointTetId(float4* v, int n);
 
 	void ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, //suppose normalized
-		float focusRatio, float3 negZAxisClipInGlobal);
+		float focusRatio, float3 negZAxisClipInGlobal, float4* vOri, int n);
 
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 

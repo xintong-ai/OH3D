@@ -134,7 +134,7 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 
 		float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
 		float3 tmp = (vc - gridMin) / step;
-		int3 idx3 = make_int3(tmp.x, tmp.y, tmp.z);
+		int3 idx3 = make_int3(floor(tmp.x), floor(tmp.y), floor(tmp.z));
 		if (idx3.y >= lsgridMesh->cutY) //has a slight error
 			idx3.y++;
 
@@ -151,8 +151,6 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 				int tetId = idx * 5 + j;
 				for (int k = 0; k < 4; k++){
 					int iv = tet[tetId * 4 + k];
-
-
 
 					vv[k] = regularMeshVertCoord(iv, nStep, lsgridMesh->cutY, gridMin, step);
 					//vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
@@ -172,22 +170,9 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 }
 
 
-void ModelGrid::UpdatePointCoords(float4* v, int n, float4* vOri, bool needUpdateTetId)
+void ModelGrid::UpdatePointCoords(float4* v, int n, float4* vOri)
 {
-
-
-	if (needUpdateTetId) { //whether need to update the tet ids of the points
-		UpdatePointTetId(v, n);
-	}
-
-	//for (int i = 0; i < n; i++){
-
-	//	v[i] = vOri[i];
-	//}
-	//return;
-
-	int tet_number = GetTNumber();
-
+	int tet_number = GetTetNumber();
 	int* tet = GetTet();
 	float* X = GetX();
 	for (int i = 0; i < n; i++){
@@ -201,10 +186,12 @@ void ModelGrid::UpdatePointCoords(float4* v, int n, float4* vOri, bool needUpdat
 			}
 			v[i] = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
 		}
-		else if (vOri != 0){
+		else if (vOri!=0){
 			v[i] = vOri[i];
 		}
-		//others should not happen
+		else{
+			std::cerr << "error getting glyph deformed position from mesh" << std::endl; 
+		}
 	}
 }
 
@@ -265,7 +252,7 @@ void ModelGrid::InitGridDensity(float4* v, int n)
 }
 
 
-void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)
+void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal, float4* vOri, int n)
 {
 	if (!bMeshNeedReinitiation)
 		return;
@@ -273,20 +260,14 @@ void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lS
 	if (gridType != GRID_TYPE::LINESPLIT_UNIFORM_GRID)
 		return;
 
-	//std::cout << "lensCenter " << lensCenter.x << " " << lensCenter.y << " " << lensCenter.z
-	//	<< std::endl;
-
-	//std::cout << "lSemiMajorAxis " << lSemiMajorAxis << std::endl;
-	//std::cout << "lSemiMinorAxis " << lSemiMinorAxis << std::endl;
-	//std::cout << "direction " << direction.x << " " << direction.y << " " << direction.z
-	//	<< std::endl;
-
 	if (lsgridMesh != 0)
 		delete lsgridMesh;
 	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal, meshTransMat);
 	SetElasticitySimple();
 	lsgridMesh->Initialize(time_step);
 
+	UpdatePointTetId(vOri, n);
+	
 	bMeshNeedReinitiation = false;
 }
 

@@ -205,7 +205,7 @@ __device__ bool PointInsideLineLens(float3 p, float3 lensCen, float3 lensDir, fl
 		if (abs(lensCen2PMajorProj)<lSemiMajorAxis){
 			float3 minorAxis = cross(lensDir, majorAxis);//need further check
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
-			if (abs(lensCen2PMajorProj) < lSemiMinorAxis/focusRatio){
+			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
 				ret = true;
 			}
 		}
@@ -923,22 +923,6 @@ public:
 	//for line lens
 	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], float3 meshCenter, int cutX, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, TYPE radius, float3 majorAxis)
 	{
-
-		//std::cout << "lensCenter " << lensCen[0] << " " << lensCen[1] << " " << lensCen[2]
-		//	<< std::endl;
-		//std::cout << "lenDir " << lenDir[0] << " " << lenDir[1] << " " << lenDir[2]
-		//	<< std::endl;
-		//std::cout << "majorAxis " << majorAxis.x << " " << majorAxis.y << " " << majorAxis.z
-		//	<< std::endl;
-
-		//std::cout << "lSemiMajorAxis " << lSemiMajorAxis << std::endl;
-		//std::cout << "lSemiMinorAxis " << lSemiMinorAxis << std::endl;
-	
-		float3 minorAxis = cross(make_float3(lenDir[0], lenDir[1], lenDir[2]), majorAxis);
-		//std::cout << "minorAxis " << minorAxis.x << " " << minorAxis.y << " " << minorAxis.z
-		//	<< std::endl;
-
-
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
 		int tet_threadsPerBlock = 64;
