@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+
 option(USE_SUPERQUADRIC "Enable features that require TEEM" OFF)
 if(USE_SUPERQUADRIC)
 	find_package(Teem REQUIRED)
