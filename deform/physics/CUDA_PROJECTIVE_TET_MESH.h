@@ -196,14 +196,15 @@ __device__ bool PointInsideLens(float3 p, float3 lensCen, float3 lensDir, float 
 }
 
 
-__device__ bool PointInsideLineLens(float3 p, float3 lensCen, float3 lensDir, float3 majorAxis, float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio){
+__device__ bool PointInsideExtendedLineLensRegion(float3 p, float3 lensCen, float3 lensDir, float3 majorAxis, float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio){
 	bool ret = false;
 	float3 lenCen2P = p - lensCen;
 	float lensCen2PProj = dot(lenCen2P, lensDir);
 	if (lensCen2PProj > 0){
 		float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
-		if (abs(lensCen2PMajorProj)<lSemiMajorAxis){
-			float3 minorAxis = cross(lensDir, majorAxis);//need further check
+		const float majorDirectionTransitionCoeff = 1.1;
+		if (abs(lensCen2PMajorProj)<lSemiMajorAxis*majorDirectionTransitionCoeff){
+			float3 minorAxis = cross(lensDir, majorAxis);
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
 			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
 				ret = true;
@@ -211,6 +212,14 @@ __device__ bool PointInsideLineLens(float3 p, float3 lensCen, float3 lensDir, fl
 		}
 	}
 	return ret;
+}
+
+__device__ bool PointAtBoundary(const int x, const int y, const int z, const int3 nStep)
+{
+	if (x == 0 || y == 0 || z == 0 || x == nStep.x - 1 || y == nStep.y - 1 || z == nStep.z - 1)
+		return true;
+	else
+		return false;
 }
 
 __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
@@ -238,7 +247,7 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 
 __global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float *more_fixed, const int number
 	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis)
+	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis,int3 nStep)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -247,7 +256,18 @@ __global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float 
 	//float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 vertOrig = make_float3(X_Orig[i * 3], X_Orig[i * 3 + 1], X_Orig[i * 3 + 2]);
 	//we have to use the original position here, otherwise the points will vibrate.
-	if (!PointInsideLineLens(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
+
+	int x = i / (nStep.y * nStep.z);
+	int y = (i - x* nStep.y * nStep.z) / nStep.z;
+	int z = i - x * nStep.y * nStep.z - y * nStep.z;
+
+	if (PointAtBoundary(x, y, z, nStep)){
+		more_fixed[i] = 10000000;
+		X[i * 3 + 0] = X_Orig[i * 3 + 0];
+		X[i * 3 + 1] = X_Orig[i * 3 + 1];
+		X[i * 3 + 2] = X_Orig[i * 3 + 2];
+	}
+	else if (!PointInsideExtendedLineLensRegion(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
 		more_fixed[i] = 10000000;
 		X[i * 3 + 0] = X_Orig[i * 3 + 0];
 		X[i * 3 + 1] = X_Orig[i * 3 + 1];
@@ -323,7 +343,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
 	, const float cen_x, const float cen_y, const float cen_z
 	, const float dir_x, const float dir_y, const float dir_z
-	, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep)
+	, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep, int cutY)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -360,12 +380,18 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 			float3 moveDir = normalize(minorAxis);
 
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
-			//if (x==cutX)
-			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
-				if (lensCen2PMinorProj>0)
-					lensForce = (1 - lensCen2PMinorProj / (lSemiMinorAxis / focusRatio)) * moveDir;
+
+			if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
+				if ((lensCen2PMinorProj>0 || y == cutY + 1) && y != cutY)
+					lensForce = moveDir;
 				else
-					lensForce = (-1 - lensCen2PMinorProj / (lSemiMinorAxis / focusRatio)) * moveDir;
+					lensForce = -moveDir;
+			}
+			else if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
+				if (lensCen2PMinorProj>0)
+					lensForce = (1 - (lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
+				else
+					lensForce = -(1 - (-lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
 			}
 		}
 	}
@@ -373,7 +399,7 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 
 	for (int j = 0; j < 3; j++) {
-		V[i * 3 + j] += (2 * (&(lensForce.x))[j] * t);
+		V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t);
 	}
 
 	//V[i*3+1]+=GRAVITY*t;
@@ -921,25 +947,26 @@ public:
 
 
 	//for line lens
-	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], float3 meshCenter, int cutX, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, TYPE radius, float3 majorAxis)
+	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
 		int tet_threadsPerBlock = 64;
 		int tet_blocksPerGrid = (tet_number + tet_threadsPerBlock - 1) / tet_threadsPerBlock;
 
+		int3 nstep_forDevice = make_int3(nStep[0], nStep[1], nStep[2]);//cannot directly give local pointer to cuda
 		TIMER timer;
 		// Step 0 by Cheng Li
 		Set_Fixed_By_Lens_Line << <blocksPerGrid, threadsPerBlock >> >(
 			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
 			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis);
+			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice);
 
-		int3 nstep_forDevice = make_int3(nStep[0], nStep[1], nStep[2]);//cannot directly give local pointer to cuda
+		
 		// Step 1: Basic update
 		Update_Kernel_LineLens << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
 			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice);
+			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice, cutY);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1 / t, number);

@@ -252,7 +252,7 @@ void ModelGrid::InitGridDensity(float4* v, int n)
 }
 
 
-void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal, float4* vOri, int n)
+void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, float4* vOri, int n)
 {
 	if (!bMeshNeedReinitiation)
 		return;
@@ -262,7 +262,7 @@ void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lS
 
 	if (lsgridMesh != 0)
 		delete lsgridMesh;
-	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal, meshTransMat);
+	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
 	SetElasticitySimple();
 	lsgridMesh->Initialize(time_step);
 
@@ -278,7 +278,18 @@ void ModelGrid::SetElasticitySimple()
 	std::vector<float> density;
 	density.resize(lsgridMesh->tet_number);
 	for (int i = 0; i < density.size(); i++) {
-		density[i] = 10.1; //the higher density, the more deformation is reached
+		int3 nStep = make_int3((lsgridMesh->nStep)[0], (lsgridMesh->nStep)[1], (lsgridMesh->nStep)[2]);
+		int3 tet_nStep = nStep - make_int3(1, 1, 1);
+		int x = i / (tet_nStep.y * tet_nStep.z);
+		int y = (i - x* tet_nStep.y * tet_nStep.z) / tet_nStep.z;
+		int z = i - x * tet_nStep.y * tet_nStep.z - y * tet_nStep.z;
+		if (y == lsgridMesh->cutY){
+			density[i] = 0;
+		}
+		else{
+			density[i] = 500; //the higher density, the more deformation is reached
+		}
+
 	}
 	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
 }
@@ -300,10 +311,10 @@ void ModelGrid::Update(float lensCenter[3], float lenDir[3], float focusRatio, f
 	return;
 }
 
-void ModelGrid::Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float radius, float3 majorAxisGlobal)
+void ModelGrid::Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio,float3 majorAxisGlobal)
 {
 	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->Update(time_step, 1, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, radius, majorAxisGlobal);
+		lsgridMesh->Update(time_step, 1, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal);
 	return;
 }
 

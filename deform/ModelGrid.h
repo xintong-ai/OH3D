@@ -40,14 +40,13 @@ public:
 	void InitGridDensity(float4* v, int n);
 	void UpdatePointTetId(float4* v, int n);
 
-	void ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, //suppose normalized
-		float focusRatio, float3 negZAxisClipInGlobal, float4* vOri, int n);
+	void ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, float4* vOri, int n);
 
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 
 	void Initialize(float time_step);
 	void Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius);
-	void Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float radius, float3 majorAxisGlobal);
+	void Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
 
 	int GetTNumber();
 	int* GetT();

@@ -357,30 +357,22 @@ public:
 	}
 
 
-
-	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal, glm::mat4 &meshTransMat)
+	
+	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat)
 	{
 		oriMeshCenter = make_float3(gridMin.x + (nStep[0] / 2) * step, gridMin.y + cutY * step, gridMin.z + (nStep[2] / 2) * step);
 
-		glm::vec3 glm_oriMeshCenter = glm::vec3(oriMeshCenter.x, oriMeshCenter.y, oriMeshCenter.z);//also rotation center
+		float3 rotateAxis = cross(make_float3(1, 0, 0), majorAxis);
+		glm::mat4 r1 = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), majorAxis))), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
 
-		//translate to the relative position of the rotation center
-		glm::mat4 t1 = glm::translate(-glm_oriMeshCenter);
+		glm::vec4 lensDirByR1 = glm::inverse(r1)*glm::vec4(lensDir.x, lensDir.y, lensDir.z, 0);
+		float3 rotateAxis2 = cross(make_float3(0, 0, 1), make_float3(lensDirByR1.x, lensDirByR1.y, lensDirByR1.z));
+		glm::mat4 r2 = glm::rotate((float)(acos(dot(make_float3(0, 0, 1), make_float3(lensDirByR1.x, lensDirByR1.y, lensDirByR1.z)))), glm::vec3(rotateAxis2.x, rotateAxis2.y, rotateAxis2.z));
 
-		//rotation
-		float3 rotateAxis = cross(make_float3(1, 0, 0), direction);
-		glm::mat4 r = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), direction))), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
+		glm::vec4 lensCenterByR1R2 = glm::inverse(r1*r2)*glm::vec4(lensCenter.x, lensCenter.y, lensCenter.z, 1);
+		glm::mat4 t1 = glm::translate(glm::vec3(lensCenterByR1R2.x - oriMeshCenter.x, lensCenterByR1R2.y - oriMeshCenter.y, lensCenterByR1R2.z - oriMeshCenter.z));
 
-		//translate back to original coordinate system
-		glm::mat4 t2 = glm::translate(glm_oriMeshCenter);
-
-		meshCenter = lensCenter + dot(negZAxisClipInGlobal, oriMeshCenter - lensCenter)*negZAxisClipInGlobal;
-		float3 transVec = meshCenter - oriMeshCenter;
-
-		//translate to lens center
-		glm::mat4 t3 = glm::translate(glm::vec3(transVec.x, transVec.y, transVec.z));
-
-		meshTransMat = t3*t2*r*t1;
+		meshTransMat = r1*r2*t1;
 
 		int idx;
 		for (int i = 0; i <= nStep[0]; i++){
@@ -399,7 +391,7 @@ public:
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 
-					glm::vec4 res = meshTransMat*glm::vec4(gridMin.x + i * step, gridMin.y + (j - 1+0.01) * step, gridMin.z + k * step, 1.0f);
+					glm::vec4 res = meshTransMat*glm::vec4(gridMin.x + i * step, gridMin.y + (j - 1+0.05) * step, gridMin.z + k * step, 1.0f);
 
 					X[3 * idx + 0] = res.x;
 					X[3 * idx + 1] = res.y;
@@ -409,8 +401,9 @@ public:
 		}
 	
 	}
+	
 
-	void ReinitiateMeshCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)
+	void ReinitiateMeshCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)//used when reinitiate coord, instead of the whole gridmesh object
 	{
 		//can be placed on CUDA
 		//computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal);
@@ -419,7 +412,7 @@ public:
 
 
 
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1) * 5)
+	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1) * 5)
 	{
 
 		computeShapeInfo(dataMin, dataMax, n);
@@ -433,7 +426,7 @@ public:
 		damping = 0.9;
 		
 		
-		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal, meshTransMat);
+		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
 		
 		return;
 

@@ -77,6 +77,35 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	glEnd();
 	glDisable(GL_BLEND);
 
+	int3 nStep = modelGrid->GetNumSteps();
+	int cutY = nStep.y / 2, cutY2 = cutY + 1;
+
+	glPointSize(5.0);
+
+	glColor3f(0.0f, 0.0f, 1.0f);
+	glBegin(GL_POINTS);
+	for (int i = 0; i < nStep.x; i++){
+		for (int k = 0; k < nStep.z; k++)
+		{
+			int idx = i * nStep.y * nStep.z + cutY * nStep.z + k;
+			glVertex3fv(lx + 3 * idx);
+
+		}
+	}
+	glEnd();
+
+	glColor3f(1.0f, 1.0f, 0.0f);
+	glBegin(GL_POINTS);
+	for (int i = 0; i < nStep.x; i++){
+		for (int k = 0; k < nStep.z; k++)
+		{
+			int idx = i * nStep.y * nStep.z + (cutY+1) * nStep.z + k;
+			glVertex3fv(lx + 3 * idx);
+
+		}
+	}
+	glEnd();
+
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
