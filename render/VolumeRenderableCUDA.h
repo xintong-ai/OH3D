@@ -41,9 +41,10 @@ public:
 	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
 
 	std::vector<Lens*> *lenses;
+	std::shared_ptr<Volume> volume;
+
 
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
-	
 	~VolumeRenderableCUDA();
 
 	VIS_METHOD vis_method = VIS_METHOD::UNTOUCHED;
@@ -55,33 +56,31 @@ public:
 	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
 	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
 	
-	std::shared_ptr<Volume> volume;
-
-
-	//VolumeCUDA volumeCUDAOri;
-	//VolumeCUDA volumeCUDACur;
-	//VolumeCUDA volumeCUDAGradient;
-
-	//VolumeCUDA volumeCUDADist;
-
-
-
 	//lighting
 	float la = 1.0, ld = 1.0, ls = 1.0;
 
-	//transfer function
-	float transFuncP1 = 0.635;
-	float transFuncP2 = 0.073;
-	float density = 1.0;
+	////transfer function
+	//float transFuncP1 = 0.335;
+	//float transFuncP2 = 0.073;
+	//float density = 1.0;
+	////ray casting
+	//int maxSteps = 1024;
+	//float tstep = 0.25f;
+	//float brightness = 1.0;
 
+
+	////MGHT2
+	//transfer function
+	float transFuncP1 = 0.55;
+	float transFuncP2 = 0.13;
+	float density = 0.3;
 	//ray casting
-	int maxSteps = 1024 * 2;
+	int maxSteps = 1024;
 	float tstep = 0.25f;
 	float brightness = 1.0;
 
+
 	void resetVolume();
-
-
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
@@ -99,8 +98,6 @@ private:
 	void deinitTextureAndCudaArrayOfScreen();
 
 	void ComputeDisplace(float _mv[16], float _pj[16]);
-
-	//void DoDeform(QMatrix4x4 &q_modelview);
 
 	//texture and array for 2D screen
 	GLuint pbo = 0;           // OpenGL pixel buffer object

@@ -23,8 +23,7 @@ class ModelGrid
 
 	std::vector<float4> vBaryCoord;
 	std::vector<int> vIdx;
-	//const float	time_step = 1 / 30.0;//for FPM line lens
-	const float	time_step = 1 / 300.0;//for patient1_T1_registered_reoriented_cropped.raw
+	const float	time_step = 1 / 30.0;
 
 	void SetElasticity(float* v);
 	void SetElasticitySimple();

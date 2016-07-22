@@ -166,7 +166,8 @@ public:
 		float3 rangeDiff;
 		float gridMinInit[3];
 		float gridMaxInit[3];
-		float marginScale = 0.1;
+		//float marginScale = 0.1;
+		float marginScale = (length(make_float3(dataMax[0], dataMax[1], dataMax[2]) - make_float3(dataMin[0], dataMin[1], dataMin[2])) / (dataMax[2] - dataMin[2]) - 1) / 2; //make sure the z-dim of the mesh can cover the volume all the time
 		for (int i = 0; i < 3; i++){
 			float marginSize = (dataMax[i] - dataMin[i]) * marginScale;
 			gridMinInit[i] = dataMin[i] - marginSize;
@@ -177,7 +178,8 @@ public:
 			gridMaxInit[1] - gridMinInit[1],
 			gridMaxInit[2] - gridMinInit[2]);
 		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
-		step = (maxDiff / n) * 1.01;
+		//step = (maxDiff / n) * 1.01;
+		step = (maxDiff / n);
 
 		for (int i = 0; i < 3; i++){
 			nStep[i] = ceil((gridMaxInit[i] - gridMinInit[i]) / step) + 1;
@@ -186,8 +188,8 @@ public:
 		gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
 		gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
 
-
 		cutY = nStep[1] / 2;
+		oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);	
 	}
 
 	void BuildTet()
@@ -433,7 +435,7 @@ public:
 	}
 
 	//template <class TYPE>
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1) * 5)
+	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1)*5)
 	{
 
 		computeShapeInfo(dataMin, dataMax, n);
@@ -452,8 +454,6 @@ public:
 	
 	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat)
 	{
-		oriMeshCenter = make_float3(gridMin.x + (nStep[0] / 2) * step, gridMin.y + cutY * step, gridMin.z + (nStep[2] / 2) * step);
-
 		//rotate to fit the x axis to the majorAxis of the lens
 		float3 rotateAxis = cross(make_float3(1, 0, 0), majorAxis);
 		glm::mat4 r1 = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), majorAxis))), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));

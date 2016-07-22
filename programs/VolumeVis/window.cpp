@@ -66,14 +66,19 @@ Window::Window()
 
 
 
-	int3 dims = make_int3(350, 400, 225);
+	//int3 dims = make_int3(350, 400, 225);
+	//float3 spacing = make_float3(0.473686f, 0.478497f, 0.902627f);
+
+	int3 dims = make_int3(320, 320, 256);
+	float3 spacing = make_float3(0.7, 0.7, 0.7);
+
 	std::shared_ptr<RawVolumeReader> reader2;
 	const std::string dataPath2 = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
 	reader2 = std::make_shared<RawVolumeReader>(dataPath2.c_str(), dims);
 	inputVolume = std::make_shared<Volume>();
 	reader2->OutputTo(inputVolume);
-	inputVolume->spacing = make_float3(0.473686f, 0.478497f, 0.902627f);
+	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda(0);
 
 

@@ -10,10 +10,10 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allow
 {
 	/// !!! note!!! only correct when VolumeType is float !!!
 
-	if (!volumeVoxelValues){
-		cout << "VolumeCUDA_init input value invalid" << endl;
-		exit(0);
-	}
+	//if (!volumeVoxelValues){
+	//	cout << "VolumeCUDA_init input value invalid" << endl;
+	//	exit(0);
+	//}
 
 	size = make_cudaExtent(_size.x, _size.y, _size.z);
 	if (numChannels == 4)
@@ -33,13 +33,14 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allow
 	checkCudaErrors(cudaMalloc3DArray(&content, &channelDesc, size, allowStore ? cudaArraySurfaceLoadStore : 0));
 
 	// copy data to 3D array
-	cudaMemcpy3DParms copyParams = { 0 };
-	copyParams.srcPtr = make_cudaPitchedPtr(volumeVoxelValues, size.width*sizeof(VolumeType)* numChannels, size.width, size.height);
-	copyParams.dstArray = content;
-	copyParams.extent = size;
-	copyParams.kind = cudaMemcpyHostToDevice;
-	checkCudaErrors(cudaMemcpy3D(&copyParams));
-
+	if (volumeVoxelValues){
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcPtr = make_cudaPitchedPtr(volumeVoxelValues, size.width*sizeof(VolumeType)* numChannels, size.width, size.height);
+		copyParams.dstArray = content;
+		copyParams.extent = size;
+		copyParams.kind = cudaMemcpyHostToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+	}
 }
 
 VolumeCUDA::~VolumeCUDA()

@@ -11,6 +11,8 @@ class ModelVolumeDeformer
 
 public:
 	VolumeCUDA volumeCUDADeformed;
+	VolumeCUDA volumeCUDAGradient;
+
 	Volume *originalVolume;
 
 	ModelGrid *modelGrid;
@@ -23,6 +25,6 @@ public:
 	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 
 	void deformByModelGrid();
-
+	void computeGradient();
 };
 #endif

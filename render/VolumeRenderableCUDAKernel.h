@@ -26,7 +26,7 @@ extern "C" {
 		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
-	void VolumeRender_computeGradient(const VolumeCUDA *volume);
+	void VolumeRender_setGradient(const VolumeCUDA *volume);
 
 
 	void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float *NormalMatrix, bool *doCutaway, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing);

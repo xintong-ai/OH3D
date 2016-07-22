@@ -135,50 +135,10 @@ void VolumeRender_setVolume(const VolumeCUDA *vol)
 	checkCudaErrors(cudaBindTextureToArray(volumeTexValueForRC, vol->content, vol->channelDesc));
 }
 
-__global__ void
-d_computeGradient(cudaExtent volumeSize)
+
+void VolumeRender_setGradient(const VolumeCUDA *gradVol)
 {
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-	float4 grad = make_float4(0.0);
-
-	int indz1 = z - 1, indz2 = z + 1;
-	if (indz1 < 0)	indz1 = 0;
-	if (indz2 > volumeSize.depth - 1) indz2 = volumeSize.depth - 1;
-	grad.z = (tex3D(volumeTexValueForRC, x + 0.5, y + 0.5, indz2 + 0.5) - tex3D(volumeTexValueForRC, x + 0.5, y + 0.5, indz1 + 0.5)) / (indz2 - indz1);
-
-	int indy1 = y - 1, indy2 = y + 1;
-	if (indy1 < 0)	indy1 = 0;
-	if (indy2 > y >= volumeSize.height - 1) indy2 = y >= volumeSize.height - 1;
-	grad.y = (tex3D(volumeTexValueForRC, x + 0.5, indy2 + 0.5, z + 0.5) - tex3D(volumeTexValueForRC, x + 0.5, indy1 + 0.5, z + 0.5)) / (indy2 - indy1);
-
-	int indx1 = x - 1, indx2 = x + 1;
-	if (indx1 < 0)	indx1 = 0;
-	if (indx2 > volumeSize.width - 1) indx2 = volumeSize.width - 1;
-	grad.x = (tex3D(volumeTexValueForRC, indx2 + 0.5, y + 0.5, z + 0.5) - tex3D(volumeTexValueForRC, indx1 + 0.5, y + 0.5, z + 0.5)) / (indx2 - indx1);
-
-	surf3Dwrite(grad, volumeSurfaceOut, x * sizeof(float4), y, z);
-}
-
-void VolumeRender_computeGradient(const VolumeCUDA *volume)
-{
-	cudaExtent size = volume->size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
-
-	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->content));
-
-	d_computeGradient << <gridSize, blockSize >> >(size);
-
-	checkCudaErrors(cudaBindTextureToArray(volumeTexGradient, volume->content, volume->channelDesc));
+	checkCudaErrors(cudaBindTextureToArray(volumeTexGradient, gradVol->content, gradVol->channelDesc));
 }
 
 
@@ -393,8 +353,8 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
 
-		//float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
-		float3 normalInWorld = make_float3(0, 0, 0);
+		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+		//float3 normalInWorld = make_float3(0, 0, 0);
 
 		// lookup in transfer function texture
 		float4 col;
@@ -454,9 +414,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 	}
 
 	sum *= brightness;
-
-	
-		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
 }
 
 

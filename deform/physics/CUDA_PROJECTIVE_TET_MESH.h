@@ -419,7 +419,7 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 	for (int j = 0; j < 3; j++) {
 		//V[i * 3 + j] += (30 * (&(lensForce.x))[j] * t);//for FPM
-		V[i * 3 + j] += (3000 * (&(lensForce.x))[j] * t); //for patient1_T1_registered_reoriented_cropped.raw
+		V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t); //for patient1_T1_registered_reoriented_cropped.raw
 
 	}
 

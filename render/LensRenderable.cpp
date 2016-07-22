@@ -700,17 +700,13 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
 		l->justChanged = true;
-
 	}
 	else {
-		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToGlyph){
-			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
+		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE){
 			Lens* l = lenses[lenses.size() - 1];
-			float3 center = make_float3(l->GetCenter());
-			snapPos = glyphRenderable->findClosetGlyph(center);
-			l->SetCenter(snapPos);
+			l->justChanged = true;
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
+		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
@@ -764,8 +760,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			((LineBLens*)l)->UpdateInfo(modelview, projection, winSize.x, winSize.y);
 			((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 		}
-		l->justChanged = true;
-
 		break;
 	}
 	case INTERACT_MODE::MOVE_LENS:
@@ -777,7 +771,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			//center.x + (x - lastPt.x), center.y + (y - lastPt.y)
 			x , y
 			, modelview, projection, winSize.x, winSize.y);
-		lenses[pickedLens]->justChanged = true;
 		if (isSnapToGlyph){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			glyphRenderable->findClosetGlyph(make_float3(lenses[pickedLens]->GetCenter()));
@@ -816,8 +809,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->ChangeLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		else if(actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
 			lenses[pickedLens]->ChangeObjectLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
-		lenses[pickedLens]->justChanged = true;
-
 		break;
 	}
 	case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
@@ -827,8 +818,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->ChangefocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
 			lenses[pickedLens]->ChangeObjectFocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
-		lenses[pickedLens]->justChanged = true;
-
 		break;
 	}	
 	//case INTERACT_MODE::MODIFY_LENS_DIRECTION:
@@ -854,7 +843,6 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
 			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-			l->justChanged = true;
 		}
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
@@ -875,7 +863,6 @@ void LensRenderable::ChangeLensDepth(float v)
 	//float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
 	if (lenses.size() == 0) return;
 	lenses.back()->ChangeClipDepth(v, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-	lenses.back()->justChanged = true;
 
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();

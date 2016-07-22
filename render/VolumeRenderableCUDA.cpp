@@ -90,12 +90,9 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 
 	ComputeDisplace(modelview, projection);
 
-	//VolumeRender_setVolume(&(volume->volumeCuda));
 	VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
 
-
-	//may consider to do this only when needed
-	//VolumeRender_computeGradient(&volumeCUDAGradient);
+	VolumeRender_setGradient(&(modelVolumeDeformer->volumeCUDAGradient));
 
 	//compute the dvr
 	VolumeRender_render(d_output, winWidth, winHeight, density, brightness, eyeInWorld, volume->size, maxSteps, tstep, useColor);
@@ -147,7 +144,7 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (lenses->size() > 0){
 		Lens *l = lenses->back();
-		if (l->justChanged && actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+		if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
 
 			float focusRatio = l->focusRatio;
 
@@ -206,14 +203,16 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 			float lSemiMajorAxisGlobal = lSemiMajorAxisGlobal_prj / dot(majorAxisGlobal, majorAxisGlobal_prj);
 			float lSemiMinorAxisGlobal = lSemiMinorAxisGlobal_prj / dot(minorAxisGlobal, minorAxisGlobal_prj);
 
-
-			modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir, 0,0);
+			if (l->justChanged){
+				modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir, 0, 0);
+				l->justChanged = false;
+			}
 
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
 
 			modelVolumeDeformer->deformByModelGrid();
+			modelVolumeDeformer->computeGradient();
 
-			l->justChanged = false;
 		}
 	}
 
