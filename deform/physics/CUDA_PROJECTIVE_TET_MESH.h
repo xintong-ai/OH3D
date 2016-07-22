@@ -202,7 +202,7 @@ __device__ bool PointInsideExtendedLineLensRegion(float3 p, float3 lensCen, floa
 	float lensCen2PProj = dot(lenCen2P, lensDir);
 	if (lensCen2PProj > 0){
 		float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
-		const float majorDirectionTransitionCoeff = 1.1;
+		const float majorDirectionTransitionCoeff = 1.0;
 		if (abs(lensCen2PMajorProj)<lSemiMajorAxis*majorDirectionTransitionCoeff){
 			float3 minorAxis = cross(lensDir, majorAxis);
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
@@ -257,9 +257,19 @@ __global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float 
 	float3 vertOrig = make_float3(X_Orig[i * 3], X_Orig[i * 3 + 1], X_Orig[i * 3 + 2]);
 	//we have to use the original position here, otherwise the points will vibrate.
 
-	int x = i / (nStep.y * nStep.z);
-	int y = (i - x* nStep.y * nStep.z) / nStep.z;
-	int z = i - x * nStep.y * nStep.z - y * nStep.z;
+	int x, y, z;
+	if (i < nStep.x * nStep.y * nStep.z){
+		x = i / (nStep.y * nStep.z);
+		y = (i - x* nStep.y * nStep.z) / nStep.z;
+		z = i - x * nStep.y * nStep.z - y * nStep.z;
+	}
+	else{
+		int extra = i - nStep.x * nStep.y * nStep.z;
+		y = nStep.y / 2;
+		z = extra / (nStep.x-2);
+		x = extra - z*(nStep.x) + 1;
+	}
+
 
 	if (PointAtBoundary(x, y, z, nStep)){
 		more_fixed[i] = 10000000;
@@ -353,9 +363,18 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 	if (more_fixed[i] != 0) return;
 
 
-	int x = i / (nStep.y * nStep.z);
-	int y = (i - x* nStep.y * nStep.z) / nStep.z;
-	int z = i - x * nStep.y * nStep.z - y * nStep.z;
+	int x, y, z;
+	if (i < nStep.x * nStep.y * nStep.z){
+		x = i / (nStep.y * nStep.z);
+		y = (i - x* nStep.y * nStep.z) / nStep.z;
+		z = i - x * nStep.y * nStep.z - y * nStep.z;
+	}
+	else{
+		int extra = i - nStep.x * nStep.y * nStep.z;
+		y = nStep.y / 2; // always == cutY
+		z = extra / (nStep.x - 2);
+		x = extra - z*(nStep.x) + 1;
+	}
 
 
 	//Apply damping
@@ -375,14 +394,14 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 	if (lensCen2PProj > 0){
 		float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
 		if (abs(lensCen2PMajorProj)<lSemiMajorAxis){
-			float3 minorAxis = cross(lensDir, majorAxis);//need further check
+			float3 minorAxis = cross(lensDir, majorAxis);
 
 			float3 moveDir = normalize(minorAxis);
 
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
 
 			if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
-				if ((lensCen2PMinorProj>0 || y == cutY + 1) && y != cutY)
+				if ((lensCen2PMinorProj>0 && i < nStep.x * nStep.y * nStep.z && y!=cutY) || (i >= nStep.x * nStep.y * nStep.z))
 					lensForce = moveDir;
 				else
 					lensForce = -moveDir;
@@ -399,7 +418,9 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 
 	for (int j = 0; j < 3; j++) {
-		V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t);
+		//V[i * 3 + j] += (30 * (&(lensForce.x))[j] * t);//for FPM
+		V[i * 3 + j] += (3000 * (&(lensForce.x))[j] * t); //for patient1_T1_registered_reoriented_cropped.raw
+
 	}
 
 	//V[i*3+1]+=GRAVITY*t;

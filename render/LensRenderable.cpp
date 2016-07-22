@@ -347,7 +347,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			for (int i = 0; i < lenses.size(); i++) {
 				Lens* l = lenses[i];
 
-				if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
+				if (l->type == LENS_TYPE::TYPE_CIRCLE){
 					std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour(eyeWorld, true);
 
 					for (int i = 0; i < lensContour.size() - 1; i++){
@@ -471,14 +471,7 @@ void LensRenderable::AddCircleLens()
 	actor->UpdateGL();
 }
 
-void LensRenderable::AddLineLens()
-{
-	int2 winSize = actor->GetWindowSize();
-	Lens* l = new LineLens(winSize.y * 0.2, actor->DataCenter());
-	lenses.push_back(l);
-	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	actor->UpdateGL();
-}
+
 
 void LensRenderable::AddLineBLens()
 {
@@ -706,6 +699,7 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 			((LineBLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
+		l->justChanged = true;
 
 	}
 	else {
@@ -770,6 +764,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			((LineBLens*)l)->UpdateInfo(modelview, projection, winSize.x, winSize.y);
 			((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 		}
+		l->justChanged = true;
+
 		break;
 	}
 	case INTERACT_MODE::MOVE_LENS:
@@ -781,6 +777,7 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			//center.x + (x - lastPt.x), center.y + (y - lastPt.y)
 			x , y
 			, modelview, projection, winSize.x, winSize.y);
+		lenses[pickedLens]->justChanged = true;
 		if (isSnapToGlyph){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			glyphRenderable->findClosetGlyph(make_float3(lenses[pickedLens]->GetCenter()));
@@ -819,6 +816,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->ChangeLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		else if(actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
 			lenses[pickedLens]->ChangeObjectLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
+		lenses[pickedLens]->justChanged = true;
+
 		break;
 	}
 	case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
@@ -828,6 +827,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->ChangefocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
 			lenses[pickedLens]->ChangeObjectFocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
+		lenses[pickedLens]->justChanged = true;
+
 		break;
 	}	
 	//case INTERACT_MODE::MODIFY_LENS_DIRECTION:
@@ -853,6 +854,7 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
 			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+			l->justChanged = true;
 		}
 	}
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
@@ -873,6 +875,8 @@ void LensRenderable::ChangeLensDepth(float v)
 	//float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
 	if (lenses.size() == 0) return;
 	lenses.back()->ChangeClipDepth(v, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+	lenses.back()->justChanged = true;
+
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }
@@ -1016,34 +1020,3 @@ void LensRenderable::SlotOneHandChanged(float3 p)
 		actor->UpdateGL();
 	}
 }
-
-/*
-//code from chengli for object space drawing
-}
-else{//to draw 3D contour
-glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
-glLineWidth(4);
-glColor3f(1.0f, 0.2f, 0.2f);
-
-for (int i = 0; i < lenses.size(); i++) {
-Lens* l = lenses[i];
-
-if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
-std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour();
-
-for (int i = 0; i <lensContour.size()-1; i++){
-glBegin(GL_LINE_LOOP);
-for (auto v : lensContour[i]){
-glVertex3f(v.x, v.y, v.z);
-}
-glEnd();
-}
-
-glBegin(GL_LINES);
-for (auto v : lensContour[lensContour.size() - 1]){
-glVertex3f(v.x, v.y, v.z);
-}
-glEnd();
-
-}
-*/

@@ -107,7 +107,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 		else if (l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
 
 			//LineBLens has info on the screen space. need to compute info on the world space
-			//the computation code is placed here since using qmatrix in cuda code is not easy
+			//the following computation code is temporarily placed here. a better choice is to put them in lens.cpp, but more design of Lens.h is needed
 
 			//screen length to object
 			int winWidth, winHeight;
@@ -197,6 +197,9 @@ GlyphRenderable::~GlyphRenderable()
 
 void GlyphRenderable::RecomputeTarget()
 {
+	if (!visible)
+		return;
+
 	switch (actor->GetDeformModel())
 	{
 	case DEFORM_MODEL::SCREEN_SPACE:

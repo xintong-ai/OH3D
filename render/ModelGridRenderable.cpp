@@ -59,6 +59,9 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	//glDrawElements(GL_LINES, modelGrid->GetLNumber() * 2, GL_UNSIGNED_INT, modelGrid->GetL());
 	//glDisableClientState(GL_VERTEX_ARRAY);
 
+	int3 nStep = modelGrid->GetNumSteps();
+	int cutY = nStep.y / 2;
+
 	float* lx = modelGrid->GetX();
 	unsigned int* l = modelGrid->GetL();
 	float* e = modelGrid->GetE();
@@ -77,8 +80,45 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	glEnd();
 	glDisable(GL_BLEND);
 
-	int3 nStep = modelGrid->GetNumSteps();
-	int cutY = nStep.y / 2, cutY2 = cutY + 1;
+	//glColor4f(0.0f, 1.0f, 0, 0.5);
+	//glBegin(GL_LINES);
+	//int x1, y1, z1;
+	//int x2, y2, z2;
+	//for (int i = 0; i < modelGrid->GetLNumber(); i++){
+	//	
+	//	int id1 = l[i * 2], id2 = l[i * 2 + 1];
+	//	if (id1 < nStep.x * nStep.y * nStep.z){
+	//		x1 = id1 / (nStep.y * nStep.z);
+	//		y1 = (id1 - x1* nStep.y * nStep.z) / nStep.z;
+	//		z1 = id1 - x1 * nStep.y * nStep.z - y1 * nStep.z;
+	//	}
+	//	else{
+	//		int extra = id1 - nStep.x * nStep.y * nStep.z;
+	//		y1 = nStep.y / 2; // always == cutY
+	//		z1 = extra / (nStep.x - 2);
+	//		x1 = extra - z1*(nStep.x) + 1;
+	//	}
+	//	if (id2 < nStep.x * nStep.y * nStep.z){
+	//		x2 = id2 / (nStep.y * nStep.z);
+	//		y2 = (id2 - x2* nStep.y * nStep.z) / nStep.z;
+	//		z2 = id2 - x2 * nStep.y * nStep.z - y2 * nStep.z;
+	//	}
+	//	else{
+	//		int extra = id2 - nStep.x * nStep.y * nStep.z;
+	//		y2 = nStep.y / 2; // always == cutY
+	//		z2 = extra / (nStep.x - 2);
+	//		x2 = extra - z2*(nStep.x) + 1;
+	//	}
+
+	//	if (y1 >= cutY && y2 <= cutY + 1 && y2 >= cutY && y1 <= cutY + 1 && z1 >= nStep.z - 2 && z2 >= nStep.z - 2){
+	//			glVertex3fv(lx + 3 * l[i * 2]);
+	//			glVertex3fv(lx + 3 * l[i * 2 + 1]);
+	//	}
+	//}
+	//glEnd();
+	//glDisable(GL_BLEND);
+
+
 
 	glPointSize(5.0);
 
@@ -96,13 +136,12 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 	glColor3f(1.0f, 1.0f, 0.0f);
 	glBegin(GL_POINTS);
-	for (int i = 0; i < nStep.x; i++){
-		for (int k = 0; k < nStep.z; k++)
-		{
-			int idx = i * nStep.y * nStep.z + (cutY+1) * nStep.z + k;
+	for (int i = 0; i < (nStep.x - 2)*nStep.z; i++){
+
+		int idx = nStep.x * nStep.y * nStep.z + i;
 			glVertex3fv(lx + 3 * idx);
 
-		}
+		
 	}
 	glEnd();
 

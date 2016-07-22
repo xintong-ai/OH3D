@@ -23,15 +23,24 @@ class ModelGrid
 
 	std::vector<float4> vBaryCoord;
 	std::vector<int> vIdx;
-	const float	time_step = 1 / 30.0;
+	//const float	time_step = 1 / 30.0;//for FPM line lens
+	const float	time_step = 1 / 300.0;//for patient1_T1_registered_reoriented_cropped.raw
+
+	void SetElasticity(float* v);
+	void SetElasticitySimple();
+	void SetElasticityByTetDensity(int n); //suppose the tet id for particles have been well set
+
 
 	//currently stored
 	int _n;
 	float _dmin[3], _dmax[3];
 
+
+	
+
 public:
 	GRID_TYPE gridType = UNIFORM_GRID;
-
+	bool useDensityBasedElasticity = true;
 
 	ModelGrid(float dmin[3], float dmax[3], int n);
 	ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridMesh);
@@ -43,7 +52,7 @@ public:
 	void ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, float4* vOri, int n);
 
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
-
+	
 	void Initialize(float time_step);
 	void Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius);
 	void Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
@@ -51,7 +60,8 @@ public:
 	int GetTNumber();
 	int* GetT();
 	float* GetX();
-
+	float* GetXDev();
+	float* GetXDevOri();
 
 	int GetNumber();
 	unsigned int* GetL();
@@ -62,10 +72,9 @@ public:
 	float GetStep();
 	float* GetE();
 	int* GetTet();
-	int GetTetNumber();
+	int* GetTetDev();
 
-	void SetElasticity(float* v);
-	void SetElasticitySimple();
+	int GetTetNumber();
 
 };
 #endif

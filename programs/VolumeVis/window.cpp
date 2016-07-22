@@ -8,12 +8,17 @@
 
 #include "SphereRenderable.h"
 #include "ParticleReader.h"
+#include "RawVolumeReader.h"
+#include "Volume.h"
+
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
+#include "VolumeRenderableCUDA.h"
+#include "ModelVolumeDeformer.h"
 
 #ifdef USE_LEAP
 #include <LeapListener.h>
@@ -41,6 +46,12 @@ Window::Window()
 
 	dataMgr = std::make_shared<DataMgr>();
 	
+
+
+	
+
+
+
 	std::shared_ptr<Reader> reader;
 
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
@@ -51,6 +62,27 @@ Window::Window()
 	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
+
+
+
+
+	int3 dims = make_int3(350, 400, 225);
+	std::shared_ptr<RawVolumeReader> reader2;
+	const std::string dataPath2 = dataMgr->GetConfig("VOLUME_DATA_PATH");
+
+	reader2 = std::make_shared<RawVolumeReader>(dataPath2.c_str(), dims);
+	inputVolume = std::make_shared<Volume>();
+	reader2->OutputTo(inputVolume);
+	inputVolume->spacing = make_float3(0.473686f, 0.478497f, 0.902627f);
+	inputVolume->initVolumeCuda(0);
+
+
+	VolumeRenderableCUDA * volumeRenderable = new VolumeRenderableCUDA(inputVolume);
+	reader2.reset();
+
+	
+	
+	
 	/********GL widget******/
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
@@ -77,16 +109,27 @@ Window::Window()
 
 
 	float3 posMin, posMax;
-	reader->GetPosRange(posMin, posMax);
+	inputVolume->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 20, true);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
-	//openGL->AddRenderable("bbox", bbox);
+	glyphRenderable->SetVisibility(false);
+
+
+	modelVolumeDeformer = std::make_shared<ModelVolumeDeformer>();
+	modelVolumeDeformer->SetModelGrid(modelGrid.get());
+	modelVolumeDeformer->Init(inputVolume.get());
+	volumeRenderable->SetModelVolumeDeformer(modelVolumeDeformer);
+	volumeRenderable->lenses = lensRenderable->GetLensesAddr();
+	volumeRenderable->SetModelGrid(modelGrid.get());
+
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
-	openGL->AddRenderable("grid", gridRenderable.get());
+	//openGL->AddRenderable("grid", gridRenderable.get());
+	openGL->AddRenderable("1volume", volumeRenderable); //make sure the volume is rendered first since it does not use depth test
+
 	openGL->AddRenderable("model", modelGridRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");

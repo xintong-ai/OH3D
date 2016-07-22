@@ -12,10 +12,13 @@ else()
 include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc )
 
+target_link_libraries(
+	dataModel
+	)
 
-set(SRCS DataMgr.cpp MeshReader.cpp ParticleReader.cpp Reader.cpp VecReader.cpp VolumeReader.cpp DTIVolumeReader.cpp FlightReader.cpp)
+set(SRCS DataMgr.cpp MeshReader.cpp ParticleReader.cpp Reader.cpp VecReader.cpp VolumeReader.cpp DTIVolumeReader.cpp FlightReader.cpp RawVolumeReader.cpp)
 
-set(HDRS DataMgr.h MeshReader.h ParticleReader.h Reader.h VecReader.h VolumeReader.h DTIVolumeReader.h FlightReader.h)
+set(HDRS DataMgr.h MeshReader.h ParticleReader.h Reader.h VecReader.h VolumeReader.h DTIVolumeReader.h FlightReader.h RawVolumeReader.h)
 
 add_library(io STATIC ${HDRS} ${SRCS})
 

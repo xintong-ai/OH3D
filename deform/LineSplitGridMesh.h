@@ -25,6 +25,39 @@ class LineSplitGridMesh : public CUDA_PROJECTIVE_TET_MESH<TYPE>
 		return (i + vc.x) * nStep[1] * nStep[2] + (j + vc.y) * nStep[2] + k + vc.z;
 	}
 
+	int IdxConvForSplittingNodes(int idx, int nStep[3], int3 vc)
+	{
+		if (vc.y == 0){
+			int originali = idx / (nStep[1] * nStep[2]);
+			int originalj = (idx - originali*nStep[1] * nStep[2]) / nStep[2];
+			int originalk = idx - originali*nStep[1] * nStep[2] - originalj* nStep[2];
+			int regularAllIdx = nStep[0] * nStep[1] * nStep[2];
+
+			if (originali == 0){
+				if (vc.x == 0){
+					return  IdxConv(idx, nStep, vc);
+				}
+				else{
+					return regularAllIdx + (originalk + vc.z)*(nStep[0] - 2);
+				}
+			}
+			else if (originali <nStep[0]-2){
+				return regularAllIdx + (originalk + vc.z)*(nStep[0] - 2) + originali - 1 + vc.x;
+			}
+			else{
+				if (vc.x == 1){
+					return  IdxConv(idx, nStep, vc);
+				}
+				else{
+					return regularAllIdx + (originalk + vc.z)*(nStep[0] - 2) + nStep[0] - 3;
+				}
+			}
+		}
+		else{
+			return  IdxConv(idx, nStep, vc);
+		}
+	}
+
 	template <class TYPE>
 	inline void Copy3(TYPE from[3], TYPE to[3])
 	{
@@ -149,7 +182,7 @@ public:
 		for (int i = 0; i < 3; i++){
 			nStep[i] = ceil((gridMaxInit[i] - gridMinInit[i]) / step) + 1;
 		}
-		number = nStep[0] * nStep[1] * nStep[2];
+		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
 		gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
 		gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
 
@@ -175,60 +208,119 @@ public:
 		for (int i = 0; i < (nStep[0] - 1); i++){
 			for (int j = 0; j < (nStep[1] - 1); j++){
 				for (int k = 0; k < (nStep[2] - 1); k++){
-					idx = i * (nStep[1] - 1) * (nStep[2] - 1) + j * (nStep[2] - 1) + k;
-					idx2 = i * nStep[1] * nStep[2] + j * nStep[2] + k;
-					if ((i + j + k) % 2 == 0) {
-						Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConv(idx2, nStep, vc[0]);
-						Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConv(idx2, nStep, vc[1]);
-						Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConv(idx2, nStep, vc[2]);
-						Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConv(idx2, nStep, vc[4]);
+					if (j == cutY){
+						idx = i * (nStep[1] - 1) * (nStep[2] - 1) + j * (nStep[2] - 1) + k;
+						idx2 = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 
-						Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConv(idx2, nStep, vc[3]);
-						Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConv(idx2, nStep, vc[1]);
-						Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConv(idx2, nStep, vc[2]);
-						Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConv(idx2, nStep, vc[7]);
+						if ((i + j + k) % 2 == 0) {
+							Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[4]);
 
-						Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConv(idx2, nStep, vc[4]);
-						Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConv(idx2, nStep, vc[5]);
-						Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConv(idx2, nStep, vc[1]);
-						Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConv(idx2, nStep, vc[7]);
+							Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[7]);
 
-						Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConv(idx2, nStep, vc[2]);
-						Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConv(idx2, nStep, vc[4]);
-						Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConv(idx2, nStep, vc[6]);
-						Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConv(idx2, nStep, vc[7]);
+							Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[7]);
 
-						Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConv(idx2, nStep, vc[1]);
-						Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConv(idx2, nStep, vc[2]);
-						Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConv(idx2, nStep, vc[4]);
-						Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConv(idx2, nStep, vc[7]);
+							Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[6]);
+							Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[7]);
+
+							Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[7]);
+						}
+						else{
+							Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[5]);
+
+							Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[6]);
+
+							Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[6]);
+
+							Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[6]);
+							Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[7]);
+
+							Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConvForSplittingNodes(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConvForSplittingNodes(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConvForSplittingNodes(idx2, nStep, vc[6]);
+						}
 					}
 					else{
-						Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConv(idx2, nStep, vc[0]);
-						Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConv(idx2, nStep, vc[1]);
-						Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConv(idx2, nStep, vc[3]);
-						Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConv(idx2, nStep, vc[5]);
+						idx = i * (nStep[1] - 1) * (nStep[2] - 1) + j * (nStep[2] - 1) + k;
+						idx2 = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+						if ((i + j + k) % 2 == 0) {
+							Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConv(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConv(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConv(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConv(idx2, nStep, vc[4]);
 
-						Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConv(idx2, nStep, vc[0]);
-						Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConv(idx2, nStep, vc[2]);
-						Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConv(idx2, nStep, vc[3]);
-						Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConv(idx2, nStep, vc[6]);
+							Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConv(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConv(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConv(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConv(idx2, nStep, vc[7]);
 
-						Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConv(idx2, nStep, vc[0]);
-						Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConv(idx2, nStep, vc[4]);
-						Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConv(idx2, nStep, vc[5]);
-						Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConv(idx2, nStep, vc[6]);
+							Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConv(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConv(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConv(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConv(idx2, nStep, vc[7]);
 
-						Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConv(idx2, nStep, vc[3]);
-						Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConv(idx2, nStep, vc[5]);
-						Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConv(idx2, nStep, vc[6]);
-						Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConv(idx2, nStep, vc[7]);
+							Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConv(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConv(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConv(idx2, nStep, vc[6]);
+							Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConv(idx2, nStep, vc[7]);
 
-						Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConv(idx2, nStep, vc[0]);
-						Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConv(idx2, nStep, vc[3]);
-						Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConv(idx2, nStep, vc[5]);
-						Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConv(idx2, nStep, vc[6]);
+							Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConv(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConv(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConv(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConv(idx2, nStep, vc[7]);
+						}
+						else{
+							Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConv(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConv(idx2, nStep, vc[1]);
+							Tet[idx * 5 * 4 + 4 * 0 + 2] = IdxConv(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 0 + 3] = IdxConv(idx2, nStep, vc[5]);
 
+							Tet[idx * 5 * 4 + 4 * 1 + 0] = IdxConv(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 1 + 1] = IdxConv(idx2, nStep, vc[2]);
+							Tet[idx * 5 * 4 + 4 * 1 + 2] = IdxConv(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 1 + 3] = IdxConv(idx2, nStep, vc[6]);
+
+							Tet[idx * 5 * 4 + 4 * 2 + 0] = IdxConv(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 2 + 1] = IdxConv(idx2, nStep, vc[4]);
+							Tet[idx * 5 * 4 + 4 * 2 + 2] = IdxConv(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 2 + 3] = IdxConv(idx2, nStep, vc[6]);
+
+							Tet[idx * 5 * 4 + 4 * 3 + 0] = IdxConv(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 3 + 1] = IdxConv(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 3 + 2] = IdxConv(idx2, nStep, vc[6]);
+							Tet[idx * 5 * 4 + 4 * 3 + 3] = IdxConv(idx2, nStep, vc[7]);
+
+							Tet[idx * 5 * 4 + 4 * 4 + 0] = IdxConv(idx2, nStep, vc[0]);
+							Tet[idx * 5 * 4 + 4 * 4 + 1] = IdxConv(idx2, nStep, vc[3]);
+							Tet[idx * 5 * 4 + 4 * 4 + 2] = IdxConv(idx2, nStep, vc[5]);
+							Tet[idx * 5 * 4 + 4 * 4 + 3] = IdxConv(idx2, nStep, vc[6]);
+
+						}
 					}
 				}
 			}
@@ -362,36 +454,44 @@ public:
 	{
 		oriMeshCenter = make_float3(gridMin.x + (nStep[0] / 2) * step, gridMin.y + cutY * step, gridMin.z + (nStep[2] / 2) * step);
 
+		//rotate to fit the x axis to the majorAxis of the lens
 		float3 rotateAxis = cross(make_float3(1, 0, 0), majorAxis);
 		glm::mat4 r1 = glm::rotate((float)(acos(dot(make_float3(1, 0, 0), majorAxis))), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
 
+		//rotate to fit the z axis to the lenCenter-eye connecting line
 		glm::vec4 lensDirByR1 = glm::inverse(r1)*glm::vec4(lensDir.x, lensDir.y, lensDir.z, 0);
 		float3 rotateAxis2 = cross(make_float3(0, 0, 1), make_float3(lensDirByR1.x, lensDirByR1.y, lensDirByR1.z));
 		glm::mat4 r2 = glm::rotate((float)(acos(dot(make_float3(0, 0, 1), make_float3(lensDirByR1.x, lensDirByR1.y, lensDirByR1.z)))), glm::vec3(rotateAxis2.x, rotateAxis2.y, rotateAxis2.z));
 
-		glm::vec4 lensCenterByR1R2 = glm::inverse(r1*r2)*glm::vec4(lensCenter.x, lensCenter.y, lensCenter.z, 1);
+		//translate the mesh center to the point which is on the lenCenter-eye connecting line and the closet to the data center, estimated by gridMin and gridMax
+		float3 dataCenter = (gridMin + gridMax);
+		float3 translateTarget = lensCenter + dot(dataCenter - lensCenter, lensDir)*lensDir;
+		//glm::vec4 lensCenterByR1R2 = glm::inverse(r1*r2)*glm::vec4(lensCenter.x, lensCenter.y, lensCenter.z, 1);
+		glm::vec4 lensCenterByR1R2 = glm::inverse(r1*r2)*glm::vec4(translateTarget.x, translateTarget.y, translateTarget.z, 1);
 		glm::mat4 t1 = glm::translate(glm::vec3(lensCenterByR1R2.x - oriMeshCenter.x, lensCenterByR1R2.y - oriMeshCenter.y, lensCenterByR1R2.z - oriMeshCenter.z));
 
 		meshTransMat = r1*r2*t1;
 
 		int idx;
-		for (int i = 0; i <= nStep[0]; i++){
-			for (int j = 0; j <= cutY; j++){
+		for (int i = 0; i < nStep[0]; i++){
+			for (int j = 0; j <nStep[1]; j++){
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 
 					glm::vec4 res = meshTransMat*glm::vec4(gridMin.x + i * step, gridMin.y + j * step, gridMin.z + k * step, 1.0f);
-						
+
 					X[3 * idx + 0] = res.x;
 					X[3 * idx + 1] = res.y;
 					X[3 * idx + 2] = res.z;
 				}
 			}
-			for (int j = cutY+1; j < nStep[1]; j++){
+		}
+		for (int j = 0; j < 1; j++){
+			for (int i = 0; i < nStep[0]-2; i++){
 				for (int k = 0; k < nStep[2]; k++){
-					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+					idx = nStep[0] * nStep[1] * nStep[2] + k* (nStep[0]-2) + i;
 
-					glm::vec4 res = meshTransMat*glm::vec4(gridMin.x + i * step, gridMin.y + (j - 1+0.05) * step, gridMin.z + k * step, 1.0f);
+					glm::vec4 res = meshTransMat*glm::vec4(gridMin.x + (i+1) * step, gridMin.y + cutY * step , gridMin.z + k * step, 1.0f);
 
 					X[3 * idx + 0] = res.x;
 					X[3 * idx + 1] = res.y;
@@ -403,16 +503,8 @@ public:
 	}
 	
 
-	void ReinitiateMeshCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 direction, float focusRatio, float3 negZAxisClipInGlobal)//used when reinitiate coord, instead of the whole gridmesh object
-	{
-		//can be placed on CUDA
-		//computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, direction, focusRatio, negZAxisClipInGlobal);
-	}
 
-
-
-
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1) * 5)
+	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>(((n + 1) * (n + 1) * (n + 1) +(n+1)*(n-1))* 5)
 	{
 
 		computeShapeInfo(dataMin, dataMax, n);

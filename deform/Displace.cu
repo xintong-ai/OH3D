@@ -580,14 +580,6 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						break;
 
 					}
-					case LENS_TYPE::TYPE_LINE:
-					{
-						LineLens* l = (LineLens*)lenses[i];
-						thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
-							d_vec_posClip.begin(), d_vec_posScreen.begin(),
-							functor_Displace_Line(lensScreenCenter.x, lensScreenCenter.y, l->lSemiMajorAxis, l->lSemiMinorAxis, l->direction, l->GetClipDepth(modelview, projection)));
-						break;
-					}
 					case LENS_TYPE::TYPE_LINEB:
 					{
 							LineBLens* l = (LineBLens*)lenses[i];

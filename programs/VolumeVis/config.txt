@@ -1,4 +1,5 @@
-DATA_PATH=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
+DATA_PATH=D:/Data/FPM/smoothinglength_0.44/run15/099.vtu
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/patient1_T1_registered_reoriented_cropped.raw
 DATA_PATH_TENSOR=F:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 FEATURE_PATH=F:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
 ventricles=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
@@ -10,4 +11,4 @@ a=D:/onedrive/data/plume/15plume3d421-126x126x512.vec
 c=D:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
 d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
-DATA_PATH222=D:/Data/FPM/smoothinglength_0.44/run11/119.vtu
+f=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu

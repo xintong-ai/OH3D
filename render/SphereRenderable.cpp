@@ -224,11 +224,12 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 
 	RecordMatrix(modelview, projection);
-	ComputeDisplace(modelview, projection);
 
 
 	if (!visible)
 		return;
+	ComputeDisplace(modelview, projection);
+	
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();

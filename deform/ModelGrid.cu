@@ -101,17 +101,25 @@ ModelGrid::ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridM
 
 }
 
-float3 regularMeshVertCoord(int iv, int3 nStep, int cutY, float3 gridMin, float step){
-	int i = iv / (nStep.y * nStep.z);
-	int j = (iv - i* nStep.y * nStep.z) / nStep.z;
-	int k = iv - i * nStep.y * nStep.z - j * nStep.z;
-	if (j <= cutY){
-		return make_float3(gridMin.x + i * step, gridMin.y + j * step, gridMin.z + k * step);
+float3 regularMeshVertCoord(int iv, int3 nStep, float3 gridMin, float step){
+	//int i = iv / (nStep.y * nStep.z);
+	//int j = (iv - i* nStep.y * nStep.z) / nStep.z;
+	//int k = iv - i * nStep.y * nStep.z - j * nStep.z;
+	int x, y, z;
+
+	if (iv < nStep.x * nStep.y * nStep.z){
+		x = iv / (nStep.y * nStep.z);
+		y = (iv - x* nStep.y * nStep.z) / nStep.z;
+		z = iv - x * nStep.y * nStep.z - y * nStep.z;
 	}
 	else{
-		return make_float3(gridMin.x + i * step, gridMin.y + (j - 1 + 0.01) * step, gridMin.z + k * step);
+		int extra = iv - nStep.x * nStep.y * nStep.z;
+		y = nStep.y / 2; // always == cutY
+		z = extra / (nStep.x - 2);
+		x = extra - z*(nStep.x) + 1;
 	}
 
+	return make_float3(gridMin.x + x * step, gridMin.y + y * step, gridMin.z + z * step);
 }
 
 
@@ -126,7 +134,7 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 	int3 nStep = GetNumSteps();
 	float step = GetStep();
 	int* tet = GetTet();
-	//float* X = GetX();
+	float* X = GetX();
 
 	for (int i = 0; i < n; i++){
 		glm::vec4 g_vcOri = glm::vec4(v[i].x, v[i].y, v[i].z, 1.0);
@@ -135,29 +143,31 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 		float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
 		float3 tmp = (vc - gridMin) / step;
 		int3 idx3 = make_int3(floor(tmp.x), floor(tmp.y), floor(tmp.z));
-		if (idx3.y >= lsgridMesh->cutY) //has a slight error
-			idx3.y++;
+
 
 		if (idx3.x < 0 || idx3.y < 0 || idx3.z < 0 || idx3.x >= nStep.x - 1 || idx3.y >= nStep.y - 1 || idx3.z >= nStep.z - 1){
 			vIdx[i] = -1;
 		}
 		else{
-			int idx = idx3.x * (nStep.y - 1) * (nStep.z - 1)
+			int cubeIdx = idx3.x * (nStep.y - 1) * (nStep.z - 1)
 				+ idx3.y * (nStep.z - 1) + idx3.z;
 
 			int j = 0;
 			for (j = 0; j < 5; j++){
 				float3 vv[4];
-				int tetId = idx * 5 + j;
+				int tetId = cubeIdx * 5 + j;
 				for (int k = 0; k < 4; k++){
 					int iv = tet[tetId * 4 + k];
 
-					vv[k] = regularMeshVertCoord(iv, nStep, lsgridMesh->cutY, gridMin, step);
+					//vv[k] = regularMeshVertCoord(iv, nStep, gridMin, step);
 					//vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
+					
+					glm::vec4 ttt = invMeshTransMat*glm::vec4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0);
+					vv[k] = make_float3(ttt.x, ttt.y, ttt.z);
 				}
 				float4 bary = GetBarycentricCoordinate(vv[0], vv[1], vv[2], vv[3], vc);
 				if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
-					vIdx[i] = idx * 5 + j;
+					vIdx[i] = cubeIdx * 5 + j;
 					vBaryCoord[i] = bary;
 					break;
 				}
@@ -263,11 +273,22 @@ void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lS
 	if (lsgridMesh != 0)
 		delete lsgridMesh;
 	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
-	SetElasticitySimple();
+
+	if (n > 0){
+		UpdatePointTetId(vOri, n);
+
+		if (useDensityBasedElasticity)
+			SetElasticityByTetDensity(n);
+		else
+			SetElasticitySimple();
+	}
+	else
+	{
+		SetElasticitySimple();
+	}
+
 	lsgridMesh->Initialize(time_step);
 
-	UpdatePointTetId(vOri, n);
-	
 	bMeshNeedReinitiation = false;
 }
 
@@ -278,21 +299,36 @@ void ModelGrid::SetElasticitySimple()
 	std::vector<float> density;
 	density.resize(lsgridMesh->tet_number);
 	for (int i = 0; i < density.size(); i++) {
-		int3 nStep = make_int3((lsgridMesh->nStep)[0], (lsgridMesh->nStep)[1], (lsgridMesh->nStep)[2]);
-		int3 tet_nStep = nStep - make_int3(1, 1, 1);
-		int x = i / (tet_nStep.y * tet_nStep.z);
-		int y = (i - x* tet_nStep.y * tet_nStep.z) / tet_nStep.z;
-		int z = i - x * tet_nStep.y * tet_nStep.z - y * tet_nStep.z;
-		if (y == lsgridMesh->cutY){
-			density[i] = 0;
-		}
-		else{
-			density[i] = 500; //the higher density, the more deformation is reached
-		}
-
+		density[i] = 500;
 	}
 	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
 }
+
+
+void ModelGrid::SetElasticityByTetDensity(int n)
+{
+	int tet_number = GetTetNumber();
+	std::vector<int> cnts;
+	cnts.resize(tet_number, 0);
+	for (int i = 0; i < n; i++){
+		int vi = vIdx[i];
+		if (vi >= 0 && vi < tet_number){
+			cnts[vi]++;
+		}
+	}
+
+	std::vector<float> density;
+	density.resize(cnts.size());
+	//const float base = 400.0f / cnts.size();
+	for (int i = 0; i < cnts.size(); i++) {
+		//for (int j = 0; j < 5; j++) {
+		density[i] = 500 +1000 * pow((float)cnts[i], 2);
+		//}
+	}
+	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
+
+}
+
 
 void ModelGrid::Initialize(float time_step)
 {
@@ -349,6 +385,27 @@ float* ModelGrid::GetX()
 	else
 		return NULL;
 }
+
+float* ModelGrid::GetXDev()
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		return gridMesh->dev_X;
+	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		return lsgridMesh->dev_X;
+	else
+		return NULL;
+}
+
+float* ModelGrid::GetXDevOri()
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		return gridMesh->dev_X_Orig;
+	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		return lsgridMesh->dev_X_Orig;
+	else
+		return NULL;
+}
+
 
 int ModelGrid::GetNumber()
 {
@@ -445,6 +502,16 @@ int* ModelGrid::GetTet()
 		return gridMesh->Tet;
 	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
 		return lsgridMesh->Tet;
+	else
+		return NULL;
+}
+
+int* ModelGrid::GetTetDev()
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		return gridMesh->dev_Tet;
+	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		return lsgridMesh->dev_Tet;
 	else
 		return NULL;
 }

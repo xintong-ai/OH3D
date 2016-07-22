@@ -19,7 +19,7 @@ include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE}
 	${CUDA_SDK_ROOT_DIR}/common/inc )
 
 
-set(SRCS Displace.cu ModelGrid.cu Lens.cpp)
+set(SRCS Displace.cu ModelGrid.cu Lens.cpp ModelVolumeDeformer.cu)
 
 set(HDRS	defines.h
 			Displace.h
@@ -27,7 +27,8 @@ set(HDRS	defines.h
 			LineSplitGridMesh.h
 			Lens.h
 			ModelGrid.h
-			TransformFunc.h)
+			TransformFunc.h
+			ModelVolumeDeformer.h)
 
 cuda_add_library(deform STATIC ${HDRS} ${SRCS})
 
