@@ -8,6 +8,9 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <vector>
+#include <memory>
+#include <Volume.h>
+
 class timestep;
 //struct Particle{
 //	float3 pos;
@@ -43,6 +46,8 @@ public:
 	
 	void GetPosRange(float3& posMin, float3& posMax) override;
 	void GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec, std::vector<float>& _val);
+
+	void OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v);
 
 protected:
 	void Load() override;

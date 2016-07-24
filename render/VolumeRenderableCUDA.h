@@ -59,7 +59,10 @@ public:
 	//lighting
 	float la = 1.0, ld = 1.0, ls = 1.0;
 
+
+
 	////transfer function
+	////MICCAI challenge data
 	//float transFuncP1 = 0.335;
 	//float transFuncP2 = 0.073;
 	//float density = 1.0;

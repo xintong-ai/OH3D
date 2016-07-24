@@ -17,6 +17,7 @@
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
+#include "VecReader.h"
 #include "VolumeRenderableCUDA.h"
 #include "ModelVolumeDeformer.h"
 
@@ -63,29 +64,45 @@ Window::Window()
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 
-
-
-
-	//int3 dims = make_int3(350, 400, 225);
-	//float3 spacing = make_float3(0.473686f, 0.478497f, 0.902627f);
-
-	int3 dims = make_int3(320, 320, 256);
-	float3 spacing = make_float3(0.7, 0.7, 0.7);
-
-	std::shared_ptr<RawVolumeReader> reader2;
 	const std::string dataPath2 = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
-	reader2 = std::make_shared<RawVolumeReader>(dataPath2.c_str(), dims);
+	int3 dims;
+	float3 spacing;
+	if (string(dataPath2).find("MGHT2") != std::string::npos){
+		dims = make_int3(320, 320, 256);
+		spacing = make_float3(0.7, 0.7, 0.7);
+	}
+	else if (string(dataPath2).find("MGHT1") != std::string::npos){
+		dims = make_int3(256, 256, 176);
+		spacing = make_float3(1.0, 1.0, 1.0);
+	}
+	else if (string(dataPath2).find("nek128") != std::string::npos){
+		dims = make_int3(128, 128, 128);
+		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
+	}
 	inputVolume = std::make_shared<Volume>();
-	reader2->OutputTo(inputVolume);
+
+	if (string(dataPath2).find(".vec") != std::string::npos){
+		std::shared_ptr<VecReader> reader2;
+		reader2 = std::make_shared<VecReader>(dataPath2.c_str());
+		reader2->OutputToVolumeByNormalizedVecMag(inputVolume);
+		reader2.reset();
+	}
+	else{
+		std::shared_ptr<RawVolumeReader> reader2;
+		reader2 = std::make_shared<RawVolumeReader>(dataPath2.c_str(), dims);
+		reader2->OutputTo(inputVolume);
+		reader2.reset();
+	}
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda(0);
 
 
 	VolumeRenderableCUDA * volumeRenderable = new VolumeRenderableCUDA(inputVolume);
-	reader2.reset();
 
-	
+	if (string(dataPath2).find("nek128") != std::string::npos){
+		volumeRenderable->useColor = true;
+	}
 	
 	
 	/********GL widget******/

@@ -113,6 +113,48 @@ float4 GetBarycentricCoordinate22(const float3& v0_,
 	return barycentricCoord;
 }
 
+
+__device__
+bool GetBarycentricCoordinate33(const float3& v0_,
+const float3& v1_,
+const float3& v2_,
+const float3& v3_,
+const float3& p0_,
+float4 & barycentricCoord)
+{
+	float4 v0 = make_float4(v0_, 1);
+	float4 v1 = make_float4(v1_, 1);
+	float4 v2 = make_float4(v2_, 1);
+	float4 v3 = make_float4(v3_, 1);
+	float4 p0 = make_float4(p0_, 1);
+	const float det0 = Determinant4x422(v0, v1, v2, v3);
+	barycentricCoord.x = (Determinant4x422(p0, v1, v2, v3) / det0);
+	if (within22(barycentricCoord.x)){
+		barycentricCoord.y = (Determinant4x422(v0, p0, v2, v3) / det0);
+		if (within22(barycentricCoord.y)){
+			barycentricCoord.z = (Determinant4x422(v0, v1, p0, v3) / det0);
+			if (within22(barycentricCoord.z)){
+				barycentricCoord.w = (Determinant4x422(v0, v1, v2, p0) / det0);
+				if (within22(barycentricCoord.w)){
+					return true;
+				}
+				else{
+					return false;
+				}
+			}
+			else{
+				return false;
+			}
+		}
+		else{
+			return false;
+		}
+	}
+	else{
+		return false;
+	}
+}
+
 __global__ void 
 d_updateVolumebyModelGrid(cudaExtent volumeSize, const float* X, const float* X_Orig, const int* tet, int tet_number, float3 spacing)
 {	
@@ -135,17 +177,16 @@ d_updateVolumebyModelGrid(cudaExtent volumeSize, const float* X, const float* X_
 	}
 
 	float3 volumeBoundmin = boundmin / spacing, volumeBoundmax = boundmax / spacing;
-	//for (int z = ceil(volumeBoundmin.z) ; z <= floor(volumeBoundmax.z); z += 1){
-	//	for (int y = ceil(volumeBoundmin.y) ; y <= floor(volumeBoundmax.y); y += 1){
-	//		for (int x = ceil(volumeBoundmin.x) ; x <= floor(volumeBoundmax.x); x += 1){
+	
 	int zPieceSize = (floor(volumeBoundmax.z) - ceil(volumeBoundmin.z) + 1 + blockDim.z - 1) / blockDim.z;
 	int zstart = ceil(volumeBoundmin.z) + zPieceSize*threadIdx.z, zend = min(zstart + zPieceSize - 1, (int)floor(volumeBoundmax.z));
 	int yPieceSize = (floor(volumeBoundmax.y) - ceil(volumeBoundmin.y) + 1 + blockDim.y - 1) / blockDim.y;
 	int ystart = ceil(volumeBoundmin.y) + yPieceSize*threadIdx.y, yend = min(ystart + yPieceSize - 1, (int)floor(volumeBoundmax.y));
 	int xPieceSize = (floor(volumeBoundmax.x) - ceil(volumeBoundmin.x) + 1 + blockDim.x - 1) / blockDim.x;
 	int xstart = ceil(volumeBoundmin.x) + xPieceSize*threadIdx.x, xend = min(xstart + xPieceSize - 1, (int)floor(volumeBoundmax.x));
-	if (xend < 0 && yend < 0 && zend < 0 &&
-		xstart >= volumeSize.width && ystart >= volumeSize.height && zstart >= volumeSize.depth){
+
+	if (xend < 0 || yend < 0 || zend < 0 ||
+		xstart >= volumeSize.width || ystart >= volumeSize.height || zstart >= volumeSize.depth){
 		return;
 	}
 
@@ -159,12 +200,9 @@ d_updateVolumebyModelGrid(cudaExtent volumeSize, const float* X, const float* X_
 					x < volumeSize.width && y < volumeSize.height && z < volumeSize.depth)
 				{
 					float3 x1 = make_float3(x, y, z) * spacing;
-					float4 b = GetBarycentricCoordinate22(verts[0], verts[1], verts[2], verts[3], x1);
-					if (b.x >= 0 && b.x <= 1
-						&& b.y >= 0 && b.y <= 1
-						&& b.z >= 0 && b.z <= 1
-						&& b.w >= 0 && b.w <= 1){
-
+					/*float4 b = GetBarycentricCoordinate22(verts[0], verts[1], verts[2], verts[3], x1);*/
+					float4 b;
+					if (GetBarycentricCoordinate33(verts[0], verts[1], verts[2], verts[3], x1, b)){
 						float3 x0 = b.x * vertsOri[0] + b.y * vertsOri[1] + b.z * vertsOri[2] + b.w * vertsOri[3];
 						x0 = x0 / spacing;
 						float res = tex3D(volumeTexInput, x0.x + 0.5, x0.y + 0.5, x0.z + 0.5);
@@ -179,6 +217,59 @@ d_updateVolumebyModelGrid(cudaExtent volumeSize, const float* X, const float* X_
 }
 
 
+__global__ void
+d_updateVolumebyModelGrid2(cudaExtent volumeSize, const float* X, const float* X_Orig, const int* tet, int tet_number, float3 spacing)
+{
+	int x = blockIdx.x*blockDim.x + threadIdx.x;
+	int y = blockIdx.y*blockDim.y + threadIdx.y;
+	int z = blockIdx.z*blockDim.z + threadIdx.z;
+
+	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
+	{
+		return;
+	}
+
+	float3 x1 = make_float3(x, y, z) * spacing;
+
+	for (int tetId = 0; tetId < tet_number; tetId++){
+		float3 boundmin = make_float3(9999, 9999, 9999), boundmax = make_float3(-9999, -9999, -9999);
+		float3 verts[4];
+		for (int v = 0; v < 4; v++){
+			int vertInd = tet[4 * tetId + v];
+
+			verts[v] = make_float3(X[3 * vertInd], X[3 * vertInd + 1], X[3 * vertInd + 2]);
+
+			boundmin = fminf(boundmin, verts[v]);
+			boundmax = fmaxf(boundmax, verts[v]);
+		}
+		if (x1.x >= boundmin.x && x1.y >= boundmin.y && x1.z >= boundmin.z &&
+			x1.x <= boundmax.x && x1.y <= boundmax.y && x1.z <= boundmax.z){
+
+			float4 b = GetBarycentricCoordinate22(verts[0], verts[1], verts[2], verts[3], x1);
+			if (b.x >= 0 && b.x <= 1
+				&& b.y >= 0 && b.y <= 1
+				&& b.z >= 0 && b.z <= 1
+				&& b.w >= 0 && b.w <= 1){
+
+				float3 vertsOri[4];
+				for (int v = 0; v < 4; v++){
+					int vertInd = tet[4 * tetId + v];
+					vertsOri[v] = make_float3(X_Orig[3 * vertInd], X_Orig[3 * vertInd + 1], X_Orig[3 * vertInd + 2]);
+				}
+				float3 x0 = b.x * vertsOri[0] + b.y * vertsOri[1] + b.z * vertsOri[2] + b.w * vertsOri[3];
+				x0 = x0 / spacing;
+				float res = tex3D(volumeTexInput, x0.x + 0.5, x0.y + 0.5, x0.z + 0.5);
+			}
+			return;
+		}
+
+	}
+
+	float res = 0;
+	surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
+	return;
+
+}
 
 void ModelVolumeDeformer::deformByModelGrid()
 {
@@ -197,8 +288,14 @@ void ModelVolumeDeformer::deformByModelGrid()
 	dim3 blockSize2(8, 8, 8);
 	dim3 gridSize2(modelGrid->GetTetNumber(), 1, 1);
 	d_updateVolumebyModelGrid << <gridSize2, blockSize2 >> >(size, modelGrid->GetXDev(), modelGrid->GetXDevOri(), modelGrid->GetTetDev(), modelGrid->GetTetNumber(), originalVolume->spacing);
-	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+
+
+	//d_updateVolumebyModelGrid2 << <gridSize, blockSize >> >(size, modelGrid->GetXDev(), modelGrid->GetXDevOri(), modelGrid->GetTetDev(), modelGrid->GetTetNumber(), originalVolume->spacing);
+
+	//checkCudaErrors(cudaUnbindTexture(volumeTexInput));
 }
+
+
 
 
 __global__ void
