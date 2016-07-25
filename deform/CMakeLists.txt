@@ -16,7 +16,7 @@ message("deform is already defined")
 else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE} 
-	${CUDA_SDK_ROOT_DIR}/common/inc )
+	${CUDA_SDK_ROOT_DIR}/common/inc)
 
 
 set(SRCS Displace.cu ModelGrid.cu Lens.cpp)

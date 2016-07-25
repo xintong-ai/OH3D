@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 2.6)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+
 option(USE_SUPERQUADRIC "Enable features that require TEEM" OFF)
+
+find_package(GLM REQUIRED)
+
 if(USE_SUPERQUADRIC)
 	find_package(Teem REQUIRED)
 endif()
@@ -22,6 +27,7 @@ include_directories(
 	${INTERACT_DIR}
 	${IO_DIR}
 	${RENDER_DIR}
+	${GLM_INCLUDE_DIR}
 	)
 
 option(USE_DEFORM "Enable deformation" ON)

@@ -2,8 +2,8 @@
 #define MODEL_GRID_H
 #include <vector>
 
-#include "D:\Library\OpenGL\glm\glm\glm.hpp"
-#include <D:/Library/OpenGL/glm/glm/gtx/transform.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
 
 template <class TYPE>
 class GridMesh;
