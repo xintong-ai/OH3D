@@ -19,7 +19,7 @@ public:
 	RawVolumeReader(const char* filename, int3 _dim); //need to provide the dimensions at least
 	RawVolumeReader(const char* filename, int3 _dim, float3 _origin, float3 _spacing, bool _isUnsignedShort);
 
-	void OutputTo(std::shared_ptr<Volume> v);
+	void OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v);
 
 	//void GetDataOrigin(float3& val) { val = dataOrigin; }
 

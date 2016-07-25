@@ -210,7 +210,7 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
 
-			modelVolumeDeformer->deformByModelGrid();
+			modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), majorAxisGlobal, lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
 			modelVolumeDeformer->computeGradient();
 
 		}

@@ -91,7 +91,7 @@ Window::Window()
 	else{
 		std::shared_ptr<RawVolumeReader> reader2;
 		reader2 = std::make_shared<RawVolumeReader>(dataPath2.c_str(), dims);
-		reader2->OutputTo(inputVolume);
+		reader2->OutputToVolumeByNormalizedValue(inputVolume);
 		reader2.reset();
 	}
 	inputVolume->spacing = spacing;

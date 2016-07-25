@@ -450,8 +450,6 @@ public:
 		return;
 	}
 
-
-	
 	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat)
 	{
 		//rotate to fit the x axis to the majorAxis of the lens
@@ -503,11 +501,152 @@ public:
 	}
 	
 
+	float3 lensSpaceOriginInWorld;
+	void computeShapeInfo2(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir)
+	{
+		float volumeCornerx[2], volumeCornery[2], volumeCornerz[2];
+		volumeCornerx[0] = dataMin[0];
+		volumeCornery[0] = dataMin[1];
+		volumeCornerz[0] = dataMin[2];
+		volumeCornerx[1] = dataMax[0];
+		volumeCornery[1] = dataMax[1];
+		volumeCornerz[1] = dataMax[2];
+
+		float rx1, rx2, ry1, ry2;
+		float rz1, rz2;//at the direction lensDir shooting from lensCenter, the range to cover the whole region
+		rx1 = FLT_MAX, rx2 = -FLT_MAX;
+		ry1 = FLT_MAX, ry2 = -FLT_MAX;
+		rz1 = FLT_MAX, rz2 = -FLT_MAX;
+
+		float3 minorAxis = cross(lensDir, majorAxis);
+
+		//currently computing r1 and r2 aggressively. cam be more improved later
+		for (int k = 0; k < 2; k++){
+			for (int j = 0; j < 2; j++){
+				for (int i = 0; i < 2; i++){
+					float3 dir = make_float3(volumeCornerx[i], volumeCornery[j], volumeCornerz[k]) - lensCenter;
+					//float curx = dot(dir, majorAxis);
+					//if (curx < rx1)
+					//	rx1 = curx;
+					//if (curx > rx2)
+					//	rx2 = curx;
+
+					//float cury = dot(dir, minorAxis);
+					//if (cury < ry1)
+					//	ry1 = cury;
+					//if (cury > ry2)
+					//	ry2 = cury;
+
+					float curz = dot(dir, lensDir);
+					if (curz < rz1)
+						rz1 = curz;
+					if (curz > rz2)
+						rz2 = curz;
+				}
+			}
+		}
+
+
+		float3 rangeDiff = make_float3(3 * lSemiMajorAxis, 3 * lSemiMinorAxis / focusRatio, rz2 - rz1);
+		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
+
+		bool ismeshillegal = true;
+		while (ismeshillegal){
+			step = (maxDiff / n);
+			nStep[0] = floor(rangeDiff.x / step) + 1;
+			nStep[1] = floor(rangeDiff.y / step) + 1;
+			nStep[2] = floor(rangeDiff.z / step) + 1;
+			if (nStep[0] >= 4 && nStep[1] >= 4 && nStep[2] >= 4){
+				ismeshillegal = false;
+				if (nStep[1] % 2 != 1){
+					nStep[1]++;
+				}
+				rangeDiff.x = (nStep[0] - 1) * step;
+				rangeDiff.y = (nStep[1] - 1) * step;
+				rangeDiff.z = (nStep[2] - 1) * step;
+			}
+			else
+			{
+				n++;
+			}
+		}
+		std::cout << "final mesh size " << nStep[0] << " " << nStep[1] << " " << nStep[2] << std::endl;
+		
+		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
+		
+		cutY = nStep[1] / 2;
+
+		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis - rangeDiff.z / 2.0 * lensDir;
+
+		//gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
+		//gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
+
+		//oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);
+	}
+
+	void computeInitCoord2(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat)
+	{
+
+		float3 minorAxis = cross(lensDir, majorAxis);
+
+		//find the matrix that transforms the coord in the the lens space to the world space
+		//lens space is defined by majorAxis, minorAxis, and lensDir as x,y,z axis, and lensSpaceOriginInWorld as origin
+
+		//rotate to fit the x axis to the majorAxis of the lens
+		float3 rotateAxis = cross(majorAxis, make_float3(1, 0, 0));
+		glm::mat4 r1 = glm::rotate(-(float)(acos(dot(make_float3(1, 0, 0), majorAxis))), glm::vec3(rotateAxis.x, rotateAxis.y, rotateAxis.z));
+
+		//rotate to fit the z axis to the lenCenter-eye connecting line
+		glm::vec4 lensDirByR1 = glm::inverse(r1)*glm::vec4(lensDir.x, lensDir.y, lensDir.z, 0);
+		float3 rotateAxis2 = cross(make_float3(lensDirByR1.x, lensDirByR1.y, lensDirByR1.z), make_float3(0, 0, 1));
+		glm::mat4 r2 = glm::rotate(-(float)(acos(dot(make_float3(0, 0, 1), make_float3(lensDirByR1.x, lensDirByR1.y, lensDirByR1.z)))), glm::vec3(rotateAxis2.x, rotateAxis2.y, rotateAxis2.z));
+
+		//translate the origin to the lensSpaceOriginInWorld
+		glm::vec4 lensSpaceOriginInWorldR1R2 = glm::inverse(r1*r2)*glm::vec4(lensSpaceOriginInWorld.x, lensSpaceOriginInWorld.y, lensSpaceOriginInWorld.z, 1);
+		glm::mat4 t1 = glm::translate(glm::vec3(lensSpaceOriginInWorldR1R2));
+
+		meshTransMat = r1*r2*t1;
+
+
+		int idx;
+		for (int i = 0; i < nStep[0]; i++){
+			for (int j = 0; j <nStep[1]; j++){
+				for (int k = 0; k < nStep[2]; k++){
+					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+
+					glm::vec4 res = meshTransMat*glm::vec4(i * step, j * step, k * step, 1.0f);
+
+					X[3 * idx + 0] = res.x;
+					X[3 * idx + 1] = res.y;
+					X[3 * idx + 2] = res.z;
+				}
+			}
+		}
+		for (int j = 0; j < 1; j++){
+			for (int i = 0; i < nStep[0] - 2; i++){
+				for (int k = 0; k < nStep[2]; k++){
+					idx = nStep[0] * nStep[1] * nStep[2] + k* (nStep[0] - 2) + i;
+
+					glm::vec4 res = meshTransMat*glm::vec4((i + 1) * step, cutY * step, k * step, 1.0f);
+
+					X[3 * idx + 0] = res.x;
+					X[3 * idx + 1] = res.y;
+					X[3 * idx + 2] = res.z;
+				}
+			}
+		}
+
+
+	}
+
 
 	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>(((n + 1) * (n + 1) * (n + 1) +(n+1)*(n-1))* 5)
 	{
+		//computeShapeInfo2 and computeShapeInfo2 define a mesh that covers the lens region and nearby region
+		//computeShapeInfo and computeShapeInfo are old settings that define a mesh by the data domain
+		computeShapeInfo2(dataMin, dataMax, n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir);
+		computeInitCoord2(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
 
-		computeShapeInfo(dataMin, dataMax, n);
 		BuildTet();
 		Build_Boundary_Lines();
 
@@ -517,8 +656,7 @@ public:
 		control_mag = 500;		//500
 		damping = 0.9;
 		
-		
-		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
+
 		
 		return;
 

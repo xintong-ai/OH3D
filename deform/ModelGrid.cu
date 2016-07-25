@@ -179,6 +179,59 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 	}
 }
 
+void ModelGrid::UpdatePointTetId2(float4* v, int n)
+{
+	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
+	vIdx.resize(n);
+	vBaryCoord.resize(n);
+
+	int3 nStep = GetNumSteps();
+	float step = GetStep();
+	int* tet = GetTet();
+	float* X = GetX();
+
+	for (int i = 0; i < n; i++){
+		glm::vec4 g_vcOri = glm::vec4(v[i].x, v[i].y, v[i].z, 1.0);
+		glm::vec4 g_vcTransformed = invMeshTransMat*g_vcOri;
+
+		float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
+		float3 tmp = vc / step;
+		int3 idx3 = make_int3(floor(tmp.x), floor(tmp.y), floor(tmp.z));
+
+
+		if (idx3.x < 0 || idx3.y < 0 || idx3.z < 0 || idx3.x >= nStep.x - 1 || idx3.y >= nStep.y - 1 || idx3.z >= nStep.z - 1){
+			vIdx[i] = -1;
+		}
+		else{
+			int cubeIdx = idx3.x * (nStep.y - 1) * (nStep.z - 1)
+				+ idx3.y * (nStep.z - 1) + idx3.z;
+
+			int j = 0;
+			for (j = 0; j < 5; j++){
+				float3 vv[4];
+				int tetId = cubeIdx * 5 + j;
+				for (int k = 0; k < 4; k++){
+					int iv = tet[tetId * 4 + k];
+
+					//vv[k] = regularMeshVertCoord(iv, nStep, gridMin, step);
+					//vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
+
+					glm::vec4 ttt = invMeshTransMat*glm::vec4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0);
+					vv[k] = make_float3(ttt.x, ttt.y, ttt.z);
+				}
+				float4 bary = GetBarycentricCoordinate(vv[0], vv[1], vv[2], vv[3], vc);
+				if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
+					vIdx[i] = cubeIdx * 5 + j;
+					vBaryCoord[i] = bary;
+					break;
+				}
+			}
+			if (j == 6){ //need to be handle later
+				vIdx[i] = -1;
+			}
+		}
+	}
+}
 
 void ModelGrid::UpdatePointCoords(float4* v, int n, float4* vOri)
 {
@@ -275,7 +328,7 @@ void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lS
 	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
 
 	if (n > 0){
-		UpdatePointTetId(vOri, n);
+		UpdatePointTetId2(vOri, n);
 
 		if (useDensityBasedElasticity)
 			SetElasticityByTetDensity(n);
@@ -524,4 +577,14 @@ int ModelGrid::GetTetNumber()
 		return lsgridMesh->tet_number;
 	else
 		return NULL;
+}
+
+float3 ModelGrid::GetLensSpaceOrigin()
+{
+	if (gridType == GRID_TYPE::UNIFORM_GRID)
+		return gridMesh->gridMin;
+	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		return lsgridMesh->lensSpaceOriginInWorld;
+	else
+		return  make_float3(0, 0, 0);
 }

@@ -420,7 +420,7 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 	for (int j = 0; j < 3; j++) {
 		//V[i * 3 + j] += (30 * (&(lensForce.x))[j] * t);//for FPM
 		V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t); //for MGHT2
-		V[i * 3 + j] += (1000 * (&(lensForce.x))[j] * t); //for MGHT1
+		//V[i * 3 + j] += (1300 * (&(lensForce.x))[j] * t); //for MGHT1
 
 	}
 

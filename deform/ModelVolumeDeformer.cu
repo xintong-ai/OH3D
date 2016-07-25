@@ -39,7 +39,7 @@ void ModelVolumeDeformer::Init(Volume *_ori)
 
 
 __global__ void
-d_updateVolumebyModelGrid_init(cudaExtent volumeSize)
+d_updateVolumebyModelGrid_init(cudaExtent volumeSize, float3 lensSpaceOrigin, float3 majorAxis, float3 minorAxis, float3 lensDir, float3 range, float3 spacing)
 {
 	int x = blockIdx.x*blockDim.x + threadIdx.x;
 	int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -48,11 +48,21 @@ d_updateVolumebyModelGrid_init(cudaExtent volumeSize)
 	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
 	{
 		return;
+	}					
+	
+	float3 v1 = make_float3(x, y, z) * spacing - lensSpaceOrigin;
+	float xInLensSpace = dot(v1, majorAxis);
+	float yInLensSpace = dot(v1, minorAxis);
+	float zInLensSpace = dot(v1, lensDir);
+	if (xInLensSpace <= 0 || xInLensSpace >= range.x || yInLensSpace <= 0 || yInLensSpace >= range.y || zInLensSpace <= 0 || zInLensSpace >= range.z){
+		float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
+		surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
 	}
-	float res = 0;
-	surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
+	else{
+		float res = 0;
+		surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
+	}
 	return;
-
 }
 
 __device__
@@ -271,19 +281,21 @@ d_updateVolumebyModelGrid2(cudaExtent volumeSize, const float* X, const float* X
 
 }
 
-void ModelVolumeDeformer::deformByModelGrid()
+void ModelVolumeDeformer::deformByModelGrid(float3 lensSpaceOrigin, float3 majorAxis, float3 lensDir, int3 nSteps, float step)
 {
 	cudaExtent size = volumeCUDADeformed.size;
 	unsigned int dim = 32;
 	dim3 blockSize(dim, dim, 1);
 	dim3 gridSize(iDivUp22(size.width, blockSize.x), iDivUp22(size.height, blockSize.y), iDivUp22(size.depth, blockSize.z));
 
+	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, originalVolume->volumeCuda.content, originalVolume->volumeCuda.channelDesc));
+
 	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCUDADeformed.content));
 
-	d_updateVolumebyModelGrid_init << <gridSize, blockSize >> >(size);
+	float3 minorAxis = cross(lensDir, majorAxis);
+	float3 range = make_float3(nSteps.x - 1, nSteps.y - 1, nSteps.z - 1)*step;
+	d_updateVolumebyModelGrid_init << <gridSize, blockSize >> >(size, lensSpaceOrigin, majorAxis, minorAxis, lensDir, range, originalVolume->spacing);
 
-	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, originalVolume->volumeCuda.content, originalVolume->volumeCuda.channelDesc));
-	
 	
 	dim3 blockSize2(8, 8, 8);
 	dim3 gridSize2(modelGrid->GetTetNumber(), 1, 1);

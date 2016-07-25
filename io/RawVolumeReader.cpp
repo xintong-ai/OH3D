@@ -89,7 +89,7 @@ void RawVolumeReader::GetPosRange(float3& posMin, float3& posMax)
 }
 
 
-void RawVolumeReader::OutputTo(std::shared_ptr<Volume> v)
+void RawVolumeReader::OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v)
 {
 	v->~Volume();
 
