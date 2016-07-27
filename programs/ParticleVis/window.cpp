@@ -6,7 +6,7 @@
 #include "Displace.h"
 
 #include "SphereRenderable.h"
-#include "ParticleReader.h"
+#include "SolutionParticleReader.h"
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
@@ -43,11 +43,11 @@ Window::Window()
 	std::shared_ptr<Reader> reader;
 
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-	reader = std::make_shared<ParticleReader>(dataPath.c_str());
+	reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
 	glyphRenderable = std::make_shared<SphereRenderable>(
-		((ParticleReader*)reader.get())->GetPos(),
-		((ParticleReader*)reader.get())->GetVal());
-	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
+		((SolutionParticleReader*)reader.get())->GetPos(),
+		((SolutionParticleReader*)reader.get())->GetVal());
+	std::cout << "number of rendered glyphs: " << (((SolutionParticleReader*)reader.get())->GetVal()).size() << std::endl;
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 	/********GL widget******/
