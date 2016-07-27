@@ -418,8 +418,8 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 
 	for (int j = 0; j < 3; j++) {
-		//V[i * 3 + j] += (30 * (&(lensForce.x))[j] * t);//for FPM
-		V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t); //for MGHT2
+		V[i * 3 + j] += (30 * (&(lensForce.x))[j] * t);//for FPM
+		//V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t); //for MGHT2
 		//V[i * 3 + j] += (1300 * (&(lensForce.x))[j] * t); //for MGHT1
 
 	}
@@ -640,6 +640,12 @@ public:
 	//by Xin
 	TYPE* EL;
 
+	//by CL
+	int cell_number;
+	int* cellVerts = 0;
+	int* cellTets = 0;
+	float* tetVolume = 0;
+
   //template <class TYPE>
 	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH<TYPE>(maxNum)
 	{
@@ -706,6 +712,10 @@ public:
 		if(VTT)				delete[] VTT;
 		if(vtt_num)			delete[] vtt_num;
 		if(error)			delete[] error;
+		
+		if (cellVerts)		delete[] cellVerts;
+		if (cellTets)		delete[] cellTets;
+		if (tetVolume)		delete[] tetVolume;
 
 		//GPU Data
 		if (dev_X)			cudaFree(dev_X);
@@ -846,11 +856,27 @@ public:
 		return j;
 	}
 
+	bool is_Allocate_GPU_Memory_InAdvance_executed = false;
+	void Allocate_GPU_Memory_InAdvance(){
+		cudaMalloc((void**)&dev_X, sizeof(int)* 3 * number);
+		cudaMalloc((void**)&dev_X_Orig, sizeof(int)* 3 * number);
+		cudaMemcpy(dev_X, X, sizeof(TYPE)* 3 * number, cudaMemcpyHostToDevice);
+		cudaMemcpy(dev_X_Orig, X, sizeof(TYPE)* 3 * number, cudaMemcpyHostToDevice);
+
+		cudaMalloc((void**)&dev_Tet, sizeof(int)*tet_number * 4);
+		cudaMemcpy(dev_Tet, Tet, sizeof(int)*tet_number * 4, cudaMemcpyHostToDevice);
+	}
+
+
 	void Allocate_GPU_Memory()
 	{
+		//may allocate the GPU memory for some arrays in advance, to provide easier computation for needed processes
+		if (!is_Allocate_GPU_Memory_InAdvance_executed){
+			Allocate_GPU_Memory_InAdvance();
+		}
+
 		//Allocate CUDA memory
-		cudaMalloc((void**)&dev_X, sizeof(int) * 3 * number);
-		cudaMalloc((void**)&dev_X_Orig, sizeof(int) * 3 * number);
+		
 		cudaMalloc((void**)&dev_E,			sizeof(int )*3*number);
 		cudaMalloc((void**)&dev_V,			sizeof(TYPE)*3*number);
 		cudaMalloc((void**)&dev_next_X,		sizeof(TYPE)*3*number);
@@ -864,7 +890,6 @@ public:
 		cudaMalloc((void**)&dev_Dm,			sizeof(int)*tet_number * 9);
 		cudaMalloc((void**)&dev_inv_Dm,		sizeof(int )*tet_number*9);
 		cudaMalloc((void**)&dev_Vol,		sizeof(int )*tet_number);
-		cudaMalloc((void**)&dev_Tet,		sizeof(int )*tet_number*4);
 		cudaMalloc((void**)&dev_TQ,			sizeof(TYPE)*tet_number*4);
 		cudaMalloc((void**)&dev_Tet_Temp,	sizeof(TYPE)*tet_number*12);
 		
@@ -876,8 +901,7 @@ public:
 		cudaMalloc((void**)&dev_error,		sizeof(TYPE)*3*number);
 
 		//Copy data into CUDA memory
-		cudaMemcpy(dev_X,			X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
-		cudaMemcpy(dev_X_Orig,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
+		
 		cudaMemcpy(dev_V,			V,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_prev_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_next_X,		X,			sizeof(TYPE)*3*number,		cudaMemcpyHostToDevice);
@@ -887,7 +911,7 @@ public:
 		cudaMemcpy(dev_Dm,			Dm,			sizeof(int)*tet_number*9,	cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_inv_Dm,		inv_Dm,		sizeof(int)*tet_number*9,	cudaMemcpyHostToDevice);
 		cudaMemcpy(dev_Vol,			Vol,		sizeof(int)*tet_number,		cudaMemcpyHostToDevice);
-		cudaMemcpy(dev_Tet,			Tet,		sizeof(int)*tet_number*4,	cudaMemcpyHostToDevice);
+		
 
 		//by Xin
 		cudaMemcpy(dev_EL,			EL,			sizeof(float)*tet_number,	cudaMemcpyHostToDevice);

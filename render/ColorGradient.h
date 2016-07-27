@@ -35,6 +35,17 @@ public:
 	void clearGradient() { color.clear(); }
 
 	//-- Places a 5 color heapmap gradient into the "color" vector:
+	void createDefaultRainbowMapGradient()
+	{
+		color.clear();
+		color.push_back(ColorPoint(0, 0, 1, 0.0f));      // Blue.
+		color.push_back(ColorPoint(0, 1, 1, 0.25f));     // Cyan.
+		color.push_back(ColorPoint(0, 1, 0, 0.5f));      // Green.
+		color.push_back(ColorPoint(1, 1, 0, 0.75f));     // Yellow.
+		color.push_back(ColorPoint(1, 0, 0, 1.0f));      // Red.
+	}
+
+	//-- Places a 5 color heapmap gradient into the "color" vector:
 	void createDefaultHeatMapGradient()
 	{
 		color.clear();

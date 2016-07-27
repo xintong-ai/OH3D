@@ -41,15 +41,68 @@ Window::Window()
 
 	dataMgr = std::make_shared<DataMgr>();
 	
-	std::shared_ptr<Reader> reader;
 
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-	reader = std::make_shared<ParticleReader>(dataPath.c_str());
-	glyphRenderable = std::make_shared<SphereRenderable>(
-		((ParticleReader*)reader.get())->GetPos(),
-		((ParticleReader*)reader.get())->GetVal());
-	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
-	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
+
+	float3 posMin, posMax;
+
+	if (std::string(dataPath).find(".vtu") != std::string::npos){
+		std::shared_ptr<Reader> reader;
+		reader = std::make_shared<ParticleReader>(dataPath.c_str());
+		glyphRenderable = std::make_shared<SphereRenderable>(
+			((ParticleReader*)reader.get())->GetPos(),
+			((ParticleReader*)reader.get())->GetVal());
+		std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
+		std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
+		reader->GetPosRange(posMin, posMax);
+	}
+	else{
+		FILE *pFile;
+		pFile = fopen(dataPath.c_str(), "rb");
+		if (pFile == NULL) { fputs("fibers file error", stderr); exit(1); }
+		int numParticles;
+		fread(&numParticles, sizeof(int), 1, pFile);
+		float *coords = new float[numParticles * 3];
+		fread(coords, sizeof(float), numParticles * 3, pFile);
+		std::vector<float4> posVec;
+		std::vector<float> valec;
+		posVec.resize(numParticles);
+		valec.resize(numParticles);
+		for (int i = 0; i < numParticles; i++){
+			posVec[i] = make_float4(coords[3 * i], coords[3 * i + 1], coords[3 * i + 2], 1.0);
+			valec[i] = 1;
+		}
+
+		glyphRenderable = std::make_shared<SphereRenderable>(posVec, valec);
+		std::cout << "number of rendered glyphs: " << numParticles << std::endl;
+	
+		posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
+		float v = 0;
+		for (int i = 0; i < numParticles; i++) {
+			v = posVec[i].x;
+			if (v > posMax.x)
+				posMax.x = v;
+			if (v < posMin.x)
+				posMin.x = v;
+
+			v = posVec[i].y;
+			if (v > posMax.y)
+				posMax.y = v;
+			if (v < posMin.y)
+				posMin.y = v;
+
+			v = posVec[i].z;
+			if (v > posMax.z)
+				posMax.z = v;
+			if (v < posMin.z)
+				posMin.z = v;
+		}
+	}
+	
+
+
+
 
 	/********GL widget******/
 #ifdef USE_OSVR
@@ -76,8 +129,7 @@ Window::Window()
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
 
-	float3 posMin, posMax;
-	reader->GetPosRange(posMin, posMax);
+
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 20, true);

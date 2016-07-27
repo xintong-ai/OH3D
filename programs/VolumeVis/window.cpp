@@ -20,6 +20,7 @@
 #include "VecReader.h"
 #include "VolumeRenderableCUDA.h"
 #include "ModelVolumeDeformer.h"
+#include "Lens.h"
 
 #ifdef USE_LEAP
 #include <LeapListener.h>
@@ -97,8 +98,7 @@ Window::Window()
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda(0);
 
-
-	VolumeRenderableCUDA * volumeRenderable = new VolumeRenderableCUDA(inputVolume);
+	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 
 	if (string(dataPath2).find("nek128") != std::string::npos){
 		volumeRenderable->useColor = true;
@@ -150,7 +150,7 @@ Window::Window()
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	//openGL->AddRenderable("grid", gridRenderable.get());
-	openGL->AddRenderable("1volume", volumeRenderable); //make sure the volume is rendered first since it does not use depth test
+	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 
 	openGL->AddRenderable("model", modelGridRenderable.get());
 	///********controls******/
@@ -272,6 +272,11 @@ void Window::SlotToggleUdbe(bool b)
 {
 	modelGrid->useDensityBasedElasticity = b;
 	modelGrid->setReinitiationNeed();
+	std::vector<Lens*> *lenses = volumeRenderable->lenses;
+
+	if (lenses->size() > 0){
+		((*lenses)[lenses->size() - 1])->justChanged = true;
+	}
 }
 
 Window::~Window() {

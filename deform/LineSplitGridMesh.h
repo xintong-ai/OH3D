@@ -95,6 +95,8 @@ public:
 	int cutY;
 	float3 oriMeshCenter;
 
+	float3 lensSpaceOriginInWorld;
+
 	void Build_Boundary_Triangles2()
 	{
 		t_number = tet_number * 4;
@@ -195,7 +197,10 @@ public:
 	void BuildTet()
 	{
 		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
-
+		
+		tetVolume = new float[tet_number];
+		float tetVolumeCandidate1 = step*step*step / 6, tetVolumeCandidate2 = step*step*step / 3;
+		
 		int3 vc[8];
 		vc[0] = make_int3(0, 0, 0);
 		vc[1] = make_int3(1, 0, 0);
@@ -213,6 +218,12 @@ public:
 					if (j == cutY){
 						idx = i * (nStep[1] - 1) * (nStep[2] - 1) + j * (nStep[2] - 1) + k;
 						idx2 = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+						
+						tetVolume[idx * 5 + 0] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 1] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 2] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 3] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 4] = tetVolumeCandidate2;
 
 						if ((i + j + k) % 2 == 0) {
 							Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConvForSplittingNodes(idx2, nStep, vc[0]);
@@ -270,6 +281,13 @@ public:
 					else{
 						idx = i * (nStep[1] - 1) * (nStep[2] - 1) + j * (nStep[2] - 1) + k;
 						idx2 = i * nStep[1] * nStep[2] + j * nStep[2] + k;
+						
+						tetVolume[idx * 5 + 0] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 1] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 2] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 3] = tetVolumeCandidate1;
+						tetVolume[idx * 5 + 4] = tetVolumeCandidate2; 
+						
 						if ((i + j + k) % 2 == 0) {
 							Tet[idx * 5 * 4 + 4 * 0 + 0] = IdxConv(idx2, nStep, vc[0]);
 							Tet[idx * 5 * 4 + 4 * 0 + 1] = IdxConv(idx2, nStep, vc[1]);
@@ -501,7 +519,6 @@ public:
 	}
 	
 
-	float3 lensSpaceOriginInWorld;
 	void computeShapeInfo2(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir)
 	{
 		float volumeCornerx[2], volumeCornery[2], volumeCornerz[2];
@@ -656,7 +673,8 @@ public:
 		control_mag = 500;		//500
 		damping = 0.9;
 		
-
+		Allocate_GPU_Memory_InAdvance();
+		is_Allocate_GPU_Memory_InAdvance_executed = true;
 		
 		return;
 

@@ -633,12 +633,6 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				pickedLens = i;
 				break;
 			}
-			//else if(l->PointOnCriticalPos(x, y, modelview, projection, winSize.x, winSize.y)) {
-			//	//workingOnLens = true;
-			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DIRECTION);
-			//	pickedLens = i;
-			//	break;
-			//}
 			else if (actor->GetDeformModel()==DEFORM_MODEL::SCREEN_SPACE && l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
 				pickedLens = i;
@@ -702,9 +696,11 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 		l->justChanged = true;
 	}
 	else {
-		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE){
-			Lens* l = lenses[lenses.size() - 1];
-			l->justChanged = true;
+		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE || actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
+			if (lenses.size() > 0){
+				Lens* l = lenses[lenses.size() - 1];
+				l->justChanged = true;
+			}
 		}
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
@@ -820,11 +816,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->ChangeObjectFocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		break;
 	}	
-	//case INTERACT_MODE::MODIFY_LENS_DIRECTION:
-	//{
-	//	lenses[pickedLens]->ChangeDirection(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
-	//	break;
-	//}
 	}
 	lastPt = make_int2(x, y);
 }

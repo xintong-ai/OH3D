@@ -304,7 +304,7 @@ void ModelVolumeDeformer::deformByModelGrid(float3 lensSpaceOrigin, float3 major
 
 	//d_updateVolumebyModelGrid2 << <gridSize, blockSize >> >(size, modelGrid->GetXDev(), modelGrid->GetXDevOri(), modelGrid->GetTetDev(), modelGrid->GetTetNumber(), originalVolume->spacing);
 
-	//checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
 }
 
 
@@ -324,17 +324,17 @@ d_computeGradient(cudaExtent volumeSize)
 
 	float4 grad = make_float4(0.0);
 
-	int indz1 = z - 1, indz2 = z + 1;
+	int indz1 = z - 2, indz2 = z + 2;
 	if (indz1 < 0)	indz1 = 0;
 	if (indz2 > volumeSize.depth - 1) indz2 = volumeSize.depth - 1;
 	grad.z = (tex3D(volumeTexInput, x + 0.5, y + 0.5, indz2 + 0.5) - tex3D(volumeTexInput, x + 0.5, y + 0.5, indz1 + 0.5)) / (indz2 - indz1);
 
-	int indy1 = y - 1, indy2 = y + 1;
+	int indy1 = y - 2, indy2 = y + 2;
 	if (indy1 < 0)	indy1 = 0;
 	if (indy2 > y >= volumeSize.height - 1) indy2 = y >= volumeSize.height - 1;
 	grad.y = (tex3D(volumeTexInput, x + 0.5, indy2 + 0.5, z + 0.5) - tex3D(volumeTexInput, x + 0.5, indy1 + 0.5, z + 0.5)) / (indy2 - indy1);
 
-	int indx1 = x - 1, indx2 = x + 1;
+	int indx1 = x - 2, indx2 = x + 2;
 	if (indx1 < 0)	indx1 = 0;
 	if (indx2 > volumeSize.width - 1) indx2 = volumeSize.width - 1;
 	grad.x = (tex3D(volumeTexInput, indx2 + 0.5, y + 0.5, z + 0.5) - tex3D(volumeTexInput, indx1 + 0.5, y + 0.5, z + 0.5)) / (indx2 - indx1);
@@ -353,5 +353,7 @@ void ModelVolumeDeformer::computeGradient()
 	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCUDAGradient.content));
 
 	d_computeGradient << <gridSize, blockSize >> >(size);
+
+	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
 }
 
