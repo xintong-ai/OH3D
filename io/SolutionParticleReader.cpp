@@ -1,4 +1,4 @@
-#include "ParticleReader.h"
+#include "SolutionParticleReader.h"
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -85,72 +85,17 @@ struct timestep
 	}
 };
 
-void ParticleReader::GetValRange(float& vMin, float& vMax)
+void SolutionParticleReader::Load()
 {
-	vMax = -FLT_MAX;
-	vMin = FLT_MAX;
-	int n = pos.size();
-	float v = 0;
-	for (int i = 0; i < n; i++) {
-		v = val[i];
-		if (v > vMax)
-			vMax = v;
-		if (v < vMin)
-			vMin = v;
+	ts = new timestep(datafilename.c_str());
+
+	for (int i = 0; i < ts->size; i++) {
+		if (ts->concentration[i] <130 )//|| ts->concentration[i] > 147)
+			continue;
+		//Particle p(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], ts->concentration[i]);
+		//particles.push_back(p);
+		pos.push_back(make_float4(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], 1.0f));
+		val.push_back(ts->concentration[i]);
 	}
-}
-
-
-void ParticleReader::GetPosRange(float3& posMin, float3& posMax)
-{
-	posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-	posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
-	int n = pos.size();
-	float v = 0;
-	for (int i = 0; i < n; i++) {
-		v = pos[i].x;
-		if (v > posMax.x)
-			posMax.x = v;
-		if (v < posMin.x)
-			posMin.x = v;
-
-		v = pos[i].y;
-		if (v > posMax.y)
-			posMax.y = v;
-		if (v < posMin.y)
-			posMin.y = v;
-
-		v = pos[i].z;
-		if (v > posMax.z)
-			posMax.z = v;
-		if (v < posMin.z)
-			posMin.z = v;
-	}
-}
-
-
-//float4* ParticleReader::GetPos()
-//{
-//	return (float4*)(&pos[0]);
-//}
-
-std::vector<float4> ParticleReader::GetPos()
-{
-	return pos;
-}
-
-
-int ParticleReader::GetNum()
-{
-	return pos.size();
-}
-
-//float* ParticleReader::GetVal()
-//{
-//	return &val[0];
-//}
-
-std::vector<float> ParticleReader::GetVal()
-{
-	return val;
+	delete ts;
 }

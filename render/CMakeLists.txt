@@ -21,7 +21,7 @@ include_directories(
 	# ${Leap_INCLUDE_DIR}
 	${CMAKE_BINARY_DIR}
 	${Boost_INCLUDE_DIR}
-	${osvr_DIR}/../../../include
+	${osvr_DIR}/../../../include}
 	required)
 
 if(USE_SUPERQUADRIC)

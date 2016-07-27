@@ -7,7 +7,7 @@
 #include <iostream>
 
 #include "SphereRenderable.h"
-#include "ParticleReader.h"
+#include "SolutionParticleReader.h"
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
@@ -43,6 +43,7 @@ Window::Window()
 	
 
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
+<<<<<<< HEAD
 
 	float3 posMin, posMax;
 
@@ -103,6 +104,14 @@ Window::Window()
 
 
 
+=======
+	reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
+	glyphRenderable = std::make_shared<SphereRenderable>(
+		((SolutionParticleReader*)reader.get())->GetPos(),
+		((SolutionParticleReader*)reader.get())->GetVal());
+	std::cout << "number of rendered glyphs: " << (((SolutionParticleReader*)reader.get())->GetVal()).size() << std::endl;
+	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
+>>>>>>> origin/lineLensMesh
 
 	/********GL widget******/
 #ifdef USE_OSVR
