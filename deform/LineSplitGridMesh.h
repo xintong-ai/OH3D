@@ -8,8 +8,9 @@
 #include <vector_functions.h>
 #include <algorithm>
 
-#include "glm\glm.hpp"
+#include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 template <class TYPE>
 class LineSplitGridMesh : public CUDA_PROJECTIVE_TET_MESH<TYPE>

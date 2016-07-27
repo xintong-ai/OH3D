@@ -8,6 +8,7 @@ class ShaderProgram;
 class QOpenGLContext;
 class ModelGrid;
 class StopWatchInterface;
+enum COLOR_MAP;
 
 class GlyphRenderable: public Renderable
 {
@@ -42,6 +43,8 @@ public:
 	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 
 	void EnableDisplace(bool v){ displaceEnabled = v; }
+
+	virtual void resetColorMap(COLOR_MAP cm) = 0;
 
 protected:
 	std::vector<float4> pos; 

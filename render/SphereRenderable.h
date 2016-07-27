@@ -4,10 +4,11 @@
 #include "GlyphRenderable.h"
 #include <QObject>
 #include <memory>
+
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
-
+enum COLOR_MAP;
 class SphereRenderable :public GlyphRenderable
 {
 public:
@@ -16,6 +17,8 @@ public:
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
 	SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val);
+
+	virtual void resetColorMap(COLOR_MAP cm) override;
 
 protected:
 	void initPickingDrawingObjects();

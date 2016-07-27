@@ -2,14 +2,8 @@
 #define MODEL_GRID_H
 #include <vector>
 
-<<<<<<< HEAD
-#include "D:\Library\OpenGL\glm\glm\glm.hpp"
-#include <D:/Library/OpenGL/glm/glm/gtx/transform.hpp>
-#include <D:/Library/OpenGL/glm/glm/gtc/type_ptr.hpp>
-=======
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
->>>>>>> origin/lineLensMesh
 
 template <class TYPE>
 class GridMesh;

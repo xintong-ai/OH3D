@@ -53,6 +53,26 @@ SphereRenderable::SphereRenderable(std::vector<float4> _spherePos, std::vector<f
 	}
 }
 
+void SphereRenderable::resetColorMap(COLOR_MAP cm)
+{
+	ColorGradient cg(cm);
+	float vMax = -FLT_MAX;
+	float vMin = FLT_MAX;
+	int n = val.size();
+	float v = 0;
+	for (int i = 0; i < n; i++) {
+		v = val[i];
+		if (v > vMax)
+			vMax = v;
+		if (v < vMin)
+			vMin = v;
+	}
+	for (int i = 0; i < val.size(); i++) {
+		float valScaled = (val[i] - vMin) / (vMax - vMin);
+		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
+	}
+}
+
 void SphereRenderable::init()
 {
 	GlyphRenderable::init();

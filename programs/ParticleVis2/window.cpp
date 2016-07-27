@@ -14,6 +14,7 @@
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
+#include <ColorGradient.h>
 
 #ifdef USE_LEAP
 #include <LeapListener.h>
@@ -43,18 +44,27 @@ Window::Window()
 	
 
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-<<<<<<< HEAD
+
 
 	float3 posMin, posMax;
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<Reader> reader;
-		reader = std::make_shared<ParticleReader>(dataPath.c_str());
+		//reader = std::make_shared<ParticleReader>(dataPath.c_str());
+		//glyphRenderable = std::make_shared<SphereRenderable>(
+		//	((ParticleReader*)reader.get())->GetPos(),
+		//	((ParticleReader*)reader.get())->GetVal());
+		//std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
+		//std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
+
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
 		glyphRenderable = std::make_shared<SphereRenderable>(
-			((ParticleReader*)reader.get())->GetPos(),
-			((ParticleReader*)reader.get())->GetVal());
-		std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
+			((SolutionParticleReader*)reader.get())->GetPos(),
+			((SolutionParticleReader*)reader.get())->GetVal());
+		std::cout << "number of rendered glyphs: " << (((SolutionParticleReader*)reader.get())->GetVal()).size() << std::endl;
 		std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
+
+
 		reader->GetPosRange(posMin, posMax);
 	}
 	else{
@@ -63,20 +73,22 @@ Window::Window()
 		if (pFile == NULL) { fputs("fibers file error", stderr); exit(1); }
 		int numParticles;
 		fread(&numParticles, sizeof(int), 1, pFile);
-		float *coords = new float[numParticles * 3];
-		fread(coords, sizeof(float), numParticles * 3, pFile);
+		float *coords = new float[numParticles * 4];
+		fread(coords, sizeof(float), numParticles * 4, pFile);
 		std::vector<float4> posVec;
-		std::vector<float> valec;
+		std::vector<float> valVec;
 		posVec.resize(numParticles);
-		valec.resize(numParticles);
+		valVec.resize(numParticles);
 		for (int i = 0; i < numParticles; i++){
-			posVec[i] = make_float4(coords[3 * i], coords[3 * i + 1], coords[3 * i + 2], 1.0);
-			valec[i] = 1;
+			posVec[i] = make_float4(coords[4 * i], coords[4 * i + 1], coords[4 * i + 2], 1.0);
+			valVec[i] = coords[4 * i + 3];
 		}
+		delete[] coords;
 
-		glyphRenderable = std::make_shared<SphereRenderable>(posVec, valec);
+		glyphRenderable = std::make_shared<SphereRenderable>(posVec, valVec);
 		std::cout << "number of rendered glyphs: " << numParticles << std::endl;
-	
+
+		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW);
 		posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 		posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 		float v = 0;
@@ -102,16 +114,6 @@ Window::Window()
 	}
 	
 
-
-
-=======
-	reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
-	glyphRenderable = std::make_shared<SphereRenderable>(
-		((SolutionParticleReader*)reader.get())->GetPos(),
-		((SolutionParticleReader*)reader.get())->GetVal());
-	std::cout << "number of rendered glyphs: " << (((SolutionParticleReader*)reader.get())->GetVal()).size() << std::endl;
-	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
->>>>>>> origin/lineLensMesh
 
 	/********GL widget******/
 #ifdef USE_OSVR
