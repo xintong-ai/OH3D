@@ -21,6 +21,7 @@ set(DEFORM_DIR		"${CMAKE_SOURCE_DIR}/deform")
 set(INTERACT_DIR	"${CMAKE_SOURCE_DIR}/interact")
 set(IO_DIR			"${CMAKE_SOURCE_DIR}/io")
 set(RENDER_DIR		"${CMAKE_SOURCE_DIR}/render")
+set(DATAMODEL_DIR		"${CMAKE_SOURCE_DIR}/dataModel")
 
 include_directories(
 	${DEFORM_DIR}
@@ -28,6 +29,7 @@ include_directories(
 	${IO_DIR}
 	${RENDER_DIR}
 	${GLM_INCLUDE_DIR}
+	${DATAMODEL_DIR}
 	)
 
 option(USE_DEFORM "Enable deformation" ON)
@@ -39,6 +41,8 @@ endif()
 add_subdirectory(interact)
 
 add_subdirectory(io)
+
+add_subdirectory(dataModel)
 
 add_subdirectory(render)
 

@@ -8,12 +8,18 @@
 
 #include "SphereRenderable.h"
 #include "SolutionParticleReader.h"
+#include "RawVolumeReader.h"
+#include "Volume.h"
+
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
 #include <ModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
+#include "VecReader.h"
+#include "VolumeRenderableCUDA.h"
+#include "ModelVolumeDeformer.h"
 
 #ifdef USE_LEAP
 #include <LeapListener.h>
@@ -41,16 +47,64 @@ Window::Window()
 
 	dataMgr = std::make_shared<DataMgr>();
 	
+
+
+	
+
+
+
 	std::shared_ptr<Reader> reader;
 
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
 	reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
 	glyphRenderable = std::make_shared<SphereRenderable>(
-		((SolutionParticleReader*)reader.get())->GetPos(),
-		((SolutionParticleReader*)reader.get())->GetVal());
-	std::cout << "number of rendered glyphs: " << (((SolutionParticleReader*)reader.get())->GetVal()).size() << std::endl;
+		((ParticleReader*)reader.get())->GetPos(),
+		((ParticleReader*)reader.get())->GetVal());
+	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
+
+	const std::string dataPath2 = dataMgr->GetConfig("VOLUME_DATA_PATH");
+
+	int3 dims;
+	float3 spacing;
+	if (string(dataPath2).find("MGHT2") != std::string::npos){
+		dims = make_int3(320, 320, 256);
+		spacing = make_float3(0.7, 0.7, 0.7);
+	}
+	else if (string(dataPath2).find("MGHT1") != std::string::npos){
+		dims = make_int3(256, 256, 176);
+		spacing = make_float3(1.0, 1.0, 1.0);
+	}
+	else if (string(dataPath2).find("nek128") != std::string::npos){
+		dims = make_int3(128, 128, 128);
+		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
+	}
+	inputVolume = std::make_shared<Volume>();
+
+	if (string(dataPath2).find(".vec") != std::string::npos){
+		std::shared_ptr<VecReader> reader2;
+		reader2 = std::make_shared<VecReader>(dataPath2.c_str());
+		reader2->OutputToVolumeByNormalizedVecMag(inputVolume);
+		reader2.reset();
+	}
+	else{
+		std::shared_ptr<RawVolumeReader> reader2;
+		reader2 = std::make_shared<RawVolumeReader>(dataPath2.c_str(), dims);
+		reader2->OutputToVolumeByNormalizedValue(inputVolume);
+		reader2.reset();
+	}
+	inputVolume->spacing = spacing;
+	inputVolume->initVolumeCuda(0);
+
+
+	VolumeRenderableCUDA * volumeRenderable = new VolumeRenderableCUDA(inputVolume);
+
+	if (string(dataPath2).find("nek128") != std::string::npos){
+		volumeRenderable->useColor = true;
+	}
+	
+	
 	/********GL widget******/
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
@@ -77,16 +131,27 @@ Window::Window()
 
 
 	float3 posMin, posMax;
-	reader->GetPosRange(posMin, posMax);
+	inputVolume->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 20, true);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
-	//openGL->AddRenderable("bbox", bbox);
+	glyphRenderable->SetVisibility(false);
+
+
+	modelVolumeDeformer = std::make_shared<ModelVolumeDeformer>();
+	modelVolumeDeformer->SetModelGrid(modelGrid.get());
+	modelVolumeDeformer->Init(inputVolume.get());
+	volumeRenderable->SetModelVolumeDeformer(modelVolumeDeformer);
+	volumeRenderable->lenses = lensRenderable->GetLensesAddr();
+	volumeRenderable->SetModelGrid(modelGrid.get());
+
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
-	openGL->AddRenderable("grid", gridRenderable.get());
+	//openGL->AddRenderable("grid", gridRenderable.get());
+	openGL->AddRenderable("1volume", volumeRenderable); //make sure the volume is rendered first since it does not use depth test
+
 	openGL->AddRenderable("model", modelGridRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");

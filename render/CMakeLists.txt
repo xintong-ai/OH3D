@@ -7,6 +7,11 @@ find_package(Qt5Widgets REQUIRED)
 #	find_package(osvr)
 #endif
 
+find_package(CUDA REQUIRED)
+
+#list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-O2;-DVERBOSE")
+list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
+#SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
@@ -41,6 +46,8 @@ set( Srcs
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
+	VolumeRenderableCUDA.cpp
+	VolumeRenderableCUDAKernel.cu
 	)
 set( Hdrs  
 	glwidget.h 
@@ -59,6 +66,8 @@ set( Hdrs
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
+	VolumeRenderableCUDA.h
+	VolumeRenderableCUDAKernel.h
 	)
 
 if(USE_OSVR)
@@ -74,13 +83,14 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
+cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
 #qt5_use_modules(render OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
 	deform
 	interact
+	dataModel
 	)
 
 if(USE_SUPERQUADRIC)

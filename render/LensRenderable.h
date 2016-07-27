@@ -16,6 +16,9 @@ class LensRenderable :public Renderable
 
 	void ChangeLensCenterbyLeap(float3 p);
 public:
+
+	std::vector<Lens*>* GetLensesAddr() { return &lenses; }//temperary solution. should put lenses outside of LensRenderable
+
 	float3 snapPos;
 	void SnapLastLens();
 
@@ -29,7 +32,7 @@ public:
 	float GetBackLensFocusRatio();
 	float GetBackLensObjectRadius();
 	void AddCircleLens();
-	void AddLineLens();
+	//void AddLineLens();
 	void AddLineBLens();
 	void AddCurveBLens();
 

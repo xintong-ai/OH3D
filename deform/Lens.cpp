@@ -361,22 +361,26 @@ bool LineBLens::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int w
 		|| (std::abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
 }
 
-/*
-bool LineBLens::PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int winW, int winH)
+
+bool LineBLens::PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
 {
-	return false;
-	float disThr = max(eps_pixel / 4, 10);
-	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
-
-	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
-	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
-
-	return (std::abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr)
-		|| (std::abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr);
+	return PointOnInnerBoundary(_x, _y, mv, pj, winW, winH);
 }
-*/
+
+bool LineBLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	return PointOnOuterBoundary(_x, _y, mv, pj, winW, winH);
+}
+
+void LineBLens::ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	ChangeLensSize(_x, _y, _prex, _prey, mv, pj, winW, winH);
+}
+
+void LineBLens::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	ChangefocusRatio(_x, _y, _prex, _prey, mv, pj, winW, winH);
+}
 
 void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
 {

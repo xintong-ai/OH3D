@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.5 FATAL_ERROR)
 
-PROJECT (ParticleVis2)
+PROJECT (VolumeVis)
 
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)

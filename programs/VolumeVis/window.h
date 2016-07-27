@@ -22,6 +22,8 @@ class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
 class ModelGrid;
+class Volume;
+class ModelVolumeDeformer;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -68,7 +70,8 @@ private:
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveBLensBtn;
 	std::shared_ptr<ModelGrid> modelGrid;
-
+	std::shared_ptr<Volume> inputVolume;
+	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
 	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;

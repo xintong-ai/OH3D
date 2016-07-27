@@ -10,3 +10,4 @@ a=D:/onedrive/data/plume/15plume3d421-126x126x512.vec
 c=D:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
 d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
+DATA_PATH222=D:/Data/FPM/smoothinglength_0.44/run11/119.vtu

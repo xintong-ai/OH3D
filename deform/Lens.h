@@ -12,7 +12,6 @@ using namespace std;
 
 enum LENS_TYPE{
 	TYPE_CIRCLE,
-	TYPE_LINE,
 	TYPE_LINEB, 
 	TYPE_CURVEB,
 };
@@ -47,6 +46,8 @@ struct Lens
 	{
 		c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;//x = _x; y = _y; 
 	}
+
+	bool justChanged = false;
 
 	const int eps_pixel = 32;
 	LENS_TYPE type;
@@ -201,108 +202,6 @@ struct CircleLens :public Lens
 };
 
 
-struct LineLens :public Lens
-{
-	float lSemiMajorAxis, lSemiMinorAxis;
-	float2 direction; //suppose normalized
-	float ratio; //the ratio of lSemiMajorAxis and lSemiMinorAxis
-
-	LineLens(int _r, float3 _c) : Lens(_c){
-		lSemiMajorAxis = _r;
-		ratio = 3.0f;
-		lSemiMinorAxis = lSemiMajorAxis / ratio;
-
-		direction = make_float2(1.0, 0.0);
-		type = LENS_TYPE::TYPE_LINE;
-		isConstructing = false;
-	};
-
-	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
-		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
-		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
-
-		//dot product of (_x-x, _y-y) and direction
-		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
-		float2 toPoint = make_float2(_x - center.x, _y - center.y);
-		float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
-
-		if (std::abs(disMajor) < lSemiMajorAxis) {
-			float2 minorDirection = make_float2(-direction.y, direction.x);
-			//dot product of (_x-x, _y-y) and minorDirection
-			float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
-			
-			float disMajorRatio = disMajor / lSemiMajorAxis;
-			float disSigmoid;
-			if (disMajorRatio < 0){
-				disSigmoid = 1 / (1 + exp(-40 * (disMajorRatio + 0.8))) ;
-			}
-			else {
-				disSigmoid = 1 / (1 + exp(40 * (disMajorRatio - 0.8))) ;
-			}
-
-			if (std::abs(disMinor) < disSigmoid*lSemiMinorAxis)
-				return true;
-		}
-		return false;
-	}
-
-	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
-		std::vector<float2> ret;
-		return ret;
-	}
-
-	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
-		//sigmoid function: y=2*(1/(1+e^(-20*(x+1)))-0.5), x in [-1,0]
-		//sigmoid function: y=2*(1/(1+e^(20*(x-1)))-0.5), x in [0,1]
-		float sigmoidCutOff = 0.4f; // assuming the sigmoid function value is constant when input is larger than sigmoidCutOff
-
-		float2 minorDirection = make_float2(-direction.y, direction.x);
-
-		std::vector<float2> ret;
-
-		const int num_segments = 20;
-		for (int ii = 0; ii < num_segments; ii++)
-		{
-			float tt = -1.0f + sigmoidCutOff*ii / num_segments;
-
-			ret.push_back(GetCenterScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
-				+ (1 / (1 + exp(-40 * (tt + 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
-		}
-
-		for (int ii = 0; ii < num_segments; ii++)
-		{
-			float tt = 1.0f - sigmoidCutOff + sigmoidCutOff*ii / num_segments;
-
-			ret.push_back(GetCenterScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
-				+ (1 / (1 + exp(40 * (tt - 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
-		}
-
-		
-		for (int ii = 0; ii < num_segments; ii++)
-		{
-			float tt = 1.0f - sigmoidCutOff*ii / num_segments;
-
-			ret.push_back(GetCenterScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
-				- (1 / (1 + exp(40 * (tt - 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
-		}
-
-		for (int ii = 0; ii < num_segments; ii++)
-		{
-			float tt = -1.0f + sigmoidCutOff - sigmoidCutOff*ii / num_segments;
-
-			ret.push_back(GetCenterScreenPos(mv, pj, winW, winH) + tt*lSemiMajorAxis*direction
-				- (1 / (1 + exp(-40 * (tt + 0.8)))) *lSemiMinorAxis *minorDirection);//output vertex 
-		}
-		
-		return ret;
-	}
-
-	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
-		std::vector<float2> res(0);
-		return res;
-	}
-};
-
 struct LineBLens :public Lens
 {
 	float lSemiMajorAxis, lSemiMinorAxis;
@@ -340,6 +239,12 @@ struct LineBLens :public Lens
 
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+
+	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
+
 	//bool PointOnCriticalPos(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
