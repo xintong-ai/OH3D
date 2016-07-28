@@ -28,7 +28,6 @@ class ModelGrid
 	void SetElasticity(float* v);
 	void SetElasticitySimple();
 	void SetElasticityByTetDensity(int n); //suppose the tet id for particles have been well set
-	void SetElasticityByTetDensityOfVolume(Volume* v);
 	void SetElasticityByTetDensityOfVolumeCUDA(Volume* v);
 
 	//currently stored
@@ -48,7 +47,6 @@ public:
 	void UpdatePointCoords(float4* v, int n, float4* vOri = 0);
 	void InitGridDensity(float4* v, int n);
 	void UpdatePointTetId(float4* v, int n);
-	void UpdatePointTetId2(float4* v, int n);
 
 	void ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, float4* vOri, int n, Volume* v=0);
 

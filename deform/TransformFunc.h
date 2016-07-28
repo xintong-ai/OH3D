@@ -15,6 +15,7 @@
 
 
 template <typename T>
+__device__ __host__
 inline bool invertMatrix(T m[16], T invOut[16])
 {
 	double inv[16], det;

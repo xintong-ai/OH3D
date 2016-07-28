@@ -418,8 +418,9 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 
 	for (int j = 0; j < 3; j++) {
+		//V[i * 3 + j] += (20 * (&(lensForce.x))[j] * t);//for FPM
 		V[i * 3 + j] += (30 * (&(lensForce.x))[j] * t);//for FPM
-		//V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t); //for MGHT2
+		//V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t); //for nek
 		//V[i * 3 + j] += (1300 * (&(lensForce.x))[j] * t); //for MGHT1
 
 	}
@@ -644,7 +645,7 @@ public:
 	int cell_number;
 	int* cellVerts = 0;
 	int* cellTets = 0;
-	float* tetVolume = 0;
+	float* tetVolumeOriginal = 0;
 
   //template <class TYPE>
 	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH<TYPE>(maxNum)
@@ -715,7 +716,7 @@ public:
 		
 		if (cellVerts)		delete[] cellVerts;
 		if (cellTets)		delete[] cellTets;
-		if (tetVolume)		delete[] tetVolume;
+		if (tetVolumeOriginal)		delete[] tetVolumeOriginal;
 
 		//GPU Data
 		if (dev_X)			cudaFree(dev_X);

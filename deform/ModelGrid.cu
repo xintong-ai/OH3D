@@ -135,65 +135,9 @@ float3 regularMeshVertCoord(int iv, int3 nStep, float3 gridMin, float step){
 	return make_float3(gridMin.x + x * step, gridMin.y + y * step, gridMin.z + z * step);
 }
 
-//used for the mesh built based on data domain
-void ModelGrid::UpdatePointTetId(float4* v, int n)
-{
-	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
-	vIdx.resize(n);
-	vBaryCoord.resize(n);
-
-	float3 gridMin = GetGridMin();
-	float3 gridMax = GetGridMax();
-	int3 nStep = GetNumSteps();
-	float step = GetStep();
-	int* tet = GetTet();
-	float* X = GetX();
-
-	for (int i = 0; i < n; i++){
-		glm::vec4 g_vcOri = glm::vec4(v[i].x, v[i].y, v[i].z, 1.0);
-		glm::vec4 g_vcTransformed = invMeshTransMat*g_vcOri;
-
-		float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
-		float3 tmp = (vc - gridMin) / step;
-		int3 idx3 = make_int3(floor(tmp.x), floor(tmp.y), floor(tmp.z));
-
-
-		if (idx3.x < 0 || idx3.y < 0 || idx3.z < 0 || idx3.x >= nStep.x - 1 || idx3.y >= nStep.y - 1 || idx3.z >= nStep.z - 1){
-			vIdx[i] = -1;
-		}
-		else{
-			int cubeIdx = idx3.x * (nStep.y - 1) * (nStep.z - 1)
-				+ idx3.y * (nStep.z - 1) + idx3.z;
-
-			int j = 0;
-			for (j = 0; j < 5; j++){
-				float3 vv[4];
-				int tetId = cubeIdx * 5 + j;
-				for (int k = 0; k < 4; k++){
-					int iv = tet[tetId * 4 + k];
-
-					//vv[k] = regularMeshVertCoord(iv, nStep, gridMin, step);
-					//vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
-					
-					glm::vec4 ttt = invMeshTransMat*glm::vec4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0);
-					vv[k] = make_float3(ttt.x, ttt.y, ttt.z);
-				}
-				float4 bary = GetBarycentricCoordinate(vv[0], vv[1], vv[2], vv[3], vc);
-				if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
-					vIdx[i] = cubeIdx * 5 + j;
-					vBaryCoord[i] = bary;
-					break;
-				}
-			}
-			if (j == 6){ //need to be handle later
-				vIdx[i] = -1;
-			}
-		}
-	}
-}
 
 //used for the mesh built based on lens region
-void ModelGrid::UpdatePointTetId2(float4* v, int n)
+void ModelGrid::UpdatePointTetId(float4* v, int n)
 {
 	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
 	vIdx.resize(n);
@@ -342,7 +286,7 @@ void ModelGrid::ReinitiateMesh(float3 lensCenter, float lSemiMajorAxis, float lS
 	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
 
 	if (n > 0 && vOri!=0){
-		UpdatePointTetId2(vOri, n);
+		UpdatePointTetId(vOri, n);
 
 		if (useDensityBasedElasticity)
 			SetElasticityByTetDensity(n);
@@ -376,79 +320,6 @@ void ModelGrid::SetElasticitySimple()
 	for (int i = 0; i < density.size(); i++) {
 		density[i] = 500;
 	}
-	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
-}
-
-
-void ModelGrid::SetElasticityByTetDensityOfVolume(Volume* v)
-{
-	int tet_number = GetTetNumber();
-	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
-	int3 nStep = GetNumSteps();
-	float step = GetStep();
-	int* tet = GetTet();
-	float* X = GetX();
-
-	std::vector<float> density;
-	density.resize(tet_number, 0);
-
-	int3 dataSizes = v->size;
-	float3 spacing = v->spacing;
-	for (int k = 0; k < dataSizes.z; k++)
-	{
-		for (int j = 0; j < dataSizes.y; j++)
-		{
-			for (int i = 0; i < dataSizes.x; i++)
-			{
-				float voxelValue = v->values[k*dataSizes.y*dataSizes.x + j*dataSizes.x + i];
-				if (voxelValue < 0.1)
-					continue;
-
-				glm::vec4 g_vcOri = glm::vec4(spacing.x*i, spacing.y*j, spacing.z*k, 1.0);
-				glm::vec4 g_vcTransformed = invMeshTransMat*g_vcOri;
-
-				float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
-				float3 tmp = vc / step;
-				int3 idx3 = make_int3(floor(tmp.x), floor(tmp.y), floor(tmp.z));
-
-				if (idx3.x < 0 || idx3.y < 0 || idx3.z < 0 || idx3.x >= nStep.x - 1 || idx3.y >= nStep.y - 1 || idx3.z >= nStep.z - 1){
-					;
-				}
-				else{
-					int cubeIdx = idx3.x * (nStep.y - 1) * (nStep.z - 1) + idx3.y * (nStep.z - 1) + idx3.z;
-
-					int j = 0;
-					for (j = 0; j < 5; j++){
-						float3 vv[4];
-						int tetId = cubeIdx * 5 + j;
-						for (int k = 0; k < 4; k++){
-							int iv = tet[tetId * 4 + k];
-
-							glm::vec4 ttt = invMeshTransMat*glm::vec4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0);
-							vv[k] = make_float3(ttt.x, ttt.y, ttt.z);
-						}
-						float4 bary = GetBarycentricCoordinate(vv[0], vv[1], vv[2], vv[3], vc);
-						if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
-							//vIdx[i] = cubeIdx * 5 + j;
-							density[cubeIdx * 5 + j] += voxelValue;
-							break;
-						}
-					}
-					if (j == 6){ //need to be handle later
-						;
-					}
-				}
-			}
-		}
-	}
-
-	float* tetVolume = lsgridMesh->tetVolume;
-
-	float spacingCoeff = spacing.x*spacing.y*spacing.z;
-	for (int i = 0; i < tet_number; i++) {
-		density[i] = 500 + 100000 * pow(density[i] / (tetVolume[i] / spacingCoeff), 2);
-	}
-
 	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
 }
 
@@ -495,18 +366,12 @@ d_computeDensityForVolume(cudaExtent volumeSize, float3 spacing, float step, int
 			int tetId = cubeIdx * 5 + j;
 			for (int k = 0; k < 4; k++){
 				int iv = tet[tetId * 4 + k];
-				
-					//glm::vec4 ttt = invMeshTransMat*glm::vec4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0);
-					//vv[k] = make_float3(ttt.x, ttt.y, ttt.z);
 				vv[k] = make_float3(mat4mulvec4(invMeshTransMat, make_float4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2],1.0)));
 			}
 			float4 bary = GetBarycentricCoordinate_device(vv[0], vv[1], vv[2], vv[3], vc);
 			if (within_device(bary.x) && within_device(bary.y) && within_device(bary.z) && within_device(bary.w)) {
-				//vIdx[i] = cubeIdx * 5 + j;
 
 				atomicAdd(density + (cubeIdx * 5 + j), voxelValue);
-
-//				density[cubeIdx * 5 + j] += voxelValue;
 				return;
 			}
 		}
@@ -552,14 +417,12 @@ void ModelGrid::SetElasticityByTetDensityOfVolumeCUDA(Volume* v)
 	float* density = lsgridMesh->EL;
 	cudaMemcpy(density, dev_density, sizeof(float)*tet_number, cudaMemcpyDeviceToHost);
 	
-	float* tetVolume = lsgridMesh->tetVolume;
+	float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
 	float spacingCoeff = spacing.x*spacing.y*spacing.z;
 	for (int i = 0; i < tet_number; i++) {
-		density[i] = 500 + 100000 * pow(density[i] / (tetVolume[i] / spacingCoeff), 2);
+		density[i] = 500 + 100000 * pow(density[i] / (tetVolumeOriginal[i] / spacingCoeff), 2);
 	}
-
-	//std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
-
+	//std::vector<float> forDebug(density, density + tet_number);
 }
 
 void ModelGrid::SetElasticityByTetDensity(int n)
@@ -573,16 +436,18 @@ void ModelGrid::SetElasticityByTetDensity(int n)
 			cnts[vi]++;
 		}
 	}
-
+	float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
 	std::vector<float> density;
 	density.resize(cnts.size());
 	//const float base = 400.0f / cnts.size();
 	for (int i = 0; i < cnts.size(); i++) {
 		//for (int j = 0; j < 5; j++) {
-		density[i] = 500 +1000 * pow((float)cnts[i], 2);
+		density[i] = 500 + 800 * pow((float)cnts[i] / tetVolumeOriginal[i], 2);
 		//}
 	}
 	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
+	
+	std::vector<float> forDebug(tetVolumeOriginal, tetVolumeOriginal + tet_number);
 }
 
 
