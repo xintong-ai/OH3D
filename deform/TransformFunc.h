@@ -2,6 +2,7 @@
 #define TRANSFORM_FUNC_H
 #include <vector_types.h>
 #include <vector_functions.h>
+#include <helper_math.h>
 //#include "VectorMatrix.h"
 //#include "cutil_math.h"
 
@@ -14,6 +15,7 @@
 
 
 template <typename T>
+__device__ __host__
 inline bool invertMatrix(T m[16], T invOut[16])
 {
 	double inv[16], det;
@@ -489,5 +491,62 @@ inline __device__ __host__ float2 Object2Screen(float4 p, T* mv, T* pj, int widt
 {
 	return Clip2ScreenGlobal(GetXY(Object2Clip(p, mv, pj)), width, height);
 }
-#endif //TRANSFORM_FUNC_H
 
+__device__ inline bool within_device(float v)
+{
+	return v >= 0 && v <= 1;
+}
+
+
+__device__
+inline float Determinant4x4_device(const float4& v0,
+const float4& v1,
+const float4& v2,
+const float4& v3)
+{
+	float det = v0.w*v1.z*v2.y*v3.x - v0.z*v1.w*v2.y*v3.x -
+		v0.w*v1.y*v2.z*v3.x + v0.y*v1.w*v2.z*v3.x +
+
+		v0.z*v1.y*v2.w*v3.x - v0.y*v1.z*v2.w*v3.x -
+		v0.w*v1.z*v2.x*v3.y + v0.z*v1.w*v2.x*v3.y +
+
+		v0.w*v1.x*v2.z*v3.y - v0.x*v1.w*v2.z*v3.y -
+		v0.z*v1.x*v2.w*v3.y + v0.x*v1.z*v2.w*v3.y +
+
+		v0.w*v1.y*v2.x*v3.z - v0.y*v1.w*v2.x*v3.z -
+		v0.w*v1.x*v2.y*v3.z + v0.x*v1.w*v2.y*v3.z +
+
+		v0.y*v1.x*v2.w*v3.z - v0.x*v1.y*v2.w*v3.z -
+		v0.z*v1.y*v2.x*v3.w + v0.y*v1.z*v2.x*v3.w +
+
+		v0.z*v1.x*v2.y*v3.w - v0.x*v1.z*v2.y*v3.w -
+		v0.y*v1.x*v2.z*v3.w + v0.x*v1.y*v2.z*v3.w;
+	return det;
+}
+
+__device__
+inline float4 GetBarycentricCoordinate_device(const float3& v0_,
+const float3& v1_,
+const float3& v2_,
+const float3& v3_,
+const float3& p0_)
+{
+	float4 v0 = make_float4(v0_, 1);
+	float4 v1 = make_float4(v1_, 1);
+	float4 v2 = make_float4(v2_, 1);
+	float4 v3 = make_float4(v3_, 1);
+	float4 p0 = make_float4(p0_, 1);
+	float4 barycentricCoord = float4();
+	const float det0 = Determinant4x4_device(v0, v1, v2, v3);
+	const float det1 = Determinant4x4_device(p0, v1, v2, v3);
+	const float det2 = Determinant4x4_device(v0, p0, v2, v3);
+	const float det3 = Determinant4x4_device(v0, v1, p0, v3);
+	const float det4 = Determinant4x4_device(v0, v1, v2, p0);
+	barycentricCoord.x = (det1 / det0);
+	barycentricCoord.y = (det2 / det0);
+	barycentricCoord.z = (det3 / det0);
+	barycentricCoord.w = (det4 / det0);
+	return barycentricCoord;
+}
+
+#endif //TRANSFORM_FUNC_H

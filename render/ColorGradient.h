@@ -3,6 +3,12 @@
 #define COLOR_GRADIENT_H
 #include <vector>
 #include <algorithm>
+
+enum COLOR_MAP{
+	RAINBOW,
+	BLUE_RED
+};
+
 class ColorGradient
 {
 private:
@@ -19,6 +25,17 @@ public:
 	//-- Default constructor:
 	ColorGradient()  { createDefaultHeatMapGradient(); }
 
+	ColorGradient(COLOR_MAP cm){
+		if (cm == RAINBOW){
+			createDefaultRainbowMapGradient();
+		}
+		else if (cm == BLUE_RED){ 
+			createDefaultHeatMapGradient(); 
+		}
+		else{
+			exit(0);
+		}
+	}
 	//-- Inserts a new color point into its correct position:
 	void addColorPoint(float red, float green, float blue, float value)
 	{
@@ -33,6 +50,17 @@ public:
 
 	//-- Inserts a new color point into its correct position:
 	void clearGradient() { color.clear(); }
+
+	//-- Places a 5 color heapmap gradient into the "color" vector:
+	void createDefaultRainbowMapGradient()
+	{
+		color.clear();
+		color.push_back(ColorPoint(0, 0, 1, 0.0f));      // Blue.
+		color.push_back(ColorPoint(0, 1, 1, 0.25f));     // Cyan.
+		color.push_back(ColorPoint(0, 1, 0, 0.5f));      // Green.
+		color.push_back(ColorPoint(1, 1, 0, 0.75f));     // Yellow.
+		color.push_back(ColorPoint(1, 0, 0, 1.0f));      // Red.
+	}
 
 	//-- Places a 5 color heapmap gradient into the "color" vector:
 	void createDefaultHeatMapGradient()

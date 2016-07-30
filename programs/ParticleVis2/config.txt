@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-DATA_PATH=D:/Onedrive/Data/particle/smoothinglength_0.44/run15/099.vtu
-=======
 DATA_PATH=D:/Data/FPM/smoothinglength_0.44/run11/119.vtu
->>>>>>> refs/remotes/origin/lineLensMesh
 DATA_PATH_TENSOR=F:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 FEATURE_PATH=F:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
 ventricles=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
@@ -15,3 +11,4 @@ c=D:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
 d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
 f=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
+gDATA_PATH=D:/Onedrive/Data/particle/smoothinglength_0.44/run15/099.vtu
