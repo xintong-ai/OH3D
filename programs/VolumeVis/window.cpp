@@ -3,7 +3,6 @@
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
-#include "Displace.h"
 #include <iostream>
 
 #include "SphereRenderable.h"

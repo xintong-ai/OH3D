@@ -9,8 +9,7 @@ message("interact is already defined")
 
 else()
 
-include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE} 
-	${CUDA_SDK_ROOT_DIR}/common/inc )
+include_directories(${SHARED_LIB_INCLUDE_DIR})
 
 set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h)
 set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp)
