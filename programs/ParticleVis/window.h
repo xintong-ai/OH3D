@@ -2,6 +2,7 @@
 #define WINDOW_H
 
 #include <QWidget>
+#include <QVector3D>
 #include <memory>
 #include "CMakeConfig.h"
 

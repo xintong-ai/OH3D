@@ -10,10 +10,6 @@ find_package(Qt5Widgets REQUIRED)
 	# find_package(osvr REQUIRED)
 # endif()
 
-# option(USE_LEAP "Enable features that require LEAP MOTION" OFF)
-# if(USE_LEAP)
-	# find_package(Leap REQUIRED)
-# endif()
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
@@ -25,12 +21,20 @@ include_directories(
 	${CMAKE_BINARY_DIR}
 	required)
 
+	
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
+	
+	
 set( Srcs 
 	main.cpp 
 	window.cpp 
+	# LeapListener.cpp
 	)
 set( Hdrs  
 	window.h 
+	# LeapInteraction.h
+	# LeapListener.h
     )
 
 configure_file(config.txt config.txt COPYONLY)
@@ -48,6 +52,7 @@ target_link_libraries(${PROJECT_NAME}
 	interact
 	render
 	dataModel
+	${Leap_IMPORT_LIB_DEBUG}
 	)
 
 if(USE_OSVR)

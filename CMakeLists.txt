@@ -10,6 +10,11 @@ if(USE_SUPERQUADRIC)
 	find_package(Teem REQUIRED)
 endif()
 
+if(USE_LEAP)
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
+endif()
+
 option(USE_OSVR "Enable features that require OSVR" OFF)
 if(USE_OSVR)
 	find_package(osvr REQUIRED)
@@ -37,12 +42,11 @@ if(USE_DEFORM)
 	add_subdirectory(deform)
 endif()
 
+add_subdirectory(dataModel)
 
 add_subdirectory(interact)
 
 add_subdirectory(io)
-
-add_subdirectory(dataModel)
 
 add_subdirectory(render)
 

@@ -17,7 +17,7 @@
 #include <ColorGradient.h>
 
 #ifdef USE_LEAP
-#include <LeapListener.h>
+#include <leap/LeapListener.h>
 #include <Leap.h>
 #endif
 
