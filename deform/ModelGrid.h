@@ -24,6 +24,8 @@ class ModelGrid
 	std::vector<float4> vBaryCoord;
 	std::vector<int> vIdx;
 	const float	time_step = 1 / 30.0;
+	float deformForce = 32;
+
 
 	void SetElasticity(float* v);
 	void SetElasticitySimple();
@@ -43,6 +45,8 @@ public:
 
 	ModelGrid(float dmin[3], float dmax[3], int n);
 	ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridMesh);
+	void setDeformForce(float f){ deformForce = f; }
+	float getDeformForce(){ return deformForce; }
 
 	void UpdatePointCoords(float4* v, int n, float4* vOri = 0);
 	void InitGridDensity(float4* v, int n);

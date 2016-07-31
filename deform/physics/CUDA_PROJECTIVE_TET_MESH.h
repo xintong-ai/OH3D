@@ -353,7 +353,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
 	, const float cen_x, const float cen_y, const float cen_z
 	, const float dir_x, const float dir_y, const float dir_z
-	, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep, int cutY)
+	, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep, int cutY, float deformForce)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -418,11 +418,7 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 
 	for (int j = 0; j < 3; j++) {
-		//V[i * 3 + j] += (20 * (&(lensForce.x))[j] * t);//for FPM
-		//V[i * 3 + j] += (30 * (&(lensForce.x))[j] * t);//for FPM
-		//V[i * 3 + j] += (300 * (&(lensForce.x))[j] * t); //for nek
-		V[i * 3 + j] += (1300 * (&(lensForce.x))[j] * t); //for MGHT1
-
+		V[i * 3 + j] += (deformForce * (&(lensForce.x))[j] * t);//for FPM
 	}
 
 	//V[i*3+1]+=GRAVITY*t;
@@ -994,7 +990,7 @@ public:
 
 
 	//for line lens
-	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis)
+	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -1013,7 +1009,7 @@ public:
 		// Step 1: Basic update
 		Update_Kernel_LineLens << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
 			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice, cutY);
+			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice, cutY, deformForce);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1 / t, number);

@@ -16,7 +16,6 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc 
-	# ${Leap_INCLUDE_DIR}
 	${PROJECT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
 	required)
@@ -29,12 +28,12 @@ include_directories(
 set( Srcs 
 	main.cpp 
 	window.cpp 
-	# LeapListener.cpp
+	LeapListener.cpp
 	)
 set( Hdrs  
 	window.h 
-	# LeapInteraction.h
-	# LeapListener.h
+	LeapInteraction.h
+	LeapListener.h
     )
 
 configure_file(config.txt config.txt COPYONLY)
@@ -54,6 +53,8 @@ target_link_libraries(${PROJECT_NAME}
 	dataModel
 	${Leap_IMPORT_LIB_DEBUG}
 	)
+
+target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)

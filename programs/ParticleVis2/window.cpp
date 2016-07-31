@@ -21,6 +21,11 @@
 #include <Leap.h>
 #endif
 
+#ifdef USE_NEW_LEAP
+#include <leap/LeapListener.h>
+#include <Leap.h>
+#endif
+
 #ifdef USE_OSVR
 #include "VRWidget.h"
 #include "VRGlyphRenderable.h"
@@ -172,7 +177,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
 #endif
-
+#ifdef USE_NEW_LEAP
+	listener = new LeapListener();
+	controller = new Leap::Controller();
+	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
+	controller->addListener(*listener);
+#endif
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
@@ -203,7 +213,30 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(usingGlyphPickingCheck);
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(udbeCheck);
+	
+	
+	QLabel *deformForceLabelLit = new QLabel("Deform Force");
+	controlLayout->addWidget(deformForceLabelLit);
+	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
+	deformForceSlider->setRange(0, 44);
+	deformForceSlider->setValue(log2(modelGrid->getDeformForce())*4.0);
+	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
+	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
+	QHBoxLayout *deformForceLayout = new QHBoxLayout;
+	deformForceLayout->addWidget(deformForceSlider);
+	deformForceLayout->addWidget(deformForceLabel);
+	controlLayout->addLayout(deformForceLayout);
+	
+	
+	
+	
 	controlLayout->addStretch();
+
+
+
+
+
+
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
@@ -217,6 +250,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 #ifdef USE_LEAP
+	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
+		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
+#endif
+#ifdef USE_NEW_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
@@ -298,6 +335,22 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 }
 #endif
 
+#ifdef USE_NEW_LEAP
+void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
+{
+	if (1 == numHands){
+		lensRenderable->SlotOneHandChanged(make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+	}
+	else if (2 == numHands){
+		//
+		lensRenderable->SlotTwoHandChanged(
+			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
+			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+
+	}
+}
+#endif
+
 void Window::SlotSaveState()
 {
 	matrixMgr->SaveState("current.state");
@@ -324,3 +377,9 @@ void Window::SlotDeformModeChanged(bool clicked)
 	}
 }
 
+void Window::deformForceSliderValueChanged(int v)
+{
+	float newForce = pow(2, v / 4.0);
+	deformForceLabel->setText(QString::number(newForce));
+	modelGrid->setDeformForce(newForce);
+}
