@@ -3,7 +3,7 @@
 
 #include "Renderable.h"
 #include <memory>
-class Displace;
+class DeformInterface;
 class ShaderProgram;
 class QOpenGLContext;
 class ModelGrid;
@@ -49,7 +49,7 @@ public:
 protected:
 	std::vector<float4> pos; 
 	std::vector<float4> posOrig;
-	std::shared_ptr<Displace> displace;
+	std::shared_ptr<DeformInterface> deformInterface;
 	ModelGrid* modelGrid;
 	std::vector<float> glyphSizeScale;
 	std::vector<float> glyphBright;

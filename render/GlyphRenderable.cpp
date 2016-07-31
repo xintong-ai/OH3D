@@ -1,5 +1,6 @@
 #include "GlyphRenderable.h"
-#include <Displace.h>
+//#include <Displace.h>
+#include <DeformInterface.h>
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <helper_math.h>
@@ -50,7 +51,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 	{
 	case DEFORM_MODEL::SCREEN_SPACE:
 	{
-		displace->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
+		deformInterface->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
 			((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
 		break;
 	}
@@ -169,8 +170,8 @@ GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
 	posOrig = pos;
 	feature.resize(pos.size());
 
-	displace = std::make_shared<Displace>();
-	displace->LoadOrig(&pos[0], pos.size());
+	deformInterface = std::make_shared<DeformInterface>();
+	deformInterface->LoadOrig(&pos[0], pos.size());
 	glyphSizeScale.assign(pos.size(), 1.0f);
 	glyphBright.assign(pos.size(), 1.0f);
 
@@ -181,7 +182,7 @@ void GlyphRenderable::SetFeature(std::vector<char> & _feature, std::vector<float
 { 
 	for (int i = 0; i < _feature.size(); i++) 
 		feature[i] = _feature[i];
-	displace->LoadFeature(&feature[0], feature.size());
+	deformInterface->LoadFeature(&feature[0], feature.size());
 	featureCenter = _featureCenter;
 };
 
@@ -203,7 +204,7 @@ void GlyphRenderable::RecomputeTarget()
 	switch (actor->GetDeformModel())
 	{
 	case DEFORM_MODEL::SCREEN_SPACE:
-		displace->RecomputeTarget();
+		deformInterface->RecomputeTarget();
 		break;
 	}
 }
@@ -211,7 +212,7 @@ void GlyphRenderable::RecomputeTarget()
 void GlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 {
 	int2 winSize = actor->GetWindowSize();
-	//displace->DisplacePoints(pts,
+	//deformInterface->DisplacePoints(pts,
 	//	((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
 }
 
@@ -254,7 +255,7 @@ void GlyphRenderable::resize(int width, int height)
 
 float3 GlyphRenderable::findClosetGlyph(float3 aim)
 {
-	return displace->findClosetGlyph(aim, snappedGlyphId);
+	return deformInterface->findClosetGlyph(aim, snappedGlyphId);
 
 }
 
