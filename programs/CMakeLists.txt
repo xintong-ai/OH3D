@@ -7,9 +7,12 @@ if(USE_DEFORM)
 	add_subdirectory(ParticleVis)
 	add_subdirectory(ParticleVis2)
 	add_subdirectory(UniverseVis)
-	add_subdirectory(VolumeVis)
+	
 	if(USE_SUPERQUADRIC)
 		add_subdirectory(TensorVis)
+	endif()
+	if(USE_VOLUME_RENDERING)
+		add_subdirectory(VolumeVis)
 	endif()
 endif()
 

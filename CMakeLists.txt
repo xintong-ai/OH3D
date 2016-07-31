@@ -5,6 +5,7 @@ PROJECT (DeformVis)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 option(USE_SUPERQUADRIC "Enable features that require TEEM" OFF)
+option(USE_VOLUME_RENDERING "Whether use Volume Rendering (requires CUDA)" ON)
 
 find_package(GLM REQUIRED)
 

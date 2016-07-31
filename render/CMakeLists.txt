@@ -7,17 +7,23 @@ find_package(Qt5Widgets REQUIRED)
 #	find_package(osvr)
 #endif
 
-find_package(CUDA REQUIRED)
 
-#list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-O2;-DVERBOSE")
-list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
-#SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
+if(USE_VOLUME_RENDERING)
+	find_package(CUDA REQUIRED)
+	#list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-O2;-DVERBOSE")
+	list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
+	#SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
+	include_directories(
+		${CUDA_TOOLKIT_INCLUDE} 
+		${CUDA_SDK_ROOT_DIR}/common/inc 
+	)
+endif()
+
+
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
-	${CUDA_TOOLKIT_INCLUDE} 
-	${CUDA_SDK_ROOT_DIR}/common/inc 
 	# ${Leap_INCLUDE_DIR}
 	${CMAKE_BINARY_DIR}
 	${Boost_INCLUDE_DIR}
@@ -46,8 +52,7 @@ set( Srcs
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
-	VolumeRenderableCUDA.cpp
-	VolumeRenderableCUDAKernel.cu
+	
 	)
 set( Hdrs  
 	glwidget.h 
@@ -66,13 +71,18 @@ set( Hdrs
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
-	VolumeRenderableCUDA.h
-	VolumeRenderableCUDAKernel.h
 	)
 
 if(USE_OSVR)
 	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h)
 	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp)
+endif()
+
+if(USE_VOLUME_RENDERING)
+	set(Hdrs ${Hdrs} VolumeRenderableCUDA.h
+	VolumeRenderableCUDAKernel.h)
+	set(Srcs ${Srcs} VolumeRenderableCUDA.cpp
+	VolumeRenderableCUDAKernel.cu)
 endif()
 
 if(USE_SUPERQUADRIC)
@@ -83,7 +93,12 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
+if(USE_VOLUME_RENDERING)
+	cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
+else()
+	add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
+endif()
+
 #qt5_use_modules(render OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
