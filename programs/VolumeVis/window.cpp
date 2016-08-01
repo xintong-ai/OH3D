@@ -27,6 +27,11 @@
 #include <Leap.h>
 #endif
 
+#ifdef USE_NEW_LEAP
+#include <leap/LeapListener.h>
+#include <Leap.h>
+#endif
+
 #ifdef USE_OSVR
 #include "VRWidget.h"
 #include "VRGlyphRenderable.h"
@@ -174,7 +179,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
 #endif
-
+#ifdef USE_NEW_LEAP
+	listener = new LeapListener();
+	controller = new Leap::Controller();
+	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
+	controller->addListener(*listener);
+#endif
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
@@ -323,6 +333,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
+#ifdef USE_NEW_LEAP
+	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
+		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
+#endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
@@ -402,6 +416,21 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
 			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
 		
+	}
+}
+#endif
+#ifdef USE_NEW_LEAP
+void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
+{
+	if (1 == numHands){
+		lensRenderable->SlotOneHandChanged(make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+	}
+	else if (2 == numHands){
+		//
+		lensRenderable->SlotTwoHandChanged(
+			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
+			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+
 	}
 }
 #endif

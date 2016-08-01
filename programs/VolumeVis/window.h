@@ -34,6 +34,14 @@ namespace Leap{
 }
 #endif
 
+#ifdef USE_NEW_LEAP
+class LeapListener;
+namespace Leap{
+	class Controller;
+}
+#endif
+
+
 #ifdef USE_OSVR
 class VRWidget;
 class VRGlyphRenderable;
@@ -88,7 +96,10 @@ private:
 	LeapListener* listener;
 	Leap::Controller* controller;
 #endif
-
+#ifdef USE_NEW_LEAP
+	LeapListener* listener;
+	Leap::Controller* controller;
+#endif
 private slots:
 	void AddLens();
 	void AddLineLens();
@@ -114,6 +125,9 @@ private slots:
 
 
 #ifdef USE_LEAP
+	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+#endif
+#ifdef USE_NEW_LEAP
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
 #endif
 };

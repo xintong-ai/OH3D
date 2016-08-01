@@ -54,8 +54,6 @@ target_link_libraries(${PROJECT_NAME}
 	${Leap_IMPORT_LIB_DEBUG}
 	)
 
-target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
-
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
 endif()

@@ -15,10 +15,14 @@ if(USE_LEAP)
 	include_directories(${Leap_ROOT_DIR}/include)
 endif()
 
+option(USE_NEW_LEAP OFF)
+
 option(USE_OSVR "Enable features that require OSVR" OFF)
 if(USE_OSVR)
 	find_package(osvr REQUIRED)
+	include_directories(${osvr_DIR}/../../../include)
 endif()
+
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 

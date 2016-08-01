@@ -24,7 +24,7 @@ class GLMatrixManager;
 class ModelGridRenderable;
 class ModelGrid;
 
-#define USE_NEW_LEAP
+//#define USE_NEW_LEAP
 
 #ifdef USE_LEAP
 class LeapListener;

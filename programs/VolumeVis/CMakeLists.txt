@@ -20,17 +20,22 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc 
-	# ${Leap_INCLUDE_DIR}
 	${PROJECT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
 	required)
+		
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
 
 set( Srcs 
 	main.cpp 
 	window.cpp 
+	../ParticleVis2/LeapListener.cpp
 	)
 set( Hdrs  
 	window.h 
+	../ParticleVis2/LeapInteraction.h
+	../ParticleVis2/LeapListener.h
     )
 
 configure_file(config.txt config.txt COPYONLY)
@@ -48,7 +53,8 @@ target_link_libraries(${PROJECT_NAME}
 	interact
 	render
 	dataModel
-	)
+	${Leap_IMPORT_LIB_DEBUG}
+)
 
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)

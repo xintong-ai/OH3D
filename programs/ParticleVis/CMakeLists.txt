@@ -20,7 +20,6 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc 
-	# ${Leap_INCLUDE_DIR}
 	${PROJECT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
 	required)
