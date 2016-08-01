@@ -30,13 +30,22 @@ include_directories(
 set( Srcs 
 	main.cpp 
 	window.cpp 
-	../ParticleVis2/LeapListener.cpp
+	
 	)
 set( Hdrs  
 	window.h 
-	../ParticleVis2/LeapInteraction.h
-	../ParticleVis2/LeapListener.h
+
     )
+
+if(USE_NEW_LEAP)
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
+	set( Srcs ${Srcs} ../ParticleVis2/LeapListener.cpp)
+	set( Hdrs ${Hdrs} ../ParticleVis2/LeapInteraction.h
+	../ParticleVis2/LeapListener.h)
+	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
+endif()
+
 
 configure_file(config.txt config.txt COPYONLY)
 

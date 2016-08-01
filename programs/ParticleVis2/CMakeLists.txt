@@ -21,20 +21,24 @@ include_directories(
 	required)
 
 	
-	find_package(Leap)
-	include_directories(${Leap_ROOT_DIR}/include)
+
 	
 	
 set( Srcs 
 	main.cpp 
 	window.cpp 
-	LeapListener.cpp
 	)
 set( Hdrs  
 	window.h 
-	LeapInteraction.h
-	LeapListener.h
     )
+
+if(USE_NEW_LEAP)
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
+	set( Srcs ${Srcs} LeapListener.cpp)
+	set( Hdrs ${Hdrs} LeapInteraction.h LeapListener.h)
+	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
+endif()
 
 configure_file(config.txt config.txt COPYONLY)
 
