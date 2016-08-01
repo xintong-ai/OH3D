@@ -150,6 +150,9 @@ void VRWidget::paintGL() {
 				//pj = pj.transposed();
 
 				/// Call out to render our scene.
+				int winWidth, winHeight;
+				GetWindowSize(winWidth, winHeight);
+
 				for (auto renderer : renderers)
 					renderer.second->draw(mv.data(), projMat.data());
 			}

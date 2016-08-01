@@ -66,8 +66,8 @@ set( Hdrs
 	)
 
 if(USE_OSVR)
-	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h)
-	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp)
+	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h VRVolumeRenderableCUDA.h)
+	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp VRVolumeRenderableCUDA.cpp)
 endif()
 
 if(USE_SUPERQUADRIC)

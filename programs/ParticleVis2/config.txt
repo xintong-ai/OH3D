@@ -13,4 +13,4 @@ d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
 f=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
 gDATA_PATH=D:/Onedrive/Data/particle/smoothinglength_0.44/run15/099.vtu
-tDATA_PATH=D:/Dropbox/ShareXin/particle_pos
+DATA_PATH=D:/Dropbox/ShareXin/particle_pos

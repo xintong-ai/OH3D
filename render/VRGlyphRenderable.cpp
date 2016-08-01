@@ -15,8 +15,8 @@
 // Standard includes
 #include <iostream>
 
-static auto const WIDTH = 1920;
-static auto const HEIGHT = 1080;
+//static auto const WIDTH = 1920;
+//static auto const HEIGHT = 1080;
 
 void VRGlyphRenderable::init()
 {

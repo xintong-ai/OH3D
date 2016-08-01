@@ -75,7 +75,7 @@ Window::Window()
 	else{
 		FILE *pFile;
 		pFile = fopen(dataPath.c_str(), "rb");
-		if (pFile == NULL) { fputs("fibers file error", stderr); exit(1); }
+		if (pFile == NULL) { fputs("particle file error", stderr); exit(1); }
 		int numParticles;
 		fread(&numParticles, sizeof(int), 1, pFile);
 		float *coords = new float[numParticles * 4];

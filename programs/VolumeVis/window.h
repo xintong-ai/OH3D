@@ -44,7 +44,7 @@ namespace Leap{
 
 #ifdef USE_OSVR
 class VRWidget;
-class VRGlyphRenderable;
+class VRVolumeRenderableCUDA;
 #endif
 
 class Window : public QWidget
@@ -90,7 +90,7 @@ private:
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
-	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
+	std::shared_ptr<VRVolumeRenderableCUDA> vrGlyphRenderable;
 #endif
 #ifdef USE_LEAP
 	LeapListener* listener;

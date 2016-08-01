@@ -37,7 +37,6 @@ if(USE_NEW_LEAP)
 	include_directories(${Leap_ROOT_DIR}/include)
 	set( Srcs ${Srcs} LeapListener.cpp)
 	set( Hdrs ${Hdrs} LeapInteraction.h LeapListener.h)
-	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()
 
 configure_file(config.txt config.txt COPYONLY)
@@ -55,7 +54,6 @@ target_link_libraries(${PROJECT_NAME}
 	interact
 	render
 	dataModel
-	${Leap_IMPORT_LIB_DEBUG}
 	)
 
 if(USE_OSVR)
@@ -63,5 +61,9 @@ if(USE_OSVR)
 endif()
 
 if(USE_LEAP)
+	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
+endif()
+
+if(USE_NEW_LEAP)
 	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()

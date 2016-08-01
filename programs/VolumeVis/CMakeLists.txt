@@ -43,7 +43,6 @@ if(USE_NEW_LEAP)
 	set( Srcs ${Srcs} ../ParticleVis2/LeapListener.cpp)
 	set( Hdrs ${Hdrs} ../ParticleVis2/LeapInteraction.h
 	../ParticleVis2/LeapListener.h)
-	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()
 
 
@@ -70,5 +69,9 @@ if(USE_OSVR)
 endif()
 
 if(USE_LEAP)
+	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
+endif()
+
+if(USE_NEW_LEAP)
 	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()

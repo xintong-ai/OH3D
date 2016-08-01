@@ -34,7 +34,8 @@
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
-#include "VRGlyphRenderable.h"
+//#include "VRGlyphRenderable.h"
+#include "VRVolumeRenderableCUDA.h"
 #endif
 
 QSlider* CreateSlider()
@@ -122,7 +123,7 @@ Window::Window()
 #ifdef USE_OSVR
 		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
-		vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
+		vrGlyphRenderable = std::make_shared<VRVolumeRenderableCUDA>(volumeRenderable.get());
 		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
 		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
