@@ -20,7 +20,11 @@
 using namespace std;
 
 ArrowRenderable::ArrowRenderable(vector<float4> _pos, vector<float3> _vec, vector<float> _val) :
+#ifdef USE_DEFORM
+DeformGlyphRenderable(_pos)
+#else
 GlyphRenderable(_pos)
+#endif
 {
 	vecs = _vec;
 	//val = &_val; //consider about the color later
@@ -277,8 +281,9 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 	//	return;
 
 	RecordMatrix(modelview, projection);
+#ifdef USE_DEFORM
 	ComputeDisplace(modelview, projection);
-
+#endif
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();

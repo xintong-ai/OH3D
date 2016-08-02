@@ -21,8 +21,6 @@ class LensRenderable;
 class GridRenderable;
 class DataMgr;
 class GLMatrixManager;
-class ModelGridRenderable;
-class ModelGrid;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -64,11 +62,9 @@ private:
 	std::shared_ptr<GlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
 	std::shared_ptr<GridRenderable> gridRenderable;
-	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveBLensBtn;
-	std::shared_ptr<ModelGrid> modelGrid;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;

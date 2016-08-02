@@ -7,8 +7,6 @@
 #include "SphereRenderable.h"
 #include "FlightReader.h"
 #include "DataMgr.h"
-#include "ModelGridRenderable.h"
-#include <ModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
@@ -47,7 +45,7 @@ Window::Window()
 		((FlightReader*)reader.get())->GetPos(),
 		((FlightReader*)reader.get())->GetVal());
 	glyphRenderable->SetGlyphSizeAdjust(6);
-	glyphRenderable->EnableDisplace(false);
+	//glyphRenderable->EnableDisplace(false);
 	std::cout << "number of rendered glyphs: " << (((FlightReader*)reader.get())->GetVal()).size() << std::endl;
 	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
@@ -80,14 +78,10 @@ Window::Window()
 	reader->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
-	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
-	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
-	openGL->AddRenderable("model", modelGridRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add straight band lens");
@@ -194,7 +188,6 @@ void Window::SlotToggleUsingGlyphSnapping(bool b)
 
 void Window::SlotToggleGrid(bool b)
 {
-	modelGridRenderable->SetVisibility(b);
 }
 
 Window::~Window() {

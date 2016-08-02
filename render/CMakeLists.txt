@@ -43,7 +43,7 @@ set( Srcs
 	Renderable.cpp 
 	BoxRenderable.cpp 
 	GlyphRenderable.cpp 
-	LensRenderable.cpp
+	
 	GridRenderable.cpp 
 	GLArrow.cpp
 	ArrowRenderable.cpp
@@ -60,7 +60,6 @@ set( Hdrs
 	BoxRenderable.h 
 	ShaderProgram.h 
 	GlyphRenderable.h 
-	LensRenderable.h
 	GridRenderable.h
 	ColorGradient.h 
 	GLArrow.h
@@ -72,6 +71,11 @@ set( Hdrs
 	SphereRenderable.h 
     PolyRenderable.h
 	)
+
+if(USE_DEFORM)
+	set(Hdrs ${Hdrs} DeformGlyphRenderable.h LensRenderable.h)
+	set(Srcs ${Srcs} DeformGlyphRenderable.cpp LensRenderable.cpp)
+endif()
 
 if(USE_OSVR)
 	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h)
@@ -103,10 +107,15 @@ endif()
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
-	deform
 	interact
 	dataModel
 	)
+
+if(USE_DEFORM)
+target_link_libraries(${PROJECT_NAME} 
+	deform
+	)
+endif()
 
 if(USE_SUPERQUADRIC)
 target_link_libraries(${PROJECT_NAME} 

@@ -4,5 +4,6 @@
 #cmakedefine USE_OSVR
 #cmakedefine USE_LEAP
 #cmakedefine USE_TOUCH
+#cmakedefine USE_DEFORM
 
 #endif//CMAKE_CONFIG_H

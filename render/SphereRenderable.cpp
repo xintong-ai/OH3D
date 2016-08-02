@@ -30,7 +30,11 @@ using namespace std;
 
 SphereRenderable::SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val)
 //SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
-:GlyphRenderable(_spherePos)
+#ifdef USE_DEFORM
+:DeformGlyphRenderable(_spherePos)
+#else
+: GlyphRenderable(_spherePos)
+#endif
 {
 	val = _val;
 	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
@@ -248,8 +252,9 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 	if (!visible)
 		return;
+#ifdef USE_DEFORM
 	ComputeDisplace(modelview, projection);
-	
+#endif
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
