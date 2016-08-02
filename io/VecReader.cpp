@@ -5,7 +5,7 @@
 //#include <cstdint>
 //#include <vector_functions.h>
 #include <helper_math.h>
-
+#include <cmath>
 
 void VecReader::Load()
 {

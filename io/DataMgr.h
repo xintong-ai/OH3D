@@ -4,6 +4,7 @@
 #include "cstdlib"
 #include <assert.h>
 #include <map>
+#include <string>
 
 class DataMgr
 {
@@ -12,7 +13,9 @@ public:
 
 	~DataMgr();
 
-	std::string GetConfig(const char* name){ return config[name]; }
+	std::string GetConfig(const char* name){ 
+		return config[name]; 
+	}
 
 	//std::map<std::string, std::string> GetMeshFiles();
 

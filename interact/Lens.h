@@ -1,12 +1,15 @@
 #ifndef LENS_H
 #define LENS_H
+
 #include <vector_types.h>
 #include <vector_functions.h>
-#include <cmath>
+
+#defien _USE_MATH_DEFINES
+
 using namespace std;
 #include <helper_math.h>
+#include <cmath>
 #include <vector>
-
 #include <iostream>
 //using namespace std;
 

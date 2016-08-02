@@ -1,14 +1,18 @@
 
 #ifndef GLARROW_H
 #define GLARROW_H
-#include "vector_types.h"
-#include <vector>
+
 
 //for linux
 #define _USE_MATH_DEFINES
-#include <cmath>
-using namespace std;
+//#include <cmath>
+//using namespace std;
+#include <math.h>
 #include "helper_math.h"
+
+#include "vector_types.h"
+#include <vector>
+
 
 class GLArrow
 {

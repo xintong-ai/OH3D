@@ -6,7 +6,7 @@
 class ShaderProgram;
 class QOpenGLContext;
 class StopWatchInterface;
-enum COLOR_MAP;
+enum COLOR_MAP: unsigned int;
 
 class GlyphRenderable: public Renderable
 {
