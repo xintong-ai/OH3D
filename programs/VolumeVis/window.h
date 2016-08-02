@@ -14,7 +14,7 @@ class QSlider;
 class Renderable;
 class QCheckBox;
 class QLabel;
-class GlyphRenderable;
+class DeformGlyphRenderable;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
@@ -65,7 +65,7 @@ private:
 	QCheckBox* usingGlyphPickingCheck;
 
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
-	std::shared_ptr<GlyphRenderable> glyphRenderable;
+	std::shared_ptr<DeformGlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
 	std::shared_ptr<GridRenderable> gridRenderable;
 	std::shared_ptr<ModelGridRenderable> modelGridRenderable;

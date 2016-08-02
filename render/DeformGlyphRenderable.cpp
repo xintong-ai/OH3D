@@ -16,7 +16,7 @@
 using namespace std;
 
 DeformGlyphRenderable::DeformGlyphRenderable(std::vector<float4>& _pos)
-	:GlyphRenderable(pos)
+:GlyphRenderable(_pos)
 {
 	deformInterface = std::make_shared<DeformInterface>();
 	deformInterface->LoadOrig(&pos[0], pos.size());
