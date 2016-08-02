@@ -5,6 +5,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
+#include <thrust/device_vector.h>
+
+
 template <class TYPE>
 class GridMesh;
 template <class TYPE>
@@ -49,6 +52,16 @@ public:
 	float getDeformForce(){ return deformForce; }
 
 	void UpdatePointCoords(float4* v, int n, float4* vOri = 0);
+	void UpdatePointCoords_LineMeshLens_Thrust(float4* v, int n);
+	void UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float* brightness, int n, float3 lensCenter, float lSemiMajorAxisGlobal, float lSemiMinorAxisGlobal, float3 majorAxisGlobal, float focusRatio, float3 lensDir);
+	//these thrust variables should be placed in a better place
+	thrust::device_vector<float4> d_vec_vOri;
+	thrust::device_vector<int> d_vec_vIdx;
+	thrust::device_vector<float4> d_vec_vBaryCoord;
+	thrust::device_vector<float4> d_vec_v;
+	thrust::device_vector<float> d_vec_brightness;
+
+
 	void InitGridDensity(float4* v, int n);
 	void UpdatePointTetId(float4* v, int n);
 

@@ -149,8 +149,9 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 			modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir, &posOrig[0], pos.size());
 
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
-			modelGrid->UpdatePointCoords(&pos[0], pos.size(), &posOrig[0]);
-
+			//modelGrid->UpdatePointCoords(&pos[0], pos.size(), &posOrig[0]);
+			//modelGrid->UpdatePointCoords_LineMeshLens_Thrust(&pos[0], pos.size());
+			modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(&pos[0], &glyphBright[0], pos.size(), l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir);
 		}
 		break;
 	}

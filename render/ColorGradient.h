@@ -6,6 +6,7 @@
 
 enum COLOR_MAP{
 	RAINBOW,
+	RAINBOW_COSMOLOGY,
 	BLUE_RED
 };
 
@@ -32,6 +33,9 @@ public:
 		else if (cm == BLUE_RED){ 
 			createDefaultHeatMapGradient(); 
 		}
+		else if (cm == RAINBOW_COSMOLOGY){
+			createDefaultRainbowCosmologyMapGradient();
+		}
 		else{
 			exit(0);
 		}
@@ -56,6 +60,17 @@ public:
 	{
 		color.clear();
 		color.push_back(ColorPoint(0, 0, 1, 0.0f));      // Blue.
+		color.push_back(ColorPoint(0, 1, 1, 0.25f));     // Cyan.
+		color.push_back(ColorPoint(0, 1, 0, 0.5f));      // Green.
+		color.push_back(ColorPoint(1, 1, 0, 0.75f));     // Yellow.
+		color.push_back(ColorPoint(1, 0, 0, 1.0f));      // Red.
+	}
+
+	void createDefaultRainbowCosmologyMapGradient()
+	{
+		color.clear();
+		color.push_back(ColorPoint(0.3, 0.3, 0.3, 0.0f));    // grey for 0 value particles
+		color.push_back(ColorPoint(0, 0, 1, 0.00001f));      // Blue.
 		color.push_back(ColorPoint(0, 1, 1, 0.25f));     // Cyan.
 		color.push_back(ColorPoint(0, 1, 0, 0.5f));      // Green.
 		color.push_back(ColorPoint(1, 1, 0, 0.75f));     // Yellow.

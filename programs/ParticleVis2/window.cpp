@@ -93,7 +93,7 @@ Window::Window()
 		glyphRenderable = std::make_shared<SphereRenderable>(posVec, valVec);
 		std::cout << "number of rendered glyphs: " << numParticles << std::endl;
 
-		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW);
+		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 		posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 		posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 		float v = 0;
