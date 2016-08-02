@@ -447,7 +447,7 @@ void ModelGrid::SetElasticityByTetDensity(int n)
 	}
 	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
 	
-	std::vector<float> forDebug(tetVolumeOriginal, tetVolumeOriginal + tet_number);
+	//std::vector<float> forDebug(tetVolumeOriginal, tetVolumeOriginal + tet_number);
 }
 
 

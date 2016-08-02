@@ -16,6 +16,11 @@ if(USE_DEFORM)
 	endif()
 endif()
 
+if(USE_LEAP)
+	find_package(Qt5Widgets REQUIRED)
+	#qt5_use_modules(render OpenGL Gui Widgets)
+endif()
+
 add_subdirectory(FlightVis)
 
 

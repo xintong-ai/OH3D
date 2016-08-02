@@ -113,10 +113,3 @@ target_link_libraries(${PROJECT_NAME}
 	${Teem_LIBRARY_DIRS}/teem.lib)
 endif()
 
-# if(USE_OSVR)
-	# target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
-# endif()
-
-# if(USE_LEAP)
-	# target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
-# endif()
