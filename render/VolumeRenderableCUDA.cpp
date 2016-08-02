@@ -13,7 +13,7 @@
 #define qgl	QOpenGLContext::currentContext()->functions()
 
 #include <memory>
-#include "glwidget.h"
+#include "DeformGLWidget.h"
 #include "helper_math.h"
 #include <ModelGrid.h>
 #include <cuda_gl_interop.h>
@@ -144,7 +144,7 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (lenses->size() > 0){
 		Lens *l = lenses->back();
-		if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
 
 			float focusRatio = l->focusRatio;
 

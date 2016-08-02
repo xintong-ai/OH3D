@@ -1,7 +1,7 @@
 #include "LensRenderable.h"
 #include "DeformGlyphRenderable.h"
 #include "Lens.h"
-#include "glwidget.h"
+#include "DeformGLWidget.h"
 #include "GLSphere.h"
 #include "PolyRenderable.h"
 
@@ -375,7 +375,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glPopAttrib();
 		}
 	}
-	else if (DEFORM_MODEL::OBJECT_SPACE == actor->GetDeformModel()){
+	else if (DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
 
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
@@ -581,14 +581,14 @@ bool LensRenderable::OnLensInnerBoundary(int2 p1, int2 p2)
 	bool ret = false;
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
 			if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
 				&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
 				ret = true;
 				break;
 			}
 		}
-		else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
 			if (l->PointOnObjectInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
 				&& l->PointOnObjectInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
 				ret = true;
@@ -633,23 +633,23 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				pickedLens = i;
 				break;
 			}
-			else if (actor->GetDeformModel()==DEFORM_MODEL::SCREEN_SPACE && l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
 				pickedLens = i;
 				break;
 			}
-			else if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointOnOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointOnOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
 				pickedLens = i;
 				break;
 			}
-			else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 				cout << "on bound" << endl;
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
 				pickedLens = i;
 				break;
 			}
-			else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 				cout << "on outer bound" << endl;
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
 				pickedLens = i;
@@ -801,18 +801,18 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 	}
 	case INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE:
 	{
-		if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
 			lenses[pickedLens]->ChangeLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
-		else if(actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
+		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
 			lenses[pickedLens]->ChangeObjectLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		break;
 	}
 	case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
 	{
 													   
-		if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
 			lenses[pickedLens]->ChangefocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
-		else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
+		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
 			lenses[pickedLens]->ChangeObjectFocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		break;
 	}	
@@ -962,7 +962,7 @@ void LensRenderable::ChangeLensCenterbyLeap(float3 p)
 		float3 leapPos = GetNormalizedLeapPos(p);
 		const float aa = 0.02f;
 		float2 depthRange;
-		actor->GetDepthRange(depthRange);
+		((DeformGLWidget*)actor)->GetDepthRange(depthRange);
 		//pScreen.z = clamp((1.0f - aa * , 0.0f, 1.0f);
 		//std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
 

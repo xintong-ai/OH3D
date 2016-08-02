@@ -3,7 +3,7 @@
 #include <ModelGrid.h>
 #include <ModelGridRenderable.h>
 #include <helper_timer.h>
-#include <GLWidget.h>
+#include <DeformGLWidget.h>
 #include <LensRenderable.h>
 #include <Lens.h>
 #include <TransformFunc.h>
@@ -42,7 +42,7 @@ void DeformGlyphRenderable::RecomputeTarget()
 	if (!visible)
 		return;
 
-	switch (actor->GetDeformModel())
+	switch (((DeformGLWidget*)actor)->GetDeformModel())
 	{
 	case DEFORM_MODEL::SCREEN_SPACE:
 		deformInterface->RecomputeTarget();
@@ -93,7 +93,7 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 	if (!displaceEnabled) return;
 	StartDeformTimer();
 	int2 winSize = actor->GetWindowSize();
-	switch (actor->GetDeformModel())
+	switch (((DeformGLWidget*)actor)->GetDeformModel())
 	{
 	case DEFORM_MODEL::SCREEN_SPACE:
 	{

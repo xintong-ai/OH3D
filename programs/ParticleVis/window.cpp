@@ -1,5 +1,5 @@
 #include "window.h"
-#include "glwidget.h"
+#include "DeformGLWidget.h"
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
@@ -55,7 +55,7 @@ Window::Window()
 #else
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
-	openGL = std::make_shared<GLWidget>(matrixMgr);
+	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	lensRenderable = std::make_shared<LensRenderable>();
 	//lensRenderable->SetDrawScreenSpace(false);
 #ifdef USE_OSVR

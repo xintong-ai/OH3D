@@ -48,11 +48,10 @@ class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
     Q_OBJECT
 public:
 
-	bool isPicking = false;
 	GLuint framebuffer, renderbuffer[2];
 	int xMouse, yMouse;
-	int pickID = -1;
-    explicit GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent = 0);
+    explicit GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr,
+		QWidget *parent = 0);
 
 
     explicit GLWidget(QWidget *parent = 0);
@@ -72,25 +71,19 @@ public:
 
 	float3 DataCenter();
 
-
 	void UpdateGL();
-
-
-	INTERACT_MODE GetInteractMode(){ return interactMode; }
 
 	void SetInteractMode(INTERACT_MODE v);// { interactMode = v; std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; }
 
 	void GetModelview(float* m);// { for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
 	void GetProjection(float* m);// { for (int i = 0; i < 16; i++) m[i] = projection[i]; }
+	
+	INTERACT_MODE GetInteractMode(){ return interactMode; }
 
 #ifdef USE_OSVR
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 #endif
 
-	void GetDepthRange(float2& v){ v = depthRange; }
-
-	void SetDeformModel(DEFORM_MODEL v) { deformModel = v; }
-	DEFORM_MODEL GetDeformModel() { return deformModel; }
 
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
@@ -103,7 +96,20 @@ protected:
     virtual void keyPressEvent(QKeyEvent * event) Q_DECL_OVERRIDE;
 	virtual bool event(QEvent *event) Q_DECL_OVERRIDE;
 
+	virtual bool TouchBeginEvent(QTouchEvent *event){ return false; }
+	virtual bool TouchUpdateEvent(QTouchEvent *event){ return false; }
+	virtual void pinchTriggered(QPinchGesture *gesture);
+
+
+	QPoint pixelPosToGLPos(const QPoint& p);
+	QPoint pixelPosToGLPos(const QPointF& p);
+
 	uint width = 750, height = 900;
+	std::shared_ptr<GLMatrixManager> matrixMgr;
+
+	std::map<std::string, Renderable*> renderers;
+
+
 private:
 #ifdef USE_OSVR
 	VRWidget* vrWidget = nullptr;
@@ -115,26 +121,20 @@ private:
 
     void TimerEnd();
 
-	void UpdateDepthRange();
 
     QPointF pixelPosToViewPos(const QPointF& p);
 
-	QPoint pixelPosToGLPos(const QPoint& p);
-	QPoint pixelPosToGLPos(const QPointF& p);
+
 
 	bool gestureEvent(QGestureEvent *event);
 
-	bool TouchBeginEvent(QTouchEvent *event);
 	bool TouchEndEvent(QTouchEvent *event); 
-	bool TouchUpdateEvent(QTouchEvent *event);
 
-	void pinchTriggered(QPinchGesture *gesture/*, QPointF center*/);
 		/*****view*****/
 
     QPointF prevPos;//previous mouse position
 
-	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
-
+	
     /****timing****/
     StopWatchInterface *timer = 0;
     int m_frame;
@@ -142,7 +142,6 @@ private:
     int fpsLimit = 128;        // FPS limit for sampling
     unsigned int frameCount = 0;
 
-    std::map<std::string,Renderable*> renderers;
 
     bool initialized = false;
 	bool pinching = false;
@@ -160,18 +159,7 @@ private:
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
 
-
-
-	float2 depthRange;
-
-	//int2 lastPt = make_int2(0,0);
-
-	std::shared_ptr<GLMatrixManager> matrixMgr;
-
-	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE; //
-	bool insideLens = false;
-private slots:
-	void animate();
+	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
 
 };
 

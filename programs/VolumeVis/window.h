@@ -7,7 +7,7 @@
 #include "CMakeConfig.h"
 
 class DataMgr;
-class GLWidget;
+class DeformGLWidget;
 class MarchingCubes;
 class QPushButton;
 class QSlider;
@@ -48,7 +48,7 @@ public:
 	void init();
 
 private:
-    std::shared_ptr<GLWidget> openGL;
+	std::shared_ptr<DeformGLWidget> openGL;
 	QTimer *aTimer;
 	const int nScale = 20;
 	QPushButton* addLensBtn;

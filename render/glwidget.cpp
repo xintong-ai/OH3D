@@ -8,9 +8,7 @@
 #include <Renderable.h>
 #include <GlyphRenderable.h>
 #include <VRWidget.h>
-#include <TransformFunc.h>
 #include <GLMatrixManager.h>
-#include <LensRenderable.h>
 
 GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 : QOpenGLWidget(parent)
@@ -199,7 +197,6 @@ void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 	for (auto renderer : renderers)
 		renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
-	UpdateDepthRange();
 }
 
 void GLWidget::wheelEvent(QWheelEvent * event)
@@ -213,7 +210,6 @@ void GLWidget::wheelEvent(QWheelEvent * event)
 	if (doTransform){
 		matrixMgr->Scale(event->delta());
 		//transScale *= exp(event->delta() * -0.001);
-		UpdateDepthRange();
 	}
 	update();
 }
@@ -236,40 +232,13 @@ bool GLWidget::event(QEvent *event)
 	return QWidget::event(event);
 }
 
-bool GLWidget::TouchUpdateEvent(QTouchEvent *event)
-{
-	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
-	switch(GetInteractMode())
-	{
-	case INTERACT_MODE::TRANSFORMATION:
-	{
-		if (2 == pts.size()) {
-			QPointF p1 = pixelPosToGLPos(pts.at(0).lastPos());
-			QPointF p2 = pixelPosToGLPos(pts.at(1).lastPos());
-			if (((LensRenderable*)renderers["lenses"])
-				->OnLensInnerBoundary(make_int2(p1.x(), p1.y()), make_int2(p2.x(), p2.y()))){
-				SetInteractMode(INTERACT_MODE::MODIFY_LENS_TWO_FINGERS);
-			}
-			else if (((LensRenderable*)renderers["lenses"])
-				->TwoPointsInsideALens(make_int2(p1.x(), p1.y()), make_int2(p2.x(), p2.y()))){
-				SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-			}
-		}
-		break;
-	}
-	case INTERACT_MODE::MODIFY_LENS_TWO_FINGERS:
-	{
-		if (2 == pts.size()) {
-			QPointF p1 = pixelPosToGLPos(pts.at(0).lastPos());
-			QPointF p2 = pixelPosToGLPos(pts.at(1).lastPos());
-			((LensRenderable*)renderers["lenses"])
-				->UpdateLensTwoFingers(make_int2(p1.x(), p1.y()), make_int2(p2.x(), p2.y()));
-		}
-		break;
-	}
-	}
-	return true;
-}
+//bool GLWidget::TouchBeginEvent(QTouchEvent *event)
+//{
+//	return false;
+//}
+
+
+
 
 
 bool GLWidget::TouchEndEvent(QTouchEvent *event)
@@ -282,19 +251,7 @@ bool GLWidget::TouchEndEvent(QTouchEvent *event)
 }
 
 
-bool GLWidget::TouchBeginEvent(QTouchEvent *event)
-{
-	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
-	QPointF p = pts.back().lastPos();
-	//std::cout << "p:" << p.x() << "," << p.y() << std::endl;
-	QPoint posGL = pixelPosToGLPos(QPoint(p.x(), p.y()));
-	insideLens = ((LensRenderable*)renderers["lenses"])->InsideALens(posGL.x(), posGL.y());
-	//	SetInteractMode(INTERACT_MODE::NO_TRANSFORMATION);
 
-	//std::cout << "pts.size(): " << pts.size() << std::endl;
-
-	return true;
-}
 
 
 //http://doc.qt.io/qt-5/gestures-overview.html
@@ -335,14 +292,10 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 	//}
 	switch (interactMode)
 	{
-	case INTERACT_MODE::MODIFY_LENS_DEPTH:
-	{
-		((LensRenderable*)renderers["lenses"])->ChangeLensDepth(gesture->totalScaleFactor() > 1 ? 26 : -26);
-		break;
-	}
+
 	case INTERACT_MODE::TRANSFORMATION:
 	{
-		if (insideLens) break;
+		//if (insideLens) break;
 		QPinchGesture::ChangeFlags changeFlags = gesture->changeFlags();
 		//if (INTERACT_MODE::TRANSFORMATION == interactMode){
 		if (changeFlags & QPinchGesture::ScaleFactorChanged) {
@@ -406,42 +359,7 @@ void GLWidget::UpdateGL()
 	update();
 }
 
-void GLWidget::animate()
-{
-	//for (auto renderer : renderers)
-	//	renderer.second->animate();
-	update();
-}
 
-void GLWidget::UpdateDepthRange()
-{
-	float3 dataMin, dataMax;
-	matrixMgr->GetVol(dataMin, dataMax);
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	matrixMgr->GetModelView(modelview);
-	matrixMgr->GetProjection(projection, width, height);
-
-	float4 p[8];
-	p[0] = make_float4(dataMin.x, dataMin.y, dataMin.z, 1.0f);
-	p[1] = make_float4(dataMin.x, dataMin.y, dataMax.z, 1.0f);
-	p[2] = make_float4(dataMin.x, dataMax.y, dataMin.z, 1.0f);
-	p[3] = make_float4(dataMin.x, dataMax.y, dataMax.z, 1.0f);
-	p[4] = make_float4(dataMax.x, dataMin.y, dataMin.z, 1.0f);
-	p[5] = make_float4(dataMax.x, dataMin.y, dataMax.z, 1.0f);
-	p[6] = make_float4(dataMax.x, dataMax.y, dataMin.z, 1.0f);
-	p[7] = make_float4(dataMax.x, dataMax.y, dataMax.z, 1.0f);
-
-	float4 pClip[8];
-	std::vector<float> clipDepths;
-	for (int i = 0; i < 8; i++) {
-		pClip[i] = Object2Clip(p[i], modelview, projection);
-		clipDepths.push_back(pClip[i].z);
-	}
-	depthRange.x = clamp(*std::min_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
-	depthRange.y = clamp(*std::max_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
-	//std::cout << "depthRange: " << depthRange.x << "," << depthRange.y << std::endl;
-}
 
 float3 GLWidget::DataCenter()
 {

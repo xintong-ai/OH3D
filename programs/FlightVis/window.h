@@ -17,8 +17,6 @@ class QLabel;
 class GlyphRenderable;
 class QRadioButton;
 class QTimer;
-class LensRenderable;
-class GridRenderable;
 class DataMgr;
 class GLMatrixManager;
 
@@ -46,10 +44,6 @@ private:
     std::shared_ptr<GLWidget> openGL;
 	QTimer *aTimer;
 	const int nScale = 20;
-	QPushButton* addLensBtn;
-	QPushButton* addLineLensBtn;
-
-	std::shared_ptr<QPushButton> delLensBtn;
 	std::shared_ptr<QRadioButton> radioDeformScreen;
 	std::shared_ptr<QRadioButton> radioDeformObject;
 
@@ -60,11 +54,8 @@ private:
 	QCheckBox* usingGlyphPickingCheck;
 
 	std::shared_ptr<GlyphRenderable> glyphRenderable;
-	std::shared_ptr<LensRenderable> lensRenderable;
-	std::shared_ptr<GridRenderable> gridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
-	QPushButton *addCurveBLensBtn;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
@@ -76,19 +67,8 @@ private:
 #endif
 
 private slots:
-	void AddLens();
-	void AddLineLens();
-	void AddCurveBLens();
-	void SlotToggleGrid(bool b);
-	void SlotToggleUsingGlyphSnapping(bool b);
-	void SlotTogglePickingGlyph(bool b);
-	void SlotToggleGlyphPickingFinished();
-	void SlotDeformModeChanged(bool clicked);
 	void SlotSaveState();
 	void SlotLoadState();
-#ifdef USE_LEAP
-	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
-#endif
 };
 
 #endif

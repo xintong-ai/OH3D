@@ -44,15 +44,13 @@ set( Srcs
 	BoxRenderable.cpp 
 	GlyphRenderable.cpp 
 	
-	GridRenderable.cpp 
+	
 	GLArrow.cpp
 	ArrowRenderable.cpp
     GLMatrixManager.cpp
-    ModelGridRenderable.cpp
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
-	
 	)
 set( Hdrs  
 	glwidget.h 
@@ -60,12 +58,10 @@ set( Hdrs
 	BoxRenderable.h 
 	ShaderProgram.h 
 	GlyphRenderable.h 
-	GridRenderable.h
 	ColorGradient.h 
 	GLArrow.h
 	ArrowRenderable.h 
 	GLMatrixManager.h
-	ModelGridRenderable.h
 	OPENGL_DRIVER.h
 	GLSphere.h
 	SphereRenderable.h 
@@ -73,8 +69,10 @@ set( Hdrs
 	)
 
 if(USE_DEFORM)
-	set(Hdrs ${Hdrs} DeformGlyphRenderable.h LensRenderable.h)
-	set(Srcs ${Srcs} DeformGlyphRenderable.cpp LensRenderable.cpp)
+	set(Hdrs ${Hdrs} DeformGlyphRenderable.h LensRenderable.h DeformGLWidget.h 	
+		ModelGridRenderable.h GridRenderable.h)
+	set(Srcs ${Srcs} DeformGlyphRenderable.cpp LensRenderable.cpp DeformGLWidget.cpp 
+		ModelGridRenderable.cpp GridRenderable.cpp )
 endif()
 
 if(USE_OSVR)
