@@ -26,10 +26,10 @@ public:
 	ColorGradient()  { createDefaultHeatMapGradient(); }
 
 	ColorGradient(COLOR_MAP cm){
-		if (cm == RAINBOW){
+		if (cm == COLOR_MAP::RAINBOW){
 			createDefaultRainbowMapGradient();
 		}
-		else if (cm == BLUE_RED){ 
+		else if (cm == COLOR_MAP::BLUE_RED){ 
 			createDefaultHeatMapGradient(); 
 		}
 		else{

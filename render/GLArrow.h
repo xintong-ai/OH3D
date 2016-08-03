@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 //#include <cmath>
 //using namespace std;
+
 #include <math.h>
 #include "helper_math.h"
 

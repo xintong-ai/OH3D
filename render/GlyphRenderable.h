@@ -6,7 +6,8 @@
 class ShaderProgram;
 class QOpenGLContext;
 class StopWatchInterface;
-enum COLOR_MAP: unsigned int;
+//enum struct COLOR_MAP;
+#include <ColorGradient.h>
 
 class GlyphRenderable: public Renderable
 {
