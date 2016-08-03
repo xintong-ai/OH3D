@@ -23,6 +23,9 @@ class VRVolumeRenderableCUDA : public Renderable
 	void initTextureAndCudaArrayOfScreen();
 	void deinitTextureAndCudaArrayOfScreen();
 
+	unsigned int* pixelColor = 0;
+	uint *d_output = 0;
+
 	float MVMatrix[16];
 	float MVPMatrix[16];
 	float invMVMatrix[16];
@@ -30,12 +33,8 @@ class VRVolumeRenderableCUDA : public Renderable
 	float NMatrix[9];
 
 protected:
-	std::vector<float> glyphBright;
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	//void resize(int width, int height) override;
-
-	void drawWithGivenWinSize(float modelview[16], float projection[16], int width, int height);
 
 	VRWidget* vractor;
 

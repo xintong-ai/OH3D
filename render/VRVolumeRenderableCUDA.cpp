@@ -40,15 +40,10 @@ void VRVolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	//volumeRenderable->draw(modelview, projection);
 	//glProg->disable();
 
+	
 	int winWidth, winHeight;
 	vractor->GetWindowSize(winWidth, winHeight);
-	drawWithGivenWinSize(modelview, projection, winWidth, winHeight);
-}
-
-void VRVolumeRenderableCUDA::drawWithGivenWinSize(float modelview[16], float projection[16], int winWidth, int winHeight)
-{
-
-
+	//drawWithGivenWinSize(modelview, projection, winWidth, winHeight);
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview).transposed();
 	QMatrix4x4 q_invMV = q_modelview.inverted();
 	QVector4D q_eye4 = q_invMV.map(QVector4D(0, 0, 0, 1));
@@ -65,17 +60,7 @@ void VRVolumeRenderableCUDA::drawWithGivenWinSize(float modelview[16], float pro
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
 	bool isCutaway = false;
 	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &isCutaway, &(volumeRenderable->transFuncP1), &(volumeRenderable->transFuncP2), &(volumeRenderable->la), &(volumeRenderable->ld), &(volumeRenderable->ls), &(volumeRenderable->volume->spacing));
-	//if (!isFixed){
-	//	recordFixInfo(q_mvp, q_modelview);
-	//}
 
-	//prepare the storage for output
-	uint *d_output;
-	checkCudaErrors(cudaGraphicsMapResources(1, &cuda_pbo_resource, 0));
-	size_t num_bytes;
-	checkCudaErrors(cudaGraphicsResourceGetMappedPointer((void **)&d_output, &num_bytes,
-		cuda_pbo_resource));
-	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
 
 	////those should be well set already by volumeRenderable
 	//ComputeDisplace(modelview, projection);
@@ -83,48 +68,11 @@ void VRVolumeRenderableCUDA::drawWithGivenWinSize(float modelview[16], float pro
 	//VolumeRender_setGradient(&(modelVolumeDeformer->volumeCUDAGradient));
 
 	//compute the dvr
-	VolumeRender_render_test(d_output, winWidth, winHeight, volumeRenderable->density, volumeRenderable->brightness, eyeInWorld, volumeRenderable->volume->size, volumeRenderable->maxSteps, volumeRenderable->tstep, volumeRenderable->useColor);
+	VolumeRender_render(d_output, winWidth, winHeight, volumeRenderable->density, volumeRenderable->brightness, eyeInWorld, volumeRenderable->volume->size, volumeRenderable->maxSteps, volumeRenderable->tstep, volumeRenderable->useColor);
 
-	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
+	cudaMemcpy(pixelColor, d_output, winWidth*winHeight * sizeof(uint), cudaMemcpyDeviceToHost);
+	glDrawPixels(winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixelColor);
 
-	// display results
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	// draw image from PBO
-	glDisable(GL_DEPTH_TEST);
-
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	// draw using texture
-	// copy from pbo to texture
-	qgl->glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-	qgl->glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, volumeTex);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-
-	qgl->glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-	// draw textured quad
-
-	auto functions12 = QOpenGLContext::currentContext()->versionFunctions<QOpenGLFunctions_1_2>();
-	functions12->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-	glEnable(GL_TEXTURE_2D);
-	glBegin(GL_QUADS);
-	glTexCoord2f(0, 0);
-	glVertex2f(-1, -1);
-	glTexCoord2f(1, 0);
-	glVertex2f(1, -1);
-	glTexCoord2f(1, 1);
-	glVertex2f(1, 1);
-	glTexCoord2f(0, 1);
-	glVertex2f(-1, 1);
-	glEnd();
-
-	glDisable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	glEnable(GL_DEPTH_TEST);
 }
 
 
@@ -158,6 +106,12 @@ void VRVolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+
+	pixelColor = new unsigned int[winWidth*winHeight];
+	checkCudaErrors(cudaMalloc((void**)&d_output, sizeof(uint)*winWidth*winHeight));
+	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * sizeof(uint)));
+
 }
 
 void VRVolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
@@ -168,6 +122,10 @@ void VRVolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
 		qgl->glDeleteBuffers(1, &pbo);
 	if (volumeTex != 0)
 		glDeleteTextures(1, &volumeTex);
+	if (pixelColor != 0)
+		delete[] pixelColor;
+	if (d_output != 0)
+		cudaFree(d_output);
 }
 
 void VRVolumeRenderableCUDA::SetVRActor(VRWidget* _a) {
