@@ -4,9 +4,9 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 
-#defien _USE_MATH_DEFINES
+//#defien _USE_MATH_DEFINES
 
-using namespace std;
+//using namespace std;
 #include <helper_math.h>
 #include <cmath>
 #include <vector>

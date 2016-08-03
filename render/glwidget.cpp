@@ -15,14 +15,18 @@ GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
     , m_frame(0)
 	, matrixMgr(_matrixMgr)
 {
+
+    //QSurfaceFormat format;
+    //format.setDepthBufferSize( 24 );
+    //format.setMajorVersion( 4 );
+    //format.setMinorVersion( 1 );
+    //format.setSamples( 4 );
+    //format.setProfile( QSurfaceFormat::CoreProfile );
+    ////QSurfaceFormat::setDefaultFormat( format );
+    //setFormat(format);
+
     setFocusPolicy(Qt::StrongFocus);
     sdkCreateTimer(&timer);
-
-
-	QTimer *aTimer = new QTimer;
-	connect(aTimer, SIGNAL(timeout()), SLOT(animate()));
-	aTimer->start(30);
-
 
 	grabGesture(Qt::PinchGesture);
 

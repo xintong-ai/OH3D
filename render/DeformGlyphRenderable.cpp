@@ -13,7 +13,7 @@
 #include "windows.h"
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
-using namespace std;
+//using namespace std;
 
 DeformGlyphRenderable::DeformGlyphRenderable(std::vector<float4>& _pos)
 :GlyphRenderable(_pos)

@@ -12,7 +12,7 @@
 #include <QOpenGLFunctions>
 #include <LensRenderable.h>
 #include <glwidget.h>
-using namespace std;
+//using namespace std;
 
 
 ModelGridRenderable::ModelGridRenderable(ModelGrid* _modelGrid)//ModelGridRenderable(float dmin[3], float dmax[3], int nPart)

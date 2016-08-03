@@ -9,7 +9,7 @@
 #include "windows.h"
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
-using namespace std;
+//using namespace std;
 
 #include <QOpenGLFunctions>
 #include "ShaderProgram.h"

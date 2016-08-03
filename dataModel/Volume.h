@@ -7,7 +7,7 @@
 
 #include <math.h>
 #include <memory>
-using namespace std;
+//using namespace std;
 
 #include <cuda_runtime.h>
 #include <helper_cuda.h>

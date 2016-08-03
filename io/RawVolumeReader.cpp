@@ -6,7 +6,7 @@
 
 //for linux
 #include <helper_math.h>
-using namespace std;
+//using namespace std;
 #include <float.h>
 
 RawVolumeReader::RawVolumeReader(const char* filename, int3 _dim) :

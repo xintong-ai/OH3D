@@ -7,7 +7,7 @@
 
 //for linux
 #include <helper_math.h>
-using namespace std;
+//using namespace std;
 #include <float.h>
 
 VolumeReader::VolumeReader(const char* filename):

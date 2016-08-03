@@ -11,8 +11,7 @@ public:
 	DEFORM_MODEL GetDeformModel() { return deformModel; }
 
 	explicit DeformGLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr,
-		QWidget *parent = 0) : GLWidget(_matrixMgr, parent)
-	{}
+		QWidget *parent = 0) ;
 
 protected:
 	virtual void mouseReleaseEvent(QMouseEvent *event) Q_DECL_OVERRIDE;

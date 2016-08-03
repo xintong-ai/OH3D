@@ -222,12 +222,12 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				glEnd();
 
 
-				vector<float2> pp = ((CurveBLens *)l)->posOffsetCtrlPoints;
-				vector<float2> nn = ((CurveBLens *)l)->negOffsetCtrlPoints;
+				std::vector<float2> pp = ((CurveBLens *)l)->posOffsetCtrlPoints;
+				std::vector<float2> nn = ((CurveBLens *)l)->negOffsetCtrlPoints;
 				//
 				//vector<float2> pb = ((CurveBLens *)l)->posOffsetBezierPoints;
 				//vector<float2> nb = ((CurveBLens *)l)->negOffsetBezierPoints;
-				vector<float2> subp = ((CurveBLens *)l)->subCtrlPointsPos;
+				std::vector<float2> subp = ((CurveBLens *)l)->subCtrlPointsPos;
 				//vector<float2> subn = ((CurveBLens *)l)->subCtrlPointsNeg;
 
 				float2 center = ((CurveBLens *)l)->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
@@ -644,13 +644,13 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				break;
 			}
 			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
-				cout << "on bound" << endl;
+				std::cout << "on bound" << std::endl;
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
 				pickedLens = i;
 				break;
 			}
 			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
-				cout << "on outer bound" << endl;
+				std::cout << "on outer bound" << std::endl;
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
 				pickedLens = i;
 				break;
