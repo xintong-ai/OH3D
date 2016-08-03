@@ -151,7 +151,7 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
 			//modelGrid->UpdatePointCoords(&pos[0], pos.size(), &posOrig[0]);
 			//modelGrid->UpdatePointCoords_LineMeshLens_Thrust(&pos[0], pos.size());
-			modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(&pos[0], &glyphBright[0], pos.size(), l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir);
+			modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(&pos[0], &glyphBright[0], pos.size(), l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir, isFreezingFeature, snappedFeatureId, &feature[0]);
 		}
 		break;
 	}
@@ -334,12 +334,18 @@ void GlyphRenderable::mousePress(int x, int y, int modifier)
 
 		int pickedGlyphId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256;
 
-		if (pickedGlyphId > 0){
-			snappedFeatureId = pickedGlyphId;
-			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
-			for (int i = 0; i < lenses.size(); i++) {
-				Lens* l = lenses[i];
-				l->SetCenter(featureCenter[snappedFeatureId-1]);
+		if (pickedGlyphId > -1){
+			if (feature[pickedGlyphId] > 0){
+				snappedFeatureId = feature[pickedGlyphId];
+				std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
+				for (int i = 0; i < lenses.size(); i++) {
+					Lens* l = lenses[i];
+					if (featureCenter.size()>0)
+						l->SetCenter(featureCenter[snappedFeatureId - 1]);
+					else{
+						l->SetCenter(make_float3(posOrig[pickedGlyphId]));
+					}
+				}
 			}
 		}
 

@@ -329,17 +329,20 @@ void SphereRenderable::drawPicking(float modelview[16], float projection[16], bo
 		//glPushMatrix();
 
 		int r, g, b;
-		if (isForGlyph){
-			r = ((i + 1) & 0x000000FF) >> 0;
-			g = ((i + 1) & 0x0000FF00) >> 8;
-			b = ((i + 1) & 0x00FF0000) >> 16;
-		}
-		else{
-			char c = feature[i];
-			r = ((c)& 0x000000FF) >> 0;
-			g = ((c)& 0x0000FF00) >> 8;
-			b = ((c)& 0x00FF0000) >> 16;
-		}
+		//if (isForGlyph){
+		//	r = ((i + 1) & 0x000000FF) >> 0;
+		//	g = ((i + 1) & 0x0000FF00) >> 8;
+		//	b = ((i + 1) & 0x00FF0000) >> 16;
+		//}
+		//else{
+		//	char c = feature[i];
+		//	r = ((c)& 0x000000FF) >> 0;
+		//	g = ((c)& 0x0000FF00) >> 8;
+		//	b = ((c)& 0x00FF0000) >> 16;
+		//}
+		r = ((i + 1) & 0x000000FF) >> 0;
+		g = ((i + 1) & 0x0000FF00) >> 8;
+		b = ((i + 1) & 0x00FF0000) >> 16;
 
 
 		float4 shift = pos[i];

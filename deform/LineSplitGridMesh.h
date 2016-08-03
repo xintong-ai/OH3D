@@ -388,19 +388,20 @@ public:
 			}
 		}
 		float zdifori = rz2 - rz1;
-		rz2 = rz2 + zdifori*1.001;
-		rz1 = rz1 - zdifori*1.001;  //to avoid numerical error
+		rz2 = rz2 + zdifori*0.001;
+		rz1 = rz1 - zdifori*0.001;  //to avoid numerical error
 
-		float3 rangeDiff = make_float3(3 * lSemiMajorAxis, 3 * lSemiMinorAxis / focusRatio, rz2 - rz1);
+		float3 rangeDiff = make_float3(2.1* lSemiMajorAxis, 2* lSemiMinorAxis / focusRatio, rz2 - rz1);
 		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
 
+		const int mimNumStepEachDim = 5;
 		bool ismeshillegal = true;
 		while (ismeshillegal){
 			step = (maxDiff / n);
 			nStep[0] = floor(rangeDiff.x / step) + 1;
 			nStep[1] = floor(rangeDiff.y / step) + 1;
 			nStep[2] = floor(rangeDiff.z / step) + 1;
-			if (nStep[0] >= 4 && nStep[1] >= 4 && nStep[2] >= 4){
+			if (nStep[0] >= mimNumStepEachDim && nStep[1] >= mimNumStepEachDim && nStep[2] >= mimNumStepEachDim){
 				ismeshillegal = false;
 				if (nStep[1] % 2 != 1){
 					nStep[1]++;

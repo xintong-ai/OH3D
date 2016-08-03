@@ -5,7 +5,7 @@
 #include "GLSphere.h"
 #include "PolyRenderable.h"
 
-// !!! may be delete. this class is not used !!!
+// this class is used to draw the lens center
 class SolidSphere
 {
 protected:
@@ -476,7 +476,7 @@ void LensRenderable::AddCircleLens()
 void LensRenderable::AddLineBLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new LineBLens(actor->DataCenter());
+	Lens* l = new LineBLens(actor->DataCenter(), 0.3);
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
@@ -693,13 +693,11 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 			((LineBLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
-		l->justChanged = true;
 	}
 	else {
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE || actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
 			if (lenses.size() > 0){
 				Lens* l = lenses[lenses.size() - 1];
-				l->justChanged = true;
 			}
 		}
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){

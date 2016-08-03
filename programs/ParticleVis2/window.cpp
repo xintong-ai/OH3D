@@ -5,6 +5,7 @@
 #include "GridRenderable.h"
 #include "Displace.h"
 #include <iostream>
+#include <algorithm>    // std::min_element, std::max_element
 
 #include "SphereRenderable.h"
 #include "SolutionParticleReader.h"
@@ -82,15 +83,20 @@ Window::Window()
 		fread(coords, sizeof(float), numParticles * 4, pFile);
 		std::vector<float4> posVec;
 		std::vector<float> valVec;
+		std::vector<char> feature;
+
 		posVec.resize(numParticles);
 		valVec.resize(numParticles);
+		feature.resize(numParticles);
 		for (int i = 0; i < numParticles; i++){
 			posVec[i] = make_float4(coords[4 * i], coords[4 * i + 1], coords[4 * i + 2], 1.0);
 			valVec[i] = coords[4 * i + 3];
+			feature[i] = (char)coords[4 * i + 3];
 		}
 		delete[] coords;
 
 		glyphRenderable = std::make_shared<SphereRenderable>(posVec, valVec);
+		glyphRenderable->feature = feature;
 		std::cout << "number of rendered glyphs: " << numParticles << std::endl;
 
 		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
@@ -194,8 +200,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph", this);
 	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
+	freezingFeatureCheck = new QCheckBox("Freezing Feature", this);
+	usingFeatureSnappingCheck = new QCheckBox("Snapping Feature", this);
+	usingFeaturePickingCheck = new QCheckBox("Picking Feature", this);
 
 	connect(glyphRenderable.get(), SIGNAL(glyphPickingFinished()), this, SLOT(SlotToggleGlyphPickingFinished()));
+	connect(glyphRenderable.get(), SIGNAL(featurePickingFinished()), this, SLOT(SlotToggleFeaturePickingFinished()));
 
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
@@ -211,6 +221,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(transSizeSlider);
 	controlLayout->addWidget(usingGlyphSnappingCheck);
 	controlLayout->addWidget(usingGlyphPickingCheck);
+	controlLayout->addWidget(freezingFeatureCheck);
+	controlLayout->addWidget(usingFeatureSnappingCheck);
+	controlLayout->addWidget(usingFeaturePickingCheck); 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(udbeCheck);
 	
@@ -259,6 +272,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 #endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
+	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
+	connect(usingFeatureSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingFeatureSnapping(bool)));
+	connect(usingFeaturePickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingFeature(bool)));
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	
@@ -283,18 +299,63 @@ void Window::AddCurveBLens()
 	lensRenderable->AddCurveBLens();
 }
 
-
-void Window::SlotTogglePickingGlyph(bool b)
-{
-	glyphRenderable->isPickingGlyph = b;
-}
-
-
 void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
 	lensRenderable->isSnapToGlyph = b;
 	if (!b){
 		glyphRenderable->SetSnappedGlyphId(-1);
+	}
+	else{
+		usingFeatureSnappingCheck->setChecked(false);
+		SlotToggleUsingFeatureSnapping(false);
+		usingFeaturePickingCheck->setChecked(false);
+		SlotTogglePickingFeature(false);
+	}
+}
+
+void Window::SlotTogglePickingGlyph(bool b)
+{
+	glyphRenderable->isPickingGlyph = b;
+	if (b){
+		usingFeatureSnappingCheck->setChecked(false);
+		SlotToggleUsingFeatureSnapping(false);
+		usingFeaturePickingCheck->setChecked(false);
+		SlotTogglePickingFeature(false);
+	}
+}
+
+
+void Window::SlotToggleFreezingFeature(bool b)
+{
+	glyphRenderable->isFreezingFeature = b;
+	glyphRenderable->RecomputeTarget();
+}
+
+void Window::SlotToggleUsingFeatureSnapping(bool b)
+{
+	lensRenderable->isSnapToFeature = b;
+	if (!b){
+		glyphRenderable->SetSnappedFeatureId(-1);
+		glyphRenderable->RecomputeTarget();
+	}
+	else{
+		usingGlyphSnappingCheck->setChecked(false);
+		SlotToggleUsingGlyphSnapping(false);
+		usingGlyphPickingCheck->setChecked(false);
+		SlotTogglePickingGlyph(false);
+	}
+}
+
+void Window::SlotTogglePickingFeature(bool b)
+{
+	glyphRenderable->isPickingFeature = b;
+	if (b){
+		usingGlyphSnappingCheck->setChecked(false);
+		SlotToggleUsingGlyphSnapping(false);
+		usingGlyphPickingCheck->setChecked(false);
+		SlotTogglePickingGlyph(false);
+	}
+	else{
 	}
 }
 
@@ -366,6 +427,12 @@ void Window::SlotToggleGlyphPickingFinished()
 {
 	usingGlyphPickingCheck->setChecked(false);
 }
+
+void Window::SlotToggleFeaturePickingFinished()
+{
+	usingFeaturePickingCheck->setChecked(false);
+}
+
 
 void Window::SlotDeformModeChanged(bool clicked)
 {

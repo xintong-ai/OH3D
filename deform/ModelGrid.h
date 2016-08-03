@@ -53,13 +53,14 @@ public:
 
 	void UpdatePointCoords(float4* v, int n, float4* vOri = 0);
 	void UpdatePointCoords_LineMeshLens_Thrust(float4* v, int n);
-	void UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float* brightness, int n, float3 lensCenter, float lSemiMajorAxisGlobal, float lSemiMinorAxisGlobal, float3 majorAxisGlobal, float focusRatio, float3 lensDir);
+	void UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float* brightness, int n, float3 lensCenter, float lSemiMajorAxisGlobal, float lSemiMinorAxisGlobal, float3 majorAxisGlobal, float focusRatio, float3 lensDir, bool isFreezingFeature, int snappedFeatureId, char *feature = 0);
 	//these thrust variables should be placed in a better place
 	thrust::device_vector<float4> d_vec_vOri;
 	thrust::device_vector<int> d_vec_vIdx;
 	thrust::device_vector<float4> d_vec_vBaryCoord;
 	thrust::device_vector<float4> d_vec_v;
 	thrust::device_vector<float> d_vec_brightness;
+	thrust::device_vector<char> d_vec_feature;
 
 
 	void InitGridDensity(float4* v, int n);

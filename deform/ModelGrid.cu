@@ -172,6 +172,7 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 	thrust::copy(&vBaryCoord[0], &vBaryCoord[0] + n, d_vec_vBaryCoord.begin());
 	d_vec_v.resize(n);
 	d_vec_brightness.resize(n);
+	d_vec_feature.resize(n);
 }
 
 
@@ -239,10 +240,16 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 	float3 majorAxis;
 	float focusRatio;
 	float3 lensDir;
-
+	bool isFreezingFeature;
+	int snappedFeatureId;
 	template<typename Tuple>
 	__device__ __host__ void operator() (Tuple t)
 	{
+		if (isFreezingFeature && snappedFeatureId == thrust::get<5>(t)){
+			thrust::get<3>(t) = thrust::get<0>(t);
+			thrust::get<4>(t) = 1.0;
+			return;
+		}
 		int vi = thrust::get<1>(t);
 		if (vi >= 0 && vi < tet_number){
 			float4 vb = thrust::get<2>(t);
@@ -258,7 +265,7 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 		}
 		
 		thrust::get<4>(t) = 1.0;
-		const float dark = 0.1;
+		const float dark = 0.5;
 		float3 lenCen2P = make_float3(thrust::get<0>(t)) -lensCenter;
 		float lensCen2PProj = dot(lenCen2P, lensDir);
 		if (lensCen2PProj < 0){
@@ -272,11 +279,14 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 			}
 		}
 	}
-	functor_UpdatePointCoordsAndBrightByLineLensMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number, float3 _lensCenter, float _lSemiMajorAxisGlobal, float _lSemiMinorAxisGlobal, float3 _majorAxisGlobal, float _focusRatio, float3 _lensDir) : dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number), lensCenter(_lensCenter), lSemiMajorAxis(_lSemiMajorAxisGlobal), lSemiMinorAxis(_lSemiMinorAxisGlobal), majorAxis(_majorAxisGlobal), focusRatio(_focusRatio), lensDir(_lensDir){}
+	functor_UpdatePointCoordsAndBrightByLineLensMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number, float3 _lensCenter, float _lSemiMajorAxisGlobal, float _lSemiMinorAxisGlobal, float3 _majorAxisGlobal, float _focusRatio, float3 _lensDir, bool _isFreezingFeature, int _snappedFeatureId) : dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number), lensCenter(_lensCenter), lSemiMajorAxis(_lSemiMajorAxisGlobal), lSemiMinorAxis(_lSemiMinorAxisGlobal), majorAxis(_majorAxisGlobal), focusRatio(_focusRatio), lensDir(_lensDir), isFreezingFeature(_isFreezingFeature), snappedFeatureId(_snappedFeatureId){}
 };
 
-void ModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float* brightness, int n, float3 lensCenter, float lSemiMajorAxisGlobal, float lSemiMinorAxisGlobal, float3 majorAxisGlobal, float focusRatio, float3 lensDir)
+void ModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float* brightness, int n, float3 lensCenter, float lSemiMajorAxisGlobal, float lSemiMinorAxisGlobal, float3 majorAxisGlobal, float focusRatio, float3 lensDir, bool isFreezingFeature, int snappedFeatureId, char *feature)
 {
+	if (isFreezingFeature)
+		thrust::copy(&feature[0], &feature[0] + n, d_vec_feature.begin()); //can be placedc at ReinitiateMesh() to improve performance
+	
 	thrust::device_ptr<int> dev_ptr_tet(GetTetDev());
 	thrust::device_ptr<float> dev_ptr_X(GetXDev());
 	int tet_number = GetTetNumber();
@@ -288,7 +298,8 @@ void ModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float*
 		d_vec_vIdx.begin(),
 		d_vec_vBaryCoord.begin(),
 		d_vec_v.begin(),
-		d_vec_brightness.begin()
+		d_vec_brightness.begin(),
+		d_vec_feature.begin()
 		)),
 		thrust::make_zip_iterator(
 		thrust::make_tuple(
@@ -296,9 +307,10 @@ void ModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float*
 		d_vec_vIdx.end(),
 		d_vec_vBaryCoord.end(),
 		d_vec_v.end(),
-		d_vec_brightness.end()
+		d_vec_brightness.end(),
+		d_vec_feature.begin()
 		)),
-		functor_UpdatePointCoordsAndBrightByLineLensMesh(dev_ptr_tet, dev_ptr_X, tet_number, lensCenter, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, focusRatio, lensDir));
+		functor_UpdatePointCoordsAndBrightByLineLensMesh(dev_ptr_tet, dev_ptr_X, tet_number, lensCenter, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, focusRatio, lensDir, isFreezingFeature, snappedFeatureId));
 
 	thrust::copy(d_vec_v.begin(), d_vec_v.end(), v);
 	thrust::copy(d_vec_brightness.begin(), d_vec_brightness.end(), brightness);

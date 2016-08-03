@@ -69,6 +69,9 @@ private:
 
 	QCheckBox* usingGlyphSnappingCheck;
 	QCheckBox* usingGlyphPickingCheck;
+	QCheckBox* freezingFeatureCheck;
+	QCheckBox* usingFeatureSnappingCheck;
+	QCheckBox* usingFeaturePickingCheck;
 
 	std::shared_ptr<GlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
@@ -108,6 +111,12 @@ private slots:
 	void SlotSaveState();
 	void SlotLoadState();
 	void deformForceSliderValueChanged(int);
+
+	void SlotToggleFreezingFeature(bool b);
+	void SlotToggleUsingFeatureSnapping(bool b);
+	void SlotTogglePickingFeature(bool b);
+	void SlotToggleFeaturePickingFinished();
+
 #ifdef USE_LEAP
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
 #endif

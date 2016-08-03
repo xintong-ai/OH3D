@@ -389,10 +389,6 @@ void Window::SlotToggleUdbe(bool b)
 	modelGrid->useDensityBasedElasticity = b;
 	modelGrid->setReinitiationNeed();
 	std::vector<Lens*> *lenses = volumeRenderable->lenses;
-
-	if (lenses->size() > 0){
-		((*lenses)[lenses->size() - 1])->justChanged = true;
-	}
 }
 
 Window::~Window() {

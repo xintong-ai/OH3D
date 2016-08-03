@@ -214,7 +214,7 @@ __device__ bool PointInsideExtendedLineLensRegion(float3 p, float3 lensCen, floa
 	return ret;
 }
 
-__device__ bool PointAtBoundary(const int x, const int y, const int z, const int3 nStep)
+__device__ inline bool PointAtBoundary(const int x, const int y, const int z, const int3 nStep)
 {
 	if (x == 0 || y == 0 || z == 0 || x == nStep.x - 1 || y == nStep.y - 1 || z == nStep.z - 1)
 		return true;
@@ -222,6 +222,13 @@ __device__ bool PointAtBoundary(const int x, const int y, const int z, const int
 		return false;
 }
 
+__device__ inline bool PointAtXYBoundaryOrZBottom(const int x, const int y, const int z, const int3 nStep)
+{
+	if (x == 0 || y == 0 || x == nStep.x - 1 || y == nStep.y - 1 || z == nStep.z - 1)
+		return true;
+	else
+		return false;
+}
 __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
 	, const float cen_x, const float cen_y, const float cen_z
 	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, const float radius)
@@ -269,23 +276,19 @@ __global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float 
 		z = extra / (nStep.x-2);
 		x = extra - z*(nStep.x) + 1;
 	}
-
-
-	if (PointAtBoundary(x, y, z, nStep)){
+	if (PointAtXYBoundaryOrZBottom(x, y, z, nStep)){
+	//if (PointAtBoundary(x, y, z, nStep)){
 		more_fixed[i] = 10000000;
 		X[i * 3 + 0] = X_Orig[i * 3 + 0];
 		X[i * 3 + 1] = X_Orig[i * 3 + 1];
 		X[i * 3 + 2] = X_Orig[i * 3 + 2];
 	}
-	else if (!PointInsideExtendedLineLensRegion(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
-		more_fixed[i] = 10000000;
-		X[i * 3 + 0] = X_Orig[i * 3 + 0];
-		X[i * 3 + 1] = X_Orig[i * 3 + 1];
-		X[i * 3 + 2] = X_Orig[i * 3 + 2];
-		//V[i * 3 + 0] = 0;
-		//V[i * 3 + 1] = 0;
-		//V[i * 3 + 2] = 0;
-	}
+	//else if (!PointInsideExtendedLineLensRegion(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
+	//	more_fixed[i] = 10000000;
+	//	X[i * 3 + 0] = X_Orig[i * 3 + 0];
+	//	X[i * 3 + 1] = X_Orig[i * 3 + 1];
+	//	X[i * 3 + 2] = X_Orig[i * 3 + 2];
+	//}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -406,19 +409,17 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 				else
 					lensForce = -moveDir;
 			}
-			else if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
-				if (lensCen2PMinorProj>0)
-					lensForce = (1 - (lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
-				else
-					lensForce = -(1 - (-lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
-			}
+			//else if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
+			//	if (lensCen2PMinorProj>0)
+			//		lensForce = (1 - (lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
+			//	else
+			//		lensForce = -(1 - (-lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
+			//}
 		}
 	}
 
-
-
 	for (int j = 0; j < 3; j++) {
-		V[i * 3 + j] += (deformForce * (&(lensForce.x))[j] * t);//for FPM
+		V[i * 3 + j] += (deformForce * (&(lensForce.x))[j] * t);
 	}
 
 	//V[i*3+1]+=GRAVITY*t;

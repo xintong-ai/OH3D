@@ -203,10 +203,9 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 			float lSemiMajorAxisGlobal = lSemiMajorAxisGlobal_prj / dot(majorAxisGlobal, majorAxisGlobal_prj);
 			float lSemiMinorAxisGlobal = lSemiMinorAxisGlobal_prj / dot(minorAxisGlobal, minorAxisGlobal_prj);
 
-			if (l->justChanged){
+			//if (l->justChanged){
 				modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir, 0, 0, volume.get());
-				l->justChanged = false;
-			}
+			//}
 
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
 
