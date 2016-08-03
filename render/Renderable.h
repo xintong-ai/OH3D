@@ -11,6 +11,8 @@ class GLWidget;
 #define USE_PBO 0
 #define DRAW_PIXELS 0
 class StopWatchInterface;
+class VRWidget;
+
 inline void GetInvPVM(float modelview[16], float projection[16], float invPVM[16])
 {
     QMatrix4x4 q_modelview(modelview);
@@ -91,6 +93,8 @@ public:
 	void SetActor(GLWidget* _actor) {
 		actor = _actor;
 	}
+
+	virtual void SetVRActor(VRWidget*){};
 
 	void SetVisibility(bool b) { visible = b; }
 	//void SetDrawScreenSpace(bool b) { drawScreenSpace = b; }

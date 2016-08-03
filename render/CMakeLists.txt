@@ -57,7 +57,7 @@ set( Hdrs
 	ArrowRenderable.h 
 	GLMatrixManager.h
 	ModelGridRenderable.h
-	OPENGL_DRIVER.h
+	#OPENGL_DRIVER.h
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
@@ -77,6 +77,9 @@ endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
+
+#set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
+
 
 cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
 #qt5_use_modules(render OpenGL Gui Widgets)

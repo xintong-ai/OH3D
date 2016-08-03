@@ -31,7 +31,7 @@ void VRWidget::AddRenderable(const char* name, void* r)
 {
 	renderers[name] = (Renderable*)r;
 	((Renderable*)r)->SetAllRenderable(&renderers);
-	//((Renderable*)r)->SetActor(this);
+	((Renderable*)r)->SetVRActor(this);
 }
 
 VRWidget::~VRWidget()
@@ -150,9 +150,6 @@ void VRWidget::paintGL() {
 				//pj = pj.transposed();
 
 				/// Call out to render our scene.
-				int winWidth, winHeight;
-				GetWindowSize(winWidth, winHeight);
-
 				for (auto renderer : renderers)
 					renderer.second->draw(mv.data(), projMat.data());
 			}

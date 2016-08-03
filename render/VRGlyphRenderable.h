@@ -6,7 +6,7 @@
 #include <memory>
 class GlyphRenderable;
 class ShaderProgram;
-
+class VRWidget;
 class VRGlyphRenderable : public Renderable
 {
 	Q_OBJECT
@@ -20,7 +20,10 @@ protected:
 	void draw(float modelview[16], float projection[16]) override;
 	//void resize(int width, int height) override;
 
+	VRWidget* vractor;
 public:
 	VRGlyphRenderable(GlyphRenderable* _glyphRenderable) { glyphRenderable = _glyphRenderable; }
+
+	void SetVRActor(VRWidget* _a) override;
 };
 #endif
