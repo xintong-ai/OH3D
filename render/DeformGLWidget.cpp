@@ -15,7 +15,7 @@ void DeformGLWidget::animate()
 {
 	//for (auto renderer : renderers)
 	//	renderer.second->animate();
-	update();
+	update(); 
 }
 
 void DeformGLWidget::UpdateDepthRange()

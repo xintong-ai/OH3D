@@ -114,29 +114,6 @@ ModelGrid::ModelGrid(float dmin[3], float dmax[3], int n, bool useLineSplitGridM
 	volumeTex.addressMode[2] = cudaAddressModeBorder;
 }
 
-float3 regularMeshVertCoord(int iv, int3 nStep, float3 gridMin, float step){
-	//int i = iv / (nStep.y * nStep.z);
-	//int j = (iv - i* nStep.y * nStep.z) / nStep.z;
-	//int k = iv - i * nStep.y * nStep.z - j * nStep.z;
-	int x, y, z;
-
-	if (iv < nStep.x * nStep.y * nStep.z){
-		x = iv / (nStep.y * nStep.z);
-		y = (iv - x* nStep.y * nStep.z) / nStep.z;
-		z = iv - x * nStep.y * nStep.z - y * nStep.z;
-	}
-	else{
-		int extra = iv - nStep.x * nStep.y * nStep.z;
-		y = nStep.y / 2; // always == cutY
-		z = extra / (nStep.x - 2);
-		x = extra - z*(nStep.x) + 1;
-	}
-
-	return make_float3(gridMin.x + x * step, gridMin.y + y * step, gridMin.z + z * step);
-}
-
-
-//used for the mesh built based on lens region
 void ModelGrid::UpdatePointTetId(float4* v, int n)
 {
 	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
@@ -171,9 +148,6 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 				for (int k = 0; k < 4; k++){
 					int iv = tet[tetId * 4 + k];
 
-					//vv[k] = regularMeshVertCoord(iv, nStep, gridMin, step);
-					//vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
-
 					glm::vec4 ttt = invMeshTransMat*glm::vec4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0);
 					vv[k] = make_float3(ttt.x, ttt.y, ttt.z);
 				}
@@ -189,6 +163,157 @@ void ModelGrid::UpdatePointTetId(float4* v, int n)
 			}
 		}
 	}
+
+	d_vec_vOri.resize(n);
+	thrust::copy(v, v + n, d_vec_vOri.begin());
+	d_vec_vIdx.resize(n);
+	thrust::copy(&vIdx[0], &vIdx[0] + n, d_vec_vIdx.begin());
+	d_vec_vBaryCoord.resize(n);
+	thrust::copy(&vBaryCoord[0], &vBaryCoord[0] + n, d_vec_vBaryCoord.begin());
+	d_vec_v.resize(n);
+	d_vec_brightness.resize(n);
+	d_vec_feature.resize(n);
+}
+
+
+struct functor_UpdatePointCoordsByMesh
+{
+	thrust::device_ptr<int> dev_ptr_tet;;
+	thrust::device_ptr<float> dev_ptr_X;
+	int tet_number;
+
+	template<typename Tuple>
+	__device__ __host__ void operator() (Tuple t)
+	{
+		int vi = thrust::get<1>(t);
+		if (vi >= 0 && vi < tet_number){
+			float4 vb = thrust::get<2>(t);
+			float3 vv[4];
+			for (int k = 0; k < 4; k++){
+				int iv = dev_ptr_tet[vi * 4 + k];
+				vv[k] = make_float3(dev_ptr_X[3 * iv + 0], dev_ptr_X[3 * iv + 1], dev_ptr_X[3 * iv + 2]);
+			}
+			thrust::get<3>(t) = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
+		}
+		else{
+			thrust::get<3>(t) = thrust::get<0>(t);
+		}
+	}
+	functor_UpdatePointCoordsByMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number) :dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number){}
+};
+
+void ModelGrid::UpdatePointCoords_LineMeshLens_Thrust(float4* v, int n)
+{
+	thrust::device_ptr<int> dev_ptr_tet(GetTetDev());
+	thrust::device_ptr<float> dev_ptr_X(GetXDev());
+	int tet_number = GetTetNumber();
+	
+	thrust::for_each(
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_vOri.begin(),
+		d_vec_vIdx.begin(),
+		d_vec_vBaryCoord.begin(),
+		d_vec_v.begin()
+		)),
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_vOri.end(),
+		d_vec_vIdx.end(),
+		d_vec_vBaryCoord.end(),
+		d_vec_v.end()
+		)),
+		functor_UpdatePointCoordsByMesh(dev_ptr_tet, dev_ptr_X, tet_number));
+
+	thrust::copy(d_vec_v.begin(), d_vec_v.end(), v);
+}
+
+
+struct functor_UpdatePointCoordsAndBrightByLineLensMesh
+{
+	thrust::device_ptr<int> dev_ptr_tet;;
+	thrust::device_ptr<float> dev_ptr_X;
+	int tet_number;
+	float3 lensCenter;
+	float lSemiMajorAxis;
+	float lSemiMinorAxis;
+	float3 majorAxis;
+	float focusRatio;
+	float3 lensDir;
+	bool isFreezingFeature;
+	int snappedFeatureId;
+	template<typename Tuple>
+	__device__ __host__ void operator() (Tuple t)
+	{
+		if (isFreezingFeature && snappedFeatureId == thrust::get<5>(t)){
+			thrust::get<3>(t) = thrust::get<0>(t);
+			thrust::get<4>(t) = 1.0;
+			return;
+		}
+		int vi = thrust::get<1>(t);
+		if (vi >= 0 && vi < tet_number){
+			float4 vb = thrust::get<2>(t);
+			float3 vv[4];
+			for (int k = 0; k < 4; k++){
+				int iv = dev_ptr_tet[vi * 4 + k];
+				vv[k] = make_float3(dev_ptr_X[3 * iv + 0], dev_ptr_X[3 * iv + 1], dev_ptr_X[3 * iv + 2]);
+			}
+			thrust::get<3>(t) = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
+		}
+		else{
+			thrust::get<3>(t) = thrust::get<0>(t);
+		}
+		
+		thrust::get<4>(t) = 1.0;
+		const float dark = 0.5;
+		float3 lenCen2P = make_float3(thrust::get<0>(t)) -lensCenter;
+		float lensCen2PProj = dot(lenCen2P, lensDir);
+		if (lensCen2PProj < 0){
+			float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
+			if (abs(lensCen2PMajorProj)<lSemiMajorAxis){
+				float3 minorAxis = cross(lensDir, majorAxis);
+				float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
+				if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
+					thrust::get<4>(t) = std::max(dark, 1.0f / (0.5f * (-lensCen2PProj) + 1.0f));
+				}
+			}
+		}
+	}
+	functor_UpdatePointCoordsAndBrightByLineLensMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number, float3 _lensCenter, float _lSemiMajorAxisGlobal, float _lSemiMinorAxisGlobal, float3 _majorAxisGlobal, float _focusRatio, float3 _lensDir, bool _isFreezingFeature, int _snappedFeatureId) : dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number), lensCenter(_lensCenter), lSemiMajorAxis(_lSemiMajorAxisGlobal), lSemiMinorAxis(_lSemiMinorAxisGlobal), majorAxis(_majorAxisGlobal), focusRatio(_focusRatio), lensDir(_lensDir), isFreezingFeature(_isFreezingFeature), snappedFeatureId(_snappedFeatureId){}
+};
+
+void ModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(float4* v, float* brightness, int n, float3 lensCenter, float lSemiMajorAxisGlobal, float lSemiMinorAxisGlobal, float3 majorAxisGlobal, float focusRatio, float3 lensDir, bool isFreezingFeature, int snappedFeatureId, char *feature)
+{
+	if (isFreezingFeature)
+		thrust::copy(&feature[0], &feature[0] + n, d_vec_feature.begin()); //can be placedc at ReinitiateMesh() to improve performance
+	
+	thrust::device_ptr<int> dev_ptr_tet(GetTetDev());
+	thrust::device_ptr<float> dev_ptr_X(GetXDev());
+	int tet_number = GetTetNumber();
+
+	thrust::for_each(
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_vOri.begin(),
+		d_vec_vIdx.begin(),
+		d_vec_vBaryCoord.begin(),
+		d_vec_v.begin(),
+		d_vec_brightness.begin(),
+		d_vec_feature.begin()
+		)),
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_vOri.end(),
+		d_vec_vIdx.end(),
+		d_vec_vBaryCoord.end(),
+		d_vec_v.end(),
+		d_vec_brightness.end(),
+		d_vec_feature.begin()
+		)),
+		functor_UpdatePointCoordsAndBrightByLineLensMesh(dev_ptr_tet, dev_ptr_X, tet_number, lensCenter, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, focusRatio, lensDir, isFreezingFeature, snappedFeatureId));
+
+	thrust::copy(d_vec_v.begin(), d_vec_v.end(), v);
+	thrust::copy(d_vec_brightness.begin(), d_vec_brightness.end(), brightness);
 }
 
 void ModelGrid::UpdatePointCoords(float4* v, int n, float4* vOri)
@@ -218,7 +343,7 @@ void ModelGrid::UpdatePointCoords(float4* v, int n, float4* vOri)
 
 
 
-
+//only used for old circle lens object space
 void ModelGrid::InitGridDensity(float4* v, int n)
 {
 	if (gridType == GRID_TYPE::UNIFORM_GRID)
@@ -471,7 +596,7 @@ void ModelGrid::Update(float lensCenter[3], float lenDir[3], float focusRatio, f
 void ModelGrid::Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio,float3 majorAxisGlobal)
 {
 	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->Update(time_step, 1, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal);
+		lsgridMesh->Update(time_step, 4, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
 	return;
 }
 

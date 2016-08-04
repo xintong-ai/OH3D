@@ -31,7 +31,7 @@ void VRWidget::AddRenderable(const char* name, void* r)
 {
 	renderers[name] = (Renderable*)r;
 	((Renderable*)r)->SetAllRenderable(&renderers);
-	//((Renderable*)r)->SetActor(this);
+	((Renderable*)r)->SetVRActor(this);
 }
 
 VRWidget::~VRWidget()

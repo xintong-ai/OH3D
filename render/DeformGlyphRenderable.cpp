@@ -151,9 +151,9 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 			}
 
 		}
-		else if (l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+		else if (l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
 
-			//LineBLens has info on the screen space. need to compute info on the world space
+			//LineLens has info on the screen space. need to compute info on the world space
 			//the following computation code is temporarily placed here. a better choice is to put them in lens.cpp, but more design of Lens.h is needed
 
 			//screen length to object
@@ -162,8 +162,8 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 
 			//transfer the end points of the major and minor axis to global space
 			float2 centerScreen = l->GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
-			float2 endPointSemiMajorAxisScreen = centerScreen + ((LineBLens*)l)->lSemiMajorAxis*((LineBLens*)l)->direction;
-			float2 endPointSemiMinorAxisScreen = centerScreen + ((LineBLens*)l)->lSemiMinorAxis*make_float2(-((LineBLens*)l)->direction.y, ((LineBLens*)l)->direction.x);
+			float2 endPointSemiMajorAxisScreen = centerScreen + ((LineLens*)l)->lSemiMajorAxis*((LineLens*)l)->direction;
+			float2 endPointSemiMinorAxisScreen = centerScreen + ((LineLens*)l)->lSemiMinorAxis*make_float2(-((LineLens*)l)->direction.y, ((LineLens*)l)->direction.x);
 
 			float4 centerInClip = Object2Clip(make_float4(l->c, 1), _mv, _pj);
 
@@ -193,7 +193,7 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 			float lSemiMinorAxisGlobal = lSemiMinorAxisGlobal_prj / dot(minorAxisGlobal, minorAxisGlobal_prj);
 
 
-			modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineBLens*)l)->focusRatio, lensDir, &posOrig[0], pos.size());
+			modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineLens*)l)->focusRatio, lensDir, &posOrig[0], pos.size());
 
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
 			modelGrid->UpdatePointCoords(&pos[0], pos.size(), &posOrig[0]);

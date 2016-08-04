@@ -2,6 +2,7 @@
 
 class DeformGLWidget : public GLWidget
 {
+	Q_OBJECT
 public:
 	bool isPicking = false;
 	int pickID = -1;

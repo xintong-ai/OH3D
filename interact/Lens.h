@@ -15,11 +15,11 @@
 
 enum LENS_TYPE{
 	TYPE_CIRCLE,
-	TYPE_LINEB, 
+	TYPE_LINE, 
 	TYPE_CURVEB,
 };
 
-struct LineBLensInfo
+struct LineLensInfo
 {
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction; //suppose normalized
@@ -85,7 +85,7 @@ struct Lens
 	virtual std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
-	void ChangeClipDepth(int v, float* mv, float* pj);
+	virtual void ChangeClipDepth(int v, float* mv, float* pj);
 	void SetClipDepth(float d, float* mv, float* pj);
 	LENS_TYPE GetType(){ return type; }
 
@@ -205,16 +205,16 @@ struct CircleLens :public Lens
 };
 
 
-struct LineBLens :public Lens
+struct LineLens :public Lens
 {
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction; //suppose normalized
 	
-	LineBLensInfo lineBLensInfo; //for coding easiness, but actually duplicate the related storage
+	LineLensInfo lineLensInfo; //for coding easiness, but actually duplicate the related storage
 
 	float2 ctrlPoint1Abs, ctrlPoint2Abs; //only used during construction/transfornation. afterwards the center, direction, lSemiMajorAxis, and lSemiMinorAxis will be computed and recorded
 
-	LineBLens(float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){
+	LineLens(float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){
 		lSemiMajorAxis = 0;
 		float ratio = 3.0f;
 		lSemiMinorAxis = lSemiMajorAxis / ratio;
@@ -224,9 +224,9 @@ struct LineBLens :public Lens
 		ctrlPoint1Abs = make_float2(0, 0);
 		ctrlPoint2Abs = make_float2(0, 0);
 
-		type = LENS_TYPE::TYPE_LINEB;
+		type = LENS_TYPE::TYPE_LINE;
 
-		UpdateLineBLensInfo();
+		UpdateLineLensInfo();
 	};
 
 	void FinishConstructing(float* mv, float* pj, int winW, int winH);
@@ -252,7 +252,10 @@ struct LineBLens :public Lens
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	//void ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
-	void UpdateLineBLensInfo();
+	void UpdateLineLensInfo();
+
+	//void ChangeClipDepth(int v, float* mv, float* pj) override;
+
 };	
 
 

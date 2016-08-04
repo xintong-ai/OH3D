@@ -1,7 +1,7 @@
 build*/
 *~
 *.user
-
+*.jrb
 *.state
 
 # Compiled Object files

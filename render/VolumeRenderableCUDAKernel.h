@@ -1,8 +1,6 @@
 #ifndef VOLUMERENDERABLECUDAKERNEL_H
 #define VOLUMERENDERABLECUDAKERNEL_H
 
-
-
 #include <cuda_runtime.h>
 #include "Volume.h"
 
@@ -15,13 +13,15 @@
 typedef unsigned int  uint;
 
 
-
-
 extern "C" {
 	void VolumeRender_init();
 	void VolumeRender_deinit();
 
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
+		float density, float brightness,
+		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor);
+	
+	void VolumeRender_render_test(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
 		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor);
 

@@ -329,10 +329,15 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 	if (!hit)
 	{
 		float4 sum = make_float4(0.0f);
-		sum = make_float4(0.9f, 0.9f, 0.0f, 1.0f);
+		sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
 		d_output[y*imageW + x] = rgbaFloatToInt(sum);
 		return;
 	}
+
+	//float4 sum1 = make_float4(0.0f);
+	//sum1 = make_float4(0.9f, 0.2f, 0.5f, 1.0f);
+	//d_output[y*imageW + x] = rgbaFloatToInt(sum1);
+	//return;
 
 	if (tnear < 0.0f) tnear = 0.0f;     // clamp to near plane
 
@@ -350,11 +355,9 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 	{
 		float3 coord = pos / spacing;
 		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
-
 		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
 
 		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
-		//float3 normalInWorld = make_float3(0, 0, 0);
 
 		// lookup in transfer function texture
 		float4 col;
@@ -368,11 +371,6 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 		float3 posInWorld = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
-			//if (length(normalInWorld) > lightingThr
-			//	&& coord.x > 2 && coord.x<volumeSize.x - 3
-			//	&& coord.y>2 && coord.y<volumeSize.y - 3
-			//	&& coord.z>2 && coord.z < volumeSize.z - 3)
-			////for scientific dataset, lighting at the edge of the volume causes unexpected result since the gradient there is not precise
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
 			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
@@ -381,10 +379,6 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 		{
 			col = make_float4(cc, funcRes);
 		}
-
-
-		//if (coord.x < volumeSize.x / 2+15)
-		//	col = make_float4(0, 0, 0, 0);
 
 		col.w *= density;
 
@@ -439,3 +433,30 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 
 
 
+__global__ void d_render_preint_test(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	
+		float4 sum = make_float4(0.0f);
+		sum = make_float4(1.0*x / imageW, 1.0*y / imageH, 0.2f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		return;
+	
+}
+
+
+
+void VolumeRender_render_test(uint *d_output, uint imageW, uint imageH,
+	float density, float brightness,
+	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+{
+
+	dim3 blockSize = dim3(16, 16, 1);
+	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
+
+	d_render_preint_test << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInWorld, volumeSize, maxSteps, tstep, useColor);
+}

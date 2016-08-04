@@ -15,15 +15,13 @@
 // Standard includes
 #include <iostream>
 
-static auto const WIDTH = 1920;
-static auto const HEIGHT = 1080;
+//static auto const WIDTH = 1920;
+//static auto const HEIGHT = 1080;
 
 void VRGlyphRenderable::init()
 {
 	glProg = new ShaderProgram;
 	glyphRenderable->LoadShaders(glProg);
-
-
 }
 
 void VRGlyphRenderable::draw(float modelview[16], float projection[16])
@@ -38,3 +36,7 @@ void VRGlyphRenderable::draw(float modelview[16], float projection[16])
 	glyphRenderable->DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
 }
+
+void VRGlyphRenderable::SetVRActor(VRWidget* _a) {
+	vractor = _a;
+} 

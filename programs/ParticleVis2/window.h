@@ -24,7 +24,16 @@ class GLMatrixManager;
 class ModelGridRenderable;
 class ModelGrid;
 
+//#define USE_NEW_LEAP
+
 #ifdef USE_LEAP
+class LeapListener;
+namespace Leap{
+	class Controller;
+}
+#endif
+
+#ifdef USE_NEW_LEAP
 class LeapListener;
 namespace Leap{
 	class Controller;
@@ -60,6 +69,9 @@ private:
 
 	QCheckBox* usingGlyphSnappingCheck;
 	QCheckBox* usingGlyphPickingCheck;
+	QCheckBox* freezingFeatureCheck;
+	QCheckBox* usingFeatureSnappingCheck;
+	QCheckBox* usingFeaturePickingCheck;
 
 	std::shared_ptr<DeformGlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
@@ -70,11 +82,18 @@ private:
 	QPushButton *addCurveBLensBtn;
 	std::shared_ptr<ModelGrid> modelGrid;
 
+	QLabel *deformForceLabel;
+
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
 	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
 #endif
 #ifdef USE_LEAP
+	LeapListener* listener;
+	Leap::Controller* controller;
+#endif
+
+#ifdef USE_NEW_LEAP
 	LeapListener* listener;
 	Leap::Controller* controller;
 #endif
@@ -91,7 +110,17 @@ private slots:
 	void SlotDeformModeChanged(bool clicked);
 	void SlotSaveState();
 	void SlotLoadState();
+	void deformForceSliderValueChanged(int);
+
+	void SlotToggleFreezingFeature(bool b);
+	void SlotToggleUsingFeatureSnapping(bool b);
+	void SlotTogglePickingFeature(bool b);
+	void SlotToggleFeaturePickingFinished();
+
 #ifdef USE_LEAP
+	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+#endif
+#ifdef USE_NEW_LEAP
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
 #endif
 };

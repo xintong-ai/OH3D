@@ -108,7 +108,6 @@ Window::Window()
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
 }
-
 Window::~Window() {
 }
 

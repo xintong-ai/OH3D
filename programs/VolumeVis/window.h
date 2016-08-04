@@ -34,9 +34,17 @@ namespace Leap{
 }
 #endif
 
+#ifdef USE_NEW_LEAP
+class LeapListener;
+namespace Leap{
+	class Controller;
+}
+#endif
+
+
 #ifdef USE_OSVR
 class VRWidget;
-class VRGlyphRenderable;
+class VRVolumeRenderableCUDA;
 #endif
 
 class Window : public QWidget
@@ -75,15 +83,23 @@ private:
 	std::shared_ptr<ModelGrid> modelGrid;
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
+
+	QLabel *deformForceLabel;
+	QLabel *laLabel, *ldLabel, *lsLabel;
+	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
+
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
-	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
+	std::shared_ptr<VRVolumeRenderableCUDA> vrGlyphRenderable;
 #endif
 #ifdef USE_LEAP
 	LeapListener* listener;
 	Leap::Controller* controller;
 #endif
-
+#ifdef USE_NEW_LEAP
+	LeapListener* listener;
+	Leap::Controller* controller;
+#endif
 private slots:
 	void AddLens();
 	void AddLineLens();
@@ -96,7 +112,22 @@ private slots:
 	void SlotDeformModeChanged(bool clicked);
 	void SlotSaveState();
 	void SlotLoadState();
+
+	void deformForceSliderValueChanged(int);
+	void transFuncP1LabelSliderValueChanged(int);
+	void transFuncP2LabelSliderValueChanged(int); 
+	void brSliderValueChanged(int v);
+	void dsSliderValueChanged(int v);
+	void laSliderValueChanged(int);
+	void ldSliderValueChanged(int);
+	void lsSliderValueChanged(int);
+
+
+
 #ifdef USE_LEAP
+	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+#endif
+#ifdef USE_NEW_LEAP
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
 #endif
 };

@@ -3,9 +3,6 @@ project(render)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
-#if(USE_OSVR)
-#	find_package(osvr)
-#endif
 
 
 if(USE_VOLUME_RENDERING)
@@ -24,10 +21,8 @@ endif()
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
-	# ${Leap_INCLUDE_DIR}
 	${CMAKE_BINARY_DIR}
 	${Boost_INCLUDE_DIR}
-	${osvr_DIR}/../../../include}
 	required)
 
 if(USE_SUPERQUADRIC)
@@ -62,7 +57,7 @@ set( Hdrs
 	GLArrow.h
 	ArrowRenderable.h 
 	GLMatrixManager.h
-	OPENGL_DRIVER.h
+	#OPENGL_DRIVER.h
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
@@ -73,11 +68,15 @@ if(USE_DEFORM)
 		ModelGridRenderable.h GridRenderable.h)
 	set(Srcs ${Srcs} DeformGlyphRenderable.cpp LensRenderable.cpp DeformGLWidget.cpp 
 		ModelGridRenderable.cpp GridRenderable.cpp )
+	include_directories(
+		 ${CUDA_TOOLKIT_INCLUDE} 
+	#${CUDA_SDK_ROOT_DIR}/common/inc
+	)
 endif()
 
 if(USE_OSVR)
-	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h)
-	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp)
+	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h VRVolumeRenderableCUDA.h)
+	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp VRVolumeRenderableCUDA.cpp)
 endif()
 
 if(USE_VOLUME_RENDERING)
@@ -94,6 +93,8 @@ endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
+
+#set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
 if(USE_VOLUME_RENDERING)
 	cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
@@ -120,3 +121,6 @@ target_link_libraries(${PROJECT_NAME}
 	${Teem_LIBRARY_DIRS}/teem.lib)
 endif()
 
+if(USE_OSVR)
+	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
+endif()

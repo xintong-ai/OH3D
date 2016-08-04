@@ -100,4 +100,3 @@ bool GlyphRenderable::findClosetFeature(float3 aim, float3 & result, int & resid
 }
 
 
-

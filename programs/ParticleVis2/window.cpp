@@ -4,6 +4,7 @@
 #include "LensRenderable.h"
 #include "GridRenderable.h"
 #include <iostream>
+#include <algorithm>    // std::min_element, std::max_element
 
 #include "SphereRenderable.h"
 #include "SolutionParticleReader.h"
@@ -16,6 +17,11 @@
 #include <ColorGradient.h>
 
 #ifdef USE_LEAP
+#include <leap/LeapListener.h>
+#include <Leap.h>
+#endif
+
+#ifdef USE_NEW_LEAP
 #include <leap/LeapListener.h>
 #include <Leap.h>
 #endif
@@ -69,25 +75,30 @@ Window::Window()
 	else{
 		FILE *pFile;
 		pFile = fopen(dataPath.c_str(), "rb");
-		if (pFile == NULL) { fputs("fibers file error", stderr); exit(1); }
+		if (pFile == NULL) { fputs("particle file error", stderr); exit(1); }
 		int numParticles;
 		fread(&numParticles, sizeof(int), 1, pFile);
 		float *coords = new float[numParticles * 4];
 		fread(coords, sizeof(float), numParticles * 4, pFile);
 		std::vector<float4> posVec;
 		std::vector<float> valVec;
+		std::vector<char> feature;
+
 		posVec.resize(numParticles);
 		valVec.resize(numParticles);
+		feature.resize(numParticles);
 		for (int i = 0; i < numParticles; i++){
 			posVec[i] = make_float4(coords[4 * i], coords[4 * i + 1], coords[4 * i + 2], 1.0);
 			valVec[i] = coords[4 * i + 3];
+			feature[i] = (char)coords[4 * i + 3];
 		}
 		delete[] coords;
 
 		glyphRenderable = std::make_shared<SphereRenderable>(posVec, valVec);
+		glyphRenderable->feature = feature;
 		std::cout << "number of rendered glyphs: " << numParticles << std::endl;
 
-		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW);
+		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 		posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 		posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 		float v = 0;
@@ -171,7 +182,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
 #endif
-
+#ifdef USE_NEW_LEAP
+	listener = new LeapListener();
+	controller = new Leap::Controller();
+	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
+	controller->addListener(*listener);
+#endif
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
@@ -183,8 +199,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph", this);
 	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
+	freezingFeatureCheck = new QCheckBox("Freezing Feature", this);
+	usingFeatureSnappingCheck = new QCheckBox("Snapping Feature", this);
+	usingFeaturePickingCheck = new QCheckBox("Picking Feature", this);
 
 	connect(glyphRenderable.get(), SIGNAL(glyphPickingFinished()), this, SLOT(SlotToggleGlyphPickingFinished()));
+	connect(glyphRenderable.get(), SIGNAL(featurePickingFinished()), this, SLOT(SlotToggleFeaturePickingFinished()));
 
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
@@ -200,9 +220,35 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(transSizeSlider);
 	controlLayout->addWidget(usingGlyphSnappingCheck);
 	controlLayout->addWidget(usingGlyphPickingCheck);
+	controlLayout->addWidget(freezingFeatureCheck);
+	controlLayout->addWidget(usingFeatureSnappingCheck);
+	controlLayout->addWidget(usingFeaturePickingCheck); 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(udbeCheck);
+	
+	
+	QLabel *deformForceLabelLit = new QLabel("Deform Force");
+	controlLayout->addWidget(deformForceLabelLit);
+	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
+	deformForceSlider->setRange(0, 44);
+	deformForceSlider->setValue(log2(modelGrid->getDeformForce())*4.0);
+	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
+	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
+	QHBoxLayout *deformForceLayout = new QHBoxLayout;
+	deformForceLayout->addWidget(deformForceSlider);
+	deformForceLayout->addWidget(deformForceLabel);
+	controlLayout->addLayout(deformForceLayout);
+	
+	
+	
+	
 	controlLayout->addStretch();
+
+
+
+
+
+
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
@@ -219,8 +265,15 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
+#ifdef USE_NEW_LEAP
+	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
+		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
+#endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
+	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
+	connect(usingFeatureSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingFeatureSnapping(bool)));
+	connect(usingFeaturePickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingFeature(bool)));
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	
@@ -236,7 +289,7 @@ void Window::AddLens()
 
 void Window::AddLineLens()
 {
-	lensRenderable->AddLineBLens();
+	lensRenderable->AddLineLens();
 }
 
 
@@ -245,18 +298,63 @@ void Window::AddCurveBLens()
 	lensRenderable->AddCurveBLens();
 }
 
-
-void Window::SlotTogglePickingGlyph(bool b)
-{
-	glyphRenderable->isPickingGlyph = b;
-}
-
-
 void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
 	lensRenderable->isSnapToGlyph = b;
 	if (!b){
 		glyphRenderable->SetSnappedGlyphId(-1);
+	}
+	else{
+		usingFeatureSnappingCheck->setChecked(false);
+		SlotToggleUsingFeatureSnapping(false);
+		usingFeaturePickingCheck->setChecked(false);
+		SlotTogglePickingFeature(false);
+	}
+}
+
+void Window::SlotTogglePickingGlyph(bool b)
+{
+	glyphRenderable->isPickingGlyph = b;
+	if (b){
+		usingFeatureSnappingCheck->setChecked(false);
+		SlotToggleUsingFeatureSnapping(false);
+		usingFeaturePickingCheck->setChecked(false);
+		SlotTogglePickingFeature(false);
+	}
+}
+
+
+void Window::SlotToggleFreezingFeature(bool b)
+{
+	glyphRenderable->isFreezingFeature = b;
+	glyphRenderable->RecomputeTarget();
+}
+
+void Window::SlotToggleUsingFeatureSnapping(bool b)
+{
+	lensRenderable->isSnapToFeature = b;
+	if (!b){
+		glyphRenderable->SetSnappedFeatureId(-1);
+		glyphRenderable->RecomputeTarget();
+	}
+	else{
+		usingGlyphSnappingCheck->setChecked(false);
+		SlotToggleUsingGlyphSnapping(false);
+		usingGlyphPickingCheck->setChecked(false);
+		SlotTogglePickingGlyph(false);
+	}
+}
+
+void Window::SlotTogglePickingFeature(bool b)
+{
+	glyphRenderable->isPickingFeature = b;
+	if (b){
+		usingGlyphSnappingCheck->setChecked(false);
+		SlotToggleUsingGlyphSnapping(false);
+		usingGlyphPickingCheck->setChecked(false);
+		SlotTogglePickingGlyph(false);
+	}
+	else{
 	}
 }
 
@@ -297,6 +395,22 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 }
 #endif
 
+#ifdef USE_NEW_LEAP
+void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
+{
+	if (1 == numHands){
+		lensRenderable->SlotOneHandChanged(make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+	}
+	else if (2 == numHands){
+		//
+		lensRenderable->SlotTwoHandChanged(
+			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
+			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+
+	}
+}
+#endif
+
 void Window::SlotSaveState()
 {
 	matrixMgr->SaveState("current.state");
@@ -313,6 +427,12 @@ void Window::SlotToggleGlyphPickingFinished()
 	usingGlyphPickingCheck->setChecked(false);
 }
 
+void Window::SlotToggleFeaturePickingFinished()
+{
+	usingFeaturePickingCheck->setChecked(false);
+}
+
+
 void Window::SlotDeformModeChanged(bool clicked)
 {
 	if (radioDeformScreen->isChecked()){
@@ -323,3 +443,9 @@ void Window::SlotDeformModeChanged(bool clicked)
 	}
 }
 
+void Window::deformForceSliderValueChanged(int v)
+{
+	float newForce = pow(2, v / 4.0);
+	deformForceLabel->setText(QString::number(newForce));
+	modelGrid->setDeformForce(newForce);
+}

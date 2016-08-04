@@ -18,18 +18,37 @@ find_package(Qt5Widgets REQUIRED)
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
+<<<<<<< HEAD
 	# ${Leap_INCLUDE_DIR}
+=======
+	${CUDA_TOOLKIT_INCLUDE} 
+	${CUDA_SDK_ROOT_DIR}/common/inc 
+>>>>>>> refs/remotes/origin/lineLensMesh
 	${PROJECT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
 	required)
+		
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
 
 set( Srcs 
 	main.cpp 
 	window.cpp 
+	
 	)
 set( Hdrs  
 	window.h 
+
     )
+
+if(USE_NEW_LEAP)
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
+	set( Srcs ${Srcs} ../ParticleVis2/LeapListener.cpp)
+	set( Hdrs ${Hdrs} ../ParticleVis2/LeapInteraction.h
+	../ParticleVis2/LeapListener.h)
+endif()
+
 
 configure_file(config.txt config.txt COPYONLY)
 
@@ -46,12 +65,17 @@ target_link_libraries(${PROJECT_NAME}
 	interact
 	render
 	dataModel
-	)
+	${Leap_IMPORT_LIB_DEBUG}
+)
 
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
 endif()
 
 if(USE_LEAP)
+	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
+endif()
+
+if(USE_NEW_LEAP)
 	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()
