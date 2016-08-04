@@ -227,7 +227,7 @@ void CircleLens::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, fl
 
 
 
-bool LineBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
+bool LineLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 
 
 	//dot product of (_x-x, _y-y) and direction
@@ -247,7 +247,7 @@ bool LineBLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, 
 
 
 
-std::vector<float2> LineBLens::GetContour(float* mv, float* pj, int winW, int winH)
+std::vector<float2> LineLens::GetContour(float* mv, float* pj, int winW, int winH)
 {
 	std::vector<float2> ret;
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -264,7 +264,7 @@ std::vector<float2> LineBLens::GetContour(float* mv, float* pj, int winW, int wi
 	return ret;
 }
 
-std::vector<float2> LineBLens::GetOuterContour(float* mv, float* pj, int winW, int winH)
+std::vector<float2> LineLens::GetOuterContour(float* mv, float* pj, int winW, int winH)
 {
 	std::vector<float2> ret;
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -280,15 +280,15 @@ std::vector<float2> LineBLens::GetOuterContour(float* mv, float* pj, int winW, i
 
 	return ret;
 }
-void LineBLens::UpdateLineBLensInfo()
+void LineLens::UpdateLineLensInfo()
 {
-	lineBLensInfo.lSemiMajorAxis = lSemiMajorAxis;
-	lineBLensInfo.lSemiMinorAxis = lSemiMinorAxis;
-	lineBLensInfo.direction = direction;
-	lineBLensInfo.focusRatio = focusRatio;
+	lineLensInfo.lSemiMajorAxis = lSemiMajorAxis;
+	lineLensInfo.lSemiMinorAxis = lSemiMinorAxis;
+	lineLensInfo.direction = direction;
+	lineLensInfo.focusRatio = focusRatio;
 }
 
-void LineBLens::UpdateInfo(float* mv, float* pj, int winW, int winH)
+void LineLens::UpdateInfo(float* mv, float* pj, int winW, int winH)
 {
 	UpdateCenterByScreenPos((ctrlPoint1Abs.x + ctrlPoint2Abs.x) / 2.0, (ctrlPoint1Abs.y + ctrlPoint2Abs.y) / 2.0, mv, pj, winW, winH);
 
@@ -303,16 +303,16 @@ void LineBLens::UpdateInfo(float* mv, float* pj, int winW, int winH)
 	else
 		direction = normalize(direction);
 
-	UpdateLineBLensInfo();
+	UpdateLineLensInfo();
 }
 
-void LineBLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
+void LineLens::FinishConstructing(float* mv, float* pj, int winW, int winH)
 {
 	UpdateInfo(mv, pj, winW, winH);
 	isConstructing = false;
 }
 
-std::vector<float2> LineBLens::GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
+std::vector<float2> LineLens::GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH){
 	std::vector<float2> res;
 	if (isConstructing){
 		res.push_back(ctrlPoint1Abs);
@@ -334,7 +334,7 @@ std::vector<float2> LineBLens::GetCtrlPointsForRendering(float* mv, float* pj, i
 }
 
 
-bool LineBLens::PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) 
+bool LineLens::PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) 
 {
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
@@ -348,7 +348,7 @@ bool LineBLens::PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int w
 }
 
 
-bool LineBLens::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) 
+bool LineLens::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) 
 {
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
@@ -362,27 +362,27 @@ bool LineBLens::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int w
 }
 
 
-bool LineBLens::PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
+bool LineLens::PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
 {
 	return PointOnInnerBoundary(_x, _y, mv, pj, winW, winH);
 }
 
-bool LineBLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
+bool LineLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
 {
 	return PointOnOuterBoundary(_x, _y, mv, pj, winW, winH);
 }
 
-void LineBLens::ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+void LineLens::ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
 {
 	ChangeLensSize(_x, _y, _prex, _prey, mv, pj, winW, winH);
 }
 
-void LineBLens::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+void LineLens::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
 {
 	ChangefocusRatio(_x, _y, _prex, _prey, mv, pj, winW, winH);
 }
 
-void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+void LineLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
 {
 	//float disThr = max(eps_pixel / 4, 10);
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -424,7 +424,7 @@ void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, 
 
 		direction = -newd;
 	}
-	UpdateLineBLensInfo();
+	UpdateLineLensInfo();
 	/*
 	//only change size but not direction
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -441,7 +441,7 @@ void LineBLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, 
 		*/
 }
 
-void LineBLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+void LineLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
 {
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
@@ -455,11 +455,30 @@ void LineBLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv
 		if (disMinorAbs > lSemiMinorAxis + eps_pixel + 1)
 			focusRatio = lSemiMinorAxis / disMinorAbs;
 	}
-	UpdateLineBLensInfo();
+	UpdateLineLensInfo();
 }
+//
+//void LineLens::ChangeClipDepth(int v, float* mv, float* pj)
+//{
+//	matrix4x4 invModelview, invProjection;
+//	invertMatrix(mv, &invModelview.v[0].x);
+//
+//	invertMatrix(pj, &invProjection.v[0].x);
+//	float4 cenClip = Object2Clip(GetCenter(), mv, pj);
+//	//std::cout << cenClip.z << std::endl;
+//	float4 cenShiftClip = cenClip + make_float4(0, 0, -0.01, 0);
+//	float4 cenShiftObj = Clip2ObjectGlobal(cenShiftClip, &invModelview.v[0].x, &invProjection.v[0].x);
+//	float4 dir4 = cenShiftObj - GetCenter();// make_float3(dir_object.x, dir_object.y, dir_object.z);
+//	float3 dir3 = make_float3(dir4.x, dir4.y, dir4.z);
+//	dir3 = dir3 * (1.0f / length(dir3)) * v * (-0.05);
+//	SetCenter(make_float3(
+//		c.x + dir3.x,
+//		c.y + dir3.y,
+//		c.z + dir3.z));
+//}
 
 /*
-void LineBLens::ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+void LineLens::ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
 {
 	//only rotate
 	float disThr = max(eps_pixel / 4, 10);

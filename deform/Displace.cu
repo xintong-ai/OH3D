@@ -121,7 +121,7 @@ struct functor_Displace
 
 
 
-struct functor_Displace_LineB
+struct functor_Displace_LineLens
 {
 	int x, y;
 	float d;
@@ -131,7 +131,7 @@ struct functor_Displace_LineB
 	const float thickFocus = 0.003;
 	const float dark = 0.05;
 
-	LineBLensInfo lineBLensInfo;
+	LineLensInfo lineLensInfo;
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float2 direction;
 
@@ -195,13 +195,13 @@ struct functor_Displace_LineB
 		thrust::get<0>(t) = ret;
 		thrust::get<3>(t) = brightness;
 	}
-	functor_Displace_LineB(int _x, int _y, LineBLensInfo _lineBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
-	x(_x), y(_y), lineBLensInfo(_lineBLensInfo), d(_d), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId)
+	functor_Displace_LineLens(int _x, int _y, LineLensInfo _lineLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
+		x(_x), y(_y), lineLensInfo(_lineLensInfo), d(_d), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId)
 	{
-		lSemiMajorAxis = lineBLensInfo.lSemiMajorAxis;
-		lSemiMinorAxis = lineBLensInfo.lSemiMinorAxis;
-		direction = lineBLensInfo.direction;
-		focusRatio = lineBLensInfo.focusRatio;
+		lSemiMajorAxis = lineLensInfo.lSemiMajorAxis;
+		lSemiMinorAxis = lineLensInfo.lSemiMinorAxis;
+		direction = lineLensInfo.direction;
+		focusRatio = lineLensInfo.focusRatio;
 	}
 };
 
@@ -526,9 +526,9 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 						break;
 
 					}
-					case LENS_TYPE::TYPE_LINEB:
+					case LENS_TYPE::TYPE_LINE:
 					{
-							LineBLens* l = (LineBLens*)lenses[i];
+							LineLens* l = (LineLens*)lenses[i];
 							//if (l->isConstructing){
 							//	thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 							//		d_vec_posClip.begin(), d_vec_posScreen.begin(),
@@ -555,7 +555,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 									feature.end(),
 									d_vec_id.end()
 									)), 
-									functor_Displace_LineB(lensScreenCenter.x, lensScreenCenter.y, l->lineBLensInfo, l->GetClipDepth(modelview, projection), isFreezingFeature, snappedGlyphId, snappedFeatureId));
+									functor_Displace_LineLens(lensScreenCenter.x, lensScreenCenter.y, l->lineLensInfo, l->GetClipDepth(modelview, projection), isFreezingFeature, snappedGlyphId, snappedFeatureId));
 
 
 							}

@@ -293,10 +293,10 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				//glEnd();
 			}
 
-			//if (l->type == LENS_TYPE::TYPE_LINEB){
+			//if (l->type == LENS_TYPE::TYPE_LINE){
 			//	std::vector<float2> ctrlPoints = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
 			//	glColor3f(0.8f, 0.8f, 0.2f);
-			//	if (((LineBLens*)l)->isConstructing){
+			//	if (((LineLens*)l)->isConstructing){
 			//		glBegin(GL_LINES);
 			//		for (auto v : ctrlPoints)
 			//			glVertex2f(v.x, v.y);
@@ -416,7 +416,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			glDisable(GL_POINT_SMOOTH);
 
 
-			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINEB){
+			if (l->type == LENS_TYPE::TYPE_CIRCLE || l->type == LENS_TYPE::TYPE_LINE){
 				std::vector<std::vector<float3>> lensContour = ((CircleLens*)l)->Get3DContour(eyeWorld, false);
 
 				glColor3f(0.39f, 0.89f, 0.26f);
@@ -473,10 +473,10 @@ void LensRenderable::AddCircleLens()
 
 
 
-void LensRenderable::AddLineBLens()
+void LensRenderable::AddLineLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new LineBLens(actor->DataCenter(), 0.3);
+	Lens* l = new LineLens(actor->DataCenter(), 0.3);
 	lenses.push_back(l);
 	((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
@@ -616,9 +616,9 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 			if (l->type == LENS_TYPE::TYPE_CURVEB) {
 				((CurveBLens *)l)->AddCtrlPoint(x, y);
 			}
-			else if (l->type == LENS_TYPE::TYPE_LINEB) {
-				((LineBLens *)l)->ctrlPoint1Abs = make_float2(x, y);
-				((LineBLens *)l)->ctrlPoint2Abs = make_float2(x, y);
+			else if (l->type == LENS_TYPE::TYPE_LINE) {
+				((LineLens *)l)->ctrlPoint1Abs = make_float2(x, y);
+				((LineLens *)l)->ctrlPoint2Abs = make_float2(x, y);
 			}
 		}
 		break;
@@ -689,8 +689,8 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
-		else if (l->type == LENS_TYPE::TYPE_LINEB) {
-			((LineBLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
+		else if (l->type == LENS_TYPE::TYPE_LINE) {
+			((LineLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
 	}
@@ -749,9 +749,9 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		if (l->type == LENS_TYPE::TYPE_CURVEB){
 			((CurveBLens *)l)->AddCtrlPoint(x, y);
 		}
-		else if (l->type == LENS_TYPE::TYPE_LINEB){
-			((LineBLens *)l)->ctrlPoint2Abs = make_float2(x, y);
-			((LineBLens*)l)->UpdateInfo(modelview, projection, winSize.x, winSize.y);
+		else if (l->type == LENS_TYPE::TYPE_LINE){
+			((LineLens *)l)->ctrlPoint2Abs = make_float2(x, y);
+			((LineLens*)l)->UpdateInfo(modelview, projection, winSize.x, winSize.y);
 			((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 		}
 		break;
