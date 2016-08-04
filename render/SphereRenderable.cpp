@@ -80,27 +80,38 @@ void SphereRenderable::resetColorMap(COLOR_MAP cm)
 void SphereRenderable::init()
 {
 	GlyphRenderable::init();
-	LoadShaders(glProg);
-	//m_vao = std::make_shared<QOpenGLVertexArrayObject>();
-	//m_vao->create();
+
+    m_vao = std::make_shared<QOpenGLVertexArrayObject>();
+    m_vao->create();
+
+
 
 	glyphMesh = std::make_shared<GLSphere>(1, 8);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+    m_vao->bind();
+    LoadShaders(glProg);
+    m_vao->release();
+
 	GenVertexBuffer(glyphMesh->GetNumVerts(),
 		glyphMesh->GetVerts());
 
+
+
+    m_vao->bind();
 	initPickingDrawingObjects();
+    m_vao->release();
 }
 
 void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =
 		GLSL(
-	layout(location = 0) in vec3 VertexPosition;
+	//layout(location = 0) 
+	in vec3 VertexPosition;
 	//layout(location = 1) in vec3 VertexNormal;
 	smooth out vec3 tnorm;
 	out vec4 eyeCoords;
@@ -129,7 +140,8 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 	uniform float Shininess;
 	in vec4 eyeCoords;
 	smooth in vec3 tnorm;
-	layout(location = 0) out vec4 FragColor;
+	//layout(location = 0) 
+	out vec4 FragColor;
 	uniform float Bright;
 
 
@@ -175,7 +187,7 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 {
-	//m_vao->bind();
+    m_vao->bind();
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
@@ -184,7 +196,7 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	//m_vao->release();
+    m_vao->release();
 }
 
 
@@ -202,7 +214,7 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 		//std::cout << sphereSize[i] << " ";
 
-		//m_vao->bind();
+        m_vao->bind();
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -230,7 +242,7 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 		glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
 		//glDrawElements(GL_TRIANGLES, glyphMesh->numElements, GL_UNSIGNED_INT, glyphMesh->indices);
-		//m_vao->release();
+        m_vao->release();
 		glPopMatrix();
 	}
 
@@ -269,12 +281,13 @@ void SphereRenderable::initPickingDrawingObjects()
 {
 
 	//init shader
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =
 		GLSL(
-		layout(location = 0) in vec3 VertexPosition;
+	//	layout(location = 0) 
+	in vec3 VertexPosition;
 	uniform mat4 ModelViewMatrix;
 	uniform mat4 ProjectionMatrix;
 	uniform vec3 Transform;
@@ -288,7 +301,8 @@ void SphereRenderable::initPickingDrawingObjects()
 
 	const char* vertexFS =
 		GLSL(
-		layout(location = 0) out vec4 FragColor;
+	//	layout(location = 0) 
+	out vec4 FragColor;
 	uniform float r;
 	uniform float g;
 	uniform float b;

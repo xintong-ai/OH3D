@@ -65,7 +65,7 @@ Window::Window()
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
-	format.setVersion(4, 4);
+    format.setVersion(4, 1);
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 

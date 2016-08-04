@@ -79,7 +79,7 @@ GlyphRenderable(_pos)
 void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
 
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 
 
@@ -297,7 +297,7 @@ void ArrowRenderable::initPickingDrawingObjects()
 {
 
 	//init shader
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =

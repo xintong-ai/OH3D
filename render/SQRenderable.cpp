@@ -18,7 +18,7 @@ using namespace std;
 void SQRenderable::LoadShaders(ShaderProgram*& shaderProg) 
 {
 
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 
 
@@ -328,7 +328,7 @@ GlyphRenderable(_pos)
 
 void SQRenderable::initPickingDrawingObjects()
 {
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 
 

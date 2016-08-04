@@ -45,8 +45,11 @@ void DataMgr::LoadConfig(const char* filename)
 		if (std::getline(is_line, key, '='))
 		{
 			std::string value;
-			if (std::getline(is_line, value))
+            if (std::getline(is_line, value)) {
+                if (!value.empty() && value[value.size() - 1] == '\r')
+                    value.erase(value.size() - 1);
 				config[key] = value;
+            }
 		}
 	}
 }

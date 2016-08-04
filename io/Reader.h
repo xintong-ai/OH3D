@@ -7,7 +7,9 @@
 class Reader
 {
 public:
-	Reader(const char* filename){ datafilename.assign(filename); }
+    Reader(const char* filename){
+        datafilename.assign(filename);
+    }
 	virtual void GetPosRange(float3& posMin, float3& posMax) = 0;
 	//virtual void GetValRange(float& vMin, float& vMax) = 0;
 protected:

@@ -16,14 +16,18 @@ GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 	, matrixMgr(_matrixMgr)
 {
 
-    //QSurfaceFormat format;
-    //format.setDepthBufferSize( 24 );
-    //format.setMajorVersion( 4 );
-    //format.setMinorVersion( 1 );
-    //format.setSamples( 4 );
-    //format.setProfile( QSurfaceFormat::CoreProfile );
-    ////QSurfaceFormat::setDefaultFormat( format );
-    //setFormat(format);
+//    QSurfaceFormat format;
+//    format.setStencilBufferSize(8);
+//    format.setVersion(4, 1);
+//    format.setProfile(QSurfaceFormat::CoreProfile);
+//    setFormat(format);
+
+//    QSurfaceFormat format;
+//    format.setDepthBufferSize(24);
+//    format.setStencilBufferSize(8);
+//    format.setVersion(4, 1);
+//    format.setProfile(QSurfaceFormat::CoreProfile);
+//    openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
     setFocusPolicy(Qt::StrongFocus);
     sdkCreateTimer(&timer);
