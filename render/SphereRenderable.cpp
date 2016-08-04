@@ -91,14 +91,12 @@ void SphereRenderable::init()
 
     m_vao->bind();
     LoadShaders(glProg);
-    m_vao->release();
 
 	GenVertexBuffer(glyphMesh->GetNumVerts(),
 		glyphMesh->GetVerts());
 
 
 
-    m_vao->bind();
 	initPickingDrawingObjects();
     m_vao->release();
 }
@@ -187,7 +185,7 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 {
-    m_vao->bind();
+   // m_vao->bind();
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
@@ -196,16 +194,16 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-    m_vao->release();
+ //   m_vao->release();
 }
 
 
 void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
-
+	//qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	//qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	//qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
+	m_vao->bind();
 	for (int i = 0; i < pos.size(); i++) {
 		glPushMatrix();
 
@@ -214,7 +212,7 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 		//std::cout << sphereSize[i] << " ";
 
-        m_vao->bind();
+        
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -242,12 +240,12 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 		glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
 		//glDrawElements(GL_TRIANGLES, glyphMesh->numElements, GL_UNSIGNED_INT, glyphMesh->indices);
-        m_vao->release();
+        
 		glPopMatrix();
 	}
-
-	qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	m_vao->release();
+	//qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
+	//qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 }
 
