@@ -91,6 +91,25 @@ void DeformGlyphRenderable::init()
 void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (!displaceEnabled) return;
+
+	//should remove the dependence on LensRenderable later. use the reference "lenses" instead
+	if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().size() < 1)
+		return;
+
+	if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back()->justChanged){
+		
+		switch (((DeformGLWidget*)actor)->GetDeformModel())
+		{
+		case DEFORM_MODEL::SCREEN_SPACE:
+			deformInterface->RecomputeTarget();
+			break;
+		}
+		
+		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back()->justChanged = false;
+		//this setting can only do deform based on the last lens
+	}
+
+	
 	StartDeformTimer();
 	int2 winSize = actor->GetWindowSize();
 	switch (((DeformGLWidget*)actor)->GetDeformModel())
@@ -103,9 +122,6 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 	}
 	case DEFORM_MODEL::OBJECT_SPACE:
 	{
-		if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().size() < 1)
-			return;
-
 		Lens *l = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back();
 
 		float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();

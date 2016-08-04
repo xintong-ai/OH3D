@@ -50,8 +50,6 @@ void GlyphRenderable::mouseMove(int x, int y, int modifier)
 
 void GlyphRenderable::resize(int width, int height)
 {
-
-
 	if (!frameBufferObjectInitialized){
 		qgl->glGenRenderbuffers(2, renderbuffer);
 		qgl->glGenFramebuffers(1, &framebuffer);

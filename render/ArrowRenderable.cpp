@@ -180,6 +180,9 @@ void ArrowRenderable::init()
 	if (initialized)
 		return;
 	GlyphRenderable::init();
+#ifdef USE_DEFORM
+	DeformGlyphRenderable::init();
+#endif
 	glProg = new ShaderProgram;
 	LoadShaders(glProg);
 

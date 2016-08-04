@@ -1,7 +1,7 @@
 #include "GlyphRenderable.h"
 class DeformInterface;
 class ModelGrid;
-
+class Lens;
 
 class DeformGlyphRenderable: public GlyphRenderable
 {
@@ -13,9 +13,9 @@ class DeformGlyphRenderable: public GlyphRenderable
 	void StopDeformTimer();
 	bool displaceEnabled = true;
 
-
-
 public:
+	std::vector<Lens*> *lenses = 0; // a reference of the lenses, which is stored in LensRenderable now
+
 	DeformGlyphRenderable(std::vector<float4>& _pos);
 	~DeformGlyphRenderable();
 	void RecomputeTarget();

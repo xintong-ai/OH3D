@@ -88,9 +88,13 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
 
-	ComputeDisplace(modelview, projection);
-
-	VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
+	if (lenses != 0 && lenses->size() > 0){
+		ComputeDisplace(modelview, projection);
+		VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
+	}
+	else{
+		VolumeRender_setVolume(&(modelVolumeDeformer->originalVolume->volumeCuda));
+	}
 
 	VolumeRender_setGradient(&(modelVolumeDeformer->volumeCUDAGradient));
 
@@ -142,11 +146,9 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 
 void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 {
-	if (lenses->size() > 0){
+	if (lenses!=0 && lenses->size() > 0){
 		Lens *l = lenses->back();
-		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
-
-
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
 			float focusRatio = l->focusRatio;
 
 			//convert the camera location from camera space to object space

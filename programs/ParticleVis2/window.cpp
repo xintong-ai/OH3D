@@ -124,6 +124,8 @@ Window::Window()
 #endif
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	lensRenderable = std::make_shared<LensRenderable>();
+	glyphRenderable->lenses = lensRenderable->GetLensesAddr();
+
 	//lensRenderable->SetDrawScreenSpace(false);
 #ifdef USE_OSVR
 		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());

@@ -80,6 +80,9 @@ void SphereRenderable::resetColorMap(COLOR_MAP cm)
 void SphereRenderable::init()
 {
 	GlyphRenderable::init();
+#ifdef USE_DEFORM
+	DeformGlyphRenderable::init(); 
+#endif
 
     m_vao = std::make_shared<QOpenGLVertexArrayObject>();
     m_vao->create();

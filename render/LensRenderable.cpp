@@ -467,7 +467,7 @@ void LensRenderable::AddCircleLens()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l = new CircleLens(winSize.y * 0.1, actor->DataCenter());
 	lenses.push_back(l);
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	l->justChanged = true;
 	actor->UpdateGL();
 }
 
@@ -478,10 +478,9 @@ void LensRenderable::AddLineLens()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l = new LineLens(actor->DataCenter(), 0.3);
 	lenses.push_back(l);
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	l->justChanged = true;
 	actor->UpdateGL();
 	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
-
 }
 
 void LensRenderable::AddCurveBLens()
@@ -489,7 +488,7 @@ void LensRenderable::AddCurveBLens()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l = new CurveBLens(winSize.y * 0.1, actor->DataCenter());
 	lenses.push_back(l);
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	l->justChanged = true;
 	actor->UpdateGL();
 	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
 }
@@ -545,7 +544,7 @@ void LensRenderable::UpdateLensTwoFingers(int2 p1, int2 p2)
 	actor->GetProjection(projection);
 	if (lenses.size() > 0) {
 		lenses.back()->ChangeLensTwoFingers(p1, p2, modelview, projection, winSize.x, winSize.y);
-		((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		lenses.back()->justChanged = true;
 		actor->UpdateGL();
 	}
 }
@@ -692,15 +691,19 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 		else if (l->type == LENS_TYPE::TYPE_LINE) {
 			((LineLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+			l->justChanged = true;
 		}
 	}
 	else {
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE || actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
 			if (lenses.size() > 0){
 				Lens* l = lenses[lenses.size() - 1];
+				l->justChanged = true;
 			}
 		}
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
+			/*// !!! DON'T DELETE !!!
+			//these code will be process later
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			Lens* l = lenses[lenses.size() - 1];
 			float3 center = make_float3(l->GetCenter());
@@ -728,10 +731,10 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 					r3->isSnapped = true;
 				}
 			}
+			*/
 		}
 	}
 	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 }
 
 void LensRenderable::mouseMove(int x, int y, int modifier)
@@ -752,7 +755,7 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		else if (l->type == LENS_TYPE::TYPE_LINE){
 			((LineLens *)l)->ctrlPoint2Abs = make_float2(x, y);
 			((LineLens*)l)->UpdateInfo(modelview, projection, winSize.x, winSize.y);
-			((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+			l->justChanged = true;
 		}
 		break;
 	}
@@ -766,10 +769,15 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			x , y
 			, modelview, projection, winSize.x, winSize.y);
 		if (isSnapToGlyph){
+			/*// !!! DON'T DELETE !!!
+			//these code will be process later
 			DeformGlyphRenderable* glyphRenderable = (DeformGlyphRenderable*)actor->GetRenderable("glyph");
 			glyphRenderable->findClosetGlyph(make_float3(lenses[pickedLens]->GetCenter()));
+			*/
 		}
 		else if (isSnapToFeature){
+			/*// !!! DON'T DELETE !!!
+			//these code will be process later			
 			GlyphRenderable* glyphRenderable = (GlyphRenderable*)actor->GetRenderable("glyph");
 			snapPos;
 			int resid=-1;
@@ -793,8 +801,9 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 				r2->isSnapped = false;
 				r3->isSnapped = true;
 			}
+			*/
 		}
-		((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		lenses[pickedLens]->justChanged = true;
 		break;
 	}
 	case INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE:
@@ -806,8 +815,7 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		break;
 	}
 	case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
-	{
-													   
+	{												   
 		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
 			lenses[pickedLens]->ChangefocusRatio(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
@@ -832,9 +840,9 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
 			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+			l->justChanged = true;
 		}
 	}
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	return insideAnyLens;
 }
 
@@ -853,7 +861,7 @@ void LensRenderable::ChangeLensDepth(float v)
 	if (lenses.size() == 0) return;
 	lenses.back()->ChangeClipDepth(v, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
 
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	lenses.back()->justChanged = true;
 	actor->UpdateGL();
 }
 
@@ -879,7 +887,7 @@ void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleF
 		//std::cout << "totalScaleFactor:" << totalScaleFactor << std::endl;
 		float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
 		lenses[pickedLens]->ChangeClipDepth(scaleFactor, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-		((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		lenses[pickedLens]->justChanged = true;
 		actor->UpdateGL();
 	}
 	//}
@@ -898,8 +906,8 @@ void LensRenderable::SlotFocusSizeChanged(int v)
 		//{
 		//	((CurveLens *)l)->UpdateTransferredData();
 		//}
+		l->justChanged = true;
 	}
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }
 
@@ -918,7 +926,6 @@ void LensRenderable::SlotDelLens()
 	if (lenses.size() > 0){
 		lenses.pop_back();
 	}
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 	actor->UpdateGL();
 }
 
@@ -938,8 +945,8 @@ void LensRenderable::SlotTwoHandChanged(float3 l, float3 r)
 		ChangeLensCenterbyLeap((l+r) * 0.5);
 		if (LENS_TYPE::TYPE_CIRCLE == lenses.back()->type){
 			((CircleLens*)lenses.back())->radius = length(l-r) * 0.5;
+			((CircleLens*)lenses.back())->justChanged = true;
 		}
-		((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
 		actor->UpdateGL();
 	}
 }
@@ -992,7 +999,7 @@ void LensRenderable::SlotOneHandChanged(float3 p)
 		ChangeLensCenterbyLeap(p);
 		//interaction box
 		//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
-		((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+		(lenses.back())->justChanged = true;
 		actor->UpdateGL();
 	}
 }

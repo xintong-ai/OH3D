@@ -40,7 +40,7 @@ public:
 	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
 
-	std::vector<Lens*> *lenses;
+	std::vector<Lens*> *lenses = 0;
 	std::shared_ptr<Volume> volume;
 
 

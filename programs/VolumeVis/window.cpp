@@ -33,7 +33,6 @@
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
-//#include "VRGlyphRenderable.h"
 #include "VRVolumeRenderableCUDA.h"
 #endif
 
@@ -53,22 +52,6 @@ Window::Window()
 
 	dataMgr = std::make_shared<DataMgr>();
 	
-
-
-	
-
-
-
-	std::shared_ptr<Reader> reader;
-
-	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-	reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
-	glyphRenderable = std::make_shared<SphereRenderable>(
-		((ParticleReader*)reader.get())->GetPos(),
-		((ParticleReader*)reader.get())->GetVal());
-	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
-	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
-
 
 	const std::string dataPath2 = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
@@ -122,8 +105,8 @@ Window::Window()
 #ifdef USE_OSVR
 		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
-		vrGlyphRenderable = std::make_shared<VRVolumeRenderableCUDA>(volumeRenderable.get());
-		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
+		vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(volumeRenderable.get());
+		vrWidget->AddRenderable("glyph", vrVolumeRenderable.get());
 		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
 #endif
@@ -141,9 +124,6 @@ Window::Window()
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 20, true);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
-	glyphRenderable->SetModelGrid(modelGrid.get());
-	glyphRenderable->SetVisibility(false);
-
 
 	modelVolumeDeformer = std::make_shared<ModelVolumeDeformer>();
 	modelVolumeDeformer->SetModelGrid(modelGrid.get());
@@ -152,9 +132,7 @@ Window::Window()
 	volumeRenderable->lenses = lensRenderable->GetLensesAddr();
 	volumeRenderable->SetModelGrid(modelGrid.get());
 
-	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
-	//openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 
 	openGL->AddRenderable("model", modelGridRenderable.get());
@@ -196,9 +174,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph", this);
 	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
-
-	connect(glyphRenderable.get(), SIGNAL(glyphPickingFinished()), this, SLOT(SlotToggleGlyphPickingFinished()));
-
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 	controlLayout->addWidget(addLensBtn);
@@ -366,7 +341,7 @@ void Window::AddCurveBLens()
 
 void Window::SlotTogglePickingGlyph(bool b)
 {
-	glyphRenderable->isPickingGlyph = b;
+	//glyphRenderable->isPickingGlyph = b;
 }
 
 
@@ -374,7 +349,7 @@ void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
 	lensRenderable->isSnapToGlyph = b;
 	if (!b){
-		glyphRenderable->SetSnappedGlyphId(-1);
+		//glyphRenderable->SetSnappedGlyphId(-1);
 	}
 }
 
