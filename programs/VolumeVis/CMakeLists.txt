@@ -18,12 +18,8 @@ find_package(Qt5Widgets REQUIRED)
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
-<<<<<<< HEAD
-	# ${Leap_INCLUDE_DIR}
-=======
 	${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc 
->>>>>>> refs/remotes/origin/lineLensMesh
 	${PROJECT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
 	required)

@@ -74,21 +74,21 @@ Window::Window()
 
 	int3 dims;
 	float3 spacing;
-	if (string(dataPath2).find("MGHT2") != std::string::npos){
+	if (std::string(dataPath2).find("MGHT2") != std::string::npos){
 		dims = make_int3(320, 320, 256);
 		spacing = make_float3(0.7, 0.7, 0.7);
 	}
-	else if (string(dataPath2).find("MGHT1") != std::string::npos){
+	else if (std::string(dataPath2).find("MGHT1") != std::string::npos){
 		dims = make_int3(256, 256, 176);
 		spacing = make_float3(1.0, 1.0, 1.0);
 	}
-	else if (string(dataPath2).find("nek128") != std::string::npos){
+	else if (std::string(dataPath2).find("nek128") != std::string::npos){
 		dims = make_int3(128, 128, 128);
 		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
 	}
 	inputVolume = std::make_shared<Volume>();
 
-	if (string(dataPath2).find(".vec") != std::string::npos){
+	if (std::string(dataPath2).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader2;
 		reader2 = std::make_shared<VecReader>(dataPath2.c_str());
 		reader2->OutputToVolumeByNormalizedVecMag(inputVolume);
@@ -105,7 +105,7 @@ Window::Window()
 
 	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 
-	if (string(dataPath2).find("nek128") != std::string::npos){
+	if (std::string(dataPath2).find("nek128") != std::string::npos){
 		volumeRenderable->useColor = true;
 	}
 	

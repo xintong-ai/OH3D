@@ -144,11 +144,8 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (lenses->size() > 0){
 		Lens *l = lenses->back();
-<<<<<<< HEAD
-		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINEB && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
-=======
-		if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
->>>>>>> refs/remotes/origin/lineLensMesh
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+
 
 			float focusRatio = l->focusRatio;
 

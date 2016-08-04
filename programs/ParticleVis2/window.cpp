@@ -47,7 +47,6 @@ Window::Window()
 
 	dataMgr = std::make_shared<DataMgr>();
 	
-
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
 
 
@@ -55,12 +54,6 @@ Window::Window()
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<Reader> reader;
-		//reader = std::make_shared<ParticleReader>(dataPath.c_str());
-		//glyphRenderable = std::make_shared<SphereRenderable>(
-		//	((ParticleReader*)reader.get())->GetPos(),
-		//	((ParticleReader*)reader.get())->GetVal());
-		//std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
-		//std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
 		glyphRenderable = std::make_shared<SphereRenderable>(
@@ -69,8 +62,8 @@ Window::Window()
 		std::cout << "number of rendered glyphs: " << (((SolutionParticleReader*)reader.get())->GetVal()).size() << std::endl;
 		std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
-
 		reader->GetPosRange(posMin, posMax);
+		reader.reset();
 	}
 	else{
 		FILE *pFile;
@@ -123,8 +116,6 @@ Window::Window()
 		}
 	}
 	
-
-
 	/********GL widget******/
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
