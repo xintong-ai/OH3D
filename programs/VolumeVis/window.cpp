@@ -69,6 +69,14 @@ Window::Window()
 		dims = make_int3(128, 128, 128);
 		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
 	}
+	else if (std::string(dataPath2).find("nek256") != std::string::npos){
+		dims = make_int3(256, 256, 256);
+		spacing = make_float3(1, 1, 1);
+	}
+	else{
+		std::cout << "volume data name not recognized" << std::endl;
+		exit(0);
+	}
 	inputVolume = std::make_shared<Volume>();
 
 	if (std::string(dataPath2).find(".vec") != std::string::npos){
@@ -88,7 +96,7 @@ Window::Window()
 
 	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 
-	if (std::string(dataPath2).find("nek128") != std::string::npos){
+	if (std::string(dataPath2).find("nek") != std::string::npos){
 		volumeRenderable->useColor = true;
 	}
 	
@@ -129,7 +137,7 @@ Window::Window()
 	modelVolumeDeformer->SetModelGrid(modelGrid.get());
 	modelVolumeDeformer->Init(inputVolume.get());
 	volumeRenderable->SetModelVolumeDeformer(modelVolumeDeformer);
-	volumeRenderable->lenses = lensRenderable->GetLensesAddr();
+	volumeRenderable->SetLenses(lensRenderable->GetLensesAddr());
 	volumeRenderable->SetModelGrid(modelGrid.get());
 
 	openGL->AddRenderable("lenses", lensRenderable.get());
@@ -362,7 +370,6 @@ void Window::SlotToggleUdbe(bool b)
 {
 	modelGrid->useDensityBasedElasticity = b;
 	modelGrid->setReinitiationNeed();
-	std::vector<Lens*> *lenses = volumeRenderable->lenses;
 }
 
 Window::~Window() {

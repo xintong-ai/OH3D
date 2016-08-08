@@ -29,6 +29,9 @@
 VolumeRenderableCUDA::VolumeRenderableCUDA(std::shared_ptr<Volume> _volume)
 {
 	volume = _volume;
+
+	volumeCUDAGradient.VolumeCUDA_init(_volume->size, 0, 1, 4);
+
 }
 
 VolumeRenderableCUDA::~VolumeRenderableCUDA()
@@ -88,15 +91,22 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
 
-	if (lenses != 0 && lenses->size() > 0){
+	if (lenses != 0 && lenses->size() > 0 && modelVolumeDeformer!=0){
 		ComputeDisplace(modelview, projection);
+		VolumeRender_computeGradient(&(modelVolumeDeformer->volumeCUDADeformed), &volumeCUDAGradient);
+		VolumeRender_setGradient(&volumeCUDAGradient);
 		VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
 	}
-	else{
-		VolumeRender_setVolume(&(modelVolumeDeformer->originalVolume->volumeCuda));
+	else if(volume!=0){
+		VolumeRender_computeGradient(&(volume->volumeCuda), &volumeCUDAGradient);
+		VolumeRender_setGradient(&volumeCUDAGradient);
+		VolumeRender_setVolume(&(volume->volumeCuda));
+	}
+	else {
+		std::cout << "data not well set for volume renderable" << std::endl;
+		exit(0);
 	}
 
-	VolumeRender_setGradient(&(modelVolumeDeformer->volumeCUDAGradient));
 
 	//compute the dvr
 	VolumeRender_render(d_output, winWidth, winHeight, density, brightness, eyeInWorld, volume->size, maxSteps, tstep, useColor);
@@ -143,7 +153,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	glEnable(GL_DEPTH_TEST);
 }
 
-
+//a better code design should place this part into the modelGrid
 void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (lenses!=0 && lenses->size() > 0){
@@ -213,8 +223,6 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
 
 			modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), majorAxisGlobal, lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
-			modelVolumeDeformer->computeGradient();
-
 		}
 	}
 

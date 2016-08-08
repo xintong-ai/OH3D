@@ -31,18 +31,18 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
 	
-	ModelGrid *modelGrid;
-	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
+	//default volume to render when not using deformation
+	std::shared_ptr<Volume> volume = 0;
 
+	//interfaces for deformation computing and deformed data
+	std::vector<Lens*> *lenses = 0;
+	ModelGrid *modelGrid = 0;
+	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer = 0;
 
 public:
-
 	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
-
-	std::vector<Lens*> *lenses = 0;
-	std::shared_ptr<Volume> volume;
-
+	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
 	~VolumeRenderableCUDA();
@@ -84,6 +84,8 @@ public:
 
 
 private:
+	VolumeCUDA volumeCUDAGradient;
+
 	void initTextureAndCudaArrayOfScreen();
 	void deinitTextureAndCudaArrayOfScreen();
 

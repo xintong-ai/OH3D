@@ -326,6 +326,8 @@ public:
 				}
 			}
 		}
+		cudaMalloc((void**)&dev_tetVolumeOriginal, sizeof(float)* tet_number);
+		cudaMemcpy(dev_tetVolumeOriginal, tetVolumeOriginal, sizeof(float)* tet_number, cudaMemcpyHostToDevice);
 	}
 
 	//used for temperary mesh

@@ -34,6 +34,7 @@ class ModelGrid
 	void SetElasticitySimple();
 	void SetElasticityByTetDensity(int n); //suppose the tet id for particles have been well set
 	void SetElasticityByTetDensityOfVolumeCUDA(Volume* v);
+	void SetElasticityByTetVarianceOfVolumeCUDA(Volume* v);
 
 	//currently stored
 	int _n;

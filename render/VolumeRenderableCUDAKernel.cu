@@ -136,10 +136,6 @@ void VolumeRender_setVolume(const VolumeCUDA *vol)
 }
 
 
-void VolumeRender_setGradient(const VolumeCUDA *gradVol)
-{
-	checkCudaErrors(cudaBindTextureToArray(volumeTexGradient, gradVol->content, gradVol->channelDesc));
-}
 
 
 void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, bool *doCutaway, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing)
@@ -433,30 +429,55 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 
 
 
-__global__ void d_render_preint_test(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+__global__ void
+d_computeGradient(cudaExtent volumeSize)
 {
-	uint x = blockIdx.x*blockDim.x + threadIdx.x;
-	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+	int x = blockIdx.x*blockDim.x + threadIdx.x;
+	int y = blockIdx.y*blockDim.y + threadIdx.y;
+	int z = blockIdx.z*blockDim.z + threadIdx.z;
 
-	if ((x >= imageW) || (y >= imageH)) return;
-
-	
-		float4 sum = make_float4(0.0f);
-		sum = make_float4(1.0*x / imageW, 1.0*y / imageH, 0.2f, 1.0f);
-		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
+	{
 		return;
-	
+	}
+
+	float4 grad = make_float4(0.0);
+
+	int indz1 = z - 2, indz2 = z + 2;
+	if (indz1 < 0)	indz1 = 0;
+	if (indz2 > volumeSize.depth - 1) indz2 = volumeSize.depth - 1;
+	grad.z = (tex3D(volumeTexValueForRC, x + 0.5, y + 0.5, indz2 + 0.5) - tex3D(volumeTexValueForRC, x + 0.5, y + 0.5, indz1 + 0.5)) / (indz2 - indz1);
+
+	int indy1 = y - 2, indy2 = y + 2;
+	if (indy1 < 0)	indy1 = 0;
+	if (indy2 > y >= volumeSize.height - 1) indy2 = y >= volumeSize.height - 1;
+	grad.y = (tex3D(volumeTexValueForRC, x + 0.5, indy2 + 0.5, z + 0.5) - tex3D(volumeTexValueForRC, x + 0.5, indy1 + 0.5, z + 0.5)) / (indy2 - indy1);
+
+	int indx1 = x - 2, indx2 = x + 2;
+	if (indx1 < 0)	indx1 = 0;
+	if (indx2 > volumeSize.width - 1) indx2 = volumeSize.width - 1;
+	grad.x = (tex3D(volumeTexValueForRC, indx2 + 0.5, y + 0.5, z + 0.5) - tex3D(volumeTexValueForRC, indx1 + 0.5, y + 0.5, z + 0.5)) / (indx2 - indx1);
+
+	surf3Dwrite(grad, volumeSurfaceOut, x * sizeof(float4), y, z);
+}
+
+void VolumeRender_computeGradient(const VolumeCUDA *volumeCUDAInput, VolumeCUDA *volumeCUDAGradient)
+{
+	cudaExtent size = volumeCUDAInput->size;
+	unsigned int dim = 32;
+	dim3 blockSize(dim, dim, 1);
+	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
+
+	checkCudaErrors(cudaBindTextureToArray(volumeTexValueForRC, volumeCUDAInput->content, volumeCUDAInput->channelDesc));
+	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCUDAGradient->content));
+
+	d_computeGradient << <gridSize, blockSize >> >(size);
+
+	checkCudaErrors(cudaUnbindTexture(volumeTexValueForRC));
 }
 
 
-
-void VolumeRender_render_test(uint *d_output, uint imageW, uint imageH,
-	float density, float brightness,
-	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+void VolumeRender_setGradient(const VolumeCUDA *gradVol)
 {
-
-	dim3 blockSize = dim3(16, 16, 1);
-	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
-
-	d_render_preint_test << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInWorld, volumeSize, maxSteps, tstep, useColor);
+	checkCudaErrors(cudaBindTextureToArray(volumeTexGradient, gradVol->content, gradVol->channelDesc));
 }

@@ -70,7 +70,7 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 	glBegin(GL_LINES);
 	for (int i = 0; i < modelGrid->GetLNumber(); i++){
-		float cc = e[i / 6] / 10000;
+		float cc = (e[i / 6] -500)/ 1500;
 		glColor4f(cc, 1.0f-cc, 0, 0.5);
 		//glColor3f(1.0f, 0, 0);
 

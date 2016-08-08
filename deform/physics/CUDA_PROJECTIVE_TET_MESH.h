@@ -202,7 +202,7 @@ __device__ bool PointInsideExtendedLineLensRegion(float3 p, float3 lensCen, floa
 	float lensCen2PProj = dot(lenCen2P, lensDir);
 	if (lensCen2PProj > 0){
 		float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
-		const float majorDirectionTransitionCoeff = 1.0;
+		const float majorDirectionTransitionCoeff = 1.05;
 		if (abs(lensCen2PMajorProj)<lSemiMajorAxis*majorDirectionTransitionCoeff){
 			float3 minorAxis = cross(lensDir, majorAxis);
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
@@ -283,12 +283,12 @@ __global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float 
 		X[i * 3 + 1] = X_Orig[i * 3 + 1];
 		X[i * 3 + 2] = X_Orig[i * 3 + 2];
 	}
-	//else if (!PointInsideExtendedLineLensRegion(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
-	//	more_fixed[i] = 10000000;
-	//	X[i * 3 + 0] = X_Orig[i * 3 + 0];
-	//	X[i * 3 + 1] = X_Orig[i * 3 + 1];
-	//	X[i * 3 + 2] = X_Orig[i * 3 + 2];
-	//}
+	else if (!PointInsideExtendedLineLensRegion(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
+		more_fixed[i] = 10000000;
+		X[i * 3 + 0] = X_Orig[i * 3 + 0];
+		X[i * 3 + 1] = X_Orig[i * 3 + 1];
+		X[i * 3 + 2] = X_Orig[i * 3 + 2];
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -643,6 +643,7 @@ public:
 	int* cellVerts = 0;
 	int* cellTets = 0;
 	float* tetVolumeOriginal = 0;
+	float* dev_tetVolumeOriginal = 0;
 
   //template <class TYPE>
 	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH<TYPE>(maxNum)
@@ -739,7 +740,9 @@ public:
 		if(dev_vtt_num)		cudaFree(dev_vtt_num);
 
 		if(dev_error)		cudaFree(dev_error);
-	}
+
+		if (dev_tetVolumeOriginal) cudaFree(dev_tetVolumeOriginal);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Initialize functions

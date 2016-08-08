@@ -29,11 +29,7 @@ void ModelVolumeDeformer::Init(Volume *_ori)
 
 	volumeCUDADeformed.VolumeCUDA_init(_ori->size, _ori->values, 1, 1);
 
-	volumeCUDAGradient.VolumeCUDA_init(_ori->size, 0, 1, 4);
-
 	ModelVolumeDeformer_KernelInit();
-
-	computeGradient();
 }
 
 
@@ -165,50 +161,4 @@ void ModelVolumeDeformer::deformByModelGrid(float3 lensSpaceOrigin, float3 major
 
 
 
-__global__ void
-d_computeGradient(cudaExtent volumeSize)
-{
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-	float4 grad = make_float4(0.0);
-
-	int indz1 = z - 2, indz2 = z + 2;
-	if (indz1 < 0)	indz1 = 0;
-	if (indz2 > volumeSize.depth - 1) indz2 = volumeSize.depth - 1;
-	grad.z = (tex3D(volumeTexInput, x + 0.5, y + 0.5, indz2 + 0.5) - tex3D(volumeTexInput, x + 0.5, y + 0.5, indz1 + 0.5)) / (indz2 - indz1);
-
-	int indy1 = y - 2, indy2 = y + 2;
-	if (indy1 < 0)	indy1 = 0;
-	if (indy2 > y >= volumeSize.height - 1) indy2 = y >= volumeSize.height - 1;
-	grad.y = (tex3D(volumeTexInput, x + 0.5, indy2 + 0.5, z + 0.5) - tex3D(volumeTexInput, x + 0.5, indy1 + 0.5, z + 0.5)) / (indy2 - indy1);
-
-	int indx1 = x - 2, indx2 = x + 2;
-	if (indx1 < 0)	indx1 = 0;
-	if (indx2 > volumeSize.width - 1) indx2 = volumeSize.width - 1;
-	grad.x = (tex3D(volumeTexInput, indx2 + 0.5, y + 0.5, z + 0.5) - tex3D(volumeTexInput, indx1 + 0.5, y + 0.5, z + 0.5)) / (indx2 - indx1);
-
-	surf3Dwrite(grad, volumeSurfaceOut, x * sizeof(float4), y, z);
-}
-
-void ModelVolumeDeformer::computeGradient()
-{
-	cudaExtent size = volumeCUDADeformed.size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp22(size.width, blockSize.x), iDivUp22(size.height, blockSize.y), iDivUp22(size.depth, blockSize.z));
-
-	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volumeCUDADeformed.content, volumeCUDADeformed.channelDesc));
-	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCUDAGradient.content));
-
-	d_computeGradient << <gridSize, blockSize >> >(size);
-
-	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
-}
 
