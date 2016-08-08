@@ -9,10 +9,15 @@
 // typedef QVector<QVector3D> TypeArray;
 class OSVR_TimeValue;
 class OSVR_OrientationReport;
+
+#include <osvr/ClientKit/Context.h>
+#include <osvr/ClientKit/Interface.h>
+
 namespace osvr
 {
 	namespace clientkit{
 		class ClientContext;
+		//class Interface;
 	}
 }
 class Controller{
@@ -47,7 +52,12 @@ public:
 
 	// virtual void onFrame(const Leap::Controller & ctl);
 
-// private:
+ private:
+	 osvr::clientkit::Interface leftButton;
+	 osvr::clientkit::Interface rightButton;
+	 osvr::clientkit::Interface leftHand;
+	 osvr::clientkit::Interface rightHand;
+
 	// QElapsedTimer *timer;
 
 };

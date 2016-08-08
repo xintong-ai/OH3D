@@ -127,6 +127,10 @@ void GLWidget::paintGL() {
 		vrWidget->UpdateGL();
 	}
 #endif
+
+#ifdef USE_CONTROLLER
+	emit SignalPaintGL();
+#endif
 }
 
 
@@ -146,7 +150,6 @@ void GLWidget::resizeGL(int w, int h)
 			renderer.second->init();
         initialized = true;
     }
-	emit SignalPaintGL();
     //glMatrixMode(GL_PROJECTION);
     //glLoadIdentity();
     //glMatrixMode(GL_MODELVIEW);

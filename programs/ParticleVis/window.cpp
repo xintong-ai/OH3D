@@ -161,8 +161,8 @@ Window::Window()
 
 #ifdef USE_CONTROLLER
 	connect(openGL.get(), &GLWidget::SignalPaintGL, controller.get(), &QController::Update);
-//	connect(controller.get(), &QController::SignalUpdateControllers,
-//		this, &Window::SlotUpdateControllers);
+	connect(controller.get(), &QController::SignalUpdateControllers,
+		this, &Window::SlotUpdateControllers);
 #endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
@@ -241,11 +241,16 @@ void Window::SlotUpdateControllers(QVector3D leftPos, QVector3D rightPos,
 	int numHands, bool pressed)
 {
 	if (!pressed)
+	{
+		std::cout << "pressed..." << std::endl;
 		return;
+	}
 	if (1 == numHands){
+		std::cout << "one hand..." << std::endl;
 		lensRenderable->SlotOneHandChanged(make_float3(rightPos.x(), rightPos.y(), rightPos.z()));
 	}
 	else if (2 == numHands){
+		std::cout << "two hands..." << std::endl;
 		//
 		lensRenderable->SlotTwoHandChanged(
 			make_float3(leftPos.x(), leftPos.y(), leftPos.z()),

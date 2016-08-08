@@ -41,6 +41,11 @@ Controller::Controller()
 	context = new osvr::clientkit::ClientContext(
         "controller.listener");
 
+	leftHand = context->getInterface("/me/hands/left");
+	rightHand = context->getInterface("/me/hands/right");
+	leftButton = context->getInterface("/com_osvr_Vive/Vive/button/6");
+	rightButton = context->getInterface("/com_osvr_Vive/Vive/button/12");
+
     // This is just one of the paths. You can also use:
     // /me/hands/right
     // /me/head
@@ -50,12 +55,12 @@ Controller::Controller()
 
 void Controller::GetLeftPosition(float &x, float &y, float &z)
 {
-	osvr::clientkit::Interface hand =
-		context->getInterface("/me/hands/left");
+	//osvr::clientkit::Interface hand =
+	//	context->getInterface("/me/hands/left");
 	OSVR_PoseState state;
 	OSVR_TimeValue timestamp;
 	OSVR_ReturnCode ret =
-		osvrGetPoseState(hand.get(), &timestamp, &state);
+		osvrGetPoseState(leftHand.get(), &timestamp, &state);
 	if (OSVR_RETURN_SUCCESS != ret) {
 		std::cout << "No pose state!" << std::endl;
 	}
@@ -68,12 +73,12 @@ void Controller::GetLeftPosition(float &x, float &y, float &z)
 
 void Controller::GetLeftOrientation(float &w, float &x, float &y, float &z)
 {
-	osvr::clientkit::Interface hand =
-		context->getInterface("/me/hands/left");
+	//osvr::clientkit::Interface hand =
+	//	context->getInterface("/me/hands/left");
 	OSVR_PoseState state;
 	OSVR_TimeValue timestamp;
 	OSVR_ReturnCode ret =
-		osvrGetPoseState(hand.get(), &timestamp, &state);
+		osvrGetPoseState(leftHand.get(), &timestamp, &state);
 	if (OSVR_RETURN_SUCCESS != ret) {
 		std::cout << "No pose state!" << std::endl;
 	}
@@ -88,23 +93,22 @@ void Controller::GetLeftOrientation(float &w, float &x, float &y, float &z)
 
 void Controller::GetLeftButton(bool &pressed)
 {
-	osvr::clientkit::Interface button =
-		context->getInterface("/com_osvr_Vive/Vive/button/6");
+	//osvr::clientkit::Interface button =
+	//	context->getInterface("/com_osvr_Vive/Vive/button/6");
 	OSVR_ButtonState buttonState;
 	OSVR_TimeValue timestamp;
 	OSVR_ReturnCode ret2 =
-		osvrGetButtonState(button.get(), &timestamp, &buttonState);
+		osvrGetButtonState(leftButton.get(), &timestamp, &buttonState);
 	pressed = (OSVR_BUTTON_PRESSED == buttonState);
 }
 
 void Controller::GetRightPosition(float &x, float &y, float &z)
 {
-	osvr::clientkit::Interface hand =
-		context->getInterface("/me/hands/right");
+
 	OSVR_PoseState state;
 	OSVR_TimeValue timestamp;
 	OSVR_ReturnCode ret =
-		osvrGetPoseState(hand.get(), &timestamp, &state);
+		osvrGetPoseState(rightHand.get(), &timestamp, &state);
 	if (OSVR_RETURN_SUCCESS != ret) {
 		std::cout << "No pose state!" << std::endl;
 	}
@@ -117,12 +121,12 @@ void Controller::GetRightPosition(float &x, float &y, float &z)
 
 void Controller::GetRightOrientation(float &w, float &x, float &y, float &z)
 {
-	osvr::clientkit::Interface hand =
-		context->getInterface("/me/hands/right");
+	//osvr::clientkit::Interface hand =
+	//	context->getInterface("/me/hands/right");
 	OSVR_PoseState state;
 	OSVR_TimeValue timestamp;
 	OSVR_ReturnCode ret =
-		osvrGetPoseState(hand.get(), &timestamp, &state);
+		osvrGetPoseState(rightHand.get(), &timestamp, &state);
 	if (OSVR_RETURN_SUCCESS != ret) {
 		std::cout << "No pose state!" << std::endl;
 	}
@@ -137,12 +141,11 @@ void Controller::GetRightOrientation(float &w, float &x, float &y, float &z)
 
 void Controller::GetRightButton(bool &pressed)
 {
-	osvr::clientkit::Interface button =
-		context->getInterface("/com_osvr_Vive/Vive/button/12");
+
 	OSVR_ButtonState buttonState;
 	OSVR_TimeValue timestamp;
 	OSVR_ReturnCode ret2 =
-		osvrGetButtonState(button.get(), &timestamp, &buttonState);
+		osvrGetButtonState(rightButton.get(), &timestamp, &buttonState);
 	pressed = (OSVR_BUTTON_PRESSED == buttonState);
 }
 

@@ -1,6 +1,7 @@
 #include <controller/QController.h>
 #include <controller/Controller.h>
 #include <qvector3d.h>
+#include <iostream>
 
 QController::QController()
 {
@@ -9,6 +10,7 @@ QController::QController()
 
 void QController::Update()
 {
+	//std::cout << "Controller update called..." << std::endl;
 	controller->Update();
 	QVector3D leftPos, rightPos;
 	bool leftPressed, rightPressed, bothPressed;
