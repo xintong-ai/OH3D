@@ -18,6 +18,10 @@
 #include <Leap.h>
 #endif
 
+#ifdef USE_CONTROLLER
+#include <controller\QController.h>
+#endif
+
 #ifdef USE_OSVR
 #include "VRWidget.h"
 #include "VRGlyphRenderable.h"
@@ -102,6 +106,11 @@ Window::Window()
 	controller = new Leap::Controller();
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
+	Controller
+#endif
+
+#ifdef USE_CONTROLLER
+	controller = std::make_shared<QController>();
 #endif
 
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
@@ -148,6 +157,12 @@ Window::Window()
 #ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
+#endif
+
+#ifdef USE_CONTROLLER
+	connect(openGL.get(), &GLWidget::SignalPaintGL, controller.get(), &QController::Update);
+//	connect(controller.get(), &QController::SignalUpdateControllers,
+//		this, &Window::SlotUpdateControllers);
 #endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
@@ -220,6 +235,29 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 	}
 }
 #endif
+
+#ifdef USE_CONTROLLER
+void Window::SlotUpdateControllers(QVector3D leftPos, QVector3D rightPos,
+	int numHands, bool pressed)
+{
+	if (!pressed)
+		return;
+	if (1 == numHands){
+		lensRenderable->SlotOneHandChanged(make_float3(rightPos.x(), rightPos.y(), rightPos.z()));
+	}
+	else if (2 == numHands){
+		//
+		lensRenderable->SlotTwoHandChanged(
+			make_float3(leftPos.x(), leftPos.y(), leftPos.z()),
+			make_float3(rightPos.x(), rightPos.y(), rightPos.z()));
+	}
+}
+#endif
+
+void Window::SlotUpdateLeftHandPos(float x, float y, float z)
+{
+	lensRenderable->SlotOneHandChanged(make_float3(x, y, z));
+}
 
 void Window::SlotSaveState()
 {

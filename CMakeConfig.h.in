@@ -6,5 +6,6 @@
 #cmakedefine USE_TOUCH
 #cmakedefine USE_DEFORM
 #cmakedefine USE_NEW_LEAP
+#cmakedefine USE_CONTROLLER
 
 #endif//CMAKE_CONFIG_H

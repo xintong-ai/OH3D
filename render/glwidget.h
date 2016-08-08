@@ -161,6 +161,8 @@ private:
 
 	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
 
+signals:
+	void SignalPaintGL();
 };
 
 #endif //GL_WIDGET_H

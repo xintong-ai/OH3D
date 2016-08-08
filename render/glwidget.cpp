@@ -146,7 +146,7 @@ void GLWidget::resizeGL(int w, int h)
 			renderer.second->init();
         initialized = true;
     }
-
+	emit SignalPaintGL();
     //glMatrixMode(GL_PROJECTION);
     //glLoadIdentity();
     //glMatrixMode(GL_MODELVIEW);
