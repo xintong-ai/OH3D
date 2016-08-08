@@ -9,7 +9,13 @@
 typedef QVector<QVector<QVector3D>> TypeArray2;
 typedef QVector<QVector3D> TypeArray;
 
-class LeapListener : public QObject, public Leap::Listener {
+#ifdef EXPORT_QT
+#define TEST_COMMON_DLLSPEC Q_DECL_EXPORT
+#else
+#define TEST_COMMON_DLLSPEC Q_DECL_IMPORT
+#endif
+
+class TEST_COMMON_DLLSPEC LeapListener : public QObject, public Leap::Listener {
 	Q_OBJECT
 
 signals:

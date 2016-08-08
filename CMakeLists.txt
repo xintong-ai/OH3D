@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.6)
 
 PROJECT (DeformVis)
 
+find_package(Qt5Widgets REQUIRED)
+
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 option(USE_SUPERQUADRIC "Enable features that require TEEM" OFF)

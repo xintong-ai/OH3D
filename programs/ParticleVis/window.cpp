@@ -106,7 +106,7 @@ Window::Window()
 	controller = new Leap::Controller();
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
-	Controller
+	//Controller
 #endif
 
 #ifdef USE_CONTROLLER
