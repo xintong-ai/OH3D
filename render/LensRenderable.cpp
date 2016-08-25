@@ -987,7 +987,7 @@ void LensRenderable::ChangeLensCenterbyLeap(float3 p)
 
 void LensRenderable::SlotOneHandChanged(float3 p)
 {
-	//std::cout << "one hand..." << std::endl;
+	std::cout << "one hand..." << p.x << "," << p.y << "," << p.z<< std::endl;
 	if (lenses.size() > 0){
 		ChangeLensCenterbyLeap(p);
 		//interaction box

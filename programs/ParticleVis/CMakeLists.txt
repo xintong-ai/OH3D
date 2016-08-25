@@ -11,9 +11,9 @@ find_package(Qt5Widgets REQUIRED)
 # endif()
 
 # option(USE_LEAP "Enable features that require LEAP MOTION" OFF)
-# if(USE_LEAP)
-	# find_package(Leap REQUIRED)
-# endif()
+if(USE_LEAP)
+	include_directories(${LEAP_INCLUDE_DIR})
+endif()
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}

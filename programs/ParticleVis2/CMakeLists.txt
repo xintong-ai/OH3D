@@ -10,6 +10,10 @@ find_package(Qt5Widgets REQUIRED)
 	# find_package(osvr REQUIRED)
 # endif()
 
+if(USE_LEAP)
+	include_directories(${LEAP_INCLUDE_DIR})
+endif()
+
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
