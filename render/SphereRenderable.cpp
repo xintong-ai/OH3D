@@ -95,7 +95,7 @@ void SphereRenderable::init()
 
 void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 410\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =
@@ -269,7 +269,7 @@ void SphereRenderable::initPickingDrawingObjects()
 {
 
 	//init shader
-#define GLSL(shader) "#version 440\n" #shader
+#define GLSL(shader) "#version 410\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =

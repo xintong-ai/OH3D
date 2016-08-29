@@ -27,7 +27,15 @@ set( Hdrs
 	window.h 
     )
 
-configure_file(config.txt config.txt COPYONLY)
+if(WIN32)
+    configure_file(config.txt config.txt COPYONLY)
+elseif(APPLE)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        configure_file(config.txt ${CMAKE_CURRENT_BINARY_DIR}/Debug/config.txt COPYONLY)
+    elseif(CMAKE_BUILD_TYPE TREQUAL "Release")
+        configure_file(config.txt ${CMAKE_CURRENT_BINARY_DIR}/Release/config.txt COPYONLY)
+    endif()
+endif(WIN32)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
