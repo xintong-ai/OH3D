@@ -13,9 +13,20 @@ int main(int argc, char **argv)
 	QApplication app(argc, argv);
 
 
-
-
-	// QSurfaceFormat format;
+    QSurfaceFormat format;
+    format.setDepthBufferSize(24);
+    format.setStencilBufferSize(8);
+#ifdef _WIN32
+    format.setVersion(2, 0);
+#elif __APPLE__
+    format.setVersion(4, 1);
+#endif
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    QSurfaceFormat::setDefaultFormat(format);
+    
+    
+    
+    // QSurfaceFormat format;
 	// format.setProfile(QSurfaceFormat::CompatibilityProfile);
 	// format.setVersion(4, 1);
 	// QSurfaceFormat::setDefaultFormat(format);

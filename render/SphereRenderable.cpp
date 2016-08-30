@@ -21,6 +21,7 @@
 #include "GLSphere.h"
 #include <helper_math.h>
 #include <ColorGradient.h>
+#include <QOpenGLShaderProgram>
 
 //for linux
 #include <float.h>
@@ -80,9 +81,12 @@ void SphereRenderable::resetColorMap(COLOR_MAP cm)
 void SphereRenderable::init()
 {
 	GlyphRenderable::init();
+//    m_vao = std::make_shared<QOpenGLVertexArrayObject>();
+//    m_vao->create();
+    
+    
 	LoadShaders(glProg);
-	//m_vao = std::make_shared<QOpenGLVertexArrayObject>();
-	//m_vao->create();
+	
 
 	glyphMesh = std::make_shared<GLSphere>(1, 8);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -90,10 +94,10 @@ void SphereRenderable::init()
 	GenVertexBuffer(glyphMesh->GetNumVerts(),
 		glyphMesh->GetVerts());
 
-	initPickingDrawingObjects();
+//	initPickingDrawingObjects();
 }
 
-void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
+void SphereRenderable::LoadShaders(QOpenGLShaderProgram*& shaderProg)
 {
 #define GLSL(shader) "#version 410\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
@@ -152,7 +156,9 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 	}
 	);
 
-	shaderProg = new ShaderProgram;
+//    m_vao->bind();
+    
+	shaderProg = new QOpenGLShaderProgram;
 	shaderProg->initFromStrings(vertexVS, vertexFS);
 
 	shaderProg->addAttribute("VertexPosition");
@@ -169,30 +175,41 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 	shaderProg->addUniform("Transform");
 	shaderProg->addUniform("Scale");
 	shaderProg->addUniform("Bright");
+    
+//    m_vao->release();
 }
 
 
 
 void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 {
-	//m_vao->bind();
-
-	qgl->glGenBuffers(1, &vbo_vert);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, vertex, GL_STATIC_DRAW);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+//	m_vao->bind();
+    vbo_vert = new QOpenGLBuffer();
+//	qgl->glGenBuffers(1, &vbo_vert);
+    vbo_vert->create();
+//	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+    vbo_vert->bind();
+//	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+//	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, vertex, GL_STATIC_DRAW);
+    int size= nv * sizeof(float) * 3;
+    vbo_vert->allocate(size);
+    vbo_vert->write(0, vertex, size);
+    vbo_vert->release();
+//	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
 	//qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	//m_vao->release();
+//	m_vao->release();
 }
 
 
 void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+//    m_vao->bind();
+//	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
 	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
+   
 
 	for (int i = 0; i < pos.size(); i++) {
 		glPushMatrix();
@@ -236,7 +253,8 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 	qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+//    m_vao->bind();
+    
 }
 
 void SphereRenderable::draw(float modelview[16], float projection[16])
@@ -310,13 +328,13 @@ void SphereRenderable::initPickingDrawingObjects()
 	glPickingProg->addUniform("Transform");
 	glPickingProg->addUniform("Scale");
 
-	//init vertex buffer
-	qgl->glGenBuffers(1, &vbo_vert_picking);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
-	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, glyphMesh->GetNumVerts() * sizeof(float) * 3, glyphMesh->GetVerts(), GL_STATIC_DRAW);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+//	//init vertex buffer
+//	qgl->glGenBuffers(1, &vbo_vert_picking);
+//	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert_picking);
+//	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+//	qgl->glBufferData(GL_ARRAY_BUFFER, glyphMesh->GetNumVerts() * sizeof(float) * 3, glyphMesh->GetVerts(), GL_STATIC_DRAW);
+//	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+//	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 }
 
 

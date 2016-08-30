@@ -3,7 +3,7 @@
 
 #include "Renderable.h"
 #include <memory>
-class ShaderProgram;
+class QOpenGLShaderProgram;
 class QOpenGLContext;
 class StopWatchInterface;
 //enum struct COLOR_MAP;
@@ -40,7 +40,7 @@ protected:
 	std::vector<float> glyphSizeScale;
 	std::vector<float> glyphBright;
 	float glyphSizeAdjust = 1.0f;
-	ShaderProgram* glProg = nullptr;
+	QOpenGLShaderProgram* glProg = nullptr;
 	//bool displaceOn = true;
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
