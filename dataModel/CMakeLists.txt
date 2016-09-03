@@ -12,7 +12,7 @@ else()
 include_directories(${SHARED_LIB_INCLUDE_DIR})
 
 
-set(SRCS Volume.cpp)
+set(SRCS Volume.cpp Particle.cpp)
 
 set(HDRS Volume.h Particle.h)
 

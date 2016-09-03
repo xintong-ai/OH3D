@@ -28,51 +28,34 @@
 //void LoadPickingShaders(ShaderProgram*& shaderProg)
 
 
-SphereRenderable::SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val)
-//SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
+
+SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
 #ifdef USE_DEFORM
-:DeformGlyphRenderable(_spherePos)
+:DeformGlyphRenderable(_particle)
 #else
-: GlyphRenderable(_spherePos)
+: GlyphRenderable(particle)
 #endif
 {
-	val = _val;
-	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
+	sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
 	ColorGradient cg;
-	float vMax = -FLT_MAX;
-	float vMin = FLT_MAX;
-	int n = pos.size();
-	float v = 0;
-	for (int i = 0; i < n; i++) {
-		v = val[i];
-		if (v > vMax)
-			vMax = v;
-		if (v < vMin)
-			vMin = v;
-	}
+	float vMax = particle->valMax;
+	float vMin = particle->valMin;
+	
 	vMax = vMax - 0.2 * (vMax - vMin);
-	for (int i = 0; i < _spherePos.size(); i++) {
-		float valScaled = (val[i] - vMin) / (vMax - vMin);
+	for (int i = 0; i < particle->numParticles; i++) {
+		float valScaled = (particle->val[i] - vMin) / (vMax - vMin);
 		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 	}
 }
 
 void SphereRenderable::resetColorMap(COLOR_MAP cm)
 {
+	//currently not using this function
 	ColorGradient cg(cm);
-	float vMax = -FLT_MAX;
-	float vMin = FLT_MAX;
-	int n = val.size();
-	float v = 0;
-	for (int i = 0; i < n; i++) {
-		v = val[i];
-		if (v > vMax)
-			vMax = v;
-		if (v < vMin)
-			vMin = v;
-	}
-	for (int i = 0; i < val.size(); i++) {
-		float valScaled = (val[i] - vMin) / (vMax - vMin);
+	float vMax = particle->valMax;
+	float vMin = particle->valMin;
+	for (int i = 0; i < particle->val.size(); i++) {
+		float valScaled = (particle->val[i] - vMin) / (vMax - vMin);
 		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 	}
 }
@@ -207,7 +190,7 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 	//qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	//qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 	m_vao->bind();
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->numParticles; i++) {
 		glPushMatrix();
 
 		float4 shift = pos[i];
@@ -345,7 +328,7 @@ void SphereRenderable::drawPicking(float modelview[16], float projection[16], bo
 	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->numParticles; i++) {
 		//glPushMatrix();
 
 		int r, g, b;

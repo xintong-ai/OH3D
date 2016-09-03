@@ -3,14 +3,17 @@
 #include "Renderable.h"
 #include <memory>
 class ModelGrid;
+class LineSplitModelGrid;
 
 class ModelGridRenderable : public Renderable{
-	ModelGrid* modelGrid;
+	LineSplitModelGrid* modelGrid;
 	std::shared_ptr<float3> gridPts;
 	unsigned int vertex_handle = 0;
 	unsigned int triangle_handle = 0;
 public:
 	ModelGridRenderable(ModelGrid* _modelGrid);// float dmin[3], float dmax[3], int nPart);
+	ModelGridRenderable(LineSplitModelGrid* _modelGrid);// float dmin[3], float dmax[3], int nPart);
+
 protected:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;

@@ -22,7 +22,7 @@ class GridRenderable;
 class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
-class ModelGrid;
+class LineSplitModelGrid;
 
 //#define USE_NEW_LEAP
 
@@ -80,7 +80,7 @@ private:
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveBLensBtn;
-	std::shared_ptr<ModelGrid> modelGrid;
+	std::shared_ptr<LineSplitModelGrid> modelGrid;
 
 	QLabel *deformForceLabel;
 

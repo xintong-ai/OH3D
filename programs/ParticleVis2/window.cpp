@@ -15,6 +15,7 @@
 #include "PolyRenderable.h"
 #include "MeshReader.h"
 #include <ColorGradient.h>
+#include <Particle.h>
 
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>
@@ -51,18 +52,20 @@ Window::Window()
 
 
 	float3 posMin, posMax;
+	std::shared_ptr<Particle> inputParticle;
+
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
-		std::shared_ptr<Reader> reader;
-
+		std::shared_ptr<SolutionParticleReader> reader;
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
-		glyphRenderable = std::make_shared<SphereRenderable>(
-			((SolutionParticleReader*)reader.get())->GetPos(),
-			((SolutionParticleReader*)reader.get())->GetVal());
-		std::cout << "number of rendered glyphs: " << (((SolutionParticleReader*)reader.get())->GetVal()).size() << std::endl;
-		std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
 
 		reader->GetPosRange(posMin, posMax);
+
+		inputParticle = std::make_shared<Particle>();
+		reader->OutputToParticleData(inputParticle);
+
+		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
+
 		reader.reset();
 	}
 	else{
@@ -86,36 +89,18 @@ Window::Window()
 			feature[i] = (char)coords[4 * i + 3];
 		}
 		delete[] coords;
+		
+		inputParticle = std::make_shared<Particle>(posVec, valVec);
+		inputParticle->feature = feature;
+		posMax = inputParticle->posMax;
+		posMin = inputParticle->posMin;
 
-		glyphRenderable = std::make_shared<SphereRenderable>(posVec, valVec);
-		glyphRenderable->feature = feature;
-		std::cout << "number of rendered glyphs: " << numParticles << std::endl;
-
+		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
 		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
-		posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-		posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
-		float v = 0;
-		for (int i = 0; i < numParticles; i++) {
-			v = posVec[i].x;
-			if (v > posMax.x)
-				posMax.x = v;
-			if (v < posMin.x)
-				posMin.x = v;
-
-			v = posVec[i].y;
-			if (v > posMax.y)
-				posMax.y = v;
-			if (v < posMin.y)
-				posMin.y = v;
-
-			v = posVec[i].z;
-			if (v > posMax.z)
-				posMax.z = v;
-			if (v < posMin.z)
-				posMin.z = v;
-		}
 	}
-	
+
+	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
+
 	/********GL widget******/
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
@@ -146,7 +131,7 @@ Window::Window()
 
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 20, true);
+	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20, true);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);

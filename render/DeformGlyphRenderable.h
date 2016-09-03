@@ -1,7 +1,8 @@
 #include "GlyphRenderable.h"
 class DeformInterface;
-class ModelGrid;
+class LineSplitModelGrid;
 class Lens;
+class ModelGrid;
 
 class DeformGlyphRenderable: public GlyphRenderable
 {
@@ -16,11 +17,13 @@ class DeformGlyphRenderable: public GlyphRenderable
 public:
 	std::vector<Lens*> *lenses = 0; // a reference of the lenses, which is stored in LensRenderable now
 
-	DeformGlyphRenderable(std::vector<float4>& _pos);
+	DeformGlyphRenderable(std::shared_ptr<Particle> _particle);
+
 	~DeformGlyphRenderable();
 	void RecomputeTarget();
 	void ComputeDisplace(float _mv[16], float pj[16]);
-	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
+	void SetModelGrid(LineSplitModelGrid* _modelGrid){ modelGrid = _modelGrid; }
+	void SetModelGrid(ModelGrid* _modelGrid){ ; }
 
 	void DisplacePoints(std::vector<float2>& pts);
 	void SetFeature(std::vector<char> & _feature, std::vector<float3> & _featureCenter);
@@ -28,7 +31,7 @@ public:
 
 	void EnableDisplace(bool v){ displaceEnabled = v; }
 	std::shared_ptr<DeformInterface> deformInterface;
-	ModelGrid* modelGrid;
+	LineSplitModelGrid* modelGrid;
 	float3 findClosetGlyph(float3 aim);
 	void mousePress(int x, int y, int modifier) override;
 

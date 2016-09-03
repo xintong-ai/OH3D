@@ -19,7 +19,7 @@ class ArrowRenderable :public GlyphRenderable
 #endif
 {
 	std::vector<float3> vecs;
-	std::vector<float> val; //used for coloring particles
+	//std::vector<float> val; //used for coloring particles
 	std::vector<float3> cols;//used for coloring particles
 
 
@@ -41,7 +41,7 @@ class ArrowRenderable :public GlyphRenderable
 	bool initialized = false;
 
 public:
-	ArrowRenderable(std::vector<float4> _pos, std::vector<float3> _vec, std::vector < float > _val);
+	ArrowRenderable(std::vector<float4> _pos, std::vector<float3> _vec, std::vector < float > _val, std::shared_ptr<Particle> _particle);
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;

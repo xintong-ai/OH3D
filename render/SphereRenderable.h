@@ -26,7 +26,7 @@ public:
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val);
+	SphereRenderable(std::shared_ptr<Particle> _particle);
 
 	virtual void resetColorMap(COLOR_MAP cm) override;
 
@@ -35,7 +35,7 @@ protected:
 	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
 
 private:
-	std::vector<float> val;// = nullptr;
+	//std::vector<float> val;// = nullptr;
 	std::vector<float3> sphereColor;
 	void GenVertexBuffer(int nv, float* vertex);
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;

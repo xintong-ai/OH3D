@@ -8,6 +8,7 @@ class QOpenGLContext;
 class StopWatchInterface;
 //enum struct COLOR_MAP;
 #include <ColorGradient.h>
+#include <Particle.h>
 
 class GlyphRenderable: public Renderable
 {
@@ -15,6 +16,15 @@ class GlyphRenderable: public Renderable
 	bool frameBufferObjectInitialized = false;
 
 public:
+	~GlyphRenderable();
+	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
+	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
+	//void SetDispalceOn(bool b) { displaceOn = b; }
+	void SetGlyphSizeAdjust(float v){ glyphSizeAdjust = v; }
+
+	int GetNumOfGlyphs(){ return particle->numParticles; }
+
+
 	//used for feature freezing rendering
 	bool isFreezingFeature = false;
 	std::vector<char> feature;
@@ -31,12 +41,14 @@ public:
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 
-
 	virtual void resetColorMap(COLOR_MAP cm) = 0;
 
 protected:
-	std::vector<float4> pos; 
-	std::vector<float4> posOrig;
+	std::shared_ptr<Particle> particle;
+
+	float4* pos;
+	//std::vector<float4> pos;
+	
 	std::vector<float> glyphSizeScale;
 	std::vector<float> glyphBright;
 	float glyphSizeAdjust = 1.0f;
@@ -44,7 +56,8 @@ protected:
 	//bool displaceOn = true;
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
-	GlyphRenderable(std::vector<float4>& _pos);
+
+	GlyphRenderable(std::shared_ptr<Particle> _particle);
 
 	//used for picking and snapping
 	unsigned int vbo_vert_picking, vbo_indices_picking;
@@ -54,15 +67,6 @@ protected:
 	virtual void drawPicking(float modelview[16], float projection[16], bool isForGlyph) = 0; //if isForGlyph=false, then it is for feature
 	int snappedGlyphId = -1;
 	int snappedFeatureId = -1;
-
-public:
-	~GlyphRenderable();
-	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
-	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
-	//void SetDispalceOn(bool b) { displaceOn = b; }
-	void SetGlyphSizeAdjust(float v){ glyphSizeAdjust = v; }
-
-	int GetNumOfGlyphs(){ return pos.size(); }
 
 public slots:
 	void SlotGlyphSizeAdjustChanged(int v);

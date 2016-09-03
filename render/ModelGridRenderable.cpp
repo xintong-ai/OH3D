@@ -14,8 +14,12 @@
 #include <glwidget.h>
 //using namespace std;
 
-
 ModelGridRenderable::ModelGridRenderable(ModelGrid* _modelGrid)//ModelGridRenderable(float dmin[3], float dmax[3], int nPart)
+{
+	;
+}
+
+ModelGridRenderable::ModelGridRenderable(LineSplitModelGrid* _modelGrid)//ModelGridRenderable(float dmin[3], float dmax[3], int nPart)
 {
 	modelGrid = _modelGrid;
 //	modelGrid = new ModelGrid(dmin, dmax, nPart);

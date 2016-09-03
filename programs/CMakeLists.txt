@@ -4,9 +4,9 @@ PROJECT(programs)
 
 
 if(USE_DEFORM)
-	add_subdirectory(ParticleVis)
+	#add_subdirectory(ParticleVis)
 	add_subdirectory(ParticleVis2)
-	add_subdirectory(UniverseVis)
+	#add_subdirectory(UniverseVis)
 	
 	if(USE_SUPERQUADRIC)
 		add_subdirectory(TensorVis)
@@ -21,7 +21,7 @@ if(USE_LEAP)
 	#qt5_use_modules(render OpenGL Gui Widgets)
 endif()
 
-add_subdirectory(FlightVis)
+#add_subdirectory(FlightVis)
 
 
 # add_subdirectory(StreamVis)

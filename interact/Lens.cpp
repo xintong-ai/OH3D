@@ -477,35 +477,6 @@ void LineLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv,
 //		c.z + dir3.z));
 //}
 
-/*
-void LineLens::ChangeDirection(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
-{
-	//only rotate
-	float disThr = max(eps_pixel / 4, 10);
-	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
-
-	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
-	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
-
-	if (std::abs(disMajorAbs - lSemiMajorAxis) < disThr && disMinorAbs <= disThr){
-		float2 newd = normalize(make_float2(_x, _y) - center);
-		if (dot(newd, direction) < 0)
-			direction = -newd;
-		else
-			direction = newd;
-	}
-	else if (std::abs(disMinorAbs - lSemiMinorAxis) < disThr && disMajorAbs <= disThr){
-		float2 newmd = normalize(make_float2(_x, _y) - center);
-		float2 newd = make_float2(-newmd.y, newmd.x);
-		if (dot(newd, direction) < 0)
-			direction = -newd;
-		else
-			direction = newd;
-	}
-}
-*/
 
 void redistributePoints(std::vector<float2> & p)
 {

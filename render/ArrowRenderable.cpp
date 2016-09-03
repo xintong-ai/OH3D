@@ -19,11 +19,11 @@
 
 using namespace std;
 
-ArrowRenderable::ArrowRenderable(vector<float4> _pos, vector<float3> _vec, vector<float> _val) :
+ArrowRenderable::ArrowRenderable(vector<float4> _pos, vector<float3> _vec, vector<float> _val, std::shared_ptr<Particle> _particle) :
 #ifdef USE_DEFORM
-DeformGlyphRenderable(_pos)
+DeformGlyphRenderable(_particle)
 #else
-GlyphRenderable(_pos)
+GlyphRenderable(_particle)
 #endif
 {
 	vecs = _vec;
@@ -33,10 +33,10 @@ GlyphRenderable(_pos)
 	glyphMesh = std::make_shared<GLArrow>();
 	float3 orientation = glyphMesh->orientation;
 
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->numParticles; i++) {
 
 		float l = length(_vec[i]);
-		val.push_back(l);
+		particle->val.push_back(l);
 		if (l>lMax)
 			lMax = l;
 		if (l < lMin)
@@ -68,9 +68,9 @@ GlyphRenderable(_pos)
 	}
 
 	ColorGradient cg;
-	cols.resize(pos.size());
-	for (int i = 0; i < pos.size(); i++) {
-		float valRate = (val[i] - lMin) / (lMax - lMin);
+	cols.resize(particle->numParticles);
+	for (int i = 0; i < particle->numParticles; i++) {
+		float valRate = (particle->val[i] - lMin) / (lMax - lMin);
 		cg.getColorAtValue(valRate, cols[i].x, cols[i].y, cols[i].z);
 	}
 }
@@ -233,7 +233,7 @@ void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 	qgl->glEnableVertexAttribArray(sp->attribute("VertexColor"));
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->numParticles; i++) {
 
 		float4 shift = pos[i];
 
@@ -373,7 +373,7 @@ void ArrowRenderable::drawPicking(float modelview[16], float projection[16], boo
 	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->numParticles; i++) {
 		//glPushMatrix();
 
 		int r, g, b;
@@ -402,7 +402,7 @@ void ArrowRenderable::drawPicking(float modelview[16], float projection[16], boo
 		qgl->glUniform1f(glPickingProg->uniform("b"), b / 255.0f);
 
 		float maxScaleInv = 8;
-		qgl->glUniform1f(glPickingProg->uniform("Scale"), val[i] / lMax * maxScaleInv);
+		qgl->glUniform1f(glPickingProg->uniform("Scale"), particle->val[i] / lMax * maxScaleInv);
 
 
 		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());

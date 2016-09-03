@@ -153,76 +153,34 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	glEnable(GL_DEPTH_TEST);
 }
 
-//a better code design should place this part into the modelGrid
+//a better code design should place this part into the modelGrid?
 void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (lenses!=0 && lenses->size() > 0){
 		Lens *l = lenses->back();
 		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
-			float focusRatio = l->focusRatio;
 
-			//convert the camera location from camera space to object space
-			//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
 			QMatrix4x4 q_modelview = QMatrix4x4(_mv);
 			q_modelview = q_modelview.transposed();
 			QMatrix4x4 q_inv_modelview = q_modelview.inverted();
 
 			QVector4D cameraObj = q_inv_modelview * QVector4D(0, 0, 0, 1);
 			cameraObj = cameraObj / cameraObj.w();
-			float3 lensCen = l->c;
 
-			float3 lensDir = make_float3(
-				cameraObj.x() - lensCen.x,
-				cameraObj.y() - lensCen.y,
-				cameraObj.z() - lensCen.z);
-			lensDir = normalize(lensDir);
-
-			//LineLens has info on the screen space. need to compute info on the world space
-			//the following computation code is temporarily placed here. a better choice is to put them in lens.cpp, but more design of Lens.h is needed
-
-			//screen length to object
 			int winWidth, winHeight;
 			actor->GetWindowSize(winWidth, winHeight);
 
-			//transfer the end points of the major and minor axis to global space
-			float2 centerScreen = l->GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
-			float2 endPointSemiMajorAxisScreen = centerScreen + ((LineLens*)l)->lSemiMajorAxis*((LineLens*)l)->direction;
-			float2 endPointSemiMinorAxisScreen = centerScreen + ((LineLens*)l)->lSemiMinorAxis*make_float2(-((LineLens*)l)->direction.y, ((LineLens*)l)->direction.x);
+			((LineLens*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj);
 
-			float4 centerInClip = Object2Clip(make_float4(l->c, 1), _mv, _pj);
-
-			//_prj means the point's projection on the plane that has the same z clip-space coord with the lens center
-			float3 endPointSemiMajorAxisClip_prj = make_float3(Screen2Clip(endPointSemiMajorAxisScreen, winWidth, winHeight), centerInClip.z);
-			float3 endPointSemiMinorAxisClip_prj = make_float3(Screen2Clip(endPointSemiMinorAxisScreen, winWidth, winHeight), centerInClip.z);
-
-			QMatrix4x4 q_projection = QMatrix4x4(_pj);
-			q_projection = q_projection.transposed();
-			QMatrix4x4 q_inv_projection = q_projection.inverted();
-
-			float *_invmv = q_inv_modelview.data();
-			float *_inpj = q_inv_projection.data();
-			float3 endPointSemiMajorAxisGlobal_prj = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip_prj, 1), _invmv, _inpj));
-			float3 endPointSemiMinorAxisGlobal_prj = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMinorAxisClip_prj, 1), _invmv, _inpj));
-
-
-			//using the end points of the major and minor axis in global space, to compute the length and direction of major and minor axis in global space
-			float lSemiMajorAxisGlobal_prj = length(endPointSemiMajorAxisGlobal_prj - l->c);
-			float lSemiMinorAxisGlobal_prj = length(endPointSemiMinorAxisGlobal_prj - l->c);
-			float3 majorAxisGlobal_prj = normalize(endPointSemiMajorAxisGlobal_prj - l->c);
-			float3 minorAxisGlobal_prj = normalize(endPointSemiMinorAxisGlobal_prj - l->c);
-
-			float3 minorAxisGlobal = normalize(cross(lensDir, majorAxisGlobal_prj));
-			float3 majorAxisGlobal = normalize(cross(minorAxisGlobal, lensDir));
-			float lSemiMajorAxisGlobal = lSemiMajorAxisGlobal_prj / dot(majorAxisGlobal, majorAxisGlobal_prj);
-			float lSemiMinorAxisGlobal = lSemiMinorAxisGlobal_prj / dot(minorAxisGlobal, minorAxisGlobal_prj);
 
 			//if (l->justChanged){
-				modelGrid->ReinitiateMesh(l->c, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, majorAxisGlobal, ((LineLens*)l)->focusRatio, lensDir, 0, 0, volume.get());
+				modelGrid->ReinitiateMeshForVolume((LineLens*)l, volume.get());		
 			//}
 
-			modelGrid->Update(&lensCen.x, &lensDir.x, lSemiMajorAxisGlobal, lSemiMinorAxisGlobal, focusRatio, majorAxisGlobal);
 
-			modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), majorAxisGlobal, lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
+			modelGrid->Update(&(((LineLens*)l)->c.x), &(((LineLens*)l)->lensDir.x), ((LineLens*)l)->lSemiMajorAxisGlobal, ((LineLens*)l)->lSemiMinorAxisGlobal, ((LineLens*)l)->focusRatio, ((LineLens*)l)->majorAxisGlobal);
+
+			modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), ((LineLens*)l)->majorAxisGlobal, ((LineLens*)l)->lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
 		}
 	}
 

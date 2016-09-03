@@ -14,19 +14,16 @@
 #include <QOpenGLFunctions>
 #include "ShaderProgram.h"
 
+GlyphRenderable::GlyphRenderable(std::shared_ptr<Particle> _particle)
+{
+	particle = _particle;
+	pos = &(particle->pos[0]);
 
+	feature = particle->feature;
 
-GlyphRenderable::GlyphRenderable(std::vector<float4>& _pos)
-{ 
-	pos = _pos; 
-	posOrig = pos;
-	feature.resize(pos.size());
-
-	glyphSizeScale.assign(pos.size(), 1.0f);
-	glyphBright.assign(pos.size(), 1.0f);
-
+	glyphSizeScale.assign(particle->numParticles, 1.0f);
+	glyphBright.assign(particle->numParticles, 1.0f);
 }
-
 
 GlyphRenderable::~GlyphRenderable()
 { 

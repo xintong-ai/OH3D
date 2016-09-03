@@ -14,14 +14,14 @@ public:
 
 	Volume *originalVolume;
 
-	ModelGrid *modelGrid;
+	LineSplitModelGrid *modelGrid;
 	ModelVolumeDeformer(){};
 	~ModelVolumeDeformer(){
 		volumeCUDADeformed.VolumeCUDA_deinit();
 	};
 
 	void Init(Volume *ori);
-	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
+	void SetModelGrid(LineSplitModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 
 	void deformByModelGrid(float3 lensSpaceOrigin, float3 majorAxis, float3 lensDir, int3 nSteps, float step);
 

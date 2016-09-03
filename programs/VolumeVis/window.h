@@ -21,7 +21,7 @@ class GridRenderable;
 class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
-class ModelGrid;
+class LineSplitModelGrid;
 class Volume;
 class ModelVolumeDeformer;
 class VolumeRenderableCUDA;
@@ -78,7 +78,7 @@ private:
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveBLensBtn;
-	std::shared_ptr<ModelGrid> modelGrid;
+	std::shared_ptr<LineSplitModelGrid> modelGrid;
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
 

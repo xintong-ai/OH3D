@@ -13,7 +13,7 @@ class QOpenGLVertexArrayObject;
 class Fiber;
 class ModelVolumeDeformer;
 class Lens;
-class ModelGrid;
+class LineSplitModelGrid;
 
 enum DEFORM_METHOD{
 	PRINCIPLE_DIRECTION,
@@ -36,11 +36,11 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 
 	//interfaces for deformation computing and deformed data
 	std::vector<Lens*> *lenses = 0;
-	ModelGrid *modelGrid = 0;
+	LineSplitModelGrid *modelGrid = 0;
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer = 0;
 
 public:
-	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
+	void SetModelGrid(LineSplitModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
 	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 
