@@ -245,12 +245,13 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 	RecordMatrix(modelview, projection);
 
-
-	if (!visible)
-		return;
 #ifdef USE_DEFORM
 	ComputeDisplace(modelview, projection);
 #endif
+
+	if (!visible)
+		return;
+
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();

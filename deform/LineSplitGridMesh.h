@@ -461,6 +461,13 @@ public:
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 
+					////code for drawing mesh with incision
+					//glm::vec4 res;
+					//if (j == cutY && i > 0 && i < nStep[0] - 1)
+					//	res = meshTransMat*glm::vec4(i * step, j * step - step*0.1, k * step, 1.0f);
+					//else
+					//	res = meshTransMat*glm::vec4(i * step, j * step, k * step, 1.0f);
+
 					glm::vec4 res = meshTransMat*glm::vec4(i * step, j * step, k * step, 1.0f);
 
 					X[3 * idx + 0] = res.x;
@@ -473,6 +480,9 @@ public:
 			for (int i = 0; i < nStep[0] - 2; i++){
 				for (int k = 0; k < nStep[2]; k++){
 					idx = nStep[0] * nStep[1] * nStep[2] + k* (nStep[0] - 2) + i;
+
+					////code for drawing mesh with incision
+					//glm::vec4 res = meshTransMat*glm::vec4((i + 1) * step, cutY * step + step*0.1, k * step, 1.0f);
 
 					glm::vec4 res = meshTransMat*glm::vec4((i + 1) * step, cutY * step, k * step, 1.0f);
 

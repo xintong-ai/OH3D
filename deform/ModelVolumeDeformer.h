@@ -3,7 +3,7 @@
 
 
 #include <Volume.h>
-#include <ModelGrid.h>
+#include <LineSplitModelGrid.h>
 
 class ModelVolumeDeformer
 {

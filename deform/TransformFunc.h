@@ -498,8 +498,8 @@ __device__ inline bool within_device(float v)
 }
 
 
-__device__
-inline float Determinant4x4_device(const float4& v0,
+__device__ __host__
+inline float Determinant4x4(const float4& v0,
 const float4& v1,
 const float4& v2,
 const float4& v3)
@@ -524,8 +524,8 @@ const float4& v3)
 	return det;
 }
 
-__device__
-inline float4 GetBarycentricCoordinate_device(const float3& v0_,
+__device__ __host__
+inline float4 GetBarycentricCoordinate(const float3& v0_,
 const float3& v1_,
 const float3& v2_,
 const float3& v3_,
@@ -537,11 +537,11 @@ const float3& p0_)
 	float4 v3 = make_float4(v3_, 1);
 	float4 p0 = make_float4(p0_, 1);
 	float4 barycentricCoord = float4();
-	const float det0 = Determinant4x4_device(v0, v1, v2, v3);
-	const float det1 = Determinant4x4_device(p0, v1, v2, v3);
-	const float det2 = Determinant4x4_device(v0, p0, v2, v3);
-	const float det3 = Determinant4x4_device(v0, v1, p0, v3);
-	const float det4 = Determinant4x4_device(v0, v1, v2, p0);
+	const float det0 = Determinant4x4(v0, v1, v2, v3);
+	const float det1 = Determinant4x4(p0, v1, v2, v3);
+	const float det2 = Determinant4x4(v0, p0, v2, v3);
+	const float det3 = Determinant4x4(v0, v1, p0, v3);
+	const float det4 = Determinant4x4(v0, v1, v2, p0);
 	barycentricCoord.x = (det1 / det0);
 	barycentricCoord.y = (det2 / det0);
 	barycentricCoord.z = (det3 / det0);

@@ -13,7 +13,6 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
-
 class Particle
 {
 public:
@@ -25,14 +24,22 @@ public:
 	std::vector<float> val; //attribute that might be important. currently only support one attribute
 	float valMin, valMax;
 
+	bool hasFeature = false;
 	std::vector<char> feature; //actually is segmentation tag. should be named as "label" or "tag"
+	void setFeature(std::vector<char> _f){
+		feature = _f;
+		hasFeature = true;
+	};
+
 
 	Particle(){};
-	Particle(std::vector<float4> _Pos, std::vector<float> _val);
+	Particle(std::vector<float4> _pos, std::vector<float> _val);
 	
 	~Particle()
 	{
 	};
+
+private:
 
 };
 #endif

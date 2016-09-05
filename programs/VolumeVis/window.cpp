@@ -12,7 +12,7 @@
 
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
-#include <ModelGrid.h>
+#include <LineSplitModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
@@ -130,7 +130,7 @@ Window::Window()
 	inputVolume->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20, true);
+	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 
 	modelVolumeDeformer = std::make_shared<ModelVolumeDeformer>();

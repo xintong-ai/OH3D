@@ -10,7 +10,7 @@
 #include "SolutionParticleReader.h"
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
-#include <ModelGrid.h>
+#include <LineSplitModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
@@ -91,7 +91,7 @@ Window::Window()
 		delete[] coords;
 		
 		inputParticle = std::make_shared<Particle>(posVec, valVec);
-		inputParticle->feature = feature;
+		inputParticle->setFeature(feature);
 		posMax = inputParticle->posMax;
 		posMin = inputParticle->posMin;
 
@@ -131,13 +131,14 @@ Window::Window()
 
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20, true);
+	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20);
+	modelGrid->initThrustVectors(inputParticle);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
-	openGL->AddRenderable("grid", gridRenderable.get());
+	//openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("model", modelGridRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");

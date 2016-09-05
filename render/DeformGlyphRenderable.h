@@ -26,8 +26,6 @@ public:
 	void SetModelGrid(ModelGrid* _modelGrid){ ; }
 
 	void DisplacePoints(std::vector<float2>& pts);
-	void SetFeature(std::vector<char> & _feature, std::vector<float3> & _featureCenter);
-
 
 	void EnableDisplace(bool v){ displaceEnabled = v; }
 	std::shared_ptr<DeformInterface> deformInterface;

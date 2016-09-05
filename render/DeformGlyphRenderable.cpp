@@ -1,7 +1,6 @@
 #include <DeformInterface.h>
 #include <DeformGlyphRenderable.h>
-#include <ModelGrid.h>
-#include <ModelGridRenderable.h>
+#include <LineSplitModelGrid.h>
 #include <helper_timer.h>
 #include <DeformGLWidget.h>
 #include <LensRenderable.h>
@@ -72,19 +71,9 @@ void DeformGlyphRenderable::StopDeformTimer()
 #endif
 }
 
-
-void DeformGlyphRenderable::SetFeature(std::vector<char> & _feature, std::vector<float3> & _featureCenter)
-{
-	for (int i = 0; i < _feature.size(); i++)
-		feature[i] = _feature[i];
-	deformInterface->LoadFeature(&feature[0], feature.size());
-	featureCenter = _featureCenter;
-};
-
-
 void DeformGlyphRenderable::init()
 {
-	modelGrid->InitGridDensity(&pos[0], particle->numParticles);
+	//modelGrid->InitGridDensity(&pos[0], particle->numParticles);
 }
 
 
@@ -114,44 +103,45 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 	int2 winSize = actor->GetWindowSize();
 	switch (((DeformGLWidget*)actor)->GetDeformModel())
 	{
-	case DEFORM_MODEL::SCREEN_SPACE:
-	{
-		deformInterface->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-			((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
-		break;
-	}
-	case DEFORM_MODEL::OBJECT_SPACE:
-	{
-		Lens *l = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back();
+		case DEFORM_MODEL::SCREEN_SPACE:
+		{
+			deformInterface->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
+				((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
+			break;
+		}
+		case DEFORM_MODEL::OBJECT_SPACE:
+		{
+			Lens *l = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back();
 		
-		if (l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
-			QMatrix4x4 q_modelview = QMatrix4x4(_mv);
-			q_modelview = q_modelview.transposed();
-			QMatrix4x4 q_inv_modelview = q_modelview.inverted();
+			if (l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+				QMatrix4x4 q_modelview = QMatrix4x4(_mv);
+				q_modelview = q_modelview.transposed();
+				QMatrix4x4 q_inv_modelview = q_modelview.inverted();
 
-			QVector4D cameraObj = q_inv_modelview * QVector4D(0, 0, 0, 1);
-			cameraObj = cameraObj / cameraObj.w();
+				QVector4D cameraObj = q_inv_modelview * QVector4D(0, 0, 0, 1);
+				cameraObj = cameraObj / cameraObj.w();
 			
-			int winWidth, winHeight;
-			actor->GetWindowSize(winWidth, winHeight);
+				int winWidth, winHeight;
+				actor->GetWindowSize(winWidth, winHeight);
 
-			((LineLens*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj);
+				((LineLens*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj);
 
-			modelGrid->ReinitiateMeshForParticle((LineLens*)l, particle.get());
+				modelGrid->ReinitiateMeshForParticle((LineLens*)l, particle.get());
 
-			modelGrid->Update(&(((LineLens*)l)->c.x), &(((LineLens*)l)->lensDir.x), ((LineLens*)l)->lSemiMajorAxisGlobal, ((LineLens*)l)->lSemiMinorAxisGlobal, ((LineLens*)l)->focusRatio, ((LineLens*)l)->majorAxisGlobal);
+				modelGrid->Update(&(((LineLens*)l)->c.x), &(((LineLens*)l)->lensDir.x), ((LineLens*)l)->lSemiMajorAxisGlobal, ((LineLens*)l)->lSemiMinorAxisGlobal, ((LineLens*)l)->focusRatio, ((LineLens*)l)->majorAxisGlobal);
 
-			modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(&pos[0], &glyphBright[0], particle->numParticles, (LineLens*)l, isFreezingFeature, snappedFeatureId, &feature[0]);
+				modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle.get(), &glyphBright[0], (LineLens*)l, isFreezingFeature, snappedFeatureId);
 
+			}
+			else if (l->type == TYPE_CIRCLE && modelGrid->gridType == UNIFORM_GRID){
+				//TODO
+				;
+			}
+			break;
 		}
-		else if (l->type == TYPE_CIRCLE && modelGrid->gridType == UNIFORM_GRID){
-			//TODO
-			;
-		}
-
-		break;
 	}
-	}
+	
+	
 	StopDeformTimer();
 }
 

@@ -120,6 +120,9 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 {
 	RecordMatrix(modelview, projection);
 	
+	if (!visible)
+		return;
+
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
 		glMatrixMode(GL_PROJECTION);

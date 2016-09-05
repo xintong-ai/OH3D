@@ -19,13 +19,14 @@ include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE}
 	${CUDA_SDK_ROOT_DIR}/common/inc)
 
 
-set(SRCS Displace.cu ModelGrid.cu ModelVolumeDeformer.cu DeformInterface.cpp)
+set(SRCS Displace.cu ModelGrid.cu LineSplitModelGrid.cu ModelVolumeDeformer.cu DeformInterface.cpp)
 
 set(HDRS	defines.h
 			Displace.h
 			GridMesh.h
 			LineSplitGridMesh.h
 			ModelGrid.h
+			LineSplitModelGrid.h
 			TransformFunc.h
 			ModelVolumeDeformer.h
 			DeformInterface.h)

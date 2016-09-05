@@ -1,5 +1,5 @@
 #include <ModelGridRenderable.h>
-#include <ModelGrid.h>
+#include <LineSplitModelGrid.h>
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <helper_math.h>
@@ -72,10 +72,14 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+	glLineWidth(2);
 	glBegin(GL_LINES);
 	for (int i = 0; i < modelGrid->GetLNumber(); i++){
 		float cc = (e[i / 6] -500)/ 1500;
 		glColor4f(cc, 1.0f-cc, 0, 0.5);
+		float ccc = clamp(cc, 0.0, 0.5);
+		glColor4f(ccc, 1.0f - ccc, 0, 0.5);
+
 		//glColor3f(1.0f, 0, 0);
 
 		glVertex3fv(lx + 3 * l[i * 2]);
@@ -124,7 +128,7 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 
 
-	glPointSize(5.0);
+	glPointSize(6.0);
 
 	glColor3f(0.0f, 0.0f, 1.0f);
 	glBegin(GL_POINTS);
