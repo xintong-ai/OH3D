@@ -105,7 +105,7 @@ void SolutionParticleReader::Load()
 
 void SolutionParticleReader::OutputToParticleData(std::shared_ptr<Particle> v)
 {
-	v->~Particle();
+	v->clear();
 
 	v->pos = pos;
 	v->posOrig = pos;

@@ -259,47 +259,12 @@ struct LineLens :public Lens
 
 	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal;
 	float3 majorAxisGlobal, lensDir, minorAxisGlobal;
-	void UpdateLineLensGlobalInfo(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]) //
-	{
-		float3 lensCen = c;
+	void UpdateLineLensGlobalInfo(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]);
+	void UpdateLineLensGlobalInfoOld(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]);
 
-		lensDir = make_float3(
-			cameraObj.x - lensCen.x,
-			cameraObj.y - lensCen.y,
-			cameraObj.z - lensCen.z);
-		lensDir = normalize(lensDir);
+	std::vector<float3> GetContourGlobal(float* mv, float* pj, int winW, int winH);
+	std::vector<float3> GetOuterContourGlobal(float* mv, float* pj, int winW, int winH);
 
-		//transfer the end points of the major and minor axis to global space
-		float2 centerScreen = GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
-		float2 endPointSemiMajorAxisScreen = centerScreen + lSemiMajorAxis*direction;
-		float2 endPointSemiMinorAxisScreen = centerScreen + lSemiMinorAxis*make_float2(-direction.y, direction.x);
-
-		float4 centerInClip = Object2Clip(make_float4(c, 1), _mv, _pj);
-
-		//_prj means the point's projection on the plane that has the same z clip-space coord with the lens center
-		float3 endPointSemiMajorAxisClip_prj = make_float3(Screen2Clip(endPointSemiMajorAxisScreen, winWidth, winHeight), centerInClip.z);
-		float3 endPointSemiMinorAxisClip_prj = make_float3(Screen2Clip(endPointSemiMinorAxisScreen, winWidth, winHeight), centerInClip.z);
-
-		float _invmv[16];
-		float _inpj[16];
-		invertMatrix(_pj, _inpj);
-		invertMatrix(_mv, _invmv);
-
-		float3 endPointSemiMajorAxisGlobal_prj = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip_prj, 1), _invmv, _inpj));
-		float3 endPointSemiMinorAxisGlobal_prj = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMinorAxisClip_prj, 1), _invmv, _inpj));
-
-
-		//using the end points of the major and minor axis in global space, to compute the length and direction of major and minor axis in global space
-		float lSemiMajorAxisGlobal_prj = length(endPointSemiMajorAxisGlobal_prj - c);
-		float lSemiMinorAxisGlobal_prj = length(endPointSemiMinorAxisGlobal_prj - c);
-		float3 majorAxisGlobal_prj = normalize(endPointSemiMajorAxisGlobal_prj - c);
-		float3 minorAxisGlobal_prj = normalize(endPointSemiMinorAxisGlobal_prj - c);
-
-		minorAxisGlobal = normalize(cross(lensDir, majorAxisGlobal_prj));
-		majorAxisGlobal = normalize(cross(minorAxisGlobal, lensDir));
-		lSemiMajorAxisGlobal = lSemiMajorAxisGlobal_prj / dot(majorAxisGlobal, majorAxisGlobal_prj);
-		lSemiMinorAxisGlobal = lSemiMinorAxisGlobal_prj / dot(minorAxisGlobal, minorAxisGlobal_prj);
-	};
 };	
 
 

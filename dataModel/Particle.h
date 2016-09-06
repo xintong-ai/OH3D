@@ -39,6 +39,10 @@ public:
 	{
 	};
 
+	void clear(){
+		;
+	}
+
 private:
 
 };

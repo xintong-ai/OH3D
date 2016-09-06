@@ -6,7 +6,8 @@
 #include <Volume.h>
 #include <Particle.h>
 #include <Lens.h>
-
+#include <thrust/execution_policy.h>
+#include <thrust/uninitialized_copy.h>
 
 //the algorithm of converting from Cartesian to Barycentric coordinates is from
 //http://dennis2society.de/painless-tetrahedral-barycentric-mapping
@@ -79,6 +80,7 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 			thrust::get<4>(t) = 1.0;
 			return;
 		}
+		
 		int vi = thrust::get<1>(t);
 		if (vi >= 0 && vi < tet_number){
 			float4 vb = thrust::get<2>(t);
@@ -97,16 +99,19 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 		const float dark = 0.5;
 		float3 lenCen2P = make_float3(thrust::get<0>(t)) - lensCenter;
 		float lensCen2PProj = dot(lenCen2P, lensDir);
+		
 		if (lensCen2PProj < 0){
 			float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
 			if (abs(lensCen2PMajorProj)<lSemiMajorAxis){
 				float3 minorAxis = cross(lensDir, majorAxis);
 				float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
 				if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
-					thrust::get<4>(t) = std::max(dark, 1.0f / (0.5f * (-lensCen2PProj) + 1.0f));
-				}
+					float candLight = 1.0f / (0.5f * abs(lensCen2PProj) + 1.0f);
+					thrust::get<4>(t) = candLight>dark ? candLight:dark;
+				}	
 			}
-		}
+		}		
+
 	}
 	functor_UpdatePointCoordsAndBrightByLineLensMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number, float3 _lensCenter, float _lSemiMajorAxisGlobal, float _lSemiMinorAxisGlobal, float3 _majorAxisGlobal, float _focusRatio, float3 _lensDir, bool _isFreezingFeature, int _snappedFeatureId) : dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number), lensCenter(_lensCenter), lSemiMajorAxis(_lSemiMajorAxisGlobal), lSemiMinorAxis(_lSemiMinorAxisGlobal), majorAxis(_majorAxisGlobal), focusRatio(_focusRatio), lensDir(_lensDir), isFreezingFeature(_isFreezingFeature), snappedFeatureId(_snappedFeatureId){}
 };
@@ -424,6 +429,7 @@ void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle
 
 	thrust::copy(d_vec_v.begin(), d_vec_v.end(), &(p->pos[0]));
 	thrust::copy(d_vec_brightness.begin(), d_vec_brightness.end(), brightness);
+
 }
 void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens * l, Particle *p)
 {

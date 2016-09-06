@@ -457,25 +457,138 @@ void LineLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv,
 	}
 	UpdateLineLensInfo();
 }
-//
-//void LineLens::ChangeClipDepth(int v, float* mv, float* pj)
-//{
-//	matrix4x4 invModelview, invProjection;
-//	invertMatrix(mv, &invModelview.v[0].x);
-//
-//	invertMatrix(pj, &invProjection.v[0].x);
-//	float4 cenClip = Object2Clip(GetCenter(), mv, pj);
-//	//std::cout << cenClip.z << std::endl;
-//	float4 cenShiftClip = cenClip + make_float4(0, 0, -0.01, 0);
-//	float4 cenShiftObj = Clip2ObjectGlobal(cenShiftClip, &invModelview.v[0].x, &invProjection.v[0].x);
-//	float4 dir4 = cenShiftObj - GetCenter();// make_float3(dir_object.x, dir_object.y, dir_object.z);
-//	float3 dir3 = make_float3(dir4.x, dir4.y, dir4.z);
-//	dir3 = dir3 * (1.0f / length(dir3)) * v * (-0.05);
-//	SetCenter(make_float3(
-//		c.x + dir3.x,
-//		c.y + dir3.y,
-//		c.z + dir3.z));
-//}
+
+
+void LineLens::UpdateLineLensGlobalInfoOld(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]) //
+{
+	float3 lensCen = c;
+
+	lensDir = make_float3(
+		cameraObj.x - lensCen.x,
+		cameraObj.y - lensCen.y,
+		cameraObj.z - lensCen.z);
+	lensDir = normalize(lensDir);
+
+	//transfer the end points of the major and minor axis to global space
+	float2 centerScreen = GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
+	float2 endPointSemiMajorAxisScreen = centerScreen + lSemiMajorAxis*direction;
+	float2 endPointSemiMinorAxisScreen = centerScreen + lSemiMinorAxis*make_float2(-direction.y, direction.x);
+
+	float4 centerInClip = Object2Clip(make_float4(c, 1), _mv, _pj);
+
+	//_prj means the point's projection on the plane that has the same z clip-space coord with the lens center
+	float3 endPointSemiMajorAxisClip_prj = make_float3(Screen2Clip(endPointSemiMajorAxisScreen, winWidth, winHeight), centerInClip.z);
+	float3 endPointSemiMinorAxisClip_prj = make_float3(Screen2Clip(endPointSemiMinorAxisScreen, winWidth, winHeight), centerInClip.z);
+
+	float _invmv[16];
+	float _inpj[16];
+	invertMatrix(_pj, _inpj);
+	invertMatrix(_mv, _invmv);
+
+	float3 endPointSemiMajorAxisGlobal_prj = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip_prj, 1), _invmv, _inpj));
+	float3 endPointSemiMinorAxisGlobal_prj = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMinorAxisClip_prj, 1), _invmv, _inpj));
+
+
+	//using the end points of the major and minor axis in global space, to compute the length and direction of major and minor axis in global space
+	float lSemiMajorAxisGlobal_prj = length(endPointSemiMajorAxisGlobal_prj - c);
+	float lSemiMinorAxisGlobal_prj = length(endPointSemiMinorAxisGlobal_prj - c);
+	float3 majorAxisGlobal_prj = normalize(endPointSemiMajorAxisGlobal_prj - c);
+	float3 minorAxisGlobal_prj = normalize(endPointSemiMinorAxisGlobal_prj - c);
+
+	minorAxisGlobal = normalize(cross(lensDir, majorAxisGlobal_prj));
+	majorAxisGlobal = normalize(cross(minorAxisGlobal, lensDir));
+	lSemiMajorAxisGlobal = lSemiMajorAxisGlobal_prj / dot(majorAxisGlobal, majorAxisGlobal_prj);
+	lSemiMinorAxisGlobal = lSemiMinorAxisGlobal_prj / dot(minorAxisGlobal, minorAxisGlobal_prj);
+};
+
+
+void LineLens::UpdateLineLensGlobalInfoOld(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]) //
+{
+	//first reset lens center from the , using the same 
+
+	float3 lensCen = c;
+
+	lensDir = make_float3(
+		cameraObj.x - lensCen.x,
+		cameraObj.y - lensCen.y,
+		cameraObj.z - lensCen.z);
+	lensDir = normalize(lensDir);
+
+
+
+	//transfer the end points of the major and minor axis to global space
+	float2 centerScreen = GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
+
+	//note !! centerScreen is different with screen space case: GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
+	float2 endPointSemiMajorAxisScreen = centerScreen + lSemiMajorAxis*direction;
+	//float2 endPointSemiMinorAxisScreen = centerScreen + lSemiMinorAxis*make_float2(-direction.y, direction.x);
+
+	float3 endPointSemiMajorAxisClip = make_float3(Screen2Clip(endPointSemiMajorAxisScreen, winWidth, winHeight), -1);
+	//float3 endPointSemiMinorAxisClip = make_float3(Screen2Clip(endPointSemiMinorAxisScreen, winWidth, winHeight), -1);
+
+
+
+
+	
+	float _invmv[16];
+	float _inpj[16];
+	invertMatrix(_pj, _inpj);
+	invertMatrix(_mv, _invmv);
+
+	float3 endPointSemiMajorAxisGlobal = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip, 1), _invmv, _inpj));
+
+	
+	
+	
+	//(endPointSemiMajorAxisGlobal + xx*lensDir - lensCen) is perpendicular to lensDir
+	// so (endPointSemiMajorAxisGlobal + xx*lensDir - lensCen) * lensDir = 0
+	float xx = (dot(lensCen, lensDir) - dot(endPointSemiMajorAxisGlobal, lensDir)) / dot(lensDir, lensDir);
+	float3 endPointSemiMajorAxisGlobal_back = endPointSemiMajorAxisGlobal + xx*lensDir; //_back means the axis at the back base of the lens
+
+
+
+
+	lSemiMajorAxisGlobal = length(endPointSemiMajorAxisGlobal_back - lensCen);
+	majorAxisGlobal = normalize(endPointSemiMajorAxisGlobal_back - lensCen);
+	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / (lSemiMajorAxis / lSemiMinorAxis);
+
+	minorAxisGlobal = normalize(cross(lensDir, majorAxisGlobal));
+
+	//cannot compute endPointSemiMinorAxisGlobal in a similar way to endPointSemiMajorAxisGlobal, which will cause non-perpendicular in global space
+};
+
+std::vector<float3> LineLens::GetContourGlobal(float* mv, float* pj, int winW, int winH)
+{
+	std::vector<float3> ret;
+	float3 ctrlPoint1 = c - majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 ctrlPoint2 = c + majorAxisGlobal*lSemiMajorAxisGlobal;
+
+	ret.push_back(ctrlPoint1 - minorAxisGlobal*lSemiMinorAxisGlobal);
+	ret.push_back(ctrlPoint2 - minorAxisGlobal*lSemiMinorAxisGlobal);
+	ret.push_back(ctrlPoint2 + minorAxisGlobal*lSemiMinorAxisGlobal);
+	ret.push_back(ctrlPoint1 + minorAxisGlobal*lSemiMinorAxisGlobal);
+	return ret;
+}
+
+std::vector<float3> LineLens::GetOuterContourGlobal(float* mv, float* pj, int winW, int winH)
+{
+	std::vector<float3> ret;
+	float3 ctrlPoint1 = c - majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 ctrlPoint2 = c + majorAxisGlobal*lSemiMajorAxisGlobal;
+
+	ret.push_back(ctrlPoint1 - minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	ret.push_back(ctrlPoint2 - minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	ret.push_back(ctrlPoint2 + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	ret.push_back(ctrlPoint1 + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	return ret;
+}
+
+
+
+
+
+
+//////////////// curve lens //////////////////////////////////
 
 
 void redistributePoints(std::vector<float2> & p)
