@@ -134,6 +134,8 @@ Window::Window()
 	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20);
 	modelGrid->initThrustVectors(inputParticle);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
+	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
+	
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
@@ -268,7 +270,7 @@ void Window::AddLens()
 
 void Window::AddLineLens()
 {
-	lensRenderable->AddLineLens();
+	lensRenderable->AddLineLens3D();
 }
 
 

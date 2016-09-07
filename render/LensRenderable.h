@@ -33,6 +33,7 @@ public:
 	float GetBackLensObjectRadius();
 	void AddCircleLens();
 	void AddLineLens();
+	void AddLineLens3D();
 	void AddCurveBLens();
 
 	void mousePress(int x, int y, int modifier) override;

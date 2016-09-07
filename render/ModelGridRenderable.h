@@ -4,15 +4,20 @@
 #include <memory>
 class ModelGrid;
 class LineSplitModelGrid;
+class Lens;
 
 class ModelGridRenderable : public Renderable{
 	LineSplitModelGrid* modelGrid;
 	std::shared_ptr<float3> gridPts;
 	unsigned int vertex_handle = 0;
 	unsigned int triangle_handle = 0;
+
+	std::vector<Lens*> *lenses = 0;
+
 public:
 	ModelGridRenderable(ModelGrid* _modelGrid);// float dmin[3], float dmax[3], int nPart);
 	ModelGridRenderable(LineSplitModelGrid* _modelGrid);// float dmin[3], float dmax[3], int nPart);
+	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 
 protected:
 	void init() override;

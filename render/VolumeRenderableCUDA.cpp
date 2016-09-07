@@ -170,17 +170,19 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 			int winWidth, winHeight;
 			actor->GetWindowSize(winWidth, winHeight);
 
-			((LineLens*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj);
+			float3 dmin, dmax;
+			volume->GetPosRange(dmin, dmax);
+			((LineLens3D*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj, dmin, dmax);
 
 
 			//if (l->justChanged){
-				modelGrid->ReinitiateMeshForVolume((LineLens*)l, volume.get());		
+			modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume.get());
 			//}
 
 
-			modelGrid->Update(&(((LineLens*)l)->c.x), &(((LineLens*)l)->lensDir.x), ((LineLens*)l)->lSemiMajorAxisGlobal, ((LineLens*)l)->lSemiMinorAxisGlobal, ((LineLens*)l)->focusRatio, ((LineLens*)l)->majorAxisGlobal);
+			modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 
-			modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), ((LineLens*)l)->majorAxisGlobal, ((LineLens*)l)->lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
+			modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), ((LineLens3D*)l)->majorAxisGlobal, ((LineLens3D*)l)->lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
 		}
 	}
 

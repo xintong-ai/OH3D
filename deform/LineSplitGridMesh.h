@@ -390,13 +390,13 @@ public:
 			}
 		}
 		float zdifori = rz2 - rz1;
-		rz2 = rz2 + zdifori*0.001;
-		rz1 = rz1 - zdifori*0.001;  //to avoid numerical error
+		rz2 = rz2 + zdifori*0.01;
+		rz1 = rz1 - zdifori*0.01;  //to avoid numerical error
 
 		float3 rangeDiff = make_float3(2.1* lSemiMajorAxis, 2* lSemiMinorAxis / focusRatio, rz2 - rz1);
 		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
 
-		const int mimNumStepEachDim = 5;
+		const int mimNumStepEachDim = 7;
 		bool ismeshillegal = true;
 		while (ismeshillegal){
 			step = (maxDiff / n);
@@ -423,7 +423,8 @@ public:
 		
 		cutY = nStep[1] / 2;
 
-		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis - rangeDiff.z / 2.0 * lensDir;
+		//lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis - rangeDiff.z / 2.0 * lensDir;
+		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis + rz1 * lensDir;
 
 		//gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
 		//gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);

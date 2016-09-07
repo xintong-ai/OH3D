@@ -32,33 +32,6 @@ inline bool within(float v)
 }
 
 
-
-struct functor_UpdatePointCoordsByMesh
-{
-	thrust::device_ptr<int> dev_ptr_tet;;
-	thrust::device_ptr<float> dev_ptr_X;
-	int tet_number;
-
-	template<typename Tuple>
-	__device__ __host__ void operator() (Tuple t)
-	{
-		int vi = thrust::get<1>(t);
-		if (vi >= 0 && vi < tet_number){
-			float4 vb = thrust::get<2>(t);
-			float3 vv[4];
-			for (int k = 0; k < 4; k++){
-				int iv = dev_ptr_tet[vi * 4 + k];
-				vv[k] = make_float3(dev_ptr_X[3 * iv + 0], dev_ptr_X[3 * iv + 1], dev_ptr_X[3 * iv + 2]);
-			}
-			thrust::get<3>(t) = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
-		}
-		else{
-			thrust::get<3>(t) = thrust::get<0>(t);
-		}
-	}
-	functor_UpdatePointCoordsByMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number) :dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number){}
-};
-
 struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 {
 	thrust::device_ptr<int> dev_ptr_tet;;
@@ -98,20 +71,38 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 		thrust::get<4>(t) = 1.0;
 		const float dark = 0.5;
 		float3 lenCen2P = make_float3(thrust::get<0>(t)) - lensCenter;
-		float lensCen2PProj = dot(lenCen2P, lensDir);
-		
-		if (lensCen2PProj < 0){
-			float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
-			if (abs(lensCen2PMajorProj)<lSemiMajorAxis){
-				float3 minorAxis = cross(lensDir, majorAxis);
-				float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
-				if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
-					float candLight = 1.0f / (0.5f * abs(lensCen2PProj) + 1.0f);
-					thrust::get<4>(t) = candLight>dark ? candLight:dark;
-				}	
+		//float lensCen2PProj = dot(lenCen2P, lensDir);	
+		//if (lensCen2PProj < 0){
+		//	float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
+		//	if (abs(lensCen2PMajorProj) < lSemiMajorAxis){
+		//		float3 minorAxis = cross(lensDir, majorAxis);
+		//		float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
+		//		if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
+		//			float candLight = 1.0f / (0.5f * abs(lensCen2PProj) + 1.0f);
+		//			thrust::get<4>(t) = candLight>dark ? candLight : dark;
+		//		}
+		//	}
+		//}
+		float alpha = 0.25f;
+		float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
+		float3 minorAxis = cross(lensDir, majorAxis);
+		float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
+		if (abs(lensCen2PMajorProj) < lSemiMajorAxis){
+			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
+				float lensCen2PProj = dot(lenCen2P, lensDir);
+				if (lensCen2PProj < 0){		
+					//float candLight = 1.0f / (alpha * abs(lensCen2PProj) + 1.0f);
+					//thrust::get<4>(t) = candLight>dark ? candLight : dark;
+					thrust::get<4>(t) = max(1.0f / (alpha * abs(lensCen2PProj) + 1.0f), dark);
+				}
 			}
-		}		
-
+			else{
+				thrust::get<4>(t) = dark;
+			}
+		}
+		else{
+			thrust::get<4>(t) = dark;
+		}
 	}
 	functor_UpdatePointCoordsAndBrightByLineLensMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number, float3 _lensCenter, float _lSemiMajorAxisGlobal, float _lSemiMinorAxisGlobal, float3 _majorAxisGlobal, float _focusRatio, float3 _lensDir, bool _isFreezingFeature, int _snappedFeatureId) : dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number), lensCenter(_lensCenter), lSemiMajorAxis(_lSemiMajorAxisGlobal), lSemiMinorAxis(_lSemiMinorAxisGlobal), majorAxis(_majorAxisGlobal), focusRatio(_focusRatio), lensDir(_lensDir), isFreezingFeature(_isFreezingFeature), snappedFeatureId(_snappedFeatureId){}
 };
@@ -149,15 +140,15 @@ d_computeTranferDensityForVolume(cudaExtent volumeSize, float3 spacing, float st
 	}
 	else if (densityTransferMode == 1){
 		if (voxelValue < v1)
-			voxelValue = voxelValue / (v1 + 0.00000001);
+			voxelValue = (voxelValue / (v1 + 0.00000001))/5;
 		else if (voxelValue < v2)
 			voxelValue = 1;
 		else
-			voxelValue = 1 - (voxelValue - v2) / (1.00000001 - v2);//1.00000001 to avoid setting v2==1
+			voxelValue = (1 - (voxelValue - v2) / (1.00000001 - v2))/5;//1.00000001 to avoid setting v2==1
 	}
 	else if (densityTransferMode == 2){
-		if (voxelValue > 0.4)
-			voxelValue = 1;
+		if (voxelValue > 0.6)
+			voxelValue = voxelValue;
 		else
 			voxelValue = 0;
 	}
@@ -391,7 +382,7 @@ void LineSplitModelGrid::UpdatePointTetId(float4* v, int n)
 }
 
 
-void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens * l, bool isFreezingFeature, int snappedFeatureId)
+void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId)
 {
 	if (isFreezingFeature)
 	{
@@ -431,7 +422,7 @@ void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle
 	thrust::copy(d_vec_brightness.begin(), d_vec_brightness.end(), brightness);
 
 }
-void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens * l, Particle *p)
+void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, Particle *p)
 {
 	if (!bMeshNeedReinitiation)
 		return;
@@ -446,16 +437,58 @@ void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens * l, Particle *p)
 	UpdatePointTetId(&(p->posOrig[0]), p->numParticles);
 
 	if (useDensityBasedElasticity)
-		SetElasticityByTetDensity(p->numParticles);
+		SetElasticityByTetDensityOfPartice(p->numParticles);
 	else
-		SetElasticitySimple();
+		SetElasticitySimple(200);
 
 	lsgridMesh->Initialize(time_step);
 
 	bMeshNeedReinitiation = false;
 }
 
-void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens * l, Volume* v)
+void LineSplitModelGrid::SetElasticityByTetDensityOfPartice(int n)
+{
+	int tet_number = GetTetNumber();
+	std::vector<int> cnts;
+	cnts.resize(tet_number, 0);
+	for (int i = 0; i < n; i++){
+		int vi = vIdx[i];
+		if (vi >= 0 && vi < tet_number){
+			cnts[vi]++;
+		}
+	}
+	float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
+	std::vector<float> density;
+	density.resize(cnts.size());
+	//const float base = 400.0f / cnts.size();
+	for (int i = 0; i < cnts.size(); i++) {
+		//for (int j = 0; j < 5; j++) {
+		density[i] = 500 + 1000 * pow((float)cnts[i] / tetVolumeOriginal[i], 2);
+		//}
+	}
+	minElas = 500;
+	maxElasEstimate = 1500;
+	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
+
+	//std::vector<float> forDebug(tetVolumeOriginal, tetVolumeOriginal + tet_number);
+}
+
+
+
+void LineSplitModelGrid::SetElasticitySimple(float v)
+{
+	std::vector<float> density;
+	density.resize(lsgridMesh->tet_number);
+	for (int i = 0; i < density.size(); i++) {
+		density[i] = v;
+	}
+	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
+	minElas = v-1;
+	maxElasEstimate = v+1;
+}
+
+
+void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, Volume* v)
 {
 	if (!bMeshNeedReinitiation)
 		return;
@@ -472,24 +505,12 @@ void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens * l, Volume* v)
 		SetElasticityByTetDensityOfVolumeCUDA(v);
 	//SetElasticityByTetVarianceOfVolumeCUDA(v);
 	else
-		SetElasticitySimple();
-
-
+		SetElasticitySimple(200);
+	
 	lsgridMesh->Initialize(time_step);
 
 	bMeshNeedReinitiation = false;
 }
-
-void LineSplitModelGrid::SetElasticitySimple()
-{
-	std::vector<float> density;
-	density.resize(lsgridMesh->tet_number);
-	for (int i = 0; i < density.size(); i++) {
-		density[i] = 500;
-	}
-	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
-}
-
 
 void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(Volume* v)
 {
@@ -520,8 +541,8 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(Volume* v)
 	checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
 
 	//d_computeDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density);
-	//d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, 0.2, 0.6, 1);//MGHT1
-	d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, -1, 0.3, 2);//nek256
+	d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, 0.2, 0.6, 1);//MGHT1
+	//d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, -1, 0.3, 2);//nek256
 
 	checkCudaErrors(cudaUnbindTexture(volumeTex));
 
@@ -531,10 +552,17 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(Volume* v)
 
 	float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
 	float spacingCoeff = spacing.x*spacing.y*spacing.z;
+	//for (int i = 0; i < tet_number; i++) {
+	//	density[i] = 100 + 2000 * pow(density[i] / (tetVolumeOriginal[i] / spacingCoeff), 3);
+	//}
 	for (int i = 0; i < tet_number; i++) {
-		density[i] = 500 + 5000 * pow(density[i] / (tetVolumeOriginal[i] / spacingCoeff), 3);
+		float dd = density[i] / (tetVolumeOriginal[i] / spacingCoeff);
+		if (dd < 0.5) dd = 0;
+		density[i] = 100 + 2000 * pow(dd, 2);
 	}
-	std::vector<float> forDebug(density, density + tet_number);
+	minElas = 100;
+	maxElasEstimate = 2100;
+	//std::vector<float> forDebug(density, density + tet_number);
 }
 
 
@@ -586,31 +614,6 @@ void LineSplitModelGrid::SetElasticityByTetVarianceOfVolumeCUDA(Volume* v)
 }
 
 
-void LineSplitModelGrid::SetElasticityByTetDensity(int n)
-{
-	int tet_number = GetTetNumber();
-	std::vector<int> cnts;
-	cnts.resize(tet_number, 0);
-	for (int i = 0; i < n; i++){
-		int vi = vIdx[i];
-		if (vi >= 0 && vi < tet_number){
-			cnts[vi]++;
-		}
-	}
-	float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
-	std::vector<float> density;
-	density.resize(cnts.size());
-	//const float base = 400.0f / cnts.size();
-	for (int i = 0; i < cnts.size(); i++) {
-		//for (int j = 0; j < 5; j++) {
-		density[i] = 500 + 800 * pow((float)cnts[i] / tetVolumeOriginal[i], 2);
-		//}
-	}
-	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
-
-	//std::vector<float> forDebug(tetVolumeOriginal, tetVolumeOriginal + tet_number);
-}
-
 
 void LineSplitModelGrid::Initialize(float time_step)
 {
@@ -622,14 +625,7 @@ void LineSplitModelGrid::Initialize(float time_step)
 		return;
 }
 
-void LineSplitModelGrid::Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius)
-{
-	if (gridType == GRID_TYPE::UNIFORM_GRID)
-		gridMesh->Update(time_step, 64, lensCenter, lenDir, focusRatio, radius);
-	return;
-}
-
-void LineSplitModelGrid::Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
+void LineSplitModelGrid::UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
 {
 	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
 		lsgridMesh->Update(time_step, 4, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);

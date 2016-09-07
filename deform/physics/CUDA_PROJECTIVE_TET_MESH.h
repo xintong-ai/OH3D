@@ -252,14 +252,12 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 }
 
 
-__global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float *more_fixed, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis,int3 nStep)
+__global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float *more_fixed, const int number, float3 lensCen, float3 lensDir,
+ const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis,int3 nStep)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+	
 	//float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 vertOrig = make_float3(X_Orig[i * 3], X_Orig[i * 3 + 1], X_Orig[i * 3 + 2]);
 	//we have to use the original position here, otherwise the points will vibrate.
@@ -353,10 +351,9 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 }
 
 
-__global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z
-	, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep, int cutY, float deformForce)
+__global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number,
+	float3 lensCen, float3 lensDir,
+	const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep, int cutY, float deformForce)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -386,11 +383,11 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 	V[i * 3 + 2] *= damping;
 	//Apply force
 	float3 lensForce = make_float3(0, 0, 0);
-
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	
+	float forceReduceRatio = 0.3;
+	if ((1 - focusRatio) / focusRatio<forceReduceRatio)
+		forceReduceRatio = (1 - focusRatio) / focusRatio;
 
 	float3 lenCen2P = vert - lensCen;
 	float lensCen2PProj = dot(lenCen2P, lensDir);
@@ -403,18 +400,34 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
 
-			if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
-				if ((lensCen2PMinorProj>0 && i < nStep.x * nStep.y * nStep.z && y!=cutY) || (i >= nStep.x * nStep.y * nStep.z))
-					lensForce = moveDir;
-				else
-					lensForce = -moveDir;
-			}
-			//else if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
-			//	if (lensCen2PMinorProj>0)
-			//		lensForce = (1 - (lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
+			////apply force on (almost) all nodes
+			//if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
+			//	if ((lensCen2PMinorProj>0 && i < nStep.x * nStep.y * nStep.z && y!=cutY) || (i >= nStep.x * nStep.y * nStep.z))
+			//		lensForce = moveDir;
 			//	else
-			//		lensForce = -(1 - (-lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
+			//		lensForce = -moveDir;
 			//}
+
+			////apply force on center nodes only
+			//if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
+			//	if (i >= nStep.x * nStep.y * nStep.z)
+			//		lensForce = moveDir;
+			//	else if (y == cutY)
+			//		lensForce = -moveDir;
+			//}
+			//else if (abs(lensCen2PMinorProj) < lSemiMinorAxis *(1 + forceReduceRatio)){
+			//	if (i >= nStep.x * nStep.y * nStep.z)
+			//		lensForce = (abs(lensCen2PMinorProj) - lSemiMinorAxis) / lSemiMinorAxis / forceReduceRatio * moveDir;
+			//	else if (y == cutY)
+			//		lensForce = - (abs(lensCen2PMinorProj) - lSemiMinorAxis) / lSemiMinorAxis / forceReduceRatio * moveDir;
+			//}
+
+			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio/2){
+				if (i >= nStep.x * nStep.y * nStep.z)
+					lensForce = (1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
+				else if (y == cutY)
+					lensForce = -(1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
+			}
 		}
 	}
 
@@ -994,7 +1007,7 @@ public:
 
 
 	//for line lens
-	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
+	void Update(TYPE t, int iterations, TYPE _lensCen[], TYPE _lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -1003,17 +1016,20 @@ public:
 
 		int3 nstep_forDevice = make_int3(nStep[0], nStep[1], nStep[2]);//cannot directly give local pointer to cuda
 		TIMER timer;
+
+		float3 lensCen = make_float3(_lensCen[0], _lensCen[1], _lensCen[2]);
+		float3 lensDir = make_float3(_lenDir[0], _lenDir[1], _lenDir[2]);
+
 		// Step 0 by Cheng Li
 		Set_Fixed_By_Lens_Line << <blocksPerGrid, threadsPerBlock >> >(
-			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice);
+			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number,
+			lensCen, lensDir,
+			focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice);
 
 		
 		// Step 1: Basic update
 		Update_Kernel_LineLens << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice, cutY, deformForce);
+			, lensCen, lensDir, focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice, cutY, deformForce);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1 / t, number);

@@ -124,13 +124,13 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 				int winWidth, winHeight;
 				actor->GetWindowSize(winWidth, winHeight);
 
-				((LineLens*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj);
+				((LineLens3D*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj, particle->posMin, particle->posMax);
 
-				modelGrid->ReinitiateMeshForParticle((LineLens*)l, particle.get());
+				modelGrid->ReinitiateMeshForParticle((LineLens3D*)l, particle.get());
 
-				modelGrid->Update(&(((LineLens*)l)->c.x), &(((LineLens*)l)->lensDir.x), ((LineLens*)l)->lSemiMajorAxisGlobal, ((LineLens*)l)->lSemiMinorAxisGlobal, ((LineLens*)l)->focusRatio, ((LineLens*)l)->majorAxisGlobal);
+				modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 
-				modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle.get(), &glyphBright[0], (LineLens*)l, isFreezingFeature, snappedFeatureId);
+				modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle.get(), &glyphBright[0], (LineLens3D*)l, isFreezingFeature, snappedFeatureId);
 
 			}
 			else if (l->type == TYPE_CIRCLE && modelGrid->gridType == UNIFORM_GRID){

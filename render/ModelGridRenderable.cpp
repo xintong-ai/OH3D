@@ -4,6 +4,7 @@
 #include <vector_functions.h>
 #include <helper_math.h>
 #include <helper_cuda.h>
+#include "Lens.h"
 
 #ifdef WIN32
 #include "windows.h"
@@ -48,6 +49,11 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 	if (!visible)
 		return;
+	
+	if ((*lenses).size() < 1)
+		return;
+	
+	
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glLoadIdentity();
@@ -74,16 +80,28 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 	glLineWidth(2);
 	glBegin(GL_LINES);
+
+	//!!! not work for circle lens
+	float minElas = modelGrid->minElas;
+	float maxElas = modelGrid->maxElasEstimate;
+	LineLens3D* len = (LineLens3D*)((*lenses)[0]);
+	float3 lensCen = len->c;
+	float3 lensDir = len->lensDir;
+
 	for (int i = 0; i < modelGrid->GetLNumber(); i++){
-		float cc = (e[i / 6] -500)/ 1500;
+		float cc = (e[i / 6] - minElas) / (maxElas - minElas);
 		glColor4f(cc, 1.0f-cc, 0, 0.5);
-		float ccc = clamp(cc, 0.0, 0.5);
-		glColor4f(ccc, 1.0f - ccc, 0, 0.5);
+		
+		//glVertex3fv(lx + 3 * l[i * 2]);
+		//glVertex3fv(lx + 3 * l[i * 2 + 1]);
 
-		//glColor3f(1.0f, 0, 0);
-
-		glVertex3fv(lx + 3 * l[i * 2]);
-		glVertex3fv(lx + 3 * l[i * 2 + 1]);
+		float *pp1 = lx + 3 * l[i * 2], *pp2 = lx + 3 * l[i * 2 + 1];
+		float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
+		float3 v2 = make_float3(pp2[0], pp2[1], pp2[2]);
+		if (dot(v1 - lensCen, lensDir)>0 || dot(v2 - lensCen, lensDir) > 0){
+			glVertex3fv(pp1);
+			glVertex3fv(pp2);
+		}
 	}
 	glEnd();
 	glDisable(GL_BLEND);

@@ -53,24 +53,28 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 	
 
-	const std::string dataPath2 = dataMgr->GetConfig("VOLUME_DATA_PATH");
+	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
 	int3 dims;
 	float3 spacing;
-	if (std::string(dataPath2).find("MGHT2") != std::string::npos){
+	if (std::string(dataPath).find("MGHT2") != std::string::npos){
 		dims = make_int3(320, 320, 256);
 		spacing = make_float3(0.7, 0.7, 0.7);
 	}
-	else if (std::string(dataPath2).find("MGHT1") != std::string::npos){
+	else if (std::string(dataPath).find("MGHT1") != std::string::npos){
 		dims = make_int3(256, 256, 176);
 		spacing = make_float3(1.0, 1.0, 1.0);
 	}
-	else if (std::string(dataPath2).find("nek128") != std::string::npos){
+	else if (std::string(dataPath).find("nek128") != std::string::npos){
 		dims = make_int3(128, 128, 128);
 		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
 	}
-	else if (std::string(dataPath2).find("nek256") != std::string::npos){
+	else if (std::string(dataPath).find("nek256") != std::string::npos){
 		dims = make_int3(256, 256, 256);
+		spacing = make_float3(1, 1, 1);
+	}
+	else if (std::string(dataPath).find("cthead") != std::string::npos){
+		dims = make_int3(208, 256, 225);
 		spacing = make_float3(1, 1, 1);
 	}
 	else{
@@ -79,15 +83,15 @@ Window::Window()
 	}
 	inputVolume = std::make_shared<Volume>();
 
-	if (std::string(dataPath2).find(".vec") != std::string::npos){
+	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader2;
-		reader2 = std::make_shared<VecReader>(dataPath2.c_str());
+		reader2 = std::make_shared<VecReader>(dataPath.c_str());
 		reader2->OutputToVolumeByNormalizedVecMag(inputVolume);
 		reader2.reset();
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader2;
-		reader2 = std::make_shared<RawVolumeReader>(dataPath2.c_str(), dims);
+		reader2 = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
 		reader2->OutputToVolumeByNormalizedValue(inputVolume);
 		reader2.reset();
 	}
@@ -96,7 +100,7 @@ Window::Window()
 
 	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 
-	if (std::string(dataPath2).find("nek") != std::string::npos){
+	if (std::string(dataPath).find("nek") != std::string::npos){
 		volumeRenderable->useColor = true;
 	}
 	
@@ -132,6 +136,7 @@ Window::Window()
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
+	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
 
 	modelVolumeDeformer = std::make_shared<ModelVolumeDeformer>();
 	modelVolumeDeformer->SetModelGrid(modelGrid.get());
@@ -200,12 +205,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(udbeCheck);
 
 
-	modelGrid->setDeformForce(1024);
+	modelGrid->setDeformForce(4096);
 	QLabel *deformForceLabelLit = new QLabel("Deform Force");
 	controlLayout->addWidget(deformForceLabelLit);
 	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
-	deformForceSlider->setRange(12, 48);
-	deformForceSlider->setValue(log2(modelGrid->getDeformForce())*4.0);
+	deformForceSlider->setRange(1, 44);
+	deformForceSlider->setValue(log2(modelGrid->getDeformForce()/32)*4.0);
 	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
 	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
 	QHBoxLayout *deformForceLayout = new QHBoxLayout;
@@ -337,7 +342,7 @@ void Window::AddLens()
 
 void Window::AddLineLens()
 {
-	lensRenderable->AddLineLens();
+	lensRenderable->AddLineLens3D();
 }
 
 
@@ -441,7 +446,7 @@ void Window::SlotDeformModeChanged(bool clicked)
 
 void Window::deformForceSliderValueChanged(int v)
 {
-	float newForce = pow(2, v / 4.0);
+	float newForce = pow(2, v / 4.0) * 32;
 	deformForceLabel->setText(QString::number(newForce));
 	modelGrid->setDeformForce(newForce);
 }

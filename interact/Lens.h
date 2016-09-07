@@ -54,6 +54,7 @@ struct Lens
 	}
 
 	bool justChanged = false;
+	void setJustChanged(){ justChanged = true; }
 
 	const int eps_pixel = 32;
 	LENS_TYPE type;
@@ -254,20 +255,32 @@ struct LineLens :public Lens
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void UpdateLineLensInfo();
+};	
 
-	//void ChangeClipDepth(int v, float* mv, float* pj) override;
+
+struct LineLens3D :public LineLens
+{
+	LineLens3D(float3 _c, float _focusRatio = 0.5) : LineLens( _c,  _focusRatio) {
+
+	};
+
+	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) override;
+	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) override;
 
 	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal;
 	float3 majorAxisGlobal, lensDir, minorAxisGlobal;
-	void UpdateLineLensGlobalInfo(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]);
+	void UpdateLineLensGlobalInfo(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
 	void UpdateLineLensGlobalInfoOld(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]);
 
 	std::vector<float3> GetContourGlobal(float* mv, float* pj, int winW, int winH);
 	std::vector<float3> GetOuterContourGlobal(float* mv, float* pj, int winW, int winH);
 
-};	
-
-
+	//float2 GetCenterScreenPosForLineLens3D(float* mv, float* pj, int winW, int winH);
+	std::vector<float3> PointsForContourBack;
+	std::vector<float3> PointsForContourFront;
+	std::vector<float3> PointsForOuterContourBack;
+	std::vector<float3> PointsForOuterContourFront;
+};
 
 
 class CurveBLens :public Lens

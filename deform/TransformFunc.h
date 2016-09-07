@@ -389,27 +389,16 @@ __host__ __device__ inline float4 Clip2ObjectGlobal(float4 p, T* invModelView, T
 	return p;
 }
 
-//template <typename T>
-//__device__ inline VECTOR4 Clip2ObjectGlobal(VECTOR4 p, T* invModelView, T* invProjection)//, float modelview[16], float projection[16])
-//{
-//	p = mat4mulvec4(invModelView, mat4mulvec4(invProjection, p));
-//	p[0] /= p[3];
-//	p[1] /= p[3];
-//	p[2] /= p[3];
-//	p[3] = 1.0;
-//	return p;
-//}
-
-//template <typename T>
-//__device__ inline VECTOR4 Clip2Camera(VECTOR4 p, T* invProjection)//, float modelview[16], float projection[16])
-//{
-//	p = mat4mulvec4(invProjection, p);
-//	p[0] /= p[3];
-//	p[1] /= p[3];
-//	p[2] /= p[3];
-//	p[3] = 1.0;
-//	return p;
-//}
+template <typename T>
+__host__ __device__ inline float4 Clip2Camera(float4 p, T* invProjection)//, float modelview[16], float projection[16])
+{
+	p = mat4mulvec4(invProjection, p);
+	p.x /= p.w;
+	p.y /= p.w;
+	p.z /= p.w;
+	p.w = 1.0;
+	return p;
+}
 
 template <typename T>
 __device__ __host__ inline float4 Object2Clip(float4 pos, T* modelView, T* projection)//, float modelview[16], float projection[16])
@@ -490,6 +479,12 @@ template <typename T>
 inline __device__ __host__ float2 Object2Screen(float4 p, T* mv, T* pj, int width, int height)
 {
 	return Clip2ScreenGlobal(GetXY(Object2Clip(p, mv, pj)), width, height);
+}
+
+template <typename T>
+inline __device__ __host__ float2 Camera2Screen(float4 p, T* pj, int width, int height)
+{
+	return Clip2ScreenGlobal(GetXY(Camera2ClipGlobal(p, pj)), width, height);
 }
 
 __device__ inline bool within_device(float v)

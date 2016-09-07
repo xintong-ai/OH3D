@@ -14,7 +14,7 @@ class GridMesh;
 template <class TYPE>
 class LineSplitGridMesh;
 class Volume;
-class LineLens;
+class LineLens3D;
 class Particle;
 
 class LineSplitModelGrid
@@ -31,8 +31,8 @@ class LineSplitModelGrid
 
 
 	void SetElasticity(float* v);
-	void SetElasticitySimple();
-	void SetElasticityByTetDensity(int n); //suppose the tet id for particles have been well set
+	void SetElasticitySimple(float v);
+	void SetElasticityByTetDensityOfPartice(int n); //suppose the tet id for particles have been well set
 	void SetElasticityByTetDensityOfVolumeCUDA(Volume* v);
 	void SetElasticityByTetVarianceOfVolumeCUDA(Volume* v);
 
@@ -56,20 +56,22 @@ public:
 	void setDeformForce(float f){ deformForce = f; }
 	float getDeformForce(){ return deformForce; }
 
-	void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens * l, bool isFreezingFeature, int snappedFeatureId);
+	void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId);
 
 	void initThrustVectors(std::shared_ptr<Particle>); //only needed for particle
 	
 	void UpdatePointTetId(float4* v, int n);
 
-	void ReinitiateMeshForParticle(LineLens* l, Particle* p);
-	void ReinitiateMeshForVolume(LineLens * l, Volume* v);
+	void ReinitiateMeshForParticle(LineLens3D* l, Particle* p);
+	void ReinitiateMeshForVolume(LineLens3D * l, Volume* v);
 
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 
 	void Initialize(float time_step);
-	void Update(float lensCenter[3], float lenDir[3], float focusRatio, float radius);
-	void Update(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
+	void UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
+
+	float minElas = 0, maxElasEstimate = 1; //used for draw the mesh in image
+
 
 	int GetTNumber();
 	int* GetT();
