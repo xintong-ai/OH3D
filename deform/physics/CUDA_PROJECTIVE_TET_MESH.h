@@ -879,6 +879,8 @@ public:
 
 		cudaMalloc((void**)&dev_Tet, sizeof(int)*tet_number * 4);
 		cudaMemcpy(dev_Tet, Tet, sizeof(int)*tet_number * 4, cudaMemcpyHostToDevice);
+
+		is_Allocate_GPU_Memory_InAdvance_executed = true;
 	}
 
 

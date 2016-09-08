@@ -81,21 +81,33 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (!displaceEnabled) return;
 
-	//should remove the dependence on LensRenderable later. use the reference "lenses" instead
-	if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().size() < 1)
+
+	if (lenses == 0 || lenses->size() <1 || modelGrid == 0)
 		return;
 
-	if (((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back()->justChanged){
-		
+	//should remove the dependence on LensRenderable later. use the reference "lenses" instead
+	
+	Lens *l = (*lenses)[lenses->size() - 1];
+
+	if (l->justChanged){
+
 		switch (((DeformGLWidget*)actor)->GetDeformModel())
 		{
 		case DEFORM_MODEL::SCREEN_SPACE:
+		{
 			deformInterface->RecomputeTarget();
+			l->justChanged = false;
 			break;
 		}
-		
-		((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back()->justChanged = false;
-		//this setting can only do deform based on the last lens
+		case DEFORM_MODEL::OBJECT_SPACE:
+		{
+			if (l->type == TYPE_LINE)
+				modelGrid->setReinitiationNeed();
+			l->justChanged = false;
+			break;
+		}
+		}
+			//this setting can only do deform based on the last lens
 	}
 
 	
@@ -111,9 +123,8 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 		}
 		case DEFORM_MODEL::OBJECT_SPACE:
 		{
-			Lens *l = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses().back();
-		
-			if (l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+
+			if (l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID && !l->isConstructing){
 				QMatrix4x4 q_modelview = QMatrix4x4(_mv);
 				q_modelview = q_modelview.transposed();
 				QMatrix4x4 q_inv_modelview = q_modelview.inverted();
@@ -126,12 +137,20 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 
 				((LineLens3D*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj, particle->posMin, particle->posMax);
 
+
 				modelGrid->ReinitiateMeshForParticle((LineLens3D*)l, particle.get());
+
+				if (l->justMoved) 
+				{
+					////the related work needs more time to finish. To keep the lens facing the camera, the lens nodes needs to be rotated. Also the lens region may need to change to guarantee to cover the whole region
+					//modelGrid->MoveMesh(l->moveVec);
+					l->justMoved = false;
+				}
 
 				modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 
 				modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle.get(), &glyphBright[0], (LineLens3D*)l, isFreezingFeature, snappedFeatureId);
-
+				
 			}
 			else if (l->type == TYPE_CIRCLE && modelGrid->gridType == UNIFORM_GRID){
 				//TODO

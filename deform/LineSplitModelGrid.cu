@@ -632,6 +632,11 @@ void LineSplitModelGrid::UpdateMesh(float lensCenter[3], float lenDir[3], float 
 	return;
 }
 
+void LineSplitModelGrid::MoveMesh(float3 moveDir)
+{
+	lsgridMesh->MoveMesh(moveDir);
+}
+
 /////////////////////////////////////// attributes getters /////////////////////
 
 int LineSplitModelGrid::GetTNumber()

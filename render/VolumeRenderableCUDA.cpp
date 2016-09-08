@@ -158,6 +158,22 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 {
 	if (lenses!=0 && lenses->size() > 0){
 		Lens *l = lenses->back();
+
+		if (l->justChanged){
+
+			switch (((DeformGLWidget*)actor)->GetDeformModel())
+			{
+			case DEFORM_MODEL::OBJECT_SPACE:
+			{
+				if (l->type == TYPE_LINE)
+					modelGrid->setReinitiationNeed();
+				l->justChanged = false;
+				break;
+			}
+			}
+			//this setting can only do deform based on the last lens
+		}
+
 		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
 
 			QMatrix4x4 q_modelview = QMatrix4x4(_mv);
@@ -174,11 +190,7 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 			volume->GetPosRange(dmin, dmax);
 			((LineLens3D*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj, dmin, dmax);
 
-
-			//if (l->justChanged){
 			modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume.get());
-			//}
-
 
 			modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 

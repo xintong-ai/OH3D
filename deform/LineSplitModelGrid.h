@@ -69,6 +69,7 @@ public:
 
 	void Initialize(float time_step);
 	void UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
+	void MoveMesh(float3 moveDir);
 
 	float minElas = 0, maxElasEstimate = 1; //used for draw the mesh in image
 

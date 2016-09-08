@@ -12,6 +12,19 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+__global__ void d_moveMeshNodes(float* X, float* X_Orig, int number, float3 moveDir)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= number)	return;
+	int idx = i*3;
+	X[idx + 0] = X[idx + 0] + moveDir.x;
+	X[idx + 1] = X[idx + 1] + moveDir.y;
+	X[idx + 2] = X[idx + 2] + moveDir.z;
+	X_Orig[idx + 0] = X_Orig[idx + 0] + moveDir.x;
+	X_Orig[idx + 1] = X_Orig[idx + 1] + moveDir.y;
+	X_Orig[idx + 2] = X_Orig[idx + 2] + moveDir.z;
+}
+
 template <class TYPE>
 class LineSplitGridMesh : public CUDA_PROJECTIVE_TET_MESH<TYPE>
 {
@@ -514,11 +527,25 @@ public:
 		damping = 0.9;
 		
 		Allocate_GPU_Memory_InAdvance();
-		is_Allocate_GPU_Memory_InAdvance_executed = true;
 		
 		return;
 
 	}
+	void MoveMesh(float3 moveDir)
+	{
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
+		
+		d_moveMeshNodes << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_X_Orig, number, moveDir);
+
+		for (int i = 0; i < number; i++){	
+			int idx = i * 3;
+			X[idx + 0] = X[idx + 0] + moveDir.x;
+			X[idx + 1] = X[idx + 1] + moveDir.y;
+			X[idx + 2] = X[idx + 2] + moveDir.z;
+		}
+	}
+
 };
 
 

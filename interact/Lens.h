@@ -56,6 +56,14 @@ struct Lens
 	bool justChanged = false;
 	void setJustChanged(){ justChanged = true; }
 
+	bool justMoved = false;
+	float3 moveVec; //not normalized
+	void setJustMoved(float3 v)
+	{
+		moveVec = v;
+		justMoved = true; 
+	}
+
 	const int eps_pixel = 32;
 	LENS_TYPE type;
 	float3 c; //center
@@ -68,7 +76,7 @@ struct Lens
 	//void SetSideSize(float _v){ sideSize = _v; }
 	float GetClipDepth(float* mv, float* pj);
 	float2 GetCenterScreenPos(float* mv, float* pj, int winW, int winH);
-	void UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
+	float3 UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
 	float3 Compute3DPosByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);	
 
 	virtual bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) = 0;

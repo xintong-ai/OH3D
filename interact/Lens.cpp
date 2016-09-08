@@ -13,8 +13,10 @@ float2 Lens::GetCenterScreenPos(float* mv, float* pj, int winW, int winH)
 	return Object2Screen(GetCenter(), mv, pj, winW, winH);
 }
 
-void Lens::UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH)
+float3 Lens::UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH)
 {
+	float4 oriCenter = GetCenter();
+
 	matrix4x4 invModelview, invProjection;
 	invertMatrix(mv, &invModelview.v[0].x);
 	invertMatrix(pj, &invProjection.v[0].x);
@@ -23,6 +25,7 @@ void Lens::UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int win
 	float4 newClip = make_float4(newClipXY.x, newClipXY.y, cenClip.z, cenClip.w);
 	float4 newObject = Clip2ObjectGlobal(newClip, &invModelview.v[0].x, &invProjection.v[0].x);
 	SetCenter(make_float3(newObject));
+	return make_float3(GetCenter() - oriCenter);
 }
 
 float3 Lens::Compute3DPosByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH)
