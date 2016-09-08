@@ -422,7 +422,9 @@ void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle
 	thrust::copy(d_vec_brightness.begin(), d_vec_brightness.end(), brightness);
 
 }
-void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, Particle *p)
+
+
+void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, std::shared_ptr<Particle> p)
 {
 	if (!bMeshNeedReinitiation)
 		return;
@@ -436,14 +438,20 @@ void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, Particle *p)
 
 	UpdatePointTetId(&(p->posOrig[0]), p->numParticles);
 
-	if (useDensityBasedElasticity)
-		SetElasticityByTetDensityOfPartice(p->numParticles);
-	else
-		SetElasticitySimple(200);
+	SetElasticityForParticle(p);
 
 	lsgridMesh->Initialize(time_step);
 
 	bMeshNeedReinitiation = false;
+}
+
+
+void LineSplitModelGrid::SetElasticityForParticle(std::shared_ptr<Particle> p)
+{
+	if (useDensityBasedElasticity)
+		SetElasticityByTetDensityOfPartice(p->numParticles);
+	else
+		SetElasticitySimple(200);
 }
 
 void LineSplitModelGrid::SetElasticityByTetDensityOfPartice(int n)
@@ -488,7 +496,7 @@ void LineSplitModelGrid::SetElasticitySimple(float v)
 }
 
 
-void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, Volume* v)
+void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr<Volume> v)
 {
 	if (!bMeshNeedReinitiation)
 		return;
@@ -501,18 +509,14 @@ void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, Volume* v)
 	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, l->c, l->lSemiMajorAxisGlobal, l->lSemiMinorAxisGlobal, l->majorAxisGlobal, l->focusRatio, l->lensDir, meshTransMat);
 
 
-	if (useDensityBasedElasticity)
-		SetElasticityByTetDensityOfVolumeCUDA(v);
-	//SetElasticityByTetVarianceOfVolumeCUDA(v);
-	else
-		SetElasticitySimple(200);
+	SetElasticityForVolume(v);
 	
 	lsgridMesh->Initialize(time_step);
 
 	bMeshNeedReinitiation = false;
 }
 
-void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(Volume* v)
+void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<Volume> v)
 {
 
 	cudaExtent size = v->volumeCuda.size;
@@ -566,7 +570,7 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(Volume* v)
 }
 
 
-void LineSplitModelGrid::SetElasticityByTetVarianceOfVolumeCUDA(Volume* v)
+void LineSplitModelGrid::SetElasticityByTetVarianceOfVolumeCUDA(std::shared_ptr<Volume> v)
 {
 
 	cudaExtent size = v->volumeCuda.size;
@@ -614,6 +618,19 @@ void LineSplitModelGrid::SetElasticityByTetVarianceOfVolumeCUDA(Volume* v)
 }
 
 
+void LineSplitModelGrid::SetElasticityForVolume(std::shared_ptr<Volume> v)
+{
+	if (useDensityBasedElasticity)
+		SetElasticityByTetDensityOfVolumeCUDA(v);
+	//SetElasticityByTetVarianceOfVolumeCUDA(v);
+	else
+		SetElasticitySimple(200);
+}
+
+void LineSplitModelGrid::UpdateMeshDevElasticity()
+{
+	lsgridMesh->UpdateMeshDevElasticity();
+}
 
 void LineSplitModelGrid::Initialize(float time_step)
 {
@@ -769,16 +786,6 @@ float LineSplitModelGrid::GetStep()
 	else
 		return 0;
 }
-
-void LineSplitModelGrid::SetElasticity(float* v)
-{
-	if (gridType == GRID_TYPE::UNIFORM_GRID)
-		std::copy(v, v + gridMesh->tet_number, gridMesh->EL);
-	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		std::copy(v, v + lsgridMesh->tet_number, lsgridMesh->EL);
-
-}
-
 int* LineSplitModelGrid::GetTet()
 {
 	if (gridType == GRID_TYPE::UNIFORM_GRID)

@@ -546,6 +546,11 @@ public:
 		}
 	}
 
+	void UpdateMeshDevElasticity()
+	{
+		//does not work well. maybe more inner variables, which are decided by elasticity, need to be updated too
+		cudaMemcpy(dev_EL, EL, sizeof(float)*tet_number, cudaMemcpyHostToDevice);
+	}
 };
 
 

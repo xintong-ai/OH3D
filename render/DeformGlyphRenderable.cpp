@@ -138,7 +138,7 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 				((LineLens3D*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj, particle->posMin, particle->posMax);
 
 
-				modelGrid->ReinitiateMeshForParticle((LineLens3D*)l, particle.get());
+				modelGrid->ReinitiateMeshForParticle((LineLens3D*)l, particle);
 
 				if (l->justMoved) 
 				{

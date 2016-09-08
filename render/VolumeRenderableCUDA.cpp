@@ -190,7 +190,7 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 			volume->GetPosRange(dmin, dmax);
 			((LineLens3D*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj, dmin, dmax);
 
-			modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume.get());
+			modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume);
 
 			modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 

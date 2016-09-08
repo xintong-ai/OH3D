@@ -52,7 +52,7 @@ Window::Window()
 
 
 	float3 posMin, posMax;
-	std::shared_ptr<Particle> inputParticle;
+	inputParticle;
 
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
@@ -348,7 +348,12 @@ void Window::SlotToggleGrid(bool b)
 void Window::SlotToggleUdbe(bool b)
 {
 	modelGrid->useDensityBasedElasticity = b;
+	
 	modelGrid->setReinitiationNeed();
+	
+	//modelGrid->SetElasticityForParticle(inputParticle);
+	//modelGrid->UpdateMeshDevElasticity();
+	//comparing to reinitiate the whole mesh, this does not work well
 }
 
 Window::~Window() {

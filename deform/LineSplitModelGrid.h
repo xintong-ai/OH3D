@@ -30,11 +30,10 @@ class LineSplitModelGrid
 	float deformForce = 32;
 
 
-	void SetElasticity(float* v);
 	void SetElasticitySimple(float v);
 	void SetElasticityByTetDensityOfPartice(int n); //suppose the tet id for particles have been well set
-	void SetElasticityByTetDensityOfVolumeCUDA(Volume* v);
-	void SetElasticityByTetVarianceOfVolumeCUDA(Volume* v);
+	void SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<Volume> v);
+	void SetElasticityByTetVarianceOfVolumeCUDA(std::shared_ptr<Volume> v);
 
 	//currently stored
 	int _n;
@@ -52,6 +51,12 @@ public:
 	GRID_TYPE gridType = LINESPLIT_UNIFORM_GRID;
 	bool useDensityBasedElasticity = true;
 
+
+	void SetElasticityForParticle(std::shared_ptr<Particle> p);
+	void SetElasticityForVolume(std::shared_ptr<Volume> v);
+	void UpdateMeshDevElasticity();
+
+
 	LineSplitModelGrid(float dmin[3], float dmax[3], int n);
 	void setDeformForce(float f){ deformForce = f; }
 	float getDeformForce(){ return deformForce; }
@@ -62,8 +67,8 @@ public:
 	
 	void UpdatePointTetId(float4* v, int n);
 
-	void ReinitiateMeshForParticle(LineLens3D* l, Particle* p);
-	void ReinitiateMeshForVolume(LineLens3D * l, Volume* v);
+	void ReinitiateMeshForParticle(LineLens3D* l, std::shared_ptr<Particle> p);
+	void ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr<Volume> v);
 
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 
