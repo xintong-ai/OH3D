@@ -424,9 +424,11 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio/2){
 				if (i >= nStep.x * nStep.y * nStep.z)
-					lensForce = (1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
-				else if (y == cutY)
-					lensForce = -(1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
+					//lensForce = (1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
+					lensForce = moveDir;
+				else if (y == cutY && x>0 && x<nStep.x-1)
+					//lensForce = -(1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
+					lensForce = -moveDir;
 			}
 		}
 	}

@@ -138,6 +138,10 @@ Window::Window()
 	
 	glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
+
+	//glyphRenderable->SetVisibility(false);
+	//lensRenderable->SetVisibility(false);
+
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	//openGL->AddRenderable("grid", gridRenderable.get());
@@ -213,7 +217,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(deformForceLabelLit);
 	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
 	deformForceSlider->setRange(0, 44);
-	deformForceSlider->setValue(log2(modelGrid->getDeformForce())*4.0);
+	deformForceSlider->setValue(log2(modelGrid->getDeformForce()+1)*4.0);
 	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
 	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
 	QHBoxLayout *deformForceLayout = new QHBoxLayout;
@@ -432,7 +436,7 @@ void Window::SlotDeformModeChanged(bool clicked)
 
 void Window::deformForceSliderValueChanged(int v)
 {
-	float newForce = pow(2, v / 4.0);
+	float newForce = pow(2, v / 4.0)-1;
 	deformForceLabel->setText(QString::number(newForce));
 	modelGrid->setDeformForce(newForce);
 }

@@ -89,11 +89,11 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	float3 lensDir = len->lensDir;
 
 	for (int i = 0; i < modelGrid->GetLNumber(); i++){
+		
 		float cc = (e[i / 6] - minElas) / (maxElas - minElas);
 		glColor4f(cc, 1.0f-cc, 0, 0.5);
 		
-		//glVertex3fv(lx + 3 * l[i * 2]);
-		//glVertex3fv(lx + 3 * l[i * 2 + 1]);
+		//glColor4f(0.2f, 0.8f, 0.1, 0.5);
 
 		float *pp1 = lx + 3 * l[i * 2], *pp2 = lx + 3 * l[i * 2 + 1];
 		float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
@@ -150,23 +150,30 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 	glColor3f(0.0f, 0.0f, 1.0f);
 	glBegin(GL_POINTS);
-	for (int i = 0; i < nStep.x; i++){
+	for (int i = 1; i < nStep.x-1; i++){
 		for (int k = 0; k < nStep.z; k++)
 		{
 			int idx = i * nStep.y * nStep.z + cutY * nStep.z + k;
-			glVertex3fv(lx + 3 * idx);
-
+		
+			float *pp1 = lx + 3 * idx;
+			float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
+			if (dot(v1 - lensCen, lensDir)>0){
+				glVertex3fv(lx + 3 * idx);
+			}
 		}
 	}
 	glEnd();
 
-	glColor3f(1.0f, 1.0f, 0.0f);
+	glColor3f(1.0f, 0.0f, 0.0f);
 	glBegin(GL_POINTS);
 	for (int i = 0; i < (nStep.x - 2)*nStep.z; i++){
 
 		int idx = nStep.x * nStep.y * nStep.z + i;
+		float *pp1 = lx + 3 * idx;
+		float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
+		if (dot(v1 - lensCen, lensDir)>0){
 			glVertex3fv(lx + 3 * idx);
-
+		}
 		
 	}
 	glEnd();

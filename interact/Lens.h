@@ -288,6 +288,15 @@ struct LineLens3D :public LineLens
 	std::vector<float3> PointsForContourFront;
 	std::vector<float3> PointsForOuterContourBack;
 	std::vector<float3> PointsForOuterContourFront;
+
+	//requested by Xin
+	std::vector<float3> GetTwoEndpointsOfBackBase()
+	{
+		std::vector<float3> res;
+		res.push_back(c + lSemiMajorAxisGlobal*majorAxisGlobal);
+		res.push_back(c - lSemiMajorAxisGlobal*majorAxisGlobal);
+		return res;
+	}
 };
 
 
