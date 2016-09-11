@@ -24,6 +24,9 @@ public:
 
 	int GetNumOfGlyphs(){ return particle->numParticles; }
 
+	//when the particle has multi attributes or features, choose which attribute or color is used for color
+	//currently a simple solution using bool
+	bool colorByFeature = false;
 
 	//used for feature freezing rendering
 	bool isFreezingFeature = false;
@@ -41,7 +44,7 @@ public:
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 
-	virtual void resetColorMap(COLOR_MAP cm) = 0;
+	virtual void setColorMap(COLOR_MAP cm) = 0;
 
 protected:
 	std::shared_ptr<Particle> particle;

@@ -1,5 +1,5 @@
-#ifndef SPHERE_RENDERABLE_H
-#define SPHERE_RENDERABLE_H
+#ifndef COSMO_RENDERABLE_H
+#define COSMO_RENDERABLE_H
 
 #include <CMakeConfig.h>
 #ifdef USE_DEFORM
@@ -16,17 +16,20 @@ class QOpenGLVertexArrayObject;
 class GLSphere;
 enum COLOR_MAP;
 #ifdef USE_DEFORM
-class SphereRenderable :public DeformGlyphRenderable
+class CosmoRenderable :public DeformGlyphRenderable
 #else
-class SphereRenderable :public GlyphRenderable
+class CosmoRenderable :public GlyphRenderable
 #endif
 {
 public:
 	void init() override;
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
+
+	void DrawWithoutProgramold(float modelview[16], float projection[16], ShaderProgram* sp);
+
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;
-	SphereRenderable(std::shared_ptr<Particle> _particle);
+	CosmoRenderable(std::shared_ptr<Particle> _particle);
 
 	virtual void setColorMap(COLOR_MAP cm) override;
 
@@ -41,7 +44,7 @@ private:
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
 	unsigned int vbo_vert;
 	std::shared_ptr<GLSphere> glyphMesh;
-    std::shared_ptr<QOpenGLVertexArrayObject> m_vao;
+	std::shared_ptr<QOpenGLVertexArrayObject> m_vao;
 	bool updated = false;
 };
 #endif //SPHERE_RENDERABLE_H

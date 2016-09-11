@@ -1,3 +1,6 @@
+#ifndef DeformGlyph_RENDERABLE_H
+#define DeformGlyph_RENDERABLE_H
+
 #include "GlyphRenderable.h"
 class DeformInterface;
 class LineSplitModelGrid;
@@ -39,3 +42,5 @@ protected:
 
 
 };
+
+#endif

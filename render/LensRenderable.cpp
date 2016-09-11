@@ -806,8 +806,7 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 		if (l->type == LENS_TYPE::TYPE_CURVEB) {
 			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			l->justChanged = true;
-			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-			
+			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);			
 		}
 		else if (l->type == LENS_TYPE::TYPE_LINE) {
 			((LineLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);

@@ -38,14 +38,13 @@ set( Srcs
 	Renderable.cpp 
 	BoxRenderable.cpp 
 	GlyphRenderable.cpp 
-	
-	
 	GLArrow.cpp
 	ArrowRenderable.cpp
     GLMatrixManager.cpp
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
+	CosmoRenderable.cpp
 	)
 set( Hdrs  
 	glwidget.h 
@@ -61,6 +60,7 @@ set( Hdrs
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
+	CosmoRenderable.h
 	)
 
 if(USE_DEFORM)

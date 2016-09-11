@@ -1,4 +1,4 @@
-#include "SphereRenderable.h"
+#include "CosmoRenderable.h"
 #include "glwidget.h"
 //TODO:
 //The corrent performance bottle neck is the rendering but not the displacement
@@ -29,7 +29,7 @@
 
 
 
-SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
+CosmoRenderable::CosmoRenderable(std::shared_ptr<Particle> _particle)
 #ifdef USE_DEFORM
 :DeformGlyphRenderable(_particle)
 #else
@@ -42,7 +42,7 @@ SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
 	setColorMap(COLOR_MAP::BLUE_RED);
 }
 
-void SphereRenderable::setColorMap(COLOR_MAP cm)
+void CosmoRenderable::setColorMap(COLOR_MAP cm)
 {
 	ColorGradient cg(cm);
 	if (colorByFeature){
@@ -63,23 +63,23 @@ void SphereRenderable::setColorMap(COLOR_MAP cm)
 	}
 }
 
-void SphereRenderable::init()
+void CosmoRenderable::init()
 {
 	GlyphRenderable::init();
 #ifdef USE_DEFORM
-	DeformGlyphRenderable::init(); 
+	DeformGlyphRenderable::init();
 #endif
 
-    m_vao = std::make_shared<QOpenGLVertexArrayObject>();
-    m_vao->create();
+	m_vao = std::make_shared<QOpenGLVertexArrayObject>();
+	m_vao->create();
 
 
 
 	glyphMesh = std::make_shared<GLSphere>(1, 8);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    m_vao->bind();
-    LoadShaders(glProg);
+	m_vao->bind();
+	LoadShaders(glProg);
 
 	GenVertexBuffer(glyphMesh->GetNumVerts(),
 		glyphMesh->GetVerts());
@@ -87,18 +87,18 @@ void SphereRenderable::init()
 
 
 	initPickingDrawingObjects();
-    m_vao->release();
+	m_vao->release();
 }
 
-void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
+void CosmoRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
 #define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =
 		GLSL(
-	//layout(location = 0) 
-	in vec3 VertexPosition;
+		//layout(location = 0) 
+		in vec3 VertexPosition;
 	//layout(location = 1) in vec3 VertexNormal;
 	smooth out vec3 tnorm;
 	out vec4 eyeCoords;
@@ -172,9 +172,9 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 
 
-void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
+void CosmoRenderable::GenVertexBuffer(int nv, float* vertex)
 {
-   // m_vao->bind();
+	// m_vao->bind();
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
@@ -183,26 +183,16 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	//qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
- //   m_vao->release();
+	//   m_vao->release();
 }
 
-
-void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
+void CosmoRenderable::DrawWithoutProgramold(float modelview[16], float projection[16], ShaderProgram* sp)
 {
-	//qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	//qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	//qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 	m_vao->bind();
 	for (int i = 0; i < particle->numParticles; i++) {
 		glPushMatrix();
 
 		float4 shift = pos[i];
-		//float scale = pow(sphereSize[i], 0.333) * 0.01;
-
-		//std::cout << sphereSize[i] << " ";
-
-        
-
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 		float3 cen = actor->DataCenter();
@@ -214,31 +204,102 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 		}
 		else{
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.95f, 0.95f, 0.95f);
-			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust*2);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust * 2);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
 		}
 
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 5);
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &shift.x);
-		
+
 		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
 		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 		qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
 		glDrawArrays(GL_QUADS, 0, glyphMesh->GetNumVerts());
-		//glDrawElements(GL_TRIANGLES, glyphMesh->numElements, GL_UNSIGNED_INT, glyphMesh->indices);
-        
+
 		glPopMatrix();
 	}
 	m_vao->release();
-	//qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
-	//qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 
 }
 
-void SphereRenderable::draw(float modelview[16], float projection[16])
+void CosmoRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
+{
+	int2 winSize = actor->GetWindowSize();
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	glLoadMatrixf(projection);
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+	glLoadMatrixf(modelview);
+
+
+
+	glEnable(GL_POINT_SMOOTH);
+
+	glDepthFunc(GL_LEQUAL);
+	glDisable(GL_BLEND);
+	const int numDotLayers = 3; //should be larger than 1, or the variable curColor needs redefine
+	const float baseDotSize = 1.0;
+	for (int i = 0; i < particle->numParticles; i++) {
+	//	for (int i = 0; i < 10; i++) {
+
+		for (int j = 0; j < numDotLayers; j++){
+
+			if (j < numDotLayers-1){
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			}
+			
+			if (snappedGlyphId != i){
+
+				float coef = (numDotLayers - 1.0 - j) / (numDotLayers - 1.0);
+
+				float curColorx = sphereColor[i].x + (1.0 - sphereColor[i].x) *coef;
+				float curColory = sphereColor[i].y + (1.0 - sphereColor[i].y) *coef;
+				float curColorz = sphereColor[i].z + (1.0 - sphereColor[i].z) *coef;
+
+				float alpha = 1.0f / (numDotLayers - j);
+
+				glColor4f(curColorx, curColory, curColorz, alpha);
+				//glColor3f(curColorx, curColory, curColorz);
+
+			}
+			else{
+				glColor3f(0.95f, 0.95f, 0.95f);
+			}
+
+			float size = baseDotSize*pow(2, numDotLayers - j - 1);
+			glPointSize(size);
+			glBegin(GL_POINTS);
+			glVertex3f(pos[i].x , pos[i].y , pos[i].z );
+			glEnd();
+
+			if (j < numDotLayers - 1){
+				glDisable(GL_BLEND);
+			}
+		}
+
+	}
+	glDisable(GL_POINT_SMOOTH);
+
+	glDepthFunc(GL_LESS);
+
+
+	//restore the original 3D coordinate system
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+}
+
+void CosmoRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!updated) {
 		UpdateData();
@@ -255,17 +316,17 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
-	glProg->use();
+	//glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
-	glProg->disable();
+	//glProg->disable();
 }
 
 
-void SphereRenderable::UpdateData()
+void CosmoRenderable::UpdateData()
 {
 }
 
-void SphereRenderable::initPickingDrawingObjects()
+void CosmoRenderable::initPickingDrawingObjects()
 {
 
 	//init shader
@@ -274,8 +335,8 @@ void SphereRenderable::initPickingDrawingObjects()
 	//using two sides shading
 	const char* vertexVS =
 		GLSL(
-	//	layout(location = 0) 
-	in vec3 VertexPosition;
+		//	layout(location = 0) 
+		in vec3 VertexPosition;
 	uniform mat4 ModelViewMatrix;
 	uniform mat4 ProjectionMatrix;
 	uniform vec3 Transform;
@@ -289,8 +350,8 @@ void SphereRenderable::initPickingDrawingObjects()
 
 	const char* vertexFS =
 		GLSL(
-	//	layout(location = 0) 
-	out vec4 FragColor;
+		//	layout(location = 0) 
+		out vec4 FragColor;
 	uniform float r;
 	uniform float g;
 	uniform float b;
@@ -322,7 +383,7 @@ void SphereRenderable::initPickingDrawingObjects()
 }
 
 
-void SphereRenderable::drawPicking(float modelview[16], float projection[16], bool isForGlyph)
+void CosmoRenderable::drawPicking(float modelview[16], float projection[16], bool isForGlyph)
 {
 	RecordMatrix(modelview, projection);
 

@@ -22,6 +22,7 @@ protected:
 	virtual void Load() = 0;
 	std::vector<float> val;
 	std::vector<float4> pos;
+	std::vector<char> feature; //actually segmentation label
 	int num;
 };
 

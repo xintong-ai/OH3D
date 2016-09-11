@@ -7,7 +7,10 @@
 #include <algorithm>    // std::min_element, std::max_element
 
 #include "SphereRenderable.h"
+#include "CosmoRenderable.h"
+
 #include "SolutionParticleReader.h"
+#include "BinaryParticleReader.h"
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
 #include <LineSplitModelGrid.h>
@@ -50,53 +53,31 @@ Window::Window()
 	
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
 
-
 	float3 posMin, posMax;
-	inputParticle;
-
+	inputParticle = std::make_shared<Particle>();
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
 
 		reader->GetPosRange(posMin, posMax);
-
-		inputParticle = std::make_shared<Particle>();
 		reader->OutputToParticleData(inputParticle);
+		reader.reset();
 
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-
-		reader.reset();
 	}
 	else{
-		FILE *pFile;
-		pFile = fopen(dataPath.c_str(), "rb");
-		if (pFile == NULL) { fputs("particle file error", stderr); exit(1); }
-		int numParticles;
-		fread(&numParticles, sizeof(int), 1, pFile);
-		float *coords = new float[numParticles * 4];
-		fread(coords, sizeof(float), numParticles * 4, pFile);
-		std::vector<float4> posVec;
-		std::vector<float> valVec;
-		std::vector<char> feature;
+		std::shared_ptr<BinaryParticleReader> reader;
+		reader = std::make_shared<BinaryParticleReader>(dataPath.c_str());
 
-		posVec.resize(numParticles);
-		valVec.resize(numParticles);
-		feature.resize(numParticles);
-		for (int i = 0; i < numParticles; i++){
-			posVec[i] = make_float4(coords[4 * i], coords[4 * i + 1], coords[4 * i + 2], 1.0);
-			valVec[i] = coords[4 * i + 3];
-			feature[i] = (char)coords[4 * i + 3];
-		}
-		delete[] coords;
+		reader->GetPosRange(posMin, posMax);
+		reader->OutputToParticleData(inputParticle);
+		reader.reset();
 		
-		inputParticle = std::make_shared<Particle>(posVec, valVec);
-		inputParticle->setFeature(feature);
-		posMax = inputParticle->posMax;
-		posMin = inputParticle->posMin;
-
+		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-		glyphRenderable->resetColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+		glyphRenderable->colorByFeature = true;
+		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 	}
 
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;

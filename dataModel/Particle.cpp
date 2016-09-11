@@ -47,3 +47,20 @@ Particle::Particle(std::vector<float4> _pos, std::vector<float> _val)
 			valMin = v;
 	}
 }
+
+void Particle::setFeature(std::vector<char> _f)
+{
+	feature = _f;
+	hasFeature = true;
+
+	featureMax = CHAR_MIN;
+	featureMin = CHAR_MAX;
+	char c;
+	for (int i = 0; i < feature.size(); i++) {
+		c = feature[i];
+		if (c > featureMax)
+			featureMax = c;
+		if (c < featureMin)
+			featureMin = c;
+	}
+}
