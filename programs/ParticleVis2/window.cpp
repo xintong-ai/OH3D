@@ -3,6 +3,7 @@
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
+#include "ArrowNoDeformRenderable.h"
 #include <iostream>
 #include <algorithm>    // std::min_element, std::max_element
 
@@ -19,6 +20,7 @@
 #include "MeshReader.h"
 #include <ColorGradient.h>
 #include <Particle.h>
+#include <helper_math.h>
 
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>
@@ -153,6 +155,19 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controller = new Leap::Controller();
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
 	controller->addListener(*listener);
+	
+	std::vector<float4> pos;
+	pos.push_back(make_float4((posMin + posMax) / 2, 1.0));
+	std::vector<float> val;
+	val.push_back(0);
+	leapFingerIndicators = std::make_shared<Particle>(pos, val);
+	leapFingerIndicatorVecs.push_back(make_float3(2, 2, 0));
+	
+	arrowNoDeformRenderable = std::make_shared<ArrowNoDeformRenderable>(leapFingerIndicatorVecs,leapFingerIndicators);
+	arrowNoDeformRenderable->SetVisibility(false);
+	openGL->AddRenderable("zz", arrowNoDeformRenderable.get());
+
+
 #endif
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
@@ -210,11 +225,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	
 	
 	controlLayout->addStretch();
-
-
-
-
-
 
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
@@ -371,7 +381,15 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
 {
 	if (1 == numHands){
-		lensRenderable->SlotOneHandChanged(make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+		float4 markerPos;
+		if (lensRenderable->SlotOneHandChanged_lc(make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()), make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), markerPos)){
+			arrowNoDeformRenderable->SetVisibility(true);
+			leapFingerIndicators->pos[0] = markerPos - make_float4(leapFingerIndicatorVecs[0] / 2.0, 0.0);
+		}
+		else{
+			arrowNoDeformRenderable->SetVisibility(false);
+		}
+		//note when numHands == 1, leftIndexTip is actually thumb index
 	}
 	else if (2 == numHands){
 		//

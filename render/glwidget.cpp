@@ -64,9 +64,9 @@ void GLWidget::initializeGL()
 {
 	makeCurrent();
 	initializeOpenGLFunctions();
-	glClearColor(0.2f, 0.2f, 0.4f, 1.0f);
-	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	//glClearColor(0.2f, 0.2f, 0.4f, 1.0f);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	//glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	glEnable(GL_DEPTH_TEST);
 }
@@ -377,6 +377,11 @@ float3 GLWidget::DataCenter()
 	return matrixMgr->DataCenter();
 }
 
+void GLWidget::GetPosRange(float3 &pmin, float3 &pmax)
+{
+	matrixMgr->GetVol(pmin, pmax);
+}
+
 void GLWidget::GetModelview(float* m)
 {
 	matrixMgr->GetModelView(m);
@@ -390,5 +395,5 @@ void GLWidget::GetProjection(float* m)
 void GLWidget::SetInteractMode(INTERACT_MODE v)
 { 
 	interactMode = v; 
-	std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; 
+	//std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; 
 }

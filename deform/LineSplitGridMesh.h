@@ -521,7 +521,7 @@ public:
 		Build_Boundary_Lines();
 
 
-		printf("N: %d, %d\n", number, tet_number);
+		//printf("N: %d, %d\n", number, tet_number);
 
 		control_mag = 500;		//500
 		damping = 0.9;

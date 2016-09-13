@@ -70,6 +70,8 @@ public:
 	int2 GetWindowSize() { return make_int2(width, height); }
 
 	float3 DataCenter();
+	
+	void GetPosRange(float3 &pmin, float3 &pmax);
 
 	void UpdateGL();
 

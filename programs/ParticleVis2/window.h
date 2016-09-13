@@ -5,6 +5,7 @@
 #include <QVector3D>
 #include <memory>
 #include "CMakeConfig.h"
+#include <vector_types.h>
 
 class DataMgr;
 class DeformGLWidget;
@@ -36,6 +37,7 @@ namespace Leap{
 
 #ifdef USE_NEW_LEAP
 class LeapListener;
+class ArrowNoDeformRenderable; //used to draw leap finger indicators
 namespace Leap{
 	class Controller;
 }
@@ -97,7 +99,10 @@ private:
 
 #ifdef USE_NEW_LEAP
 	LeapListener* listener;
-	Leap::Controller* controller;
+	Leap::Controller* controller; 
+	std::shared_ptr<ArrowNoDeformRenderable> arrowNoDeformRenderable;
+	std::shared_ptr<Particle> leapFingerIndicators;
+	std::vector<float3> leapFingerIndicatorVecs;
 #endif
 
 private slots:

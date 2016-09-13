@@ -14,7 +14,9 @@ class LensRenderable :public Renderable
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
 
-	void ChangeLensCenterbyLeap(float3 p);
+	void ChangeLensCenterbyLeap(Lens *l,  float3 p);
+	float3 GetTransferredLeapPos(float3 p);
+
 public:
 
 	std::vector<Lens*>* GetLensesAddr() { return &lenses; }//temperary solution. should put lenses outside of LensRenderable
@@ -54,9 +56,14 @@ public slots:
 	void SlotFocusSizeChanged(int v);
 	void SlotSideSizeChanged(int v);
 	void SlotDelLens();
-	void SlotOneHandChanged(float3 p);
-	void SlotTwoHandChanged(float3 l, float3 r);
 	void adjustOffset();
 	void RefineLensBoundary();
+
+//public slots: //those function are called by slot functions but are not slots themselves
+public:
+	void SlotOneHandChanged(float3 p);
+	bool SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos);
+	void SlotTwoHandChanged(float3 l, float3 r);
+
 };
 #endif

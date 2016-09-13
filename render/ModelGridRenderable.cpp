@@ -91,9 +91,9 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	for (int i = 0; i < modelGrid->GetLNumber(); i++){
 		
 		float cc = (e[i / 6] - minElas) / (maxElas - minElas);
-		glColor4f(cc, 1.0f-cc, 0, 0.5);
+		//glColor4f(cc, 1.0f-cc, 0, 0.5);
 		
-		//glColor4f(0.2f, 0.8f, 0.1, 0.5);
+		glColor4f(0.2f, 0.8f, 0.1, 0.5);
 
 		float *pp1 = lx + 3 * l[i * 2], *pp2 = lx + 3 * l[i * 2 + 1];
 		float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
@@ -105,46 +105,7 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	}
 	glEnd();
 	glDisable(GL_BLEND);
-
-	//glColor4f(0.0f, 1.0f, 0, 0.5);
-	//glBegin(GL_LINES);
-	//int x1, y1, z1;
-	//int x2, y2, z2;
-	//for (int i = 0; i < modelGrid->GetLNumber(); i++){
-	//	
-	//	int id1 = l[i * 2], id2 = l[i * 2 + 1];
-	//	if (id1 < nStep.x * nStep.y * nStep.z){
-	//		x1 = id1 / (nStep.y * nStep.z);
-	//		y1 = (id1 - x1* nStep.y * nStep.z) / nStep.z;
-	//		z1 = id1 - x1 * nStep.y * nStep.z - y1 * nStep.z;
-	//	}
-	//	else{
-	//		int extra = id1 - nStep.x * nStep.y * nStep.z;
-	//		y1 = nStep.y / 2; // always == cutY
-	//		z1 = extra / (nStep.x - 2);
-	//		x1 = extra - z1*(nStep.x) + 1;
-	//	}
-	//	if (id2 < nStep.x * nStep.y * nStep.z){
-	//		x2 = id2 / (nStep.y * nStep.z);
-	//		y2 = (id2 - x2* nStep.y * nStep.z) / nStep.z;
-	//		z2 = id2 - x2 * nStep.y * nStep.z - y2 * nStep.z;
-	//	}
-	//	else{
-	//		int extra = id2 - nStep.x * nStep.y * nStep.z;
-	//		y2 = nStep.y / 2; // always == cutY
-	//		z2 = extra / (nStep.x - 2);
-	//		x2 = extra - z2*(nStep.x) + 1;
-	//	}
-
-	//	if (y1 >= cutY && y2 <= cutY + 1 && y2 >= cutY && y1 <= cutY + 1 && z1 >= nStep.z - 2 && z2 >= nStep.z - 2){
-	//			glVertex3fv(lx + 3 * l[i * 2]);
-	//			glVertex3fv(lx + 3 * l[i * 2 + 1]);
-	//	}
-	//}
-	//glEnd();
-	//glDisable(GL_BLEND);
-
-
+	
 
 	glPointSize(6.0);
 

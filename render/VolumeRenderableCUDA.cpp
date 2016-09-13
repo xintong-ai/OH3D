@@ -176,19 +176,12 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 
 		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
 
-			QMatrix4x4 q_modelview = QMatrix4x4(_mv);
-			q_modelview = q_modelview.transposed();
-			QMatrix4x4 q_inv_modelview = q_modelview.inverted();
-
-			QVector4D cameraObj = q_inv_modelview * QVector4D(0, 0, 0, 1);
-			cameraObj = cameraObj / cameraObj.w();
-
 			int winWidth, winHeight;
 			actor->GetWindowSize(winWidth, winHeight);
 
 			float3 dmin, dmax;
 			volume->GetPosRange(dmin, dmax);
-			((LineLens3D*)l)->UpdateLineLensGlobalInfo(make_float3(cameraObj.x(), cameraObj.y(), cameraObj.z()), winWidth, winHeight, _mv, _pj, dmin, dmax);
+			((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, dmin, dmax);
 
 			modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume);
 

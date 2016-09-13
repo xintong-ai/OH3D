@@ -1,6 +1,7 @@
 #include "LeapListener.h"
 #include "LeapInteraction.h"
 #include <qvector3d.h>
+#include <QVector3D>
 
 inline QVector3D Leap2QVector(Leap::Vector v)
 {
@@ -53,7 +54,8 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 		if (1 == f.hands().count())
 		{
 			GetFingers(rightMostHand, thumbTip, indexTipRight, indexDir);
-			emit UpdateHands(Leap2QVector(indexTipLeft), Leap2QVector(indexTipRight), 1);
+
+			emit UpdateHands(Leap2QVector(thumbTip), Leap2QVector(indexTipRight), 1);
 		}
 		else if (2 == f.hands().count()){
 			//if (){//leftMostHand.isLeft()){

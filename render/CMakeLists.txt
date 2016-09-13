@@ -40,6 +40,7 @@ set( Srcs
 	GlyphRenderable.cpp 
 	GLArrow.cpp
 	ArrowRenderable.cpp
+	ArrowNoDeformRenderable.cpp
     GLMatrixManager.cpp
 	GLSphere.cpp 
 	SphereRenderable.cpp
@@ -55,6 +56,7 @@ set( Hdrs
 	ColorGradient.h 
 	GLArrow.h
 	ArrowRenderable.h 
+	ArrowNoDeformRenderable.h
 	GLMatrixManager.h
 	#OPENGL_DRIVER.h
 	GLSphere.h

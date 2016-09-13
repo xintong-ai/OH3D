@@ -378,6 +378,19 @@ __device__ __host__ inline float4 Object2CameraGlobal(float4 pos, T* modelView)/
 //	return pos2;
 //}
 
+//multiply modelview matrix
+template <typename T>
+__device__ __host__ inline float4 Camera2Object(float4 pos, T* invModelView)//, float modelview[16], float projection[16])
+{
+	float4 pos2;
+	float4 v_screen = mat4mulvec4(invModelView, pos);//projection * modelview * v;
+	pos2.x = v_screen.x / v_screen.w;
+	pos2.y = v_screen.y / v_screen.w;
+	pos2.z = v_screen.z / v_screen.w;
+	pos2.w = 1.0;
+	//return v_screen;
+	return pos2;
+}
 template <typename T>
 __host__ __device__ inline float4 Clip2ObjectGlobal(float4 p, T* invModelView, T* invProjection)//, float modelview[16], float projection[16])
 {

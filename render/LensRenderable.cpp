@@ -331,39 +331,67 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			}
 			else if (l->type == LENS_TYPE::TYPE_LINE){
 				if (l->isConstructing){
-					glMatrixMode(GL_PROJECTION);
-					glPushMatrix();
-					glLoadIdentity();
-					glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
+					if (l->isConstructedFromLeap){
+						glMatrixMode(GL_PROJECTION);
+						glPushMatrix();
+						glLoadIdentity();
+						glLoadMatrixf(projection);
+						glMatrixMode(GL_MODELVIEW);
+						glPushMatrix();
+						glLoadIdentity();
+						glLoadMatrixf(modelview);
 
-					glMatrixMode(GL_MODELVIEW);
-					glPushMatrix();
-					glLoadIdentity();
+						glLineWidth(2);
 
-					glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
-					glLineWidth(4);
+						glColor3f(0.39f, 0.89f, 0.26f);
+			
+						std::vector<float3> PointsForIncisionBack = ((LineLens3D*)l)->GetCtrlPoints3DForRendering(modelview, projection, winSize.x, winSize.y);
+						glBegin(GL_LINES);
+						for (auto v : PointsForIncisionBack)
+							glVertex3f(v.x, v.y, v.z);
+						glEnd();
 
-					std::vector<float2> lensContour = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
-					glColor3f(0.39f, 0.89f, 0.26f);
-					glBegin(GL_LINE_LOOP);
-					for (auto v : lensContour)
-						glVertex2f(v.x, v.y);
-					glEnd();
+						glMatrixMode(GL_PROJECTION);
+						glPopMatrix();
+						glMatrixMode(GL_MODELVIEW);
+						glPopMatrix();
+					}
+					else{
 
-					glColor3f(0.82f, 0.31f, 0.67f);
-					std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
-					glBegin(GL_LINE_LOOP);
-					for (auto v : lensOuterContour)
-						glVertex2f(v.x, v.y);
-					glEnd();
 
-					glPopAttrib();
-					//restore the original 3D coordinate system
-					glMatrixMode(GL_PROJECTION);
-					glPopMatrix();
-					glMatrixMode(GL_MODELVIEW);
-					glPopMatrix();
+						glMatrixMode(GL_PROJECTION);
+						glPushMatrix();
+						glLoadIdentity();
+						glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
 
+						glMatrixMode(GL_MODELVIEW);
+						glPushMatrix();
+						glLoadIdentity();
+
+						glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+						glLineWidth(4);
+
+						std::vector<float2> lensContour = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
+						glColor3f(0.39f, 0.89f, 0.26f);
+						glBegin(GL_LINES);
+						for (auto v : lensContour)
+							glVertex2f(v.x, v.y);
+						glEnd();
+
+						glColor3f(0.82f, 0.31f, 0.67f);
+						std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
+						glBegin(GL_LINE_LOOP);
+						for (auto v : lensOuterContour)
+							glVertex2f(v.x, v.y);
+						glEnd();
+
+						glPopAttrib();
+						//restore the original 3D coordinate system
+						glMatrixMode(GL_PROJECTION);
+						glPopMatrix();
+						glMatrixMode(GL_MODELVIEW);
+						glPopMatrix();
+					}
 				}
 				else
 				{
@@ -378,29 +406,35 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 					glLineWidth(2);
 
+					//glColor3f(0.39f, 0.89f, 0.26f);
+					//std::vector<float3> PointsForContourBack = ((LineLens3D*)l)->GetContourBackBase(); // PointsForContourBack;
+					//std::vector<float3> PointsForContourFront = ((LineLens3D*)l)->GetContourFrontBase(); // PointsForContourFront;;
+					//glBegin(GL_LINE_LOOP);
+					//for (auto v : PointsForContourBack)
+					//	glVertex3f(v.x, v.y, v.z);
+					//glEnd();
+					//glBegin(GL_LINE_LOOP);
+					//for (auto v : PointsForContourFront)
+					//	glVertex3f(v.x, v.y, v.z);
+					//glEnd();
+					//glBegin(GL_LINES);
+					//for (int i = 0; i < PointsForContourBack.size(); i++){
+					//	float3 v = PointsForContourBack[i], v2 = PointsForContourFront[i];
+					//	glVertex3f(v.x, v.y, v.z);
+					//	glVertex3f(v2.x, v2.y, v2.z);
+					//}
+					//glEnd();
 					glColor3f(0.39f, 0.89f, 0.26f);
-					std::vector<float3> PointsForContourBack = ((LineLens3D*)l)->PointsForContourBack;
-					std::vector<float3> PointsForContourFront = ((LineLens3D*)l)->PointsForContourFront;;
-					glBegin(GL_LINE_LOOP);
-					for (auto v : PointsForContourBack)
-						glVertex3f(v.x, v.y, v.z);
-					glEnd();
-					glBegin(GL_LINE_LOOP);
-					for (auto v : PointsForContourFront)
-						glVertex3f(v.x, v.y, v.z);
-					glEnd();
+					//std::vector<float3> PointsForContourBack = ((LineLens3D*)l)->GetIncisionFront(); 
+					std::vector<float3> PointsForIncisionBack = ((LineLens3D*)l)->GetIncisionBack(); 
 					glBegin(GL_LINES);
-					for (int i = 0; i < PointsForContourBack.size(); i++){
-						float3 v = PointsForContourBack[i], v2 = PointsForContourFront[i];
+					for (auto v : PointsForIncisionBack)
 						glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);
-					}
 					glEnd();
-
 
 					glColor3f(0.82f, 0.31f, 0.67f);
-					std::vector<float3> PointsForContourOuterBack = ((LineLens3D*)l)->PointsForOuterContourBack;
-					std::vector<float3> PointsForContourOuterFront = ((LineLens3D*)l)->PointsForOuterContourFront;;
+					std::vector<float3> PointsForContourOuterBack = ((LineLens3D*)l)->GetOuterContourBackBase();
+					std::vector<float3> PointsForContourOuterFront = ((LineLens3D*)l)->GetOuterContourFrontBase();
 					glBegin(GL_LINE_LOOP);
 					for (auto v : PointsForContourOuterBack)
 						glVertex3f(v.x, v.y, v.z);
@@ -881,7 +915,7 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		}
 		else if (l->type == LENS_TYPE::TYPE_LINE){
 			((LineLens *)l)->ctrlPoint2Abs = make_float2(x, y);
-			((LineLens*)l)->UpdateInfo(modelview, projection, winSize.x, winSize.y);
+			((LineLens*)l)->UpdateInfoFromCtrlPoints(modelview, projection, winSize.x, winSize.y);
 			//l->justChanged = true;
 		}
 		break;
@@ -1068,11 +1102,91 @@ inline float3 GetNormalizedLeapPos(float3 p)
 	return leapPos;
 }
 
+float3 LensRenderable::GetTransferredLeapPos(float3 p)
+{
+	//float3 posMin, posMax;
+	//actor->GetPosRange(posMin, posMax);
+	//float3 leapPosCameraNormalized = GetNormalizedLeapPos(p);
+	//float3 leapPosCamera = leapPosCameraNormalized*(posMax - posMin) + posMin;
+	//GLfloat modelview[16];
+	////GLfloat projection[16];
+	//actor->GetModelview(modelview);
+	////actor->GetProjection(projection);
+	//float _invmv[16];
+	//invertMatrix(modelview, _invmv);
+	//float4 leapPos_f4 = Camera2Object(make_float4(leapPosCamera, 1), _invmv);
+	//return make_float3(leapPos_f4);
+
+	//float3 leapPosClipNormalized = GetNormalizedLeapPos(p);
+	//float3 leapPosClip = leapPosClipNormalized*2 -make_float3(1,1,1);
+	//leapPosClip.z = -leapPosClip.z;
+
+	//GLfloat modelview[16];
+	//GLfloat projection[16];
+	//actor->GetModelview(modelview);
+	//actor->GetProjection(projection);
+	//float _invmv[16];
+	//float _inpj[16];
+	//invertMatrix(projection, _inpj);
+	//invertMatrix(modelview, _invmv);
+
+	//float4 leapPos_f4 = Clip2ObjectGlobal(make_float4(leapPosClip, 1), _invmv, _inpj);
+
+	//return make_float3(leapPos_f4);
+
+	//float3 posMin, posMax;
+	//actor->GetPosRange(posMin, posMax);
+	//float3 dataCenter = actor->DataCenter();
+	//float3 leapPosNormalized = GetNormalizedLeapPos(p);
+	//float3 leapPos = leapPosNormalized * 2 - make_float3(1, 1, 1);
+	//GLfloat modelview[16];
+	////GLfloat projection[16];
+	//actor->GetModelview(modelview);
+	////actor->GetProjection(projection);
+	//float _invmv[16];
+	////float _inpj[16];
+	////invertMatrix(projection, _inpj);
+	//invertMatrix(modelview, _invmv);
+	//float4 camerax4 = Camera2Object(make_float4(1, 0, 0, 0), _invmv);
+	//float4 cameray4 = Camera2Object(make_float4(0, 1, 0, 0), _invmv);
+	//float4 cameraz4 = Camera2Object(make_float4(0, 0, 1, 0), _invmv);
+	//float3 camerax = normalize(make_float3(camerax4));
+	//float3 cameray = normalize(make_float3(cameray4));
+	//float3 cameraz = normalize(make_float3(cameraz4));
+
+	//return dataCenter + leapPos.x*camerax + leapPos.y*cameray - leapPos.z*cameraz;
+
+	////Xin's method when not using VR
+	float3 leapPosNormalized = GetNormalizedLeapPos(p);
+
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+
+	float2 depthRange;
+	((DeformGLWidget*)actor)->GetDepthRange(depthRange);
+
+	float leapClipx = leapPosNormalized.x * 2 - 1;
+	float leapClipy = leapPosNormalized.y * 2 - 1; 
+	float leapClipz = depthRange.x + (depthRange.y - depthRange.x) * (1.0 - leapPosNormalized.z);
+
+
+	float _invmv[16];
+	float _inpj[16];
+	invertMatrix(projection, _inpj);
+	invertMatrix(modelview, _invmv);
+
+	return make_float3(Clip2ObjectGlobal(make_float4(leapClipx, leapClipy, leapClipz, 1.0), _invmv, _inpj));
+
+}
+
 void LensRenderable::SlotTwoHandChanged(float3 l, float3 r)
 {
 	//std::cout << "two hands..." << std::endl;
 	if (lenses.size() > 0){
-		ChangeLensCenterbyLeap((l+r) * 0.5);
+		ChangeLensCenterbyLeap(lenses.back(), (l + r) * 0.5);
 		if (LENS_TYPE::TYPE_CIRCLE == lenses.back()->type){
 			((CircleLens*)lenses.back())->radius = length(l-r) * 0.5;
 			((CircleLens*)lenses.back())->justChanged = true;
@@ -1082,26 +1196,35 @@ void LensRenderable::SlotTwoHandChanged(float3 l, float3 r)
 }
 
 
-void LensRenderable::ChangeLensCenterbyLeap(float3 p)
+void LensRenderable::ChangeLensCenterbyLeap(Lens *l, float3 p)
 {
-	//interaction box
-	//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
-	if (lenses.size() > 0){
+	if (DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
+
+		float3 newCenter = GetTransferredLeapPos(p);
+
+		std::cout << "indexLeap " << p.x << " " << p.y << " " << p.z << std::endl;
+		std::cout << "newCenter " << newCenter.x << " " << newCenter.y << " " << newCenter.z << std::endl;
+
+		if (l->type == LENS_TYPE::TYPE_LINE){
+			l->SetCenter(newCenter);
+			//need more code to rotate the direction of the lens
+		}
+		else if (l->type == LENS_TYPE::TYPE_CIRCLE){
+
+		}
+	}
+	else{
 		int2 winSize = actor->GetWindowSize();
 		GLfloat modelview[16];
 		GLfloat projection[16];
 		actor->GetModelview(modelview);
 		actor->GetProjection(projection);
-		//lenses.back()->c = p;
 		float3 pScreen;
 		float3 leapPos = GetNormalizedLeapPos(p);
 		const float aa = 0.02f;
 		float2 depthRange;
 		((DeformGLWidget*)actor)->GetDepthRange(depthRange);
-		//pScreen.z = clamp((1.0f - aa * , 0.0f, 1.0f);
-		//std::cout << "bb:" << clamp((1.0 - (p.z + 73.5f) / 147.0f), 0.0f, 1.0f) << std::endl;
 
-		//std::cout << "leapPos:" << leapPos.x << "," << leapPos.y << "," << leapPos.z << std::endl;
 		bool usingVR = false;
 		if (usingVR){
 			pScreen.x = (1.0 - leapPos.x) * winSize.x;
@@ -1114,11 +1237,10 @@ void LensRenderable::ChangeLensCenterbyLeap(float3 p)
 			pScreen.z = depthRange.x + (depthRange.y - depthRange.x) * (1.0 - leapPos.z);
 		}
 		//std::cout << "depth:" << pScreen.z << std::endl;
-		lenses.back()->SetClipDepth(pScreen.z, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-		//pScreen.z = clamp(aa *(1 - (p.y + 73.5) / 147), 0, 1);
-		//lenses.back()->c.z = pScreen.z;
-		lenses.back()->UpdateCenterByScreenPos(pScreen.x, pScreen.y, modelview, projection, winSize.x, winSize.y);
+		l->SetClipDepth(pScreen.z, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+		l->UpdateCenterByScreenPos(pScreen.x, pScreen.y, modelview, projection, winSize.x, winSize.y);
 	}
+
 }
 
 
@@ -1126,10 +1248,92 @@ void LensRenderable::SlotOneHandChanged(float3 p)
 {
 	//std::cout << "one hand..." << std::endl;
 	if (lenses.size() > 0){
-		ChangeLensCenterbyLeap(p);
+		ChangeLensCenterbyLeap(lenses.back(), p);
 		//interaction box
 		//https://developer.leapmotion.com/documentation/csharp/devguide/Leap_Coordinate_Mapping.html
 		(lenses.back())->justChanged = true;
 		actor->UpdateGL();
+	}
+}
+
+bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos)
+{
+	//currently only work for line lens 3D
+	//std::cout << "thumpLeap " << thumpLeap.x << " " << thumpLeap.y << " " << thumpLeap.z << std::endl;
+	//std::cout << "indexLeap " << indexLeap.x << " " << indexLeap.y << " " << indexLeap.z << std::endl;
+
+
+	float enterPichThr = 25, leavePinchThr = 35; //different threshold to avoid shaking
+	float d = length(thumpLeap - indexLeap); //Leap Motion has height value as y coordinate, thus this direction not precise
+
+	if (lenses.size() == 0){
+		
+		if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && d < enterPichThr){
+
+			Lens* l = new LineLens3D(actor->DataCenter(), 0.3);
+			l->isConstructedFromLeap = true;
+
+			lenses.push_back(l);
+			//l->justChanged = true; //constructing first, then set justChanged
+			actor->UpdateGL();
+			actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
+			float3 curPos = GetTransferredLeapPos(indexLeap);
+			((LineLens3D *)l)->ctrlPoint3D1 = curPos;
+			((LineLens3D *)l)->ctrlPoint3D2 = curPos;
+			markerPos = make_float4(curPos, 1.0);
+
+			return true;
+		}
+		else{
+			//add global rotation
+
+			float3 indexGlobal = GetTransferredLeapPos(indexLeap);
+			markerPos = make_float4(indexGlobal, 1);
+			return true;
+		}
+	}
+	else{
+		Lens* l = lenses.back();
+		if (actor->GetInteractMode() == INTERACT_MODE::MODIFYING_LENS && d < leavePinchThr){
+			((LineLens3D *)(lenses.back()))->ctrlPoint3D2 = GetTransferredLeapPos(indexLeap);
+			return true;
+		}
+		else if (actor->GetInteractMode() == INTERACT_MODE::MODIFYING_LENS){
+			int2 winSize = actor->GetWindowSize();
+			GLfloat modelview[16];
+			GLfloat projection[16];
+			actor->GetModelview(modelview);
+			actor->GetProjection(projection);
+
+			float3 posMin, posMax;
+			actor->GetPosRange(posMin, posMax);
+			((LineLens3D *)l)->FinishConstructing3D(modelview, projection, winSize.x, winSize.y, posMin, posMax);
+
+			l->justChanged = true;
+			/////due to l->justChanged set to true, the update of 3D info will also be done later
+
+			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+			return false;
+		}
+		else if ((actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && d < leavePinchThr) ||
+			(actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && d < enterPichThr)){
+			if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
+				actor->SetInteractMode(INTERACT_MODE::MOVE_LENS);
+			}
+
+			ChangeLensCenterbyLeap(lenses.back(), indexLeap);
+
+			markerPos = (lenses.back())->GetCenter();
+			actor->UpdateGL();
+			return true;
+		}
+		else if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS){
+			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+			(lenses.back())->justChanged = true;
+		}
+		else{
+			//do nothing
+			return false;
+		}
 	}
 }

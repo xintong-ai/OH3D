@@ -102,7 +102,7 @@ struct Lens
 	LENS_TYPE GetType(){ return type; }
 
 	bool isConstructing;
-
+	bool isConstructedFromLeap = false;
 
 	bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -242,7 +242,7 @@ struct LineLens :public Lens
 	};
 
 	void FinishConstructing(float* mv, float* pj, int winW, int winH);
-	void UpdateInfo(float* mv, float* pj, int winW, int winH);
+	void UpdateInfoFromCtrlPoints(float* mv, float* pj, int winW, int winH);
 
 	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
@@ -269,25 +269,34 @@ struct LineLens :public Lens
 struct LineLens3D :public LineLens
 {
 	LineLens3D(float3 _c, float _focusRatio = 0.5) : LineLens( _c,  _focusRatio) {
-
+		//height = 0;
 	};
 
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) override;
 	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) override;
 
+	float3 ctrlPoint3D1, ctrlPoint3D2; //only used during construction/transfornation. afterwards the other variables will be computed and recorded
+
 	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal;
 	float3 majorAxisGlobal, lensDir, minorAxisGlobal;
-	void UpdateLineLensGlobalInfo(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
-	void UpdateLineLensGlobalInfoOld(float3 cameraObj, int winWidth, int winHeight, float _mv[16], float _pj[16]);
+	float3 frontBaseCenter, estMeshBottomCenter;
 
-	std::vector<float3> GetContourGlobal(float* mv, float* pj, int winW, int winH);
-	std::vector<float3> GetOuterContourGlobal(float* mv, float* pj, int winW, int winH);
+	void UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
 
-	//float2 GetCenterScreenPosForLineLens3D(float* mv, float* pj, int winW, int winH);
-	std::vector<float3> PointsForContourBack;
-	std::vector<float3> PointsForContourFront;
-	std::vector<float3> PointsForOuterContourBack;
-	std::vector<float3> PointsForOuterContourFront;
+	void UpdateLineLensGlobalInfoFrom3DInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
+
+	void FinishConstructing3D(float* mv, float* pj, int winW, int winH, float3 dataMin, float3 dataMax);
+
+
+	std::vector<float3> GetContourBackBase(); //not commonly used for LineLens3D
+	std::vector<float3> GetContourFrontBase(); //not commonly used for LineLens3D
+	std::vector<float3> GetOuterContourBackBase();
+	std::vector<float3> GetOuterContourFrontBase();
+
+	std::vector<float3> GetIncisionFront();
+	std::vector<float3> GetIncisionBack();
+	std::vector<float3> GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH);
+
 
 	//requested by Xin
 	std::vector<float3> GetTwoEndpointsOfBackBase()
