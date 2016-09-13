@@ -124,7 +124,7 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 		case DEFORM_MODEL::OBJECT_SPACE:
 		{
 
-			if (l->type == TYPE_LINE && modelGrid->gridType == LINESPLIT_UNIFORM_GRID && !l->isConstructing){
+			if (l->type == TYPE_LINE && !l->isConstructing){
 				int winWidth, winHeight;
 				actor->GetWindowSize(winWidth, winHeight);
 
@@ -145,9 +145,46 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 				modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle.get(), &glyphBright[0], (LineLens3D*)l, isFreezingFeature, snappedFeatureId);
 				
 			}
-			else if (l->type == TYPE_CIRCLE && modelGrid->gridType == UNIFORM_GRID){
-				//TODO
-				;
+			else if (l->type == TYPE_CIRCLE){
+				//convert the camera location from camera space to object space
+				//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
+				QMatrix4x4 q_modelview = QMatrix4x4(_mv);
+				q_modelview = q_modelview.transposed();
+				QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
+				cameraObj = cameraObj / cameraObj.w();
+				float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+				float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
+				float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
+
+				float3 lensDir = make_float3(
+					cameraObj.x() - lensCen.x,
+					cameraObj.y() - lensCen.y,
+					cameraObj.z() - lensCen.z);
+				lensDir = normalize(lensDir);
+				//std::cout << "cameraObj:" << cameraObj.x() << "," << cameraObj.y() << "," << cameraObj.z() << std::endl;
+				//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
+				//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
+
+				modelGrid->UpdateUniformMesh(&lensCen.x, &lensDir.x, focusRatio, radius);
+				modelGrid->UpdatePointCoordsUniformMesh(&pos[0], particle->numParticles);
+				const float dark = 0.1;
+				const float transRad = radius / focusRatio;
+				for (int i = 0; i < particle->numParticles; i++) {
+					float3 vert = make_float3(pos[i]);
+					//float3 lensCenFront = lensCen + lensDir * radius;
+					float3 lensCenBack = lensCen - lensDir * radius;
+					float3 lensCenFront2Vert = vert - lensCenBack;
+					float lensCenFront2VertProj = dot(lensCenFront2Vert, lensDir);
+					float3 moveVec = lensCenFront2Vert - lensCenFront2VertProj * lensDir;
+					glyphBright[i] = 1.0;
+					if (lensCenFront2VertProj < 0){
+						float dist2Ray = length(moveVec);
+						if (dist2Ray < radius / focusRatio){
+							glyphBright[i] = std::max(dark, 1.0f / (0.5f * (-lensCenFront2VertProj) + 1.0f));;
+						}
+					}
+				}
+				break;
 			}
 			break;
 		}

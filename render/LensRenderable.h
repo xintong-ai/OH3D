@@ -10,6 +10,9 @@ class LensRenderable :public Renderable
 	Q_OBJECT
 	
 	std::vector<Lens*> lenses;
+	float3 lastLensCenter;
+	bool lastLensCenterRecorded = false;
+
 	int pickedLens = -1;
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;

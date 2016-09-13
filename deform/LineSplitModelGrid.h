@@ -1,13 +1,17 @@
 #ifndef LINESPLIT_MODEL_GRID_H
 #define LINESPLIT_MODEL_GRID_H
 #include <vector>
-#include <ModelGrid.h> //plan to inheritate ModelGrid class in the future
+//#include <ModelGrid.h> //plan to inheritate ModelGrid class in the future
 
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
 #include <thrust/device_vector.h>
 
+enum GRID_TYPE{
+	UNIFORM_GRID,
+	LINESPLIT_UNIFORM_GRID
+};
 
 template <class TYPE>
 class GridMesh;
@@ -26,18 +30,30 @@ class LineSplitModelGrid
 
 	std::vector<float4> vBaryCoord;
 	std::vector<int> vIdx;
+
+
 	const float	time_step = 1 / 30.0;
 	float deformForce = 32;
 
-
+	//density related
 	void SetElasticitySimple(float v);
 	void SetElasticityByTetDensityOfPartice(int n); //suppose the tet id for particles have been well set
 	void SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<Volume> v);
 	void SetElasticityByTetVarianceOfVolumeCUDA(std::shared_ptr<Volume> v);
 
 	//currently stored
-	int _n;
-	float _dmin[3], _dmax[3];
+	int meshResolution;
+	float dataMin[3], dataMax[3];
+
+	//for both mesh
+
+
+	//for line mesh only
+	void InitPointTetId_LineSplitMesh(float4* v, int n);
+
+	//for uniform mesh only
+	void InitGridDensity_UniformMesh(float4* v, int n);
+
 
 	//only needed for particle
 	thrust::device_vector<float4> d_vec_vOri;
@@ -49,42 +65,52 @@ class LineSplitModelGrid
 
 public:
 	GRID_TYPE gridType = LINESPLIT_UNIFORM_GRID;
+	
+
+
+
+
+	//density related
 	bool useDensityBasedElasticity = true;
-
-
 	void SetElasticityForParticle(std::shared_ptr<Particle> p);
 	void SetElasticityForVolume(std::shared_ptr<Volume> v);
-	void UpdateMeshDevElasticity();
+	float minElas = 0, maxElasEstimate = 1; //used for draw the mesh in image
+	void UpdateMeshDevElasticity(); //need more work to finish
 
 
+
+	//for both mesh
 	LineSplitModelGrid(float dmin[3], float dmax[3], int n);
+
+
+	void initThrustVectors(std::shared_ptr<Particle>); //only needed for particle
+
+	//for circle mesh only
+	void InitializeUniformGrid(std::shared_ptr<Particle> p); //the info of gridMesh only need to be initialized once, so use a different initail stretagy with lsgridMesh
+	void UpdateUniformMesh(float lensCenter[3], float lenDir[3], float focusRatio, float radius);
+	void UpdatePointCoordsUniformMesh(float4* v, int n);
+
+
+
+	//for line mesh only
+	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
+	void ReinitiateMeshForParticle(LineLens3D* l, std::shared_ptr<Particle> p);
+	void ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr<Volume> v);	
+	void UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
+	void UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId);
+	void MoveMesh(float3 moveDir);
+	//currently for line mesh only
 	void setDeformForce(float f){ deformForce = f; }
 	float getDeformForce(){ return deformForce; }
 
-	void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId);
-
-	void initThrustVectors(std::shared_ptr<Particle>); //only needed for particle
-	
-	void UpdatePointTetId(float4* v, int n);
-
-	void ReinitiateMeshForParticle(LineLens3D* l, std::shared_ptr<Particle> p);
-	void ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr<Volume> v);
-
-	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
-
-	void Initialize(float time_step);
-	void UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
-	void MoveMesh(float3 moveDir);
-
-	float minElas = 0, maxElasEstimate = 1; //used for draw the mesh in image
 
 
+	//mesh attributes
 	int GetTNumber();
 	int* GetT();
 	float* GetX();
 	float* GetXDev();
 	float* GetXDevOri();
-
 	int GetNumber();
 	unsigned int* GetL();
 	int GetLNumber();

@@ -174,7 +174,7 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 			//this setting can only do deform based on the last lens
 		}
 
-		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false && modelGrid->gridType == LINESPLIT_UNIFORM_GRID){
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false){
 
 			int winWidth, winHeight;
 			actor->GetWindowSize(winWidth, winHeight);

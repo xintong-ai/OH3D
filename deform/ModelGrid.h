@@ -4,12 +4,6 @@
 template <class TYPE>
 class GridMesh;
 
-//added by cl
-enum GRID_TYPE{
-	UNIFORM_GRID,
-	LINESPLIT_UNIFORM_GRID
-};
-
 class ModelGrid
 {
 	GridMesh<float>* gridMesh;

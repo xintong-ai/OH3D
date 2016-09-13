@@ -293,13 +293,13 @@ d_computeVarianceForVolume(cudaExtent volumeSize, float3 spacing, float step, in
 
 LineSplitModelGrid::LineSplitModelGrid(float dmin[3], float dmax[3], int n)
 {
-	_n = n;
-	_dmin[0] = dmin[0];
-	_dmin[1] = dmin[1];
-	_dmin[2] = dmin[2];
-	_dmax[0] = dmax[0];
-	_dmax[1] = dmax[1];
-	_dmax[2] = dmax[2];
+	meshResolution = n;
+	dataMin[0] = dmin[0];
+	dataMin[1] = dmin[1];
+	dataMin[2] = dmin[2];
+	dataMax[0] = dmax[0];
+	dataMax[1] = dmax[1];
+	dataMax[2] = dmax[2];
 
 	lsgridMesh = new LineSplitGridMesh<float>(dmin, dmax, n);
 
@@ -308,6 +308,8 @@ LineSplitModelGrid::LineSplitModelGrid(float dmin[3], float dmax[3], int n)
 	volumeTex.addressMode[0] = cudaAddressModeBorder;
 	volumeTex.addressMode[1] = cudaAddressModeBorder;
 	volumeTex.addressMode[2] = cudaAddressModeBorder;
+
+	gridMesh = new GridMesh<float>(dmin, dmax, n);
 }
 
 
@@ -327,7 +329,7 @@ void LineSplitModelGrid::initThrustVectors(std::shared_ptr<Particle> p)
 }
 
 
-void LineSplitModelGrid::UpdatePointTetId(float4* v, int n)
+void LineSplitModelGrid::InitPointTetId_LineSplitMesh(float4* v, int n)
 {
 	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
 	vIdx.resize(n);
@@ -382,6 +384,44 @@ void LineSplitModelGrid::UpdatePointTetId(float4* v, int n)
 }
 
 
+
+void LineSplitModelGrid::InitGridDensity_UniformMesh(float4* v, int n)
+{
+	float3 gridMin = GetGridMin();
+	float3 gridMax = GetGridMax();
+	int3 nStep = GetNumSteps();
+	float step = GetStep();
+	int* tet = GetTet();
+	float* X = GetX();
+	vBaryCoord.resize(n);
+	vIdx.resize(n);
+	for (int i = 0; i < n; i++){
+		float3 vc = make_float3(v[i].x, v[i].y, v[i].z);
+		float3 tmp = (vc - gridMin) / step;
+		int3 idx3 = make_int3(tmp.x, tmp.y, tmp.z);
+		int idx = idx3.x * (nStep.y - 1) * (nStep.z - 1)
+			+ idx3.y * (nStep.z - 1) + idx3.z;
+		for (int j = 0; j < 5; j++){
+			float3 vv[4];
+			int tetId = idx * 5 + j;
+			for (int k = 0; k < 4; k++){
+				int iv = tet[tetId * 4 + k];
+				vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
+			}
+			float4 bary = GetBarycentricCoordinate(vv[0], vv[1], vv[2], vv[3], vc);
+			if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
+				vIdx[i] = idx * 5 + j;
+				vBaryCoord[i] = bary;
+				break;
+			}
+		}
+	}
+
+}
+
+
+
+
 void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId)
 {
 	if (isFreezingFeature)
@@ -423,6 +463,39 @@ void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle
 
 }
 
+void LineSplitModelGrid::UpdatePointCoordsUniformMesh(float4* v, int n)
+{
+	int* tet = GetTet();
+	float* X = GetX();
+	for (int i = 0; i < n; i++){
+		int vi = vIdx[i];
+		float4 vb = vBaryCoord[i];
+		float3 vv[4];
+		for (int k = 0; k < 4; k++){
+			int iv = tet[vi * 4 + k];
+			vv[k] = make_float3(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2]);
+		}
+		v[i] = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
+	}
+}
+
+void LineSplitModelGrid::InitializeUniformGrid(std::shared_ptr<Particle> p)
+{
+	if (gridType != GRID_TYPE::UNIFORM_GRID)
+	{
+		std::cerr << "error InitializeUniformGrid" << std::endl;
+		exit(0);
+	}
+
+	//can add a gridMesh clean function before Initialize. or else delete and readd the gridMesh
+	if (gridMesh != 0)
+		delete gridMesh;
+	gridMesh = new GridMesh<float>(dataMin, dataMax, meshResolution);
+
+	InitGridDensity_UniformMesh(&(p->pos[0]), p->numParticles);
+	SetElasticityForParticle(p);
+	gridMesh->Initialize(time_step);
+}
 
 void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, std::shared_ptr<Particle> p)
 {
@@ -430,13 +503,17 @@ void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, std::shared_p
 		return;
 
 	if (gridType != GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		return;
+	{
+		std::cerr << "error ReinitiateMeshForParticle" << std::endl;
+		exit(0);
+	}
 
+	//can add a lsgridMesh clean function before Initialize. or else delete and readd the lsgridMesh
 	if (lsgridMesh != 0)
 		delete lsgridMesh;
-	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, l->c, l->lSemiMajorAxisGlobal, l->lSemiMinorAxisGlobal, l->majorAxisGlobal, l->focusRatio, l->lensDir, meshTransMat);
+	lsgridMesh = new LineSplitGridMesh<float>(dataMin, dataMax, meshResolution, l->c, l->lSemiMajorAxisGlobal, l->lSemiMinorAxisGlobal, l->majorAxisGlobal, l->focusRatio, l->lensDir, meshTransMat);
 
-	UpdatePointTetId(&(p->posOrig[0]), p->numParticles);
+	InitPointTetId_LineSplitMesh(&(p->posOrig[0]), p->numParticles);
 
 	SetElasticityForParticle(p);
 
@@ -465,18 +542,22 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfPartice(int n)
 			cnts[vi]++;
 		}
 	}
-	float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
 	std::vector<float> density;
 	density.resize(cnts.size());
-	//const float base = 400.0f / cnts.size();
-	for (int i = 0; i < cnts.size(); i++) {
-		//for (int j = 0; j < 5; j++) {
-		density[i] = 500 + 1000 * pow((float)cnts[i] / tetVolumeOriginal[i], 2);
-		//}
+	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID){
+		float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
+		for (int i = 0; i < cnts.size(); i++) {
+			density[i] = 500 + 1000 * pow((float)cnts[i] / tetVolumeOriginal[i], 2);
+		}
+	}
+	else{
+		for (int i = 0; i < cnts.size(); i++) {
+			density[i] = 500 + 1000 * pow((float)cnts[i], 2);
+		}
 	}
 	minElas = 500;
 	maxElasEstimate = 1500;
-	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
+	std::copy(&density[0], &density[0] + tet_number, GetE());
 
 	//std::vector<float> forDebug(tetVolumeOriginal, tetVolumeOriginal + tet_number);
 }
@@ -486,11 +567,11 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfPartice(int n)
 void LineSplitModelGrid::SetElasticitySimple(float v)
 {
 	std::vector<float> density;
-	density.resize(lsgridMesh->tet_number);
+	density.resize(GetTetNumber());
 	for (int i = 0; i < density.size(); i++) {
 		density[i] = v;
 	}
-	std::copy(&density[0], &density[0] + lsgridMesh->tet_number, lsgridMesh->EL);
+	std::copy(&density[0], &density[0] + GetTetNumber(), GetE());
 	minElas = v-1;
 	maxElasEstimate = v+1;
 }
@@ -506,7 +587,7 @@ void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr
 
 	if (lsgridMesh != 0)
 		delete lsgridMesh;
-	lsgridMesh = new LineSplitGridMesh<float>(_dmin, _dmax, _n, l->c, l->lSemiMajorAxisGlobal, l->lSemiMinorAxisGlobal, l->majorAxisGlobal, l->focusRatio, l->lensDir, meshTransMat);
+	lsgridMesh = new LineSplitGridMesh<float>(dataMin, dataMax, meshResolution, l->c, l->lSemiMajorAxisGlobal, l->lSemiMinorAxisGlobal, l->majorAxisGlobal, l->focusRatio, l->lensDir, meshTransMat);
 
 
 	SetElasticityForVolume(v);
@@ -632,21 +713,16 @@ void LineSplitModelGrid::UpdateMeshDevElasticity()
 	lsgridMesh->UpdateMeshDevElasticity();
 }
 
-void LineSplitModelGrid::Initialize(float time_step)
-{
-	if (gridType == GRID_TYPE::UNIFORM_GRID)
-		gridMesh->Initialize(time_step);
-	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->Initialize(time_step);
-	else
-		return;
-}
-
 void LineSplitModelGrid::UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
 {
 	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
 		lsgridMesh->Update(time_step, 4, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
 	return;
+}
+
+void LineSplitModelGrid::UpdateUniformMesh(float lensCenter[3], float lenDir[3], float focusRatio, float radius)
+{
+	gridMesh->Update(time_step, 64, lensCenter, lenDir, focusRatio, radius);
 }
 
 void LineSplitModelGrid::MoveMesh(float3 moveDir)

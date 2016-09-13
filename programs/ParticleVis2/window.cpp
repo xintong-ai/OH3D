@@ -22,6 +22,8 @@
 #include <Particle.h>
 #include <helper_math.h>
 
+#include <ModelGrid.h>
+
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>
 #include <Leap.h>
@@ -109,7 +111,7 @@ Window::Window()
 	format.setVersion(2, 0);
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
-
+	//std::shared_ptr<ModelGrid> mgs = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
 
 
 	gridRenderable = std::make_shared<GridRenderable>(64);
@@ -261,11 +263,14 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 void Window::AddLens()
 {
+	modelGrid->gridType = GRID_TYPE::UNIFORM_GRID;
+	modelGrid->InitializeUniformGrid(inputParticle); //call this function must set gridType = GRID_TYPE::UNIFORM_GRID first
 	lensRenderable->AddCircleLens();
 }
 
 void Window::AddLineLens()
 {
+	modelGrid->gridType = GRID_TYPE::LINESPLIT_UNIFORM_GRID;
 	lensRenderable->AddLineLens3D();
 }
 

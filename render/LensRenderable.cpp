@@ -610,7 +610,13 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 void LensRenderable::AddCircleLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new CircleLens(winSize.y * 0.1, actor->DataCenter());
+	Lens* l;
+	if (lastLensCenterRecorded){
+		l = new CircleLens(winSize.y * 0.1, lastLensCenter);
+	}
+	else{
+		l = new CircleLens(winSize.y * 0.1, actor->DataCenter());
+	}
 	lenses.push_back(l);
 	l->justChanged = true;
 	actor->UpdateGL();
@@ -619,7 +625,13 @@ void LensRenderable::AddCircleLens()
 void LensRenderable::AddLineLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new LineLens(actor->DataCenter(), 0.3);
+	Lens* l;
+	if (lastLensCenterRecorded){
+		l = new LineLens(lastLensCenter, 0.3);
+	}
+	else{
+		l = new LineLens(actor->DataCenter(), 0.3);
+	}
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
 	actor->UpdateGL();
@@ -629,7 +641,13 @@ void LensRenderable::AddLineLens()
 void LensRenderable::AddLineLens3D()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new LineLens3D(actor->DataCenter(), 0.3);
+	Lens* l;
+	if (lastLensCenterRecorded){
+		l = new LineLens3D(lastLensCenter, 0.3);
+	}
+	else{
+		l = new LineLens3D(actor->DataCenter(), 0.3);
+	}
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
 	actor->UpdateGL();
@@ -1088,6 +1106,8 @@ void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
 void LensRenderable::SlotDelLens()
 {
 	if (lenses.size() > 0){
+		lastLensCenter = make_float3(lenses.back()->GetCenter());
+		lastLensCenterRecorded = true;
 		lenses.pop_back();
 	}
 	actor->UpdateGL();
