@@ -15,7 +15,6 @@ cmake .. -DCMAKE_BUILD_TYPE=Debug -DUSE_DEFORM=OFF -DUSE_VOLUME_RENDERING=OFF -G
 
 ## Contributors
 
-Xin Tong and Cheng Li
+Xin Tong, email: tongxin829@gmail.com
+Cheng Li
 
-## License
-It is currently close source. Only students in The Ohio State Univeristy can use it. Xin is thinking about making it open source under BSD licence in the future.
