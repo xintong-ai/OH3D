@@ -146,8 +146,6 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 				
 			}
 			else if (l->type == TYPE_CIRCLE){
-				//convert the camera location from camera space to object space
-				//https://www.opengl.org/archives/resources/faq/technical/viewing.htm
 				QMatrix4x4 q_modelview = QMatrix4x4(_mv);
 				q_modelview = q_modelview.transposed();
 				QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
@@ -161,12 +159,9 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 					cameraObj.y() - lensCen.y,
 					cameraObj.z() - lensCen.z);
 				lensDir = normalize(lensDir);
-				//std::cout << "cameraObj:" << cameraObj.x() << "," << cameraObj.y() << "," << cameraObj.z() << std::endl;
-				//std::cout << "lensCen:" << lensCen.x << "," << lensCen.y << "," << lensCen.z << std::endl;
-				//std::cout << "lensDir:" << lensDir.x << "," << lensDir.y << "," << lensDir.z << std::endl;
 
 				modelGrid->UpdateUniformMesh(&lensCen.x, &lensDir.x, focusRatio, radius);
-				modelGrid->UpdatePointCoordsUniformMesh(&pos[0], particle->numParticles);
+				modelGrid->UpdatePointCoordsUniformMesh(pos, particle->numParticles);
 				const float dark = 0.1;
 				const float transRad = radius / focusRatio;
 				for (int i = 0; i < particle->numParticles; i++) {

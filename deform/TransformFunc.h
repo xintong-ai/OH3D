@@ -557,4 +557,39 @@ const float3& p0_)
 	return barycentricCoord;
 }
 
+
+
+//normalize the tet coord before computing
+__device__ __host__
+inline float4 GetBarycentricCoordinate2(const float3& v0_,
+const float3& v1_,
+const float3& v2_,
+const float3& v3_,
+const float3& p0_)
+{
+	float3 ave = (v0_ + v1_ + v2_ + v3_) / 4;
+	float3 v0 = v0_ - ave;
+	float3 v1 = v1_ - ave; 
+	float3 v2 = v2_ - ave; 
+	float3 v3 = v3_ - ave; 
+	float3 p0 = p0_ - ave;
+
+	//float matB2C[16] = { v0_.x, v0_.y, v0_.z, 1.0,
+	//	v1_.x, v1_.y, v1_.z, 1.0,
+	//	v2_.x, v2_.y, v2_.z, 1.0,
+	//	v3_.x, v3_.y, v3_.z, 1.0 };//baricentric coord 2 cartisan coord
+	float matB2C[16] = { v0.x, v0.y, v0.z, 1.0,
+		v1.x, v1.y, v1.z, 1.0,
+		v2.x, v2.y, v2.z, 1.0,
+		v3.x, v3.y, v3.z, 1.0 };//baricentric coord 2 cartisan coord
+
+	float matC2B[16];
+	invertMatrix(matB2C, matC2B);
+	//float4 barycentricCoord = mat4mulvec4(matC2B, make_float4(p0_, 1.0));
+	float4 barycentricCoord = mat4mulvec4(matC2B, make_float4(p0, 1.0));
+	
+	return barycentricCoord;
+
+}
+
 #endif //TRANSFORM_FUNC_H

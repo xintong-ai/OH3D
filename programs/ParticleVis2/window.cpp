@@ -42,8 +42,8 @@
 QSlider* CreateSlider()
 {
 	QSlider* slider = new QSlider(Qt::Horizontal);
-	slider->setRange(0, 10);
-	slider->setValue(5);
+	slider->setRange(0, 50);
+	slider->setValue(25);
 	return slider;
 }
 
@@ -62,7 +62,7 @@ Window::Window()
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str());
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
 
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
@@ -78,10 +78,14 @@ Window::Window()
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
 		
+		//inputParticle->normalizePos();
+		//posMin = inputParticle->posMin;
+		//posMax = inputParticle->posMax;
+		
 		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-		glyphRenderable->colorByFeature = true;
-		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+		//glyphRenderable->colorByFeature = true;
+		//glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 	}
 
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
@@ -142,7 +146,7 @@ std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
 	QCheckBox* udbeCheck = new QCheckBox("Use Density Based Elasticity", this);
-	udbeCheck->setChecked(modelGrid->useDensityBasedElasticity);
+	udbeCheck->setChecked(modelGrid->elasticityMode >0);
 
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
@@ -232,7 +236,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
 	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
-	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
+	connect(delLensBtn.get(), SIGNAL(clicked()), this, SLOT(SlotDelLens()));
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
@@ -278,6 +282,13 @@ void Window::AddLineLens()
 void Window::AddCurveBLens()
 {
 	lensRenderable->AddCurveBLens();
+}
+
+void Window::SlotDelLens()
+{
+	lensRenderable->SlotDelLens();
+	inputParticle->pos = inputParticle->posOrig;
+	glyphRenderable->glyphBright.assign(inputParticle->numParticles, 1.0);
 }
 
 void Window::SlotToggleUsingGlyphSnapping(bool b)
@@ -347,8 +358,11 @@ void Window::SlotToggleGrid(bool b)
 
 void Window::SlotToggleUdbe(bool b)
 {
-	modelGrid->useDensityBasedElasticity = b;
-	
+	if (b)
+		modelGrid->elasticityMode = 1;
+	else
+		modelGrid->elasticityMode = 0;
+
 	modelGrid->setReinitiationNeed();
 	
 	//modelGrid->SetElasticityForParticle(inputParticle);

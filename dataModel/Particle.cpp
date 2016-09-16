@@ -64,3 +64,15 @@ void Particle::setFeature(std::vector<char> _f)
 			featureMin = c;
 	}
 }
+
+
+void Particle::normalizePos()
+{
+	float3 posave = (posMin + posMax) / 2;
+	for (int i = 0; i < pos.size(); i++) {
+		pos[i] = pos[i] - make_float4(posave,0);
+	}
+	posOrig = pos;
+	posMin = posMin - posave;
+	posMax = posMax - posave;
+}

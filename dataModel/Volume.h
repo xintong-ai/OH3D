@@ -54,6 +54,5 @@ public:
 	VolumeCUDA volumeCuda;
 
 	void initVolumeCuda(int allowStore);
-
 };
 #endif

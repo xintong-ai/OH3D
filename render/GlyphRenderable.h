@@ -45,6 +45,8 @@ public:
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 
 	virtual void setColorMap(COLOR_MAP cm) = 0;
+	
+	std::vector<float> glyphBright;
 
 protected:
 	std::shared_ptr<Particle> particle;
@@ -53,7 +55,6 @@ protected:
 	//std::vector<float4> pos;
 	
 	std::vector<float> glyphSizeScale;
-	std::vector<float> glyphBright;
 	float glyphSizeAdjust = 1.0f;
 	ShaderProgram* glProg = nullptr;
 	//bool displaceOn = true;

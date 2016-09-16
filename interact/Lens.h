@@ -298,6 +298,10 @@ struct LineLens3D :public LineLens
 	std::vector<float3> GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH);
 
 
+	//bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnObjectOuterBoundaryMajorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
+	bool PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
+
 	//requested by Xin
 	std::vector<float3> GetTwoEndpointsOfBackBase()
 	{

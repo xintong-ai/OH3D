@@ -41,6 +41,7 @@ public:
 		;
 	}
 
+	void normalizePos();
 private:
 
 };

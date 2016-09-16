@@ -1,5 +1,6 @@
 #include "RawVolumeReader.h"
 #include "string.h"
+#include <iostream>
 
 //#include "cuda_math.h"
 #include <vector_functions.h>
@@ -70,6 +71,8 @@ void RawVolumeReader::Load()
 		delete tempread;
 	}
 	fclose(pFile);
+
+	std::cout << "before normalization, volume value range " << minVal << " " << maxVal << std::endl;
 
 
 }

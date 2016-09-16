@@ -39,7 +39,8 @@ class LineSplitModelGrid
 	void SetElasticitySimple(float v);
 	void SetElasticityByTetDensityOfPartice(int n); //suppose the tet id for particles have been well set
 	void SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<Volume> v);
-	void SetElasticityByTetVarianceOfVolumeCUDA(std::shared_ptr<Volume> v);
+	//void SetElasticityByTetVarianceOfVolumeCUDA(std::shared_ptr<Volume> v);
+	void SetElasticityByTetEntropyOfVolumeCUDA(std::shared_ptr<Volume> v);
 
 	//currently stored
 	int meshResolution;
@@ -52,7 +53,7 @@ class LineSplitModelGrid
 	void InitPointTetId_LineSplitMesh(float4* v, int n);
 
 	//for uniform mesh only
-	void InitGridDensity_UniformMesh(float4* v, int n);
+	void InitPointTetId_UniformMesh(float4* v, int n);
 
 
 	//only needed for particle
@@ -71,7 +72,8 @@ public:
 
 
 	//density related
-	bool useDensityBasedElasticity = true;
+	int elasticityMode = 1;
+
 	void SetElasticityForParticle(std::shared_ptr<Particle> p);
 	void SetElasticityForVolume(std::shared_ptr<Volume> v);
 	float minElas = 0, maxElasEstimate = 1; //used for draw the mesh in image

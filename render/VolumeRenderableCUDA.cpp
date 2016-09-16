@@ -91,7 +91,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
 
-	if (lenses != 0 && lenses->size() > 0 && modelVolumeDeformer!=0){
+	if (lenses != 0 && lenses->size() > 0 && !(lenses->back()->isConstructing) && modelVolumeDeformer != 0){
 		ComputeDisplace(modelview, projection);
 		VolumeRender_computeGradient(&(modelVolumeDeformer->volumeCUDADeformed), &volumeCUDAGradient);
 		VolumeRender_setGradient(&volumeCUDAGradient);

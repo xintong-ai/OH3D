@@ -813,29 +813,36 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				pickedLens = i;
 				break;
 			}
-			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
-				std::cout << "on bound" << std::endl;
-				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
-				pickedLens = i;
-				break;
+			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+				if (l->type == LENS_TYPE::TYPE_CIRCLE){
+					if (l->PointOnObjectInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+						std::cout << "on bound" << std::endl;
+						actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
+						pickedLens = i;
+						break;
+					}
+					else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+						std::cout << "on outer bound" << std::endl;
+						actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
+						pickedLens = i;
+						break;
+					}
+				}
+				else if (l->type == LENS_TYPE::TYPE_LINE){
+					if (((LineLens3D*)l)->PointOnObjectOuterBoundaryMajorSide(x, y, modelview, projection, winSize.x, winSize.y)) {
+						std::cout << "on major bound" << std::endl;
+						actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
+						pickedLens = i;
+						break;
+					}
+					else if (((LineLens3D*)l)->PointOnObjectOuterBoundaryMinorSide(x, y, modelview, projection, winSize.x, winSize.y)) {
+						std::cout << "on minor bound" << std::endl;
+						actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
+						pickedLens = i;
+						break;
+					}
+				}
 			}
-			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointOnObjectOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
-				std::cout << "on outer bound" << std::endl;
-				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
-				pickedLens = i;
-				break;
-			}
-			///!!! need to modify  for OBJECT_SPACE too!!!
-			//else if (actor->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-			//	pickedLens = i;
-			//	break;
-			//}
-			//else if (actor->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->PointInsideObjectLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-			//	actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-			//	pickedLens = i;
-			//	break;
-			//}
 		}
 		break;
 	}
@@ -1082,7 +1089,7 @@ void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleF
 void LensRenderable::SlotFocusSizeChanged(int v)
 {
 	if (lenses.size() > 0){
-		lenses.back()->SetFocusRatio((10 - v) * 0.1 * 0.8 + 0.2);
+		lenses.back()->SetFocusRatio((49 - v) * 0.02 * 0.8 + 0.2);
 		Lens *l = lenses.back();
 		//if (l->GetType() == LENS_TYPE::TYPE_CURVE)
 		//{

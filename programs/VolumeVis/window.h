@@ -120,6 +120,13 @@ private slots:
 	void ldSliderValueChanged(int);
 	void lsSliderValueChanged(int);
 
+	void SlotRbUniformChanged(bool);
+	void SlotRbDensityChanged(bool);
+	void SlotRbTransferChanged(bool);
+	void SlotRbGradientChanged(bool);
+	void SlotRbEntropyChanged(bool);
+	
+	void SlotDelLens();
 
 
 #ifdef USE_LEAP

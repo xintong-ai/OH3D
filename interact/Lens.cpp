@@ -742,7 +742,41 @@ std::vector<float3> LineLens3D::GetCtrlPoints3DForRendering(float* mv, float* pj
 	return res;
 }
 
+bool LineLens3D::PointOnObjectOuterBoundaryMajorSide(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	float2 center = Object2Screen(make_float4(frontBaseCenter, 1), mv, pj, winW, winH);
+	float2 ctrlP1Screen = Object2Screen(make_float4(frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal, 1), mv, pj, winW, winH);
+	float2 ctrlP2Screen = Object2Screen(make_float4(frontBaseCenter + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio, 1), mv, pj, winW, winH);
+	float2 dirScreen = normalize(ctrlP1Screen - center);
+	float dirScreenLength = length(ctrlP1Screen - center);
+	float2 minorDirScreen = normalize(ctrlP2Screen - center);
+	float minorDirScreenLength = length(ctrlP2Screen - center);
 
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = std::abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
+
+	return (std::abs(disMajorAbs - dirScreenLength) < eps_pixel && disMinorAbs <= minorDirScreenLength/2);
+}
+
+bool LineLens3D::PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	float2 center = Object2Screen(make_float4(frontBaseCenter, 1), mv, pj, winW, winH);
+	float2 ctrlP1Screen = Object2Screen(make_float4(frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal, 1), mv, pj, winW, winH);
+	float2 ctrlP2Screen = Object2Screen(make_float4(frontBaseCenter + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio, 1), mv, pj, winW, winH);
+	float2 dirScreen = normalize(ctrlP1Screen - center);
+	float dirScreenLength = length(ctrlP1Screen - center);
+	float2 minorDirScreen = normalize(ctrlP2Screen - center);
+	float minorDirScreenLength = length(ctrlP2Screen - center);
+
+
+	float2 toPoint = make_float2(_x, _y) - center;
+	float disMajorAbs = std::abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
+	float disMinorAbs = std::abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
+
+	return (std::abs(disMinorAbs - minorDirScreenLength) < eps_pixel && disMajorAbs <= dirScreenLength/2);
+}
 
 
 

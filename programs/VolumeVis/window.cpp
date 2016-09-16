@@ -39,8 +39,8 @@
 QSlider* CreateSlider()
 {
 	QSlider* slider = new QSlider(Qt::Horizontal);
-	slider->setRange(0, 10);
-	slider->setValue(5);
+	slider->setRange(0, 50);
+	slider->setValue(25);
 	return slider;
 }
 
@@ -153,14 +153,47 @@ Window::Window()
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add straight band lens");
 	delLensBtn = std::make_shared<QPushButton>("Delete a lens");
-	addCurveBLensBtn = new QPushButton("Add curved band lens");
+	//addCurveBLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
+
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
-	QCheckBox* udbeCheck = new QCheckBox("Use Density Based Elasticity", this);
-	udbeCheck->setChecked(modelGrid->useDensityBasedElasticity);
+	//QCheckBox* udbeCheck = new QCheckBox("Use Density Based Elasticity", this);
+	//udbeCheck->setChecked(modelGrid->useDensityBasedElasticity);
+
+	QGroupBox *gbStiffnessMode = new QGroupBox(tr("Stiffness Mode"));
+	QVBoxLayout *layoutStiffnessMode = new QVBoxLayout;
+	QRadioButton* rbUniform = new QRadioButton(tr("&Uniform Stiffness"));
+	QRadioButton* rbDensity = new QRadioButton(tr("&Density Based Stiffness"));
+	QRadioButton* rbTransfer = new QRadioButton(tr("&Transfer Density Based Stiffness"));
+	QRadioButton* rbGradient = new QRadioButton(tr("&Gradient Based Stiffness"));
+	QRadioButton* rbEntropy = new QRadioButton(tr("&Entropy Based Stiffness"));
+	if (modelGrid->elasticityMode == 0){
+		rbUniform->setChecked(true);
+	}
+	else if (modelGrid->elasticityMode == 1){
+		rbDensity->setChecked(true);
+	}
+	else if (modelGrid->elasticityMode == 2){
+		rbTransfer->setChecked(true);
+	}
+	else if (modelGrid->elasticityMode == 3){
+		rbGradient->setChecked(true);
+	}
+	else if (modelGrid->elasticityMode == 4){
+		rbEntropy->setChecked(true);
+	}
+	layoutStiffnessMode->addWidget(rbUniform);
+	layoutStiffnessMode->addWidget(rbDensity);
+	layoutStiffnessMode->addWidget(rbTransfer);
+	layoutStiffnessMode->addWidget(rbGradient);
+	//layoutStiffnessMode->addWidget(rbEntropy);
+	gbStiffnessMode->setLayout(layoutStiffnessMode);
+
+
+
 
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
@@ -193,22 +226,23 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
-	controlLayout->addWidget(addCurveBLensBtn);
+	//controlLayout->addWidget(addCurveBLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
-	controlLayout->addWidget(groupBox);
+	//controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(transSizeLabel);
 	controlLayout->addWidget(transSizeSlider);
-	controlLayout->addWidget(usingGlyphSnappingCheck);
-	controlLayout->addWidget(usingGlyphPickingCheck);
+	//controlLayout->addWidget(usingGlyphSnappingCheck);
+	//controlLayout->addWidget(usingGlyphPickingCheck);
 	controlLayout->addWidget(gridCheck);
-	controlLayout->addWidget(udbeCheck);
+	//controlLayout->addWidget(udbeCheck);
+	controlLayout->addWidget(gbStiffnessMode);
 
 
 	modelGrid->setDeformForce(4096);
 	QLabel *deformForceLabelLit = new QLabel("Deform Force");
-	controlLayout->addWidget(deformForceLabelLit);
+	//controlLayout->addWidget(deformForceLabelLit);
 	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
 	deformForceSlider->setRange(1, 44);
 	deformForceSlider->setValue(log2(modelGrid->getDeformForce()/32)*4.0);
@@ -220,8 +254,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addLayout(deformForceLayout);
 
 
-	QLabel *transFuncP1LabelSliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
-	controlLayout->addWidget(transFuncP1LabelSliderLabelLit);
+	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
+	//controlLayout->addWidget(transFuncP1SliderLabelLit);
 	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP1LabelSlider->setRange(0, 100);
 	transFuncP1LabelSlider->setValue(volumeRenderable->transFuncP1 * 100);
@@ -230,10 +264,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *transFuncP1Layout = new QHBoxLayout;
 	transFuncP1Layout->addWidget(transFuncP1LabelSlider);
 	transFuncP1Layout->addWidget(transFuncP1Label);
-	controlLayout->addLayout(transFuncP1Layout);
+	//controlLayout->addLayout(transFuncP1Layout);
 
-	QLabel *transFuncP2LabelSliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
-	controlLayout->addWidget(transFuncP2LabelSliderLabelLit);
+	QLabel *transFuncP2SliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
+	//controlLayout->addWidget(transFuncP2SliderLabelLit);
 	QSlider *transFuncP2LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP2LabelSlider->setRange(0, 100);
 	transFuncP2LabelSlider->setValue(volumeRenderable->transFuncP2 * 100);
@@ -242,10 +276,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *transFuncP2Layout = new QHBoxLayout;
 	transFuncP2Layout->addWidget(transFuncP2LabelSlider);
 	transFuncP2Layout->addWidget(transFuncP2Label);
-	controlLayout->addLayout(transFuncP2Layout);
+	//controlLayout->addLayout(transFuncP2Layout);
 
 	QLabel *brLabelLit = new QLabel("Brightness of the volume: ");
-	controlLayout->addWidget(brLabelLit);
+	//controlLayout->addWidget(brLabelLit);
 	QSlider* brSlider = new QSlider(Qt::Horizontal);
 	brSlider->setRange(0, 40);
 	brSlider->setValue(volumeRenderable->brightness * 20);
@@ -254,10 +288,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *brLayout = new QHBoxLayout;
 	brLayout->addWidget(brSlider);
 	brLayout->addWidget(brLabel);
-	controlLayout->addLayout(brLayout);
+	//controlLayout->addLayout(brLayout);
 
 	QLabel *dsLabelLit = new QLabel("Density of the volume: ");
-	controlLayout->addWidget(dsLabelLit);
+	//controlLayout->addWidget(dsLabelLit);
 	QSlider* dsSlider = new QSlider(Qt::Horizontal);
 	dsSlider->setRange(0, 40);
 	dsSlider->setValue(volumeRenderable->density * 20);
@@ -266,11 +300,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *dsLayout = new QHBoxLayout;
 	dsLayout->addWidget(dsSlider);
 	dsLayout->addWidget(dsLabel);
-	controlLayout->addLayout(dsLayout);
+	//controlLayout->addLayout(dsLayout);
 
 
 	QLabel *laSliderLabelLit = new QLabel("Coefficient for Ambient Lighting: ");
-	controlLayout->addWidget(laSliderLabelLit);
+	//controlLayout->addWidget(laSliderLabelLit);
 	QSlider* laSlider = new QSlider(Qt::Horizontal);
 	laSlider->setRange(0, 50);
 	laSlider->setValue(volumeRenderable->la * 10);
@@ -279,10 +313,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *laLayout = new QHBoxLayout;
 	laLayout->addWidget(laSlider);
 	laLayout->addWidget(laLabel);
-	controlLayout->addLayout(laLayout);
+	//controlLayout->addLayout(laLayout);
 
 	QLabel *ldSliderLabelLit = new QLabel("Coefficient for Diffusial Lighting: ");
-	controlLayout->addWidget(ldSliderLabelLit);
+	//controlLayout->addWidget(ldSliderLabelLit);
 	QSlider* ldSlider = new QSlider(Qt::Horizontal);
 	ldSlider->setRange(0, 50);
 	ldSlider->setValue(volumeRenderable->ld * 10);
@@ -291,10 +325,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *ldLayout = new QHBoxLayout;
 	ldLayout->addWidget(ldSlider);
 	ldLayout->addWidget(ldLabel);
-	controlLayout->addLayout(ldLayout);
+	//controlLayout->addLayout(ldLayout);
 
 	QLabel *lsSliderLabelLit = new QLabel("Coefficient for Specular Lighting: ");
-	controlLayout->addWidget(lsSliderLabelLit);
+	//controlLayout->addWidget(lsSliderLabelLit);
 	QSlider* lsSlider = new QSlider(Qt::Horizontal);
 	lsSlider->setRange(0, 50);
 	lsSlider->setValue(volumeRenderable->ls * 10);
@@ -303,20 +337,42 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *lsLayout = new QHBoxLayout;
 	lsLayout->addWidget(lsSlider);
 	lsLayout->addWidget(lsLabel);
-	controlLayout->addLayout(lsLayout);
+	//controlLayout->addLayout(lsLayout);
+
+
+	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
+	QVBoxLayout *rcLayout = new QVBoxLayout;
+	rcLayout->addWidget(transFuncP1SliderLabelLit);
+	rcLayout->addLayout(transFuncP1Layout); 
+	rcLayout->addWidget(transFuncP2SliderLabelLit);
+	rcLayout->addLayout(transFuncP2Layout);
+	rcLayout->addWidget(brLabelLit);
+	rcLayout->addLayout(brLayout); 
+	rcLayout->addWidget(dsLabelLit);
+	rcLayout->addLayout(dsLayout); 
+	rcLayout->addWidget(laSliderLabelLit);
+	rcLayout->addLayout(laLayout);
+	rcLayout->addWidget(ldSliderLabelLit);
+	rcLayout->addLayout(ldLayout);
+	rcLayout->addWidget(lsSliderLabelLit);
+	rcLayout->addLayout(lsLayout);
+	rcGroupBox->setLayout(rcLayout);
+
+	controlLayout->addWidget(rcGroupBox);
+
 
 	controlLayout->addStretch();
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
-	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
-	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
+	//connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
+	connect(delLensBtn.get(), SIGNAL(clicked()), this, SLOT(SlotDelLens()));
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
 	
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
-	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
+	//connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 #ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
@@ -326,11 +382,19 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
-	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
-	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
-	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
-	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
+	//connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
+	//connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
+	//connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
+	//connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	
+
+	connect(rbUniform, SIGNAL(clicked(bool)), this, SLOT(SlotRbUniformChanged(bool)));
+	connect(rbDensity, SIGNAL(clicked(bool)), this, SLOT(SlotRbDensityChanged(bool))); 
+	connect(rbTransfer, SIGNAL(clicked(bool)), this, SLOT(SlotRbTransferChanged(bool)));
+	connect(rbGradient, SIGNAL(clicked(bool)), this, SLOT(SlotRbGradientChanged(bool)));
+	connect(rbEntropy, SIGNAL(clicked(bool)), this, SLOT(SlotRbEntropyChanged(bool)));
+	
+
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
@@ -374,8 +438,8 @@ void Window::SlotToggleGrid(bool b)
 
 void Window::SlotToggleUdbe(bool b)
 {
-	modelGrid->useDensityBasedElasticity = b;
-	modelGrid->setReinitiationNeed();
+	//modelGrid->useDensityBasedElasticity = b;
+	//modelGrid->setReinitiationNeed();
 }
 
 Window::~Window() {
@@ -491,4 +555,45 @@ void Window::lsSliderValueChanged(int v)
 {
 	volumeRenderable->ls = 1.0*v / 10;
 	lsLabel->setText(QString::number(1.0*v / 10));
+}
+
+void Window::SlotRbUniformChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 0;
+		modelGrid->setReinitiationNeed();
+	}
+}
+void Window::SlotRbDensityChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 1;
+		modelGrid->setReinitiationNeed();
+	}
+}
+void Window::SlotRbTransferChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 2;
+		modelGrid->setReinitiationNeed();
+	}
+}
+void Window::SlotRbGradientChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 3;
+		modelGrid->setReinitiationNeed();
+	}
+}
+void Window::SlotRbEntropyChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 4;
+		modelGrid->setReinitiationNeed();
+	}
+}
+
+void Window::SlotDelLens()
+{
+	lensRenderable->SlotDelLens();
 }
