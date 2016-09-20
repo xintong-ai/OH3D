@@ -20,10 +20,6 @@ include_directories(
 	${CUDA_TOOLKIT_INCLUDE} 
 	required)
 
-	
-
-	
-	
 set( Srcs 
 	main.cpp 
 	window.cpp 

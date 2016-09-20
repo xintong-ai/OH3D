@@ -635,7 +635,7 @@ void LensRenderable::AddLineLens()
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
 	actor->UpdateGL();
-	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
+	actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
 }
 
 void LensRenderable::AddLineLens3D()
@@ -651,7 +651,7 @@ void LensRenderable::AddLineLens3D()
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
 	actor->UpdateGL();
-	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
+	actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
 }
 
 void LensRenderable::AddCurveBLens()
@@ -661,7 +661,7 @@ void LensRenderable::AddCurveBLens()
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
 	actor->UpdateGL();
-	actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
+	actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
 }
 
 float3 LensRenderable::GetBackLensCenter()
@@ -779,7 +779,7 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 	actor->GetProjection(projection);
 	switch (actor->GetInteractMode())
 	{
-	case INTERACT_MODE::MODIFYING_LENS:
+	case INTERACT_MODE::ADDING_LENS:
 	{
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
@@ -860,7 +860,7 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 	GLfloat projection[16];
 	actor->GetModelview(modelview);
 	actor->GetProjection(projection);
-	if (INTERACT_MODE::MODIFYING_LENS == actor->GetInteractMode()) {
+	if (INTERACT_MODE::ADDING_LENS == actor->GetInteractMode()) {
 		Lens* l = lenses[lenses.size() - 1];
 		if (l->type == LENS_TYPE::TYPE_CURVEB) {
 			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
@@ -871,7 +871,6 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 			((LineLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			l->justChanged = true; 
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-			
 		}
 	}
 	else {
@@ -881,11 +880,18 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 				l->justChanged = true;
 			}
 		}
-		else if( actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE || actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
+		else if( actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE){
 			if (lenses.size() > 0){
 				Lens* l = lenses[lenses.size() - 1];
 				l->justChanged = true;
 			}
+		}
+		else if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
+			//if (lenses.size() > 0){
+			//	Lens* l = lenses[lenses.size() - 1];
+			//	l->justChanged = true;
+			//}
+			;
 		}
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
 			/*// !!! DON'T DELETE !!!
@@ -932,7 +938,7 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 	actor->GetProjection(projection);
 	switch (actor->GetInteractMode())
 	{
-	case INTERACT_MODE::MODIFYING_LENS:
+	case INTERACT_MODE::ADDING_LENS:
 	{
 		Lens* l = lenses[lenses.size() - 1];
 		if (l->type == LENS_TYPE::TYPE_CURVEB){
@@ -941,7 +947,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		else if (l->type == LENS_TYPE::TYPE_LINE){
 			((LineLens *)l)->ctrlPoint2Abs = make_float2(x, y);
 			((LineLens*)l)->UpdateInfoFromCtrlPoints(modelview, projection, winSize.x, winSize.y);
-			//l->justChanged = true;
 		}
 		break;
 	}
@@ -1026,8 +1031,8 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 		if (l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
-			l->ChangeClipDepth(delta*0.05, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-			//l->justChanged = true;
+			l->ChangeClipDepth(delta, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+
 		}
 	}
 	return insideAnyLens;
@@ -1303,7 +1308,7 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 			lenses.push_back(l);
 			//l->justChanged = true; //constructing first, then set justChanged
 			actor->UpdateGL();
-			actor->SetInteractMode(INTERACT_MODE::MODIFYING_LENS);
+			actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
 			float3 curPos = GetTransferredLeapPos(indexLeap);
 			((LineLens3D *)l)->ctrlPoint3D1 = curPos;
 			((LineLens3D *)l)->ctrlPoint3D2 = curPos;
@@ -1321,11 +1326,11 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 	}
 	else{
 		Lens* l = lenses.back();
-		if (actor->GetInteractMode() == INTERACT_MODE::MODIFYING_LENS && d < leavePinchThr){
+		if (actor->GetInteractMode() == INTERACT_MODE::ADDING_LENS && d < leavePinchThr){
 			((LineLens3D *)(lenses.back()))->ctrlPoint3D2 = GetTransferredLeapPos(indexLeap);
 			return true;
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::MODIFYING_LENS){
+		else if (actor->GetInteractMode() == INTERACT_MODE::ADDING_LENS){
 			int2 winSize = actor->GetWindowSize();
 			GLfloat modelview[16];
 			GLfloat projection[16];

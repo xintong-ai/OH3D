@@ -1,8 +1,8 @@
 #include <Particle.h>
 #include <iostream>
+#include <algorithm>    // std::random_shuffle
+#include <ctime>        // std::time
 
-#include <fstream>
-#include <cuda_runtime.h>
 #include <helper_cuda.h>
 #include <helper_math.h>
 
@@ -75,4 +75,26 @@ void Particle::normalizePos()
 	posOrig = pos;
 	posMin = posMin - posave;
 	posMax = posMax - posave;
+}
+
+
+void Particle::featureReshuffle()
+{
+	//since the feature is just tags, we may want to reshuffle the tags due to any reason
+	//note! this function do not process value 0. treat it as no feature exists
+
+	std::vector<int> myvector;
+	for (int i = 1; i<featureMax; ++i) myvector.push_back(i); // 1 2 3 4 5 6 7 8 9
+	unsigned seed = unsigned(std::time(0));
+	std::srand(seed);
+	std::cout << "reshuffle seed: " << seed << std::endl;
+	std::random_shuffle(myvector.begin(), myvector.end());
+
+	for (int i = 0; i < feature.size(); i++){
+		char c = feature[i];
+		if (c >0)
+		{
+			feature[i] = myvector[feature[i] - 1];
+		}
+	}
 }

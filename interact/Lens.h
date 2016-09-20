@@ -302,6 +302,9 @@ struct LineLens3D :public LineLens
 	bool PointOnObjectOuterBoundaryMajorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
 	bool PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
+	void ChangeClipDepth(int v, float* mv, float* pj) override;
+
+
 	//requested by Xin
 	std::vector<float3> GetTwoEndpointsOfBackBase()
 	{

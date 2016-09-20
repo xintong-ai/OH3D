@@ -342,7 +342,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 	float t = tnear;
 	float3 pos = eyeRay.o + eyeRay.d*tnear;
 	float3 step = eyeRay.d*tstep;
-	float lightingThr = 0.1;
+	float lightingThr = 0.001;
 
 	float fragDepth = 1.0;
 
@@ -373,7 +373,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 		}
 		else
 		{
-			col = make_float4(cc, funcRes);
+			col = make_float4(la*cc, funcRes);
 		}
 
 		col.w *= density;

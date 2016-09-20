@@ -62,7 +62,8 @@ Window::Window()
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 70);
+		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
@@ -78,14 +79,15 @@ Window::Window()
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
 		
+		inputParticle->featureReshuffle();
 		//inputParticle->normalizePos();
 		//posMin = inputParticle->posMin;
 		//posMax = inputParticle->posMax;
 		
 		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-		//glyphRenderable->colorByFeature = true;
-		//glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+		glyphRenderable->colorByFeature = true;
+		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 	}
 
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
@@ -199,11 +201,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
-	controlLayout->addWidget(addCurveBLensBtn);
+	//controlLayout->addWidget(addCurveBLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
-	controlLayout->addWidget(groupBox);
+	//controlLayout->addWidget(groupBox);
 	controlLayout->addWidget(transSizeLabel);
 	controlLayout->addWidget(transSizeSlider);
 	controlLayout->addWidget(usingGlyphSnappingCheck);

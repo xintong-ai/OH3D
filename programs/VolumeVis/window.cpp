@@ -19,7 +19,6 @@
 #include "VecReader.h"
 #include "VolumeRenderableCUDA.h"
 #include "ModelVolumeDeformer.h"
-#include "Lens.h"
 
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>
@@ -134,7 +133,7 @@ Window::Window()
 	inputVolume->GetPosRange(posMin, posMax);
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20);
+	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
 
@@ -192,6 +191,18 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//layoutStiffnessMode->addWidget(rbEntropy);
 	gbStiffnessMode->setLayout(layoutStiffnessMode);
 
+	QHBoxLayout *meshResLayout = new QHBoxLayout;
+	QLabel *meshResLitLabel = new QLabel(("Mesh resolution:  "));
+	QPushButton* addMeshResPushButton = new QPushButton(tr("&+"));
+	addMeshResPushButton->setFixedSize(24, 24);
+	QPushButton* minusMeshResPushButton = new QPushButton(tr("&-"));
+	minusMeshResPushButton->setFixedSize(24, 24);
+	meshResLabel = new QLabel(QString::number(modelGrid->meshResolution));
+	meshResLayout->addWidget(meshResLitLabel);
+	meshResLayout->addWidget(minusMeshResPushButton);
+	meshResLayout->addWidget(addMeshResPushButton);
+	meshResLayout->addWidget(meshResLabel);
+	meshResLayout->addStretch();
 
 
 
@@ -237,6 +248,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(usingGlyphPickingCheck);
 	controlLayout->addWidget(gridCheck);
 	//controlLayout->addWidget(udbeCheck);
+	controlLayout->addLayout(meshResLayout);
 	controlLayout->addWidget(gbStiffnessMode);
 
 
@@ -369,7 +381,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(delLensBtn.get(), SIGNAL(clicked()), this, SLOT(SlotDelLens()));
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
-
+	connect(addMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotAddMeshRes()));
+	connect(minusMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotMinusMeshRes()));
 	
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	//connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
@@ -596,4 +609,18 @@ void Window::SlotRbEntropyChanged(bool b)
 void Window::SlotDelLens()
 {
 	lensRenderable->SlotDelLens();
+}
+void Window::SlotAddMeshRes()
+{
+	meshResolution++;
+	modelGrid->meshResolution = meshResolution;
+	modelGrid->setReinitiationNeed();
+	meshResLabel->setText(QString::number(meshResolution));
+}
+void Window::SlotMinusMeshRes()
+{
+	meshResolution--;
+	modelGrid->meshResolution = meshResolution;
+	modelGrid->setReinitiationNeed();
+	meshResLabel->setText(QString::number(meshResolution));
 }

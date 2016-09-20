@@ -48,6 +48,7 @@ void BinaryParticleReader::OutputToParticleData(std::shared_ptr<Particle> v)
 	GetValRange(v->valMin, v->valMax);
 	GetPosRange(v->posMin, v->posMax);
 	
-	if (feature.size()>0)
+	if (feature.size() > 0){
 		v->setFeature(feature);
+	}
 }

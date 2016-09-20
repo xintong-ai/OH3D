@@ -43,7 +43,6 @@ class LineSplitModelGrid
 	void SetElasticityByTetEntropyOfVolumeCUDA(std::shared_ptr<Volume> v);
 
 	//currently stored
-	int meshResolution;
 	float dataMin[3], dataMax[3];
 
 	//for both mesh
@@ -67,6 +66,7 @@ class LineSplitModelGrid
 public:
 	GRID_TYPE gridType = LINESPLIT_UNIFORM_GRID;
 	
+	int meshResolution;
 
 
 

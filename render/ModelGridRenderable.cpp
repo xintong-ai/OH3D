@@ -140,7 +140,7 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 		float* e = modelGrid->GetE();
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glLineWidth(2);
+		glLineWidth(4);
 
 		glBegin(GL_LINES);
 		for (int i = 0; i < modelGrid->GetLNumber(); i++){

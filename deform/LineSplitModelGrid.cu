@@ -86,11 +86,21 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 				}
 			}
 			else{
-				thrust::get<4>(t) = 1.0f;
+				//thrust::get<4>(t) = 1.0f;
+				thrust::get<4>(t) = max(1.0f / (alpha * abs(abs(lensCen2PMinorProj) - lSemiMinorAxis / focusRatio) + 1.0f), dark);
 			}
 		}
 		else{
-			thrust::get<4>(t) = 1.0f;
+			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
+				thrust::get<4>(t) = max(1.0f / (alpha * abs(abs(lensCen2PMajorProj) - lSemiMajorAxis) + 1.0f), dark);		
+			}
+			else{
+				//thrust::get<4>(t) = 1.0f;
+				float dMaj = abs(lensCen2PMajorProj) - lSemiMajorAxis;
+				float dMin = abs(lensCen2PMinorProj) - lSemiMinorAxis / focusRatio;
+				thrust::get<4>(t) = max(1.0f / (alpha * sqrt(dMin*dMin + dMaj*dMaj) + 1.0f), dark);
+			}
+			//thrust::get<4>(t) = 1.0f;
 		}
 	}
 	functor_UpdatePointCoordsAndBrightByLineLensMesh(thrust::device_ptr<int> _dev_ptr_tet, thrust::device_ptr<float> _dev_ptr_X, int _tet_number, float3 _lensCenter, float _lSemiMajorAxisGlobal, float _lSemiMinorAxisGlobal, float3 _majorAxisGlobal, float _focusRatio, float3 _lensDir, bool _isFreezingFeature, int _snappedFeatureId) : dev_ptr_tet(_dev_ptr_tet), dev_ptr_X(_dev_ptr_X), tet_number(_tet_number), lensCenter(_lensCenter), lSemiMajorAxis(_lSemiMajorAxisGlobal), lSemiMinorAxis(_lSemiMinorAxisGlobal), majorAxis(_majorAxisGlobal), focusRatio(_focusRatio), lensDir(_lensDir), isFreezingFeature(_isFreezingFeature), snappedFeatureId(_snappedFeatureId){}
@@ -122,21 +132,33 @@ d_computeTranferDensityForVolume(cudaExtent volumeSize, float3 spacing, float st
 		usedValue = voxelValue;
 	}
 	else if(densityTransferMode == 2){
-		//if (voxelValue < 0.1945)
+		//key values:
+		// < 0.1945: ourside backgronud
+		// 110-140 / 0.214-0.272 : from cortex to ventrical
+		// 155-250 / 0.302-0.486 : cortex and skull
+		//250+ /0.486: ventrical
+
+		//if (voxelValue < 0.272 && voxelValue>0.214)
+		//	usedValue = (voxelValue - 0.214) / (0.272 - 0.214)*(0.486 - 0.302) + 0.302;
+		//else if (voxelValue < 0.486 && voxelValue>0.302)
+		//	usedValue = (voxelValue - 0.302) / (0.486 - 0.302)*(0.272 - 0.214) + 0.214;
+
+		if (voxelValue < 0.2)
+			usedValue = (0.2 - voxelValue) / 0.2;
+		else if (voxelValue < 0.5)
+			voxelValue = 0;
+		else
+			usedValue = (voxelValue - 0.5) /0.5;
+
+		//if (voxelValue < 0.4364)
 		//	usedValue = 0;
-		//else if (voxelValue < 0.2529)
-		//	usedValue = 1;
 		//else if (voxelValue < 0.4864)
-		//	usedValue = 0; 
+		//	usedValue = (voxelValue - 0.4364)/0.05;
 		//else
 		//	usedValue = 1.0;
 
-		if (voxelValue < 0.4364)
-			usedValue = 0;
-		else if (voxelValue < 0.4864)
-			usedValue = (voxelValue - 0.4364)/0.05;
-		else
-			usedValue = 1.0;
+		//if (voxelValue < 0.486 && voxelValue>0.302)
+		//	usedValue = 0;
 	}
 	else if(densityTransferMode == 3){
 		float4 grad = make_float4(0.0);

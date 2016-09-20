@@ -1,7 +1,7 @@
 #include "VecReader.h"
 #include <vector>
 #include <iostream>
-//#include <fstream>
+#include <fstream>
 //#include <cstdint>
 //#include <vector_functions.h>
 #include <helper_math.h>
@@ -116,4 +116,11 @@ void VecReader::OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v){
 			}
 		}
 	}
+
+
+
+	std::ofstream OutFile;
+	OutFile.open("nek256mag", std::ofstream::out | std::ofstream::binary);
+	OutFile.write((char*)v->values, sizeof(float)*v->size.x*v->size.y*v->size.z);
+	OutFile.close();
 }

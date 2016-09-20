@@ -61,6 +61,8 @@ private:
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
+	int meshResolution = 20;
+
 	std::shared_ptr<QPushButton> delLensBtn;
 	std::shared_ptr<QRadioButton> radioDeformScreen;
 	std::shared_ptr<QRadioButton> radioDeformObject;
@@ -85,6 +87,7 @@ private:
 	QLabel *deformForceLabel;
 	QLabel *laLabel, *ldLabel, *lsLabel;
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
+	QLabel *meshResLabel;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
@@ -128,6 +131,8 @@ private slots:
 	
 	void SlotDelLens();
 
+	void SlotAddMeshRes();
+	void SlotMinusMeshRes();
 
 #ifdef USE_LEAP
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
