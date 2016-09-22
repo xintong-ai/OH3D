@@ -39,7 +39,7 @@ CosmoRenderable::CosmoRenderable(std::shared_ptr<Particle> _particle)
 	sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
 	float vMax = particle->valMax;
 	float vMin = particle->valMin;
-	setColorMap(COLOR_MAP::BLUE_RED);
+	setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
 }
 
 void CosmoRenderable::setColorMap(COLOR_MAP cm)

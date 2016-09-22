@@ -20,6 +20,8 @@ class LensRenderable :public Renderable
 	void ChangeLensCenterbyLeap(Lens *l,  float3 p);
 	float3 GetTransferredLeapPos(float3 p);
 
+	bool highlightingCenter = false;
+
 public:
 
 	std::vector<Lens*>* GetLensesAddr() { return &lenses; }//temperary solution. should put lenses outside of LensRenderable
@@ -27,7 +29,7 @@ public:
 	float3 snapPos;
 	void SnapLastLens();
 
-
+	
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void UpdateData() override;

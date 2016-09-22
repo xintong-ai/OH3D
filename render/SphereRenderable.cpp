@@ -37,14 +37,12 @@ SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
 #endif
 {
 	sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
-	float vMax = particle->valMax;
-	float vMin = particle->valMin;
-	setColorMap(COLOR_MAP::BLUE_RED);
+	setColorMap(COLOR_MAP::RDYIGN);
 }
 
 void SphereRenderable::setColorMap(COLOR_MAP cm)
 {
-	ColorGradient cg(cm);
+	ColorGradient cg(cm, true);
 	if (colorByFeature){
 		float vMax = particle->featureMax;
 		float vMin = particle->featureMin;
@@ -58,6 +56,7 @@ void SphereRenderable::setColorMap(COLOR_MAP cm)
 		float vMin = particle->valMin;
 		for (int i = 0; i < particle->val.size(); i++) {
 			float valScaled = (particle->val[i] - vMin) / (vMax - vMin);
+			//valScaled = clamp(valScaled * 2-1, 0.0f, 1.0f); //for phi of cosmology
 			cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 		}
 	}

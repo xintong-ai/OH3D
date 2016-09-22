@@ -46,7 +46,6 @@ public:
 	// Vertices
 	int		number = 0;
 	TYPE*	X;
-	TYPE*	M;
 	// Tetrahedra
 	int*	Tet;
 	int		tet_number = 0;
@@ -64,11 +63,12 @@ public:
 	int l_number = 0;
 	unsigned int* L;
 
+
+
 	TET_MESH(int maxNum): number(0)
 	{
 		max_number	= maxNum;
 		X			= new TYPE	[max_number*3];
-		M			= new TYPE	[max_number  ];
 		Tet			= new int	[max_number* 4 * 5];
 		Dm			= new TYPE	[max_number*9*5];
 		inv_Dm		= new TYPE	[max_number*9*5];
@@ -79,10 +79,38 @@ public:
 		L			= new unsigned int	[max_number * 5 * 6 * 2];
 	}
 	
+
+	TET_MESH() : number(0)
+	{
+		max_number = 0;
+		X = 0;
+		Tet = 0;
+		Dm = 0;
+		inv_Dm = 0;
+		Vol = 0;
+		T = 0;
+		VN = 0;
+		TN = 0;
+		L = 0;
+	}
+	void initLocalMem_TET_MESH(int maxNum)
+	{
+		max_number = maxNum;
+		X = new TYPE[number * 3];
+		Tet = new int[tet_number * 4];
+		Dm = new TYPE[tet_number * 9];
+		inv_Dm = new TYPE[tet_number * 9];
+		Vol = new TYPE[tet_number];
+		T = new int[tet_number * 3 * 3];
+		VN = new TYPE[number * 3];
+		TN = new TYPE[tet_number * 3];
+		L = new unsigned int[tet_number * 6 * 2];
+	}
+
+
 	~TET_MESH()
 	{
 		if(X)		delete[] X;
-		if(M)		delete[] M;
 		if(Tet)		delete[] Tet;
 		if(Dm)		delete[] Dm;
 		if(inv_Dm)	delete[] inv_Dm;
@@ -99,7 +127,6 @@ public:
 	{
 		TYPE density=50000;
 
-		memset(M, 0, sizeof(TYPE)*number);
 		for(int t=0; t<tet_number; t++)
 		{
 			int p0=Tet[t*4+0]*3;
@@ -117,11 +144,6 @@ public:
 			Dm[t*9+5]=X[p3+1]-X[p0+1];
 			Dm[t*9+8]=X[p3+2]-X[p0+2];
 			Vol[t]=fabs(Matrix_Inverse_3(&Dm[t*9], &inv_Dm[t*9]))/6.0;
-
-			M[p0/3]+=Vol[t]*density;
-			M[p1/3]+=Vol[t]*density;
-			M[p2/3]+=Vol[t]*density;
-			M[p3/3]+=Vol[t]*density;
 		}		
 	}
 

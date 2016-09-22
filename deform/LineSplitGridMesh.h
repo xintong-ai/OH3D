@@ -82,23 +82,23 @@ class LineSplitGridMesh : public CUDA_PROJECTIVE_TET_MESH<TYPE>
 
 
 public:
-	using TET_MESH<TYPE>::tet_number;
-	using TET_MESH<TYPE>::number;
-	using TET_MESH<TYPE>::Tet;
-	using TET_MESH<TYPE>::inv_Dm;
-	using TET_MESH<TYPE>::Vol;
-	using TET_MESH<TYPE>::X;
-	using TET_MESH<TYPE>::Dm;
-	using CUDA_PROJECTIVE_TET_MESH<TYPE>::control_mag;
-	using TET_MESH<TYPE>::max_number;
-	using TET_MESH<TYPE>::M;
-	using TET_MESH<TYPE>::t_number;
-	using TET_MESH<TYPE>::T;
-	using TET_MESH<TYPE>::VN;
-	using TET_MESH<TYPE>::TN;
-	using TET_MESH<TYPE>::l_number;
-	using TET_MESH<TYPE>::L;
-	using CUDA_PROJECTIVE_TET_MESH<TYPE>::damping;
+	//using TET_MESH<TYPE>::tet_number;
+	//using TET_MESH<TYPE>::number;
+	//using TET_MESH<TYPE>::Tet;
+	//using TET_MESH<TYPE>::inv_Dm;
+	//using TET_MESH<TYPE>::Vol;
+	//using TET_MESH<TYPE>::X;
+	//using TET_MESH<TYPE>::Dm;
+	//using CUDA_PROJECTIVE_TET_MESH<TYPE>::control_mag;
+	//using TET_MESH<TYPE>::max_number;
+	//using TET_MESH<TYPE>::M;
+	//using TET_MESH<TYPE>::t_number;
+	//using TET_MESH<TYPE>::T;
+	//using TET_MESH<TYPE>::VN;
+	//using TET_MESH<TYPE>::TN;
+	//using TET_MESH<TYPE>::l_number;
+	//using TET_MESH<TYPE>::L;
+	//using CUDA_PROJECTIVE_TET_MESH<TYPE>::damping;
 
 
 	float3 gridMin, gridMax;
@@ -111,6 +111,73 @@ public:
 
 	float3 lensSpaceOriginInWorld;
 
+
+	//used for temperary mesh
+	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1)*5)
+	{
+		computeTempShapeInfo(dataMin, dataMax, n);
+		BuildTet();
+		Build_Boundary_Lines();
+		printf("N: %d, %d\n", number, tet_number);
+		control_mag = 500;		//500
+		damping = 0.9;
+		return;
+	}
+
+	//used for temperary mesh
+	LineSplitGridMesh() : CUDA_PROJECTIVE_TET_MESH<TYPE>()
+	{
+		number = 0;
+		tet_number = 0;
+		return;
+	}
+
+	~LineSplitGridMesh(){};
+
+	//LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>(((n + 1) * (n + 1) * (n + 1) + (n + 1)*(n - 1)) * 5)
+	//{
+	//	//computeShapeInfo and computeInitCoord define a mesh that covers the lens region and nearby region
+	//	computeShapeInfo(dataMin, dataMax, n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir);
+	//	computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
+
+	//	BuildTet();
+	//	Build_Boundary_Lines();
+
+
+	//	//printf("N: %d, %d\n", number, tet_number);
+
+	//	control_mag = 500;		//500
+	//	damping = 0.9;
+
+	//	Allocate_GPU_Memory_InAdvance();
+
+	//	return;
+
+	//}
+
+	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>()
+	{
+		//computeShapeInfo and computeInitCoord define a mesh that covers the lens region and nearby region
+		computeShapeInfo(dataMin, dataMax, n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir);
+
+		initLocalMem_CUDA_PROJECTIVE_TET_MESH(((n + 1) * (n + 1) * (n + 1) + (n + 1)*(n - 1)) * 5);
+
+		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
+
+		BuildTet();
+		Build_Boundary_Lines();
+
+
+		//printf("N: %d, %d\n", number, tet_number);
+
+		control_mag = 500;		//500
+		damping = 0.9;
+
+		Allocate_GPU_Memory_InAdvance();
+
+		return;
+
+	}
 
 	void Build_Boundary_Lines(){
 		l_number = tet_number * 6;
@@ -185,12 +252,12 @@ public:
 		gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
 
 		cutY = nStep[1] / 2;
-		oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);	
+		oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);
+		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
 	}
 
 	void BuildTet()
 	{
-		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
 		
 		tetVolumeOriginal = new float[tet_number];
 		float tetVolumeCandidate1 = step*step*step / 6, tetVolumeCandidate2 = step*step*step / 3;
@@ -343,21 +410,7 @@ public:
 		cudaMemcpy(dev_tetVolumeOriginal, tetVolumeOriginal, sizeof(float)* tet_number, cudaMemcpyHostToDevice);
 	}
 
-	//used for temperary mesh
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1)*5)
-	{
 
-		computeTempShapeInfo(dataMin, dataMax, n);
-		BuildTet();
-		Build_Boundary_Lines();
-
-
-		printf("N: %d, %d\n", number, tet_number);
-
-		control_mag = 500;		//500
-		damping = 0.9;
-		return;
-	}
 
 	void computeShapeInfo(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir)
 	{
@@ -433,7 +486,8 @@ public:
 		std::cout << "final mesh size " << nStep[0] << " " << nStep[1] << " " << nStep[2] << "with step length " << step << std::endl;
 		
 		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
-		
+		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
+
 		cutY = nStep[1] / 2;
 
 		//lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis - rangeDiff.z / 2.0 * lensDir;
@@ -511,26 +565,7 @@ public:
 	}
 
 
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>(((n + 1) * (n + 1) * (n + 1) +(n+1)*(n-1))* 5)
-	{
-		//computeShapeInfo and computeInitCoord define a mesh that covers the lens region and nearby region
-		computeShapeInfo(dataMin, dataMax, n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir);
-		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
 
-		BuildTet();
-		Build_Boundary_Lines();
-
-
-		//printf("N: %d, %d\n", number, tet_number);
-
-		control_mag = 500;		//500
-		damping = 0.9;
-		
-		Allocate_GPU_Memory_InAdvance();
-		
-		return;
-
-	}
 	void MoveMesh(float3 moveDir)
 	{
 		int threadsPerBlock = 64;

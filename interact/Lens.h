@@ -211,8 +211,6 @@ struct CircleLens :public Lens
 		return res;
 	}
 
-	std::vector<std::vector<float3>> Get3DContour(float3 eyeWorld, bool isScreenDeformingLens);
-
 
 };
 

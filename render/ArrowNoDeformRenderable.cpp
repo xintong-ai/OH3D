@@ -68,7 +68,7 @@ GlyphRenderable(_particle)
 		}
 	}
 
-	setColorMap(COLOR_MAP::BLUE_RED);
+	setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
 }
 
 

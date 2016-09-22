@@ -589,26 +589,25 @@ class CUDA_PROJECTIVE_TET_MESH: public TET_MESH<TYPE>
 {
 public:
 	
-  using TET_MESH<TYPE>::tet_number;
-  using TET_MESH<TYPE>::number;
-  using TET_MESH<TYPE>::Tet;
-  using TET_MESH<TYPE>::inv_Dm;
-  using TET_MESH<TYPE>::Vol;
-  using TET_MESH<TYPE>::X;
-  using TET_MESH<TYPE>::Dm;
-  using TET_MESH<TYPE>::max_number;
-  using TET_MESH<TYPE>::M;
-  using TET_MESH<TYPE>::t_number;
-  using TET_MESH<TYPE>::T;
-  using TET_MESH<TYPE>::VN;
-  using TET_MESH<TYPE>::TN;
-  using TET_MESH<TYPE>::l_number;
-  using TET_MESH<TYPE>::L;
+  //using TET_MESH<TYPE>::tet_number;
+  //using TET_MESH<TYPE>::number;
+  //using TET_MESH<TYPE>::Tet;
+  //using TET_MESH<TYPE>::inv_Dm;
+  //using TET_MESH<TYPE>::Vol;
+  //using TET_MESH<TYPE>::X;
+  //using TET_MESH<TYPE>::Dm;
+  //using TET_MESH<TYPE>::max_number;
+  //using TET_MESH<TYPE>::M;
+  //using TET_MESH<TYPE>::t_number;
+  //using TET_MESH<TYPE>::T;
+  //using TET_MESH<TYPE>::VN;
+  //using TET_MESH<TYPE>::TN;
+  //using TET_MESH<TYPE>::l_number;
+  //using TET_MESH<TYPE>::L;
 
 	TYPE	cost[8];
 	int		cost_ptr;
 	TYPE	fps;
-	TYPE*	old_X;
 	TYPE*	V;
 	TYPE*	fixed;
 
@@ -647,8 +646,6 @@ public:
 	int*	dev_VTT;
 	int*	dev_vtt_num;
 
-	TYPE*	error;
-	TYPE*	dev_error;
 
 	//by Xin
 	TYPE* EL;
@@ -665,7 +662,6 @@ public:
 	{
 		cost_ptr= 0;
 
-		old_X	= new TYPE	[max_number*3];
 		V		= new TYPE	[max_number*3];
 		fixed	= new TYPE	[max_number  ];
 
@@ -676,7 +672,6 @@ public:
 		VTT		= new int	[max_number*4];
 		vtt_num	= new int	[max_number  ];
 
-		error	= new TYPE	[max_number*3];
 
 		EL = new TYPE[max_number * 5];
 
@@ -711,13 +706,111 @@ public:
 		dev_MD			= 0;
 		dev_VTT			= 0;
 		dev_vtt_num		= 0;
-
-		dev_error		= 0;
 	}
-	
+
+
+	CUDA_PROJECTIVE_TET_MESH() :TET_MESH<TYPE>()
+	{
+		cost_ptr = 0;
+
+		V = 0;
+		fixed = 0;
+
+		MD = 0;
+		TQ = 0;
+		Tet_Temp = 0;
+
+		VTT = 0;
+		vtt_num = 0;
+
+
+		EL = 0;
+
+		fps = 0;
+		//elasticity	= 3000000; //5000000
+		control_mag = 10;
+		rho = 0.9992;
+		damping = 0.9995;
+
+		// GPU data
+		dev_X = 0;
+		dev_X_Orig = 0;
+		dev_E = 0;
+		dev_V = 0;
+		dev_next_X = 0;
+		dev_prev_X = 0;
+		dev_fixed = 0;
+		dev_more_fixed = 0;
+		dev_init_B = 0;
+
+		dev_EL = 0;
+		dev_Dm = 0;
+		dev_inv_Dm = 0;
+		dev_Vol = 0;
+		dev_Tet = 0;
+		dev_TQ = 0;
+		dev_Tet_Temp = 0;
+		dev_VC = 0;
+		dev_MD = 0;
+		dev_VTT = 0;
+		dev_vtt_num = 0;
+
+	}
+	//template <class TYPE>
+	void initLocalMem_CUDA_PROJECTIVE_TET_MESH(int maxNum)
+	{
+		initLocalMem_TET_MESH(maxNum);
+
+		cost_ptr = 0;
+
+		V = new TYPE[number * 3];
+		fixed = new TYPE[number];
+
+		MD = new TYPE[number];
+		TQ = new TYPE[tet_number * 4];
+		Tet_Temp = new TYPE[tet_number * 12];
+
+		VTT = new int[tet_number * 4];
+		vtt_num = new int[number + 1];
+
+		EL = new TYPE[tet_number];
+
+		fps = 0;
+		//elasticity	= 3000000; //5000000
+		control_mag = 10;
+		rho = 0.9992;
+		damping = 0.9995;
+
+		memset(V, 0, sizeof(TYPE)*number * 3);
+		memset(fixed, 0, sizeof(int)*number);
+
+		// GPU data
+		dev_X = 0;
+		dev_X_Orig = 0;
+		dev_E = 0;
+		dev_V = 0;
+		dev_next_X = 0;
+		dev_prev_X = 0;
+		dev_fixed = 0;
+		dev_more_fixed = 0;
+		dev_init_B = 0;
+
+		dev_EL = 0;
+		dev_Dm = 0;
+		dev_inv_Dm = 0;
+		dev_Vol = 0;
+		dev_Tet = 0;
+		dev_TQ = 0;
+		dev_Tet_Temp = 0;
+		dev_VC = 0;
+		dev_MD = 0;
+		dev_VTT = 0;
+		dev_vtt_num = 0;
+	}
+
+
 	~CUDA_PROJECTIVE_TET_MESH()
 	{
-		if(old_X)			delete[] old_X;
 		if(V)				delete[] V;
 		if(fixed)			delete[] fixed;
 		if(MD)				delete[] MD;
@@ -725,7 +818,6 @@ public:
 		if(Tet_Temp)		delete[] Tet_Temp;
 		if(VTT)				delete[] VTT;
 		if(vtt_num)			delete[] vtt_num;
-		if(error)			delete[] error;
 		
 		if (cellVerts)		delete[] cellVerts;
 		if (cellTets)		delete[] cellTets;
@@ -754,7 +846,6 @@ public:
 		if(dev_VTT)			cudaFree(dev_VTT);
 		if(dev_vtt_num)		cudaFree(dev_vtt_num);
 
-		if(dev_error)		cudaFree(dev_error);
 
 		if (dev_tetVolumeOriginal) cudaFree(dev_tetVolumeOriginal);
 }
@@ -888,6 +979,8 @@ public:
 
 	void Allocate_GPU_Memory()
 	{
+		// !!!NOTE!!! make sure the elasity EL has been well set. Or else once update later, need to reset dev_EL
+
 		//may allocate the GPU memory for some arrays in advance, to provide easier computation for needed processes
 		if (!is_Allocate_GPU_Memory_InAdvance_executed){
 			Allocate_GPU_Memory_InAdvance();
@@ -916,7 +1009,6 @@ public:
 		cudaMalloc((void**)&dev_VTT,		sizeof(int )*tet_number*4);
 		cudaMalloc((void**)&dev_vtt_num,	sizeof(int )*(number+1));
 
-		cudaMalloc((void**)&dev_error,		sizeof(TYPE)*3*number);
 
 		//Copy data into CUDA memory
 		

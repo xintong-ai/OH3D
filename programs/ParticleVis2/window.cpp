@@ -62,8 +62,9 @@ Window::Window()
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 70);
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
 		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
+		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
@@ -79,15 +80,15 @@ Window::Window()
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
 		
-		inputParticle->featureReshuffle();
+		//inputParticle->featureReshuffle();
 		//inputParticle->normalizePos();
 		//posMin = inputParticle->posMin;
 		//posMax = inputParticle->posMax;
 		
 		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-		glyphRenderable->colorByFeature = true;
-		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+		//glyphRenderable->colorByFeature = true;
+		//glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 	}
 
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;

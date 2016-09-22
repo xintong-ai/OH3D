@@ -41,7 +41,6 @@ public:
   using TET_MESH<TYPE>::Dm;
   using CUDA_PROJECTIVE_TET_MESH<TYPE>::control_mag;
   using TET_MESH<TYPE>::max_number;
-  using TET_MESH<TYPE>::M;
   using TET_MESH<TYPE>::t_number;
   using TET_MESH<TYPE>::T;
   using TET_MESH<TYPE>::VN;
