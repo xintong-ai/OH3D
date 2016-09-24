@@ -90,7 +90,7 @@ bool CircleLens::PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj
 	float3 clickPoint = Compute3DPosByScreenPos(_x, _y, mv, pj, winW, winH);
 	float eps_dis = objectRadius*0.1;
 	float dis = length(c - clickPoint);
-	return std::abs(dis - objectRadius) < eps_dis;
+	return abs(dis - objectRadius) < eps_dis;
 }
 
 bool CircleLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
@@ -98,7 +98,7 @@ bool CircleLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj
 	float3 clickPoint = Compute3DPosByScreenPos(_x, _y, mv, pj, winW, winH);
 	float eps_dis = objectRadius*0.1 / focusRatio;
 	float dis = length(c - clickPoint);
-	return std::abs(dis - objectRadius/focusRatio) < eps_dis;
+	return abs(dis - objectRadius/focusRatio) < eps_dis;
 }
 
 void CircleLens::ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
@@ -114,27 +114,43 @@ void CircleLens::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, fl
 }
 
 
-
-
-
-bool LineLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
-
-
+bool LineLens::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) 
+{
 	//dot product of (_x-x, _y-y) and direction
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 	float2 toPoint = make_float2(_x - center.x, _y - center.y);
 	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
 
-	if (std::abs(disMajor) < lSemiMajorAxis) {
+	if (abs(disMajor) < lSemiMajorAxis) {
 		float2 minorDirection = make_float2(-direction.y, direction.x);
 		//dot product of (_x-x, _y-y) and minorDirection
 		float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
-		if (std::abs(disMinor) < lSemiMinorAxis)
+		if (abs(disMinor) < lSemiMinorAxis)
 			return true;
 	}
 	return false;
 }
 
+
+float3 LineLens::UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH)
+{
+	float4 oriCenter = GetCenter();
+
+	matrix4x4 invModelview, invProjection;
+	invertMatrix(mv, &invModelview.v[0].x);
+	invertMatrix(pj, &invProjection.v[0].x);
+
+	float2 oriCenter_screen = Object2Screen(oriCenter, mv, pj, winW, winH);
+	ctrlPoint1Abs = ctrlPoint1Abs + make_float2(sx, sy) - oriCenter_screen;
+	ctrlPoint2Abs = ctrlPoint2Abs + make_float2(sx, sy) - oriCenter_screen;
+
+	float4 cenClip = Object2Clip(GetCenter(), mv, pj);
+	float2 newClipXY = Screen2Clip(make_float2(sx, sy), winW, winH);
+	float4 newClip = make_float4(newClipXY.x, newClipXY.y, cenClip.z, cenClip.w);
+	float4 newObject = Clip2ObjectGlobal(newClip, &invModelview.v[0].x, &invProjection.v[0].x);
+	SetCenter(make_float3(newObject));
+	return make_float3(GetCenter() - oriCenter);
+}
 
 
 std::vector<float2> LineLens::GetContour(float* mv, float* pj, int winW, int winH)
@@ -229,12 +245,12 @@ bool LineLens::PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int wi
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	return (std::abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
-		|| (std::abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
+	return (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
+		|| (abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
 }
 
 
@@ -243,34 +259,15 @@ bool LineLens::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int wi
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	return (std::abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs > lSemiMinorAxis && disMinorAbs <= lSemiMinorAxis / focusRatio)
-		|| (std::abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
+	return (abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs > lSemiMinorAxis && disMinorAbs <= lSemiMinorAxis / focusRatio)
+		|| (abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis);
 }
 
 
-bool LineLens::PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
-{
-	return PointOnInnerBoundary(_x, _y, mv, pj, winW, winH);
-}
-
-bool LineLens::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
-{
-	return PointOnOuterBoundary(_x, _y, mv, pj, winW, winH);
-}
-
-void LineLens::ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
-{
-	ChangeLensSize(_x, _y, _prex, _prey, mv, pj, winW, winH);
-}
-
-void LineLens::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
-{
-	ChangefocusRatio(_x, _y, _prex, _prey, mv, pj, winW, winH);
-}
 
 void LineLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
 {
@@ -283,19 +280,19 @@ void LineLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, f
 	float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
 
 
-	if (std::abs(disMajor - lSemiMajorAxis) < eps_pixel && std::abs(disMinor) <= lSemiMinorAxis){
+	if (abs(disMajor - lSemiMajorAxis) < eps_pixel && abs(disMinor) <= lSemiMinorAxis){
 		float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
 		float2 newctrlPoint2 = ctrlPoint2 + (make_float2(_x, _y) - make_float2(_prex, _prey));
 		lSemiMajorAxis = length(newctrlPoint2 - center);
 		direction = normalize(newctrlPoint2 - center);
 	}
-	else if (std::abs(-disMajor - lSemiMajorAxis) < eps_pixel && std::abs(disMinor) <= lSemiMinorAxis){
+	else if (abs(-disMajor - lSemiMajorAxis) < eps_pixel && abs(disMinor) <= lSemiMinorAxis){
 		float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
 		float2 newctrlPoint1 = ctrlPoint1 + (make_float2(_x, _y) - make_float2(_prex, _prey));
 		lSemiMajorAxis = length(newctrlPoint1 - center);
 		direction = normalize(center - newctrlPoint1);
 	}
-	else if (std::abs(disMinor - lSemiMinorAxis) < eps_pixel && std::abs(disMajor) <= lSemiMajorAxis){
+	else if (abs(disMinor - lSemiMinorAxis) < eps_pixel && abs(disMajor) <= lSemiMajorAxis){
 		float2 minorCtrlPoint2 = center + minorDirection*lSemiMinorAxis;
 		float2 newminorCtrlPoint2 = minorCtrlPoint2 + (make_float2(_x, _y) - make_float2(_prex, _prey));;
 		lSemiMinorAxis = length(newminorCtrlPoint2 - center);
@@ -304,7 +301,7 @@ void LineLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, f
 		float2 newd = make_float2(-newmd.y, newmd.x);
 		direction = newd;
 	}
-	else if (std::abs(-disMinor - lSemiMinorAxis) < eps_pixel && std::abs(disMajor) <= lSemiMajorAxis){
+	else if (abs(-disMinor - lSemiMinorAxis) < eps_pixel && abs(disMajor) <= lSemiMajorAxis){
 		float2 minorCtrlPoint1 = center - minorDirection*lSemiMinorAxis;
 		float2 newminorCtrlPoint1 = minorCtrlPoint1 + (make_float2(_x, _y) - make_float2(_prex, _prey));;
 		lSemiMinorAxis = length(newminorCtrlPoint1 - center);
@@ -314,21 +311,10 @@ void LineLens::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, f
 
 		direction = -newd;
 	}
+	ctrlPoint2Abs = center + direction*lSemiMajorAxis;
+	ctrlPoint1Abs = center - direction*lSemiMajorAxis;
+
 	UpdateLineLensInfo();
-	/*
-	//only change size but not direction
-	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
-
-	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
-	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
-
-	if (std::abs(disMajorAbs - lSemiMajorAxis) < eps_pixel && disMinorAbs <= lSemiMinorAxis)
-		lSemiMajorAxis = disMajorAbs;
-	else if(std::abs(disMinorAbs - lSemiMinorAxis) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
-		lSemiMinorAxis = disMinorAbs;
-		*/
 }
 
 void LineLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
@@ -336,15 +322,18 @@ void LineLens::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv,
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*direction.x + toPoint.y*direction.y);
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
 	float2 minorDirection = make_float2(-direction.y, direction.x);
-	float disMinorAbs = std::abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+	float disMinorAbs = abs(toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
 
-	if (std::abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
+	if (abs(disMinorAbs - lSemiMinorAxis / focusRatio) < eps_pixel && disMajorAbs <= lSemiMajorAxis)
 	{
 		if (disMinorAbs > lSemiMinorAxis + eps_pixel + 1)
 			focusRatio = lSemiMinorAxis / disMinorAbs;
 	}
+
+	ctrlPoint2Abs = center + direction*lSemiMajorAxis;
+	ctrlPoint1Abs = center - direction*lSemiMajorAxis;
 	UpdateLineLensInfo();
 }
 
@@ -391,35 +380,48 @@ std::vector<float2> LineLens3D::GetOuterContour(float* mv, float* pj, int winW, 
 	return ret;
 }
 
-void LineLens3D::UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax) //
+
+
+void LineLens3D::UpdateLineLensGlobalInfoFromScreenInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax)
 {
-	float3 lensCen = c;
+	//this function works correctly when the projection info of the front face has been set
+	//the computation is done by using ctrlPoint1Abs, ctrlPoint2Abs, and the previous center to provide the depth value
 
 	float _invmv[16];
-	float _inpj[16];
-	invertMatrix(_pj, _inpj);
+	float _invpj[16];
+	invertMatrix(_pj, _invpj);
 	invertMatrix(_mv, _invmv);
+
+	float3 tempCtrlPoint1_Camera = make_float3(Clip2Camera(make_float4(make_float3(Screen2Clip(ctrlPoint1Abs, winWidth, winHeight), -1.0f), 1.0f), _invpj));
+	float3 tempCtrlPoint2_Camera = make_float3(Clip2Camera(make_float4(make_float3(Screen2Clip(ctrlPoint2Abs, winWidth, winHeight), -1.0f), 1.0f), _invpj));
+
+	float3 camera_Camera = make_float3(0, 0, 0);
+
+	float3 dirSide1 = normalize(tempCtrlPoint1_Camera - camera_Camera);
+	float3 dirSide2 = normalize(tempCtrlPoint2_Camera - camera_Camera);
+	float3 lensDir_camera = normalize(dirSide1 + dirSide2);
+
+	//https://rootllama.wordpress.com/2014/06/20/ray-line-segment-intersection-test-in-2d/
+	//screenCenter_camera = camera_Camera + t1*lensDir_camera
+	//t1=|v2 x v1|/(v2 dot v3)
+	//v1 = lensDir_camera - tempCtrlPoint1_Camera
+	//v2 = tempCtrlPoint2_Camera - tempCtrlPoint1_Camera
+	//v3 = ...
+	float3 v1 = camera_Camera - tempCtrlPoint1_Camera;
+	float3 v2 = tempCtrlPoint2_Camera - tempCtrlPoint1_Camera;
+	float3 v3 = normalize(cross(lensDir_camera, cross(lensDir_camera, v2)));
+	float t1 = length(cross(v2, v1)) / abs(dot(v2, v3));
+	float3 screenCenter_camera = camera_Camera + t1*lensDir_camera;
+	float4 oldcenterclip = Object2Clip(make_float4(c,1.0), _mv, _pj);
+	float3 lensCen = make_float3(Clip2ObjectGlobal(make_float4(make_float3(GetXY(Camera2ClipGlobal(make_float4(screenCenter_camera, 1.0), _pj)), oldcenterclip.z), 1.0), _invmv, _invpj));
+	
+	c = lensCen;
 
 	float3 cameraObj = make_float3(Camera2Object(make_float4(0, 0, 0, 1), _invmv));
 
-	lensDir = make_float3(
-		cameraObj.x - lensCen.x,
-		cameraObj.y - lensCen.y,
-		cameraObj.z - lensCen.z);
-	lensDir = normalize(lensDir);
+	lensDir = normalize(cameraObj - lensCen);
 
-	//This will later be changed by using cutting the incision?
-	float2 centerScreen = GetCenterScreenPos(_mv, _pj, winWidth, winHeight);
-	float2 endPointSemiMajorAxisScreen = centerScreen + lSemiMajorAxis*direction;
-	//float2 endPointSemiMinorAxisScreen = centerScreen + lSemiMinorAxis*make_float2(-direction.y, direction.x);
-
-	float volumeCornerx[2], volumeCornery[2], volumeCornerz[2];
-	volumeCornerx[0] = dataMin.x;
-	volumeCornery[0] = dataMin.y;
-	volumeCornerz[0] = dataMin.z;
-	volumeCornerx[1] = dataMax.x;
-	volumeCornery[1] = dataMax.y;
-	volumeCornerz[1] = dataMax.z;
+	float volumeCornerx[2] = { dataMin.x, dataMax.x }, volumeCornery[2] = { dataMin.y, dataMax.y }, volumeCornerz[2] = { dataMin.z, dataMax.z };
 	float rz1, rz2;//at the direction lensDir shooting from lensCenter, the range to cover the whole region
 	rz1 = FLT_MAX, rz2 = -FLT_MAX;
 	//currently computing r1 and r2 aggressively. cam be more improved later
@@ -442,54 +444,44 @@ void LineLens3D::UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv
 	frontBaseCenter = lensCen + rz2*lensDir;
 	estMeshBottomCenter = lensCen + rz1*lensDir;
 
-	float3 tt = lensCen + lensDir*rz2;
-	float4 ttclip = Object2Clip(make_float4(tt, 1), _mv, _pj);
+	float3 tempCtrlPoint1_obj = make_float3(Camera2Object(make_float4(tempCtrlPoint1_Camera, 1.0f), _invmv));
+	float3 tempCtrlPoint2_obj = make_float3(Camera2Object(make_float4(tempCtrlPoint2_Camera, 1.0f), _invmv));
 
-	//float3 endPointSemiMajorAxisClip = make_float3(Screen2Clip(endPointSemiMajorAxisScreen, winWidth, winHeight), -1);
-	float3 endPointSemiMajorAxisClip_front = make_float3(Screen2Clip(endPointSemiMajorAxisScreen, winWidth, winHeight), ttclip.z); //_back means the axis at the front base of the lens, which is defined by the data domain
+	minorAxisGlobal = normalize(cross(lensDir, tempCtrlPoint2_obj - tempCtrlPoint1_obj));
+	majorAxisGlobal = normalize(cross(minorAxisGlobal, lensDir));
 	
 
-	float3 endPointSemiMajorAxisGlobal_front = make_float3(Clip2ObjectGlobal(make_float4(endPointSemiMajorAxisClip_front, 1), _invmv, _inpj));
-	
-	//!!!need to change!!!
+	//https://rootllama.wordpress.com/2014/06/20/ray-line-segment-intersection-test-in-2d/
+	//intersection_point = cameraObj + x* d
+	//d = normalize(tempCtrlPoint2_obj-cameraObj)
+	//t2=(v1 dot v3)/(v2 dot v3)
+	//v1 = cameraObj - frontBaseCenter
+	//v2 = majorAxisGlobal
+	//v3 = ...
 
-	//(endPointSemiMajorAxisGlobal + xx*lensDir - lensCen) is perpendicular to lensDir
-	// so (endPointSemiMajorAxisGlobal + xx*lensDir - lensCen) * lensDir = 0
-	float xx = (dot(lensCen, lensDir) - dot(endPointSemiMajorAxisGlobal_front, lensDir)) / dot(lensDir, lensDir);
-	float3 endPointSemiMajorAxisGlobal_back = endPointSemiMajorAxisGlobal_front + xx*lensDir; //_back means the axis at the back base of the lens
-	//height = -xx;
-
-	lSemiMajorAxisGlobal = length(endPointSemiMajorAxisGlobal_back - lensCen);
-	majorAxisGlobal = normalize(endPointSemiMajorAxisGlobal_back - lensCen);
-	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / (lSemiMajorAxis / lSemiMinorAxis);
-
-	minorAxisGlobal = normalize(cross(lensDir, majorAxisGlobal));
+	float3 d = normalize(tempCtrlPoint2_obj - cameraObj);
+	v1 = cameraObj - frontBaseCenter;
+	v2 = majorAxisGlobal;
+	v3 = normalize(cross(d, cross(d, v2)));
+	lSemiMajorAxisGlobal = dot(v1, v3) / dot(v2, v3);
+	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / 5;//use focusRatio as a default value, but they do not have a ratio equal to either 5 or focusRatio
 
 	//cannot compute endPointSemiMinorAxisGlobal in a similar way to endPointSemiMajorAxisGlobal, which will cause non-perpendicular in global space
-
 };
 
-
-
-//used at every iteration to deal with cases : data rotate; mouse wheel rotate. any case satisfies that the right hand coordinate directions majorAxisGlobal-minorAxisGlobal-lensDir is not changed  
-void LineLens3D::UpdateLineLensGlobalInfoFrom3DInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax)
-{
-
-}
-
-void LineLens3D::FinishConstructing3D(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax)
+void LineLens3D::UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax)
 {
 	float3 lensCen = (ctrlPoint3D1 + ctrlPoint3D2) / 2;
-	
-	ctrlPoint1Abs = Object2Screen(make_float4(ctrlPoint3D1, 1), _mv, _pj, winW, winH);
-	ctrlPoint2Abs = Object2Screen(make_float4(ctrlPoint3D2, 1), _mv, _pj, winW, winH);
+
+	//ctrlPoint1Abs = Object2Screen(make_float4(ctrlPoint3D1, 1), _mv, _pj, winWidth, winHeight);
+	//ctrlPoint2Abs = Object2Screen(make_float4(ctrlPoint3D2, 1), _mv, _pj, winWidth, winHeight);
 
 	SetCenter(lensCen);
 
 
 	float _invmv[16];
-	float _inpj[16];
-	invertMatrix(_pj, _inpj);
+	float _invpj[16];
+	invertMatrix(_pj, _invpj);
 	invertMatrix(_mv, _invmv);
 
 	float3 cameraObj = make_float3(Camera2Object(make_float4(0, 0, 0, 1), _invmv));
@@ -510,13 +502,7 @@ void LineLens3D::FinishConstructing3D(float* _mv, float* _pj, int winW, int winH
 
 	majorAxisGlobal = normalize(cross(minorAxisGlobal, lensDir));
 
-	float volumeCornerx[2], volumeCornery[2], volumeCornerz[2];
-	volumeCornerx[0] = dataMin.x;
-	volumeCornery[0] = dataMin.y;
-	volumeCornerz[0] = dataMin.z;
-	volumeCornerx[1] = dataMax.x;
-	volumeCornery[1] = dataMax.y;
-	volumeCornerz[1] = dataMax.z;
+	float volumeCornerx[2] = { dataMin.x, dataMax.x }, volumeCornery[2] = { dataMin.y, dataMax.y }, volumeCornerz[2] = { dataMin.z, dataMax.z };
 	float rz1, rz2;//at the direction lensDir shooting from lensCenter, the range to cover the whole region
 	rz1 = FLT_MAX, rz2 = -FLT_MAX;
 	//currently computing r1 and r2 aggressively. cam be more improved later
@@ -535,41 +521,219 @@ void LineLens3D::FinishConstructing3D(float* _mv, float* _pj, int winW, int winH
 	float zdifori = rz2 - rz1;
 	rz2 = rz2 + zdifori*0.01;
 	rz1 = rz1 - zdifori*0.01;  //to avoid numerical error
-	
+
 	frontBaseCenter = lensCen + rz2*lensDir;
 	estMeshBottomCenter = lensCen + rz1*lensDir;
 	lSemiMajorAxisGlobal = dot(drawingSeg, majorAxisGlobal) / 2;
-	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / focusRatio;
-
-	FinishConstructing(_mv, _pj, winW, winH);
-};
+	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / focusRatio; //use focusRatio as a default value, but they do not have a ratio equal to focusRatio
+}
 
 
-std::vector<float3> LineLens3D::GetContourBackBase()
+
+void LineLens3D::UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax)
 {
-	std::vector<float3> ret;
-	float3 cp1 = c - majorAxisGlobal*lSemiMajorAxisGlobal;
-	float3 cp2 = c + majorAxisGlobal*lSemiMajorAxisGlobal;
+	if (isConstructedFromLeap){
+		UpdateLineLensGlobalInfoFrom3DSegment(winWidth, winHeight, _mv, _pj, dataMin, dataMax);
+	}
+	else{
+		UpdateLineLensGlobalInfoFromScreenInfo(winWidth, winHeight, _mv, _pj, dataMin, dataMax);
+	}
+}
+
+
+void LineLens3D::FinishConstructing(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax)
+{
+	isConstructing = false;
+}
+
+void LineLens3D::FinishConstructing3D(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax)
+{
+	isConstructing = false;
+}
+
+
+bool LineLens3D::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	//dot product of (_x-x, _y-y) and direction
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 toPoint = make_float2(_x - center.x, _y - center.y);
+	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
 	
-	ret.push_back(cp1 - minorAxisGlobal*lSemiMinorAxisGlobal);
-	ret.push_back(cp2 - minorAxisGlobal*lSemiMinorAxisGlobal);
-	ret.push_back(cp2 + minorAxisGlobal*lSemiMinorAxisGlobal);
-	ret.push_back(cp1 + minorAxisGlobal*lSemiMinorAxisGlobal);
-	return ret;
+	if (abs(disMajor) < length(ctrlPoint2Abs-ctrlPoint1Abs)/2) //may not be precise
+	{
+		float2 minorDirection = make_float2(-direction.y, direction.x);
+		//dot product of (_x-x, _y-y) and minorDirection
+		float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
+		if (abs(disMinor) < length(ctrlPoint2Abs - ctrlPoint1Abs) / 2*focusRatio)
+			return true;
+	}
+	return false;
 }
 
-std::vector<float3> LineLens3D::GetContourFrontBase()
+bool LineLens3D::PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
 {
-	std::vector<float3> ret;
-	float3 cp1 = frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
-	float3 cp2 = frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal;
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 toPoint = make_float2(_x, _y) - center;
+	
+	float2 direction = normalize(ctrlPoint2Abs - ctrlPoint1Abs);
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
 
-	ret.push_back(cp1 - minorAxisGlobal*lSemiMinorAxisGlobal);
-	ret.push_back(cp2 - minorAxisGlobal*lSemiMinorAxisGlobal);
-	ret.push_back(cp2 + minorAxisGlobal*lSemiMinorAxisGlobal);
-	ret.push_back(cp1 + minorAxisGlobal*lSemiMinorAxisGlobal);
-	return ret;
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
+
+	float3 cp1 = frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
+	//float3 cp2 = frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 cpm1 = cp1 - minorAxisGlobal/focusRatio*lSemiMinorAxisGlobal;
+	float3 cpm2 = cp1 + minorAxisGlobal / focusRatio*lSemiMinorAxisGlobal;
+
+	//float2 cp1_screen = Object2Screen(make_float4(cp1, 1.0f), mv, pj, winW, winH);
+	//float2 cp2_screen = Object2Screen(make_float4(cp2, 1.0f), mv, pj, winW, winH);
+	float2 cp1_screen = ctrlPoint1Abs;
+	float2 cp2_screen = ctrlPoint2Abs;
+	float2 cpm1_screen = Object2Screen(make_float4(cpm1, 1.0f), mv, pj, winW, winH);
+	float2 cpm2_screen = Object2Screen(make_float4(cpm2, 1.0f), mv, pj, winW, winH);
+
+
+	return (disMajorAbs <abs(dot(cp1_screen - center, direction)) &&
+		disMajorAbs < abs(dot(cp2_screen - center, direction)) &&
+		(abs(disMinor - dot(cpm1_screen - center, minorDirection)) < eps_pixel ||
+		abs(disMinor - dot(cpm2_screen - center, minorDirection)) < eps_pixel));
 }
+
+void LineLens3D::ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 toPoint = make_float2(_x, _y) - center;
+
+	float2 direction = normalize(ctrlPoint2Abs - ctrlPoint1Abs);
+	float disMajorAbs = abs(toPoint.x*direction.x + toPoint.y*direction.y);
+
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinor = toPoint.x*minorDirection.x + toPoint.y*minorDirection.y;
+
+	float3 cp1 = frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
+	//float3 cp2 = frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 cpm1 = cp1 - minorAxisGlobal / focusRatio*lSemiMinorAxisGlobal;
+	float3 cpm2 = cp1 + minorAxisGlobal / focusRatio*lSemiMinorAxisGlobal;
+
+	//float2 cp1_screen = Object2Screen(make_float4(cp1, 1.0f), mv, pj, winW, winH);
+	//float2 cp2_screen = Object2Screen(make_float4(cp2, 1.0f), mv, pj, winW, winH);
+	float2 cp1_screen = ctrlPoint1Abs;
+	float2 cp2_screen = ctrlPoint2Abs;
+	float2 cpm1_screen = Object2Screen(make_float4(cpm1, 1.0f), mv, pj, winW, winH);
+	float2 cpm2_screen = Object2Screen(make_float4(cpm2, 1.0f), mv, pj, winW, winH);
+
+
+	if (disMajorAbs < abs(dot(cp1_screen - center, direction)) &&
+		disMajorAbs < abs(dot(cp2_screen - center, direction)))
+	{
+		if (abs(disMinor - dot(cpm1_screen - center, minorDirection)) < eps_pixel)
+			
+		{
+			float3 cpm1Inner = cp1 - minorAxisGlobal*lSemiMinorAxisGlobal;
+			float2 cpm1Inner_screen = Object2Screen(make_float4(cpm1Inner, 1.0f), mv, pj, winW, winH);
+			focusRatio = abs(dot(cpm1Inner_screen - center, minorDirection) / disMinor);
+		}
+		else if (abs(disMinor - dot(cpm2_screen - center, minorDirection)) < eps_pixel)
+		{
+			float3 cpm2Inner = cp1 + minorAxisGlobal*lSemiMinorAxisGlobal;
+			float2 cpm2Inner_screen = Object2Screen(make_float4(cpm2Inner, 1.0f), mv, pj, winW, winH);
+			focusRatio = abs(dot(cpm2Inner_screen - center, minorDirection) / disMinor);
+		}
+	}
+}
+
+bool LineLens3D::PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 toPoint = make_float2(_x, _y) - center;
+
+	float2 direction = normalize(ctrlPoint2Abs - ctrlPoint1Abs);
+	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = (toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	float3 cp1 = frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
+	//float3 cp2 = frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 cpm1 = cp1 - minorAxisGlobal / focusRatio*lSemiMinorAxisGlobal;
+	float3 cpm2 = cp1 + minorAxisGlobal / focusRatio*lSemiMinorAxisGlobal;
+
+	//float2 cp1_screen = Object2Screen(make_float4(cp1, 1.0f), mv, pj, winW, winH);
+	//float2 cp2_screen = Object2Screen(make_float4(cp2, 1.0f), mv, pj, winW, winH);
+	float2 cp1_screen = ctrlPoint1Abs;
+	float2 cp2_screen = ctrlPoint2Abs;
+	float2 cpm1_screen = Object2Screen(make_float4(cpm1, 1.0f), mv, pj, winW, winH);
+	float2 cpm2_screen = Object2Screen(make_float4(cpm2, 1.0f), mv, pj, winW, winH);
+	
+	return (disMinorAbs < abs(dot(cpm1_screen - center, minorDirection)) &&
+		disMinorAbs < abs(dot(cpm2_screen - center, minorDirection)) &&
+		(abs(disMajor - dot(cp1_screen - center, direction)) < eps_pixel ||
+		abs(disMajor - dot(cp2_screen - center, direction)) < eps_pixel));
+}
+
+
+void LineLens3D::ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float2 toPoint = make_float2(_x, _y) - center;
+
+	float2 direction = normalize(ctrlPoint2Abs - ctrlPoint1Abs);
+	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
+
+	float2 minorDirection = make_float2(-direction.y, direction.x);
+	float disMinorAbs = (toPoint.x*minorDirection.x + toPoint.y*minorDirection.y);
+
+	float3 cp1 = frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
+	//float3 cp2 = frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 cpm1 = cp1 - minorAxisGlobal / focusRatio*lSemiMinorAxisGlobal;
+	float3 cpm2 = cp1 + minorAxisGlobal / focusRatio*lSemiMinorAxisGlobal;
+
+	//float2 cp1_screen = Object2Screen(make_float4(cp1, 1.0f), mv, pj, winW, winH);
+	//float2 cp2_screen = Object2Screen(make_float4(cp2, 1.0f), mv, pj, winW, winH);
+	float2 cp1_screen = ctrlPoint1Abs;
+	float2 cp2_screen = ctrlPoint2Abs;
+	float2 cpm1_screen = Object2Screen(make_float4(cpm1, 1.0f), mv, pj, winW, winH);
+	float2 cpm2_screen = Object2Screen(make_float4(cpm2, 1.0f), mv, pj, winW, winH);
+
+	if (disMinorAbs < abs(dot(cpm1_screen - center, minorDirection)) &&
+		disMinorAbs < abs(dot(cpm2_screen - center, minorDirection))){
+		if (abs(disMajor - dot(cp1_screen - center, direction)) < eps_pixel){
+			ctrlPoint1Abs = ctrlPoint1Abs + (make_float2(_x, _y) - make_float2(_prex, _prey));
+		}
+		else if (abs(disMajor - dot(cp2_screen - center, direction)) < eps_pixel){
+			ctrlPoint2Abs = ctrlPoint2Abs + (make_float2(_x, _y) - make_float2(_prex, _prey));
+		}
+	}
+}
+
+
+
+bool LineLens3D::PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	return false; //implement later
+}
+
+bool LineLens3D::PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
+{
+	return false; //implement later
+}
+
+void LineLens3D::ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	ChangeLensSize(_x, _y, _prex, _prey, mv, pj, winW, winH);
+}
+
+void LineLens3D::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)
+{
+	ChangefocusRatio(_x, _y, _prex, _prey, mv, pj, winW, winH);
+}
+
+
+
+
+
+
 
 std::vector<float3> LineLens3D::GetOuterContourBackBase()
 {
@@ -640,10 +804,10 @@ bool LineLens3D::PointOnObjectOuterBoundaryMajorSide(int _x, int _y, float* mv, 
 
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
-	float disMinorAbs = std::abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
+	float disMajorAbs = abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
+	float disMinorAbs = abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
 
-	return (std::abs(disMajorAbs - dirScreenLength) < eps_pixel && disMinorAbs <= minorDirScreenLength/2);
+	return (abs(disMajorAbs - dirScreenLength) < eps_pixel && disMinorAbs <= minorDirScreenLength/2);
 }
 
 bool LineLens3D::PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, float* pj, int winW, int winH)
@@ -658,10 +822,10 @@ bool LineLens3D::PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, 
 
 
 	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = std::abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
-	float disMinorAbs = std::abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
+	float disMajorAbs = abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
+	float disMinorAbs = abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
 
-	return (std::abs(disMinorAbs - minorDirScreenLength) < eps_pixel && disMajorAbs <= dirScreenLength/2);
+	return (abs(disMinorAbs - minorDirScreenLength) < eps_pixel && disMajorAbs <= dirScreenLength/2);
 }
 
 
@@ -1125,7 +1289,7 @@ bool CurveBLens::adjustOffset()
 		int posOBPsize = posOffsetBezierPoints.size();
 		for (int i = 0; i < oriN; i++){
 			//may need to be improved !!!
-			if (std::abs(length(BezierPoints[i] - posOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(posOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
+			if (abs(length(BezierPoints[i] - posOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(posOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
 				//newRationalCtrlPoints.push_back(subCtrlPointsPos[i]);
 			}
 			else{
@@ -1168,7 +1332,7 @@ bool CurveBLens::adjustOffset()
 		int negOBPsize = negOffsetBezierPoints.size();
 		for (int i = 0; i < oriN; i++){
 			//may need to be improved !!!
-			if (std::abs(length(BezierPoints[i] - negOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(negOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
+			if (abs(length(BezierPoints[i] - negOffsetBezierPoints[round(i *1.0 / (oriN - 1)*(negOBPsize - 1))]) - outerWidth) < outerWidth*offsetDisThr){
 				//newRationalCtrlPoints.push_back(subCtrlPointsPos[i]);
 			}
 			else{

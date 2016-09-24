@@ -28,7 +28,6 @@ public:
 	void DrawWithoutProgramold(float modelview[16], float projection[16], ShaderProgram* sp);
 
 	void draw(float modelview[16], float projection[16]) override;
-	void UpdateData() override;
 	CosmoRenderable(std::shared_ptr<Particle> _particle);
 
 	virtual void setColorMap(COLOR_MAP cm) override;

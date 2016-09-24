@@ -31,13 +31,11 @@ class ArrowNoDeformRenderable :public GlyphRenderable
 	void GenVertexBuffer(int nv, float* vertex);
 
 
-	bool initialized = false;
 
 public:
 	ArrowNoDeformRenderable(std::vector<float3> _vec, std::shared_ptr<Particle> _particle);
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	void UpdateData() override;
 
 	void setColorMap(COLOR_MAP cm);
 

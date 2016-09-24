@@ -38,13 +38,11 @@ class ArrowRenderable :public GlyphRenderable
 	//std::shared_ptr<QOpenGLVertexArrayObject> m_vao;
 	std::shared_ptr<GLArrow> glyphMesh;
 
-	bool initialized = false;
 
 public:
 	ArrowRenderable(std::vector<float4> _pos, std::vector<float3> _vec, std::vector < float > _val, std::shared_ptr<Particle> _particle);
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	void UpdateData() override;
 
 protected:
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;

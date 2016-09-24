@@ -105,14 +105,9 @@ void GLWidget::paintGL() {
     /****transform the view direction*****/
 	makeCurrent();
 	TimerStart();
-    //glMatrixMode(GL_MODELVIEW);
-    //glLoadIdentity();
 
-    //glGetFloatv(GL_PROJECTION_MATRIX, projection);
-	//glViewport(0, 0, (GLint)width, (GLint)height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(true);
 	GLfloat modelview[16];
 	GLfloat projection[16];
 	matrixMgr->GetModelView(modelview);

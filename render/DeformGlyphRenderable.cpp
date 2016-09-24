@@ -122,28 +122,29 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 		}
 		case DEFORM_MODEL::OBJECT_SPACE:
 		{
-
 			if (l->type == TYPE_LINE && !l->isConstructing){
 				int winWidth, winHeight;
 				actor->GetWindowSize(winWidth, winHeight);
 				//if (l->justChanged){
-					((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, particle->posMin, particle->posMax);
+				((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, particle->posMin, particle->posMax);
 					l->justChanged = false;
 				//}
 
-				modelGrid->ReinitiateMeshForParticle((LineLens3D*)l, particle);
+				if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
 
-				//if (l->justMoved) 
-				//{
-				//	////the related work needs more time to finish. To keep the lens facing the camera, the lens nodes needs to be rotated. Also the lens region may need to change to guarantee to cover the whole region
-				//	//modelGrid->MoveMesh(l->moveVec);
-				//	l->justMoved = false;
-				//}
+					modelGrid->ReinitiateMeshForParticle((LineLens3D*)l, particle);
 
-				modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
+					//if (l->justMoved) 
+					//{
+					//	////the related work needs more time to finish. To keep the lens facing the camera, the lens nodes needs to be rotated. Also the lens region may need to change to guarantee to cover the whole region
+					//	//modelGrid->MoveMesh(l->moveVec);
+					//	l->justMoved = false;
+					//}
 
-				modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle.get(), &glyphBright[0], (LineLens3D*)l, isFreezingFeature, snappedFeatureId);
-				
+					modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
+
+					modelGrid->UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle.get(), &glyphBright[0], (LineLens3D*)l, isFreezingFeature, snappedFeatureId);
+				}
 			}
 			else if (l->type == TYPE_CIRCLE){
 				QMatrix4x4 q_modelview = QMatrix4x4(_mv);

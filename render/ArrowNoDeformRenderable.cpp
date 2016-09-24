@@ -224,8 +224,7 @@ void ArrowNoDeformRenderable::GenVertexBuffer(int nv, float* vertex)
 
 void ArrowNoDeformRenderable::init()
 {
-	if (initialized)
-		return;
+
 	GlyphRenderable::init();
 
 	m_vao = std::make_shared<QOpenGLVertexArrayObject>();
@@ -241,8 +240,6 @@ void ArrowNoDeformRenderable::init()
 
 	//initPickingDrawingObjects();
 	m_vao->release();
-
-	initialized = true;
 }
 
 void ArrowNoDeformRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
@@ -306,18 +303,11 @@ void ArrowNoDeformRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
-	//if (!initialized)
-	//	return;
-
 	RecordMatrix(modelview, projection);
 
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
-}
-void ArrowNoDeformRenderable::UpdateData()
-{
-
 }
 
 void ArrowNoDeformRenderable::initPickingDrawingObjects()

@@ -90,31 +90,6 @@ void LensRenderable::init()
 {
 }
 
-void LensRenderable::UpdateData() {
-}
-
-void LensRenderable::adjustOffset(){
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
-
-		if (l->type == LENS_TYPE::TYPE_CURVEB) {
-			((CurveBLens*)l)->adjustOffset();
-
-		}
-	}
-}; 
-
-void LensRenderable::RefineLensBoundary(){
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
-
-		if (l->type == LENS_TYPE::TYPE_CURVEB) {
-			((CurveBLens*)l)->RefineLensBoundary();
-
-		}
-	}
-
-};
 
 void LensRenderable::draw(float modelview[16], float projection[16])
 {
@@ -406,9 +381,9 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 					glLineWidth(4);
 
 					glColor3f(0.39f, 0.89f, 0.26f);
-					std::vector<float3> PointsForIncisionBack = ((LineLens3D*)l)->GetIncisionBack(); 
+					std::vector<float3> PointsForIncisionFront = ((LineLens3D*)l)->GetIncisionFront();
 					glBegin(GL_LINES);
-					for (auto v : PointsForIncisionBack)
+					for (auto v : PointsForIncisionFront)
 						glVertex3f(v.x, v.y, v.z);
 					glEnd();
 
@@ -523,87 +498,6 @@ float LensRenderable::GetBackLensObjectRadius()
 	return ret;
 }
 
-bool LensRenderable::InsideALens(int x, int y)
-{
-	int2 winSize = actor->GetWindowSize();
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	actor->GetModelview(modelview);
-	actor->GetProjection(projection);
-	bool ret = false;
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
-		if (l->PointInsideFullLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-			ret = true;
-			break;
-		}
-	}
-	return ret;
-}
-
-void LensRenderable::UpdateLensTwoFingers(int2 p1, int2 p2)
-{
-	int2 winSize = actor->GetWindowSize();
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	actor->GetModelview(modelview);
-	actor->GetProjection(projection);
-	if (lenses.size() > 0) {
-		lenses.back()->ChangeLensTwoFingers(p1, p2, modelview, projection, winSize.x, winSize.y);
-		lenses.back()->justChanged = true;
-		actor->UpdateGL();
-	}
-}
-
-
-bool LensRenderable::TwoPointsInsideALens(int2 p1, int2 p2)
-{
-	int2 winSize = actor->GetWindowSize();
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	actor->GetModelview(modelview);
-	actor->GetProjection(projection);
-	bool ret = false;
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
-		if (l->PointInsideLens(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
-			&& l->PointInsideLens(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
-			ret = true;
-			break;
-		}
-	}
-	return ret;
-}
-
-
-bool LensRenderable::OnLensInnerBoundary(int2 p1, int2 p2)
-{
-	int2 winSize = actor->GetWindowSize();
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	actor->GetModelview(modelview);
-	actor->GetProjection(projection);
-	bool ret = false;
-	for (int i = 0; i < lenses.size(); i++) {
-		Lens* l = lenses[i];
-		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
-			if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
-				&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
-				ret = true;
-				break;
-			}
-		}
-		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
-			if (l->PointOnObjectInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
-				&& l->PointOnObjectInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
-				ret = true;
-				break;
-			}
-		}
-	}
-	return ret;
-}
-
 
 void LensRenderable::mousePress(int x, int y, int modifier)
 {
@@ -633,8 +527,24 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
 			if (l->PointOnLensCenter(x, y, modelview, projection, winSize.x, winSize.y)) {
-				//workingOnLens = true;
 				actor->SetInteractMode(INTERACT_MODE::MOVE_LENS);
+				pickedLens = i;
+				break;
+			}
+			else if (l->PointOnOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
+				pickedLens = i;
+				break;
+			}
+			else if (l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+				std::cout << "dfefaeaw" << std::endl;
+				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
+				pickedLens = i;
+				break;
+			}
+			/*
+			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointOnOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
+				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
 				pickedLens = i;
 				break;
 			}
@@ -643,11 +553,7 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				pickedLens = i;
 				break;
 			}
-			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE && l->PointOnOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
-				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
-				pickedLens = i;
-				break;
-			}
+			
 			else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
 				if (l->type == LENS_TYPE::TYPE_CIRCLE){
 					if (l->PointOnObjectInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
@@ -677,7 +583,7 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 						break;
 					}
 				}
-			}
+			}*/
 		}
 		break;
 	}
@@ -698,14 +604,23 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 	actor->GetProjection(projection);
 	if (INTERACT_MODE::ADDING_LENS == actor->GetInteractMode()) {
 		Lens* l = lenses[lenses.size() - 1];
-		if (l->type == LENS_TYPE::TYPE_CURVEB) {
+		if (l->type == LENS_TYPE::TYPE_LINE) {
+			if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
+			{
+				((LineLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
+				l->justChanged = true;
+				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+			}
+			else
+			{
+				((LineLens3D*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y, make_float3(0, 0, 0), make_float3(0, 0, 0));
+				l->justChanged = true;
+				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+			}
+		}
+		else if (l->type == LENS_TYPE::TYPE_CURVEB) {
 			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			l->justChanged = true;
-			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);			
-		}
-		else if (l->type == LENS_TYPE::TYPE_LINE) {
-			((LineLens*)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
-			l->justChanged = true; 
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
 	}
@@ -783,7 +698,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 		}
 		else if (l->type == LENS_TYPE::TYPE_LINE){
 			((LineLens *)l)->ctrlPoint2Abs = make_float2(x, y);
-			((LineLens*)l)->UpdateInfoFromCtrlPoints(modelview, projection, winSize.x, winSize.y);
+			if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
+				((LineLens*)l)->UpdateInfoFromCtrlPoints(modelview, projection, winSize.x, winSize.y);
 		}
 		break;
 	}
@@ -884,83 +800,11 @@ void LensRenderable::SnapLastLens()
 	}
 }
 
-void LensRenderable::ChangeLensDepth(float v)
-{
-	//float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
-	if (lenses.size() == 0) return;
-	lenses.back()->ChangeClipDepth(v, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-
-	//lenses.back()->justChanged = true;
-	actor->UpdateGL();
-}
 
 
-void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleFactor)
-{
-	//GLfloat modelview[16];
-	//GLfloat projection[16];
-	//actor->GetModelview(modelview);
-	//actor->GetProjection(projection);
-	//int2 winSize = actor->GetWindowSize();
-	//pickedLens = -1;
-	//for (int i = 0; i < lenses.size(); i++) {
-	//	Lens* l = lenses[i];
-	//	if (l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
-	//		pickedLens = i;
-	//		break;
-	//	}
-	//}
-	//if (pickedLens > -1){
-	if (lenses.size()<1)
-		return;
-	if (INTERACT_MODE::MODIFY_LENS_DEPTH == actor->GetInteractMode()){
-		//actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
-		//std::cout << "totalScaleFactor:" << totalScaleFactor << std::endl;
-		float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
-		lenses[pickedLens]->ChangeClipDepth(scaleFactor, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-		lenses[pickedLens]->justChanged = true;
-		actor->UpdateGL();
-	}
-	//}
-	//else {
-	//	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-	//}
-}
 
 
-void LensRenderable::SlotFocusSizeChanged(int v)
-{
-	if (lenses.size() > 0){
-		lenses.back()->SetFocusRatio((49 - v) * 0.02 * 0.8 + 0.2);
-		Lens *l = lenses.back();
-		//if (l->GetType() == LENS_TYPE::TYPE_CURVE)
-		//{
-		//	((CurveLens *)l)->UpdateTransferredData();
-		//}
-		l->justChanged = true;
-	}
-	actor->UpdateGL();
-}
 
-
-void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
-{
-	//if (lenses.size() > 0){
-	//	lenses.back()->SetSideSize(v * 0.1);
-	//}
-	//((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	//actor->UpdateGL();
-}
-
-void LensRenderable::SlotDelLens()
-{
-	if (lenses.size() > 0){
-		lastLensCenter = make_float3(lenses.back()->GetCenter());
-		lastLensCenterRecorded = true;
-		lenses.pop_back();
-	}
-	actor->UpdateGL();
-}
 
 inline float3 GetNormalizedLeapPos(float3 p)
 {
@@ -995,11 +839,11 @@ float3 LensRenderable::GetTransferredLeapPos(float3 p)
 	//actor->GetModelview(modelview);
 	//actor->GetProjection(projection);
 	//float _invmv[16];
-	//float _inpj[16];
-	//invertMatrix(projection, _inpj);
+	//float _invpj[16];
+	//invertMatrix(projection, _invpj);
 	//invertMatrix(modelview, _invmv);
 
-	//float4 leapPos_f4 = Clip2ObjectGlobal(make_float4(leapPosClip, 1), _invmv, _inpj);
+	//float4 leapPos_f4 = Clip2ObjectGlobal(make_float4(leapPosClip, 1), _invmv, _invpj);
 
 	//return make_float3(leapPos_f4);
 
@@ -1013,8 +857,8 @@ float3 LensRenderable::GetTransferredLeapPos(float3 p)
 	//actor->GetModelview(modelview);
 	////actor->GetProjection(projection);
 	//float _invmv[16];
-	////float _inpj[16];
-	////invertMatrix(projection, _inpj);
+	////float _invpj[16];
+	////invertMatrix(projection, _invpj);
 	//invertMatrix(modelview, _invmv);
 	//float4 camerax4 = Camera2Object(make_float4(1, 0, 0, 0), _invmv);
 	//float4 cameray4 = Camera2Object(make_float4(0, 1, 0, 0), _invmv);
@@ -1043,11 +887,11 @@ float3 LensRenderable::GetTransferredLeapPos(float3 p)
 
 
 	float _invmv[16];
-	float _inpj[16];
-	invertMatrix(projection, _inpj);
+	float _invpj[16];
+	invertMatrix(projection, _invpj);
 	invertMatrix(modelview, _invmv);
 
-	return make_float3(Clip2ObjectGlobal(make_float4(leapClipx, leapClipy, leapClipz, 1.0), _invmv, _inpj));
+	return make_float3(Clip2ObjectGlobal(make_float4(leapClipx, leapClipy, leapClipz, 1.0), _invmv, _invpj));
 
 }
 
@@ -1206,3 +1050,189 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 		}
 	}
 }
+
+
+
+//////////////////////////////////	//for keyboard /////////////////////
+
+void LensRenderable::adjustOffset(){
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+
+		if (l->type == LENS_TYPE::TYPE_CURVEB) {
+			((CurveBLens*)l)->adjustOffset();
+
+		}
+	}
+};
+
+void LensRenderable::RefineLensBoundary(){
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+
+		if (l->type == LENS_TYPE::TYPE_CURVEB) {
+			((CurveBLens*)l)->RefineLensBoundary();
+
+		}
+	}
+
+};
+
+void LensRenderable::SlotFocusSizeChanged(int v)
+{
+	if (lenses.size() > 0){
+		lenses.back()->SetFocusRatio((49 - v) * 0.02 * 0.8 + 0.2);
+		Lens *l = lenses.back();
+		//if (l->GetType() == LENS_TYPE::TYPE_CURVE)
+		//{
+		//	((CurveLens *)l)->UpdateTransferredData();
+		//}
+		l->justChanged = true;
+	}
+	actor->UpdateGL();
+}
+
+void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
+{
+	//if (lenses.size() > 0){
+	//	lenses.back()->SetSideSize(v * 0.1);
+	//}
+	//((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
+	//actor->UpdateGL();
+}
+
+void LensRenderable::SlotDelLens()
+{
+	if (lenses.size() > 0){
+		lastLensCenter = make_float3(lenses.back()->GetCenter());
+		lastLensCenterRecorded = true;
+		lenses.pop_back();
+	}
+	actor->UpdateGL();
+}
+
+
+
+//////////////////////////////////	//for touch screen /////////////////////
+
+void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleFactor)
+{
+	//GLfloat modelview[16];
+	//GLfloat projection[16];
+	//actor->GetModelview(modelview);
+	//actor->GetProjection(projection);
+	//int2 winSize = actor->GetWindowSize();
+	//pickedLens = -1;
+	//for (int i = 0; i < lenses.size(); i++) {
+	//	Lens* l = lenses[i];
+	//	if (l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+	//		pickedLens = i;
+	//		break;
+	//	}
+	//}
+	//if (pickedLens > -1){
+	if (lenses.size()<1)
+		return;
+	if (INTERACT_MODE::MODIFY_LENS_DEPTH == actor->GetInteractMode()){
+		//actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_DEPTH);
+		//std::cout << "totalScaleFactor:" << totalScaleFactor << std::endl;
+		float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
+		lenses[pickedLens]->ChangeClipDepth(scaleFactor, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+		lenses[pickedLens]->justChanged = true;
+		actor->UpdateGL();
+	}
+	//}
+	//else {
+	//	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	//}
+}
+
+void LensRenderable::ChangeLensDepth(float v)
+{
+	//float scaleFactor = totalScaleFactor > 1 ? 1 : -1;
+	if (lenses.size() == 0) return;
+	lenses.back()->ChangeClipDepth(v, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
+
+	//lenses.back()->justChanged = true;
+	actor->UpdateGL();
+}
+
+bool LensRenderable::InsideALens(int x, int y)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	bool ret = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (l->PointInsideFullLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+			ret = true;
+			break;
+		}
+	}
+	return ret;
+}
+
+void LensRenderable::UpdateLensTwoFingers(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	if (lenses.size() > 0) {
+		lenses.back()->ChangeLensTwoFingers(p1, p2, modelview, projection, winSize.x, winSize.y);
+		lenses.back()->justChanged = true;
+		actor->UpdateGL();
+	}
+}
+
+bool LensRenderable::TwoPointsInsideALens(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	bool ret = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (l->PointInsideLens(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+			&& l->PointInsideLens(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+			ret = true;
+			break;
+		}
+	}
+	return ret;
+}
+
+bool LensRenderable::OnLensInnerBoundary(int2 p1, int2 p2)
+{
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+	bool ret = false;
+	for (int i = 0; i < lenses.size(); i++) {
+		Lens* l = lenses[i];
+		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+			if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+				&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+				ret = true;
+				break;
+			}
+		}
+		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+			if (l->PointOnObjectInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+				&& l->PointOnObjectInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+				ret = true;
+				break;
+			}
+		}
+	}
+	return ret;
+}
+

@@ -174,7 +174,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	
 	arrowNoDeformRenderable = std::make_shared<ArrowNoDeformRenderable>(leapFingerIndicatorVecs,leapFingerIndicators);
 	arrowNoDeformRenderable->SetVisibility(false);
-	openGL->AddRenderable("zz", arrowNoDeformRenderable.get());
+	openGL->AddRenderable("9LeapArrow", arrowNoDeformRenderable.get());
 
 
 #endif

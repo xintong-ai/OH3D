@@ -76,7 +76,7 @@ struct Lens
 	//void SetSideSize(float _v){ sideSize = _v; }
 	float GetClipDepth(float* mv, float* pj);
 	float2 GetCenterScreenPos(float* mv, float* pj, int winW, int winH);
-	float3 UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
+	virtual float3 UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
 	float3 Compute3DPosByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);	
 
 	virtual bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) = 0;
@@ -253,10 +253,7 @@ struct LineLens :public Lens
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 
-	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
-	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
+	float3 UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH) override;//update c by new screen position (sx,sy)
 
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
@@ -275,19 +272,20 @@ struct LineLens3D :public LineLens
 
 	float3 ctrlPoint3D1, ctrlPoint3D2; //only used during construction/transfornation. afterwards the other variables will be computed and recorded
 
-	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal;
+	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal; //note that for LineLens3D, lSemiMinorAxisGlobal/focusRatio will give the width. lSemiMinorAxisGlobal along only provides a lower limit for the width
 	float3 majorAxisGlobal, lensDir, minorAxisGlobal;
 	float3 frontBaseCenter, estMeshBottomCenter;
 
+
 	void UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
 
-	void UpdateLineLensGlobalInfoFrom3DInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
-
+	void UpdateLineLensGlobalInfoFromScreenInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
+	void UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
+	
+	void FinishConstructing(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax);
 	void FinishConstructing3D(float* mv, float* pj, int winW, int winH, float3 dataMin, float3 dataMax);
 
 
-	std::vector<float3> GetContourBackBase(); //not commonly used for LineLens3D
-	std::vector<float3> GetContourFrontBase(); //not commonly used for LineLens3D
 	std::vector<float3> GetOuterContourBackBase();
 	std::vector<float3> GetOuterContourFrontBase();
 
@@ -296,11 +294,30 @@ struct LineLens3D :public LineLens
 	std::vector<float3> GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH);
 
 
+	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override; //for LineLens3D, the inner boundary is usually hidden. so compare to LineLens, this function deals with a different situation, which means points on the two sides at the major direction
+
+
+
+	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
+
+
+	//for future use...
+
 	//bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnObjectOuterBoundaryMajorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
 	bool PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
+
+
 	void ChangeClipDepth(int v, float* mv, float* pj) override;
+
 
 
 	//requested by Xin
@@ -379,7 +396,6 @@ public:
 	void FinishConstructing(float* mv, float* pj, int winW, int winH);
 	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
-	std::vector<float2> GetOuterContourold();
 	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
 	std::vector<float2> GetCenterLineForRendering(float* mv, float* pj, int winW, int winH);
 

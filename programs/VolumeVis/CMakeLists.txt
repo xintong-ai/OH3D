@@ -10,11 +10,6 @@ find_package(Qt5Widgets REQUIRED)
 	# find_package(osvr REQUIRED)
 # endif()
 
-# option(USE_LEAP "Enable features that require LEAP MOTION" OFF)
-# if(USE_LEAP)
-	# find_package(Leap REQUIRED)
-# endif()
-
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -24,9 +19,6 @@ include_directories(
 	${CMAKE_BINARY_DIR}
 	required)
 		
-	find_package(Leap)
-	include_directories(${Leap_ROOT_DIR}/include)
-
 set( Srcs 
 	main.cpp 
 	window.cpp 
@@ -61,15 +53,10 @@ target_link_libraries(${PROJECT_NAME}
 	interact
 	render
 	dataModel
-	${Leap_IMPORT_LIB_DEBUG}
 )
 
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
-endif()
-
-if(USE_LEAP)
-	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()
 
 if(USE_NEW_LEAP)

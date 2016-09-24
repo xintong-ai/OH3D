@@ -177,8 +177,6 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 void ArrowRenderable::init()
 {
-	if (initialized)
-		return;
 	GlyphRenderable::init();
 #ifdef USE_DEFORM
 	DeformGlyphRenderable::init();
@@ -215,7 +213,6 @@ void ArrowRenderable::init()
 
 	initPickingDrawingObjects();
 
-	initialized = true;
 }
 
 void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
@@ -280,9 +277,6 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
-	//if (!initialized)
-	//	return;
-
 	RecordMatrix(modelview, projection);
 #ifdef USE_DEFORM
 	ComputeDisplace(modelview, projection);
@@ -291,10 +285,7 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
 }
-void ArrowRenderable::UpdateData()
-{
 
-}
 
 void ArrowRenderable::initPickingDrawingObjects()
 {

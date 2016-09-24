@@ -32,7 +32,6 @@ public:
 	
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	void UpdateData() override;
 	LensRenderable();
 	std::vector<Lens*> GetLenses() { return lenses; }
 	float3 GetBackLensCenter();
@@ -47,6 +46,11 @@ public:
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int modifier, int delta)  override;
+	
+	bool isSnapToGlyph = false;
+	bool isSnapToFeature = false;
+
+	//for touch screen
 	void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) override;
 	void ChangeLensDepth(float v);
 	bool InsideALens(int x, int y);
@@ -54,10 +58,8 @@ public:
 	bool OnLensInnerBoundary(int2 p1, int2 p2);
 	void UpdateLensTwoFingers(int2 p1, int2 p2);
 
-	bool isSnapToGlyph = false;
-	bool isSnapToFeature = false;
-
 public slots:
+	//for keyboard
 	void SlotFocusSizeChanged(int v);
 	void SlotSideSizeChanged(int v);
 	void SlotDelLens();

@@ -816,7 +816,7 @@ void LineSplitModelGrid::UpdateMeshDevElasticity()
 void LineSplitModelGrid::UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
 {
 	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->Update(time_step, 4, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
+		lsgridMesh->UpdateLineMesh(time_step, 4, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
 	return;
 }
 

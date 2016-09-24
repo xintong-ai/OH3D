@@ -302,7 +302,6 @@ void CosmoRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 void CosmoRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!updated) {
-		UpdateData();
 		updated = true;
 	}
 
@@ -322,9 +321,6 @@ void CosmoRenderable::draw(float modelview[16], float projection[16])
 }
 
 
-void CosmoRenderable::UpdateData()
-{
-}
 
 void CosmoRenderable::initPickingDrawingObjects()
 {

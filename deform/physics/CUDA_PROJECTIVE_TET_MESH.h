@@ -385,10 +385,6 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 	float3 lensForce = make_float3(0, 0, 0);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	
-	float forceReduceRatio = 0.3;
-	if ((1 - focusRatio) / focusRatio<forceReduceRatio)
-		forceReduceRatio = (1 - focusRatio) / focusRatio;
-
 	float3 lenCen2P = vert - lensCen;
 	float lensCen2PProj = dot(lenCen2P, lensDir);
 	if (lensCen2PProj > 0){
@@ -400,34 +396,10 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
 
-			////apply force on (almost) all nodes
-			//if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
-			//	if ((lensCen2PMinorProj>0 && i < nStep.x * nStep.y * nStep.z && y!=cutY) || (i >= nStep.x * nStep.y * nStep.z))
-			//		lensForce = moveDir;
-			//	else
-			//		lensForce = -moveDir;
-			//}
-
-			////apply force on center nodes only
-			//if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
-			//	if (i >= nStep.x * nStep.y * nStep.z)
-			//		lensForce = moveDir;
-			//	else if (y == cutY)
-			//		lensForce = -moveDir;
-			//}
-			//else if (abs(lensCen2PMinorProj) < lSemiMinorAxis *(1 + forceReduceRatio)){
-			//	if (i >= nStep.x * nStep.y * nStep.z)
-			//		lensForce = (abs(lensCen2PMinorProj) - lSemiMinorAxis) / lSemiMinorAxis / forceReduceRatio * moveDir;
-			//	else if (y == cutY)
-			//		lensForce = - (abs(lensCen2PMinorProj) - lSemiMinorAxis) / lSemiMinorAxis / forceReduceRatio * moveDir;
-			//}
-
 			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio/2){
 				if (i >= nStep.x * nStep.y * nStep.z)
-					//lensForce = (1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
 					lensForce = moveDir;
 				else if (y == cutY && x>0 && x<nStep.x-1)
-					//lensForce = -(1 - abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio / 2)) * moveDir;
 					lensForce = -moveDir;
 			}
 		}
@@ -1103,7 +1075,7 @@ public:
 
 
 	//for line lens
-	void Update(TYPE t, int iterations, TYPE _lensCen[], TYPE _lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
+	void UpdateLineMesh(TYPE t, int iterations, TYPE _lensCen[], TYPE _lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;

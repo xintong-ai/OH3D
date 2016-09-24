@@ -57,8 +57,6 @@ public:
 	virtual void mouseMove(int x, int y, int modifier) {}
 	virtual void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) {}
 
-	virtual void UpdateData() {}
-
 	void RecordMatrix(float* modelview, float* projection){
 		memcpy(&matrix_mv.v[0].x, modelview, sizeof(float4) * 4);
 		memcpy(&matrix_pj.v[0].x, projection, sizeof(float4) * 4);
