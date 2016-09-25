@@ -26,12 +26,6 @@
 
 texture<float, 3, cudaReadModeElementType>  volumeTex;
 
-inline bool within(float v)
-{
-	return v >= 0 && v <= 1; //This func is for particle data. this case a particle must be affiliated with a tet. For volume maybe it's more important to not over count
-}
-
-
 struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 {
 	thrust::device_ptr<int> dev_ptr_tet;;
@@ -138,27 +132,12 @@ d_computeTranferDensityForVolume(cudaExtent volumeSize, float3 spacing, float st
 		// 155-250 / 0.302-0.486 : cortex and skull
 		//250+ /0.486: ventrical
 
-		//if (voxelValue < 0.272 && voxelValue>0.214)
-		//	usedValue = (voxelValue - 0.214) / (0.272 - 0.214)*(0.486 - 0.302) + 0.302;
-		//else if (voxelValue < 0.486 && voxelValue>0.302)
-		//	usedValue = (voxelValue - 0.302) / (0.486 - 0.302)*(0.272 - 0.214) + 0.214;
-
 		if (voxelValue < 0.2)
 			usedValue = (0.2 - voxelValue) / 0.2;
 		else if (voxelValue < 0.5)
 			voxelValue = 0;
 		else
 			usedValue = (voxelValue - 0.5) /0.5;
-
-		//if (voxelValue < 0.4364)
-		//	usedValue = 0;
-		//else if (voxelValue < 0.4864)
-		//	usedValue = (voxelValue - 0.4364)/0.05;
-		//else
-		//	usedValue = 1.0;
-
-		//if (voxelValue < 0.486 && voxelValue>0.302)
-		//	usedValue = 0;
 	}
 	else if(densityTransferMode == 3){
 		float4 grad = make_float4(0.0);
@@ -183,7 +162,6 @@ d_computeTranferDensityForVolume(cudaExtent volumeSize, float3 spacing, float st
 
 	//glm::vec4 g_vcTransformed = invMeshTransMat*g_vcOri;
 	float4 g_vcTransformed = mat4mulvec4(invMeshTransMat, make_float4(spacing.x*x, spacing.y*y, spacing.z*z, 1.0));
-
 
 	float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
 	float3 tmp = vc / step;
@@ -213,84 +191,6 @@ d_computeTranferDensityForVolume(cudaExtent volumeSize, float3 spacing, float st
 	}
 
 
-}
-
-__global__ void
-d_computeBinCountForVolume(cudaExtent volumeSize, float3 spacing, float step, int3 nStep, const float* invMeshTransMat, const int* tet, const float* X, int* binCount)
-{
-
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-	float voxelValue = tex3D(volumeTex, x + 0.5, y + 0.5, z + 0.5);
-
-	//glm::vec4 g_vcTransformed = invMeshTransMat*g_vcOri;
-	float4 g_vcTransformed = mat4mulvec4(invMeshTransMat, make_float4(spacing.x*x, spacing.y*y, spacing.z*z, 1.0));
-
-
-	float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
-	float3 tmp = vc / step;
-	int3 idx3 = make_int3(floor(tmp.x), floor(tmp.y), floor(tmp.z));
-
-	if (idx3.x < 0 || idx3.y < 0 || idx3.z < 0 || idx3.x >= nStep.x - 1 || idx3.y >= nStep.y - 1 || idx3.z >= nStep.z - 1){
-		;
-	}
-	else{
-		int cubeIdx = idx3.x * (nStep.y - 1) * (nStep.z - 1) + idx3.y * (nStep.z - 1) + idx3.z;
-
-		int j = 0;
-		for (j = 0; j < 5; j++){
-			float3 vv[4];
-			int tetId = cubeIdx * 5 + j;
-			for (int k = 0; k < 4; k++){
-				int iv = tet[tetId * 4 + k];
-				vv[k] = make_float3(mat4mulvec4(invMeshTransMat, make_float4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0)));
-			}
-			float4 bary = GetBarycentricCoordinate2(vv[0], vv[1], vv[2], vv[3], vc);
-			if (within_device(bary.x) && within_device(bary.y) && within_device(bary.z) && within_device(bary.w)) {
-
-				int binNum = 0;
-				if (voxelValue>0.5){
-					binNum = 9;
-				}
-				else if (voxelValue > 0.1)
-				{
-					binNum = ceil((voxelValue - 0.1) / 0.05);
-				}
-
-				atomicAdd(binCount + 10 * (cubeIdx * 5 + j) + binNum, 1);
-				return;
-			}
-		}
-	}
-}
-
-__global__ void
-d_computeTetEntropyForVolume(int tet_number, float* density, int* binCount)
-{
-	int tetId = blockDim.x * blockIdx.x + threadIdx.x;
-	if (tetId >= tet_number)	return;
-
-	float total = 0;
-	for (int i = 0; i < 10; i++)
-	{
-		total += binCount[10 * tetId + i];
-	}
-
-	float H = 0;
-	for (int i = 0; i < 10; i++)
-	{
-		float p = binCount[10 * tetId + i] / total;
-		if (p>0)
-			H -= (p*log(p));
-	}
-	density[tetId] = H;
 }
 
 LineSplitModelGrid::LineSplitModelGrid(float dmin[3], float dmax[3], int n)
@@ -614,6 +514,91 @@ void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr
 	bMeshNeedReinitiation = false;
 }
 
+
+
+
+
+void computeDensityForVolumeCPU(cudaExtent volumeSize, float3 spacing, float step, int3 nStep, const float* invMeshTransMat, const int* tet, const float* X, float* density, int* count, int densityTransferMode, Volume *v)
+{
+	for (int z = 0; z < volumeSize.depth; z++){
+		for (int y = 0; y < volumeSize.height; y++){
+			for (int x = 0; x < volumeSize.width; x++){
+				int ind = z*volumeSize.width*volumeSize.height + y*volumeSize.width + x;
+				float voxelValue = v->values[ind];
+				float usedValue;
+				if (densityTransferMode == 1){
+					usedValue = voxelValue;
+				}
+				else if (densityTransferMode == 2){
+					//key values:
+					// < 0.1945: ourside backgronud
+					// 110-140 / 0.214-0.272 : from cortex to ventrical
+					// 155-250 / 0.302-0.486 : cortex and skull
+					//250+ /0.486: ventrical
+
+					if (voxelValue < 0.2)
+						usedValue = (0.2 - voxelValue) / 0.2;
+					else if (voxelValue < 0.5)
+						voxelValue = 0;
+					else
+						usedValue = (voxelValue - 0.5) / 0.5;
+				}
+				else if (densityTransferMode == 3){
+					float4 grad = make_float4(0.0);
+
+					int indz1 = z - 2, indz2 = z + 2;
+					if (indz1 < 0)	indz1 = 0;
+					if (indz2 > volumeSize.depth - 1) indz2 = volumeSize.depth - 1;
+					grad.z = (v->values[indz2*volumeSize.width*volumeSize.height + y*volumeSize.width + x] - v->values[indz1*volumeSize.width*volumeSize.height + y*volumeSize.width + x]) / (indz2 - indz1);
+
+					int indy1 = y - 2, indy2 = y + 2;
+					if (indy1 < 0)	indy1 = 0;
+					if (indy2 > y >= volumeSize.height - 1) indy2 = y >= volumeSize.height - 1;
+					grad.y = (v->values[z*volumeSize.width*volumeSize.height + indy2*volumeSize.width + x] - v->values[z*volumeSize.width*volumeSize.height + indy1*volumeSize.width + x]) / (indy2 - indy1);
+
+					int indx1 = x - 2, indx2 = x + 2;
+					if (indx1 < 0)	indx1 = 0;
+					if (indx2 > volumeSize.width - 1) indx2 = volumeSize.width - 1;
+					grad.x = (v->values[z*volumeSize.width*volumeSize.height + y*volumeSize.width + indx2] - v->values[z*volumeSize.width*volumeSize.height + y*volumeSize.width + indx1]) / (indx2 - indx1);
+					usedValue = length(grad);
+				}
+
+				float4 g_vcTransformed = mat4mulvec4(invMeshTransMat, make_float4(spacing.x*x, spacing.y*y, spacing.z*z, 1.0));
+
+				float3 vc = make_float3(g_vcTransformed.x, g_vcTransformed.y, g_vcTransformed.z);
+				float3 tmp = vc / step;
+				int3 idx3 = make_int3(floor(tmp.x), floor(tmp.y), floor(tmp.z));
+
+				if (idx3.x < 0 || idx3.y < 0 || idx3.z < 0 || idx3.x >= nStep.x - 1 || idx3.y >= nStep.y - 1 || idx3.z >= nStep.z - 1){
+					;
+				}
+				else{
+					int cubeIdx = idx3.x * (nStep.y - 1) * (nStep.z - 1) + idx3.y * (nStep.z - 1) + idx3.z;
+
+					int j = 0;
+					for (j = 0; j < 5; j++){
+						float3 vv[4];
+						int tetId = cubeIdx * 5 + j;
+						for (int k = 0; k < 4; k++){
+							int iv = tet[tetId * 4 + k];
+							vv[k] = make_float3(mat4mulvec4(invMeshTransMat, make_float4(X[3 * iv + 0], X[3 * iv + 1], X[3 * iv + 2], 1.0)));
+						}
+						float4 bary = GetBarycentricCoordinate2(vv[0], vv[1], vv[2], vv[3], vc);
+						if (within(bary.x) && within(bary.y) && within(bary.z) && within(bary.w)) {
+							count[(cubeIdx * 5 + j)] = count[(cubeIdx * 5 + j)] + 1;
+							density[(cubeIdx * 5 + j)] = density[(cubeIdx * 5 + j)] + usedValue;
+						}
+					}
+				}
+
+			}
+		}
+	}
+	return;
+}
+
+
+
 void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<Volume> v)
 {
 
@@ -642,22 +627,27 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<V
 	cudaMalloc((void**)&dev_invMeshTrans, sizeof(float)* 16);
 	cudaMemcpy(dev_invMeshTrans, invMeshTransMatMemPointer, sizeof(float)* 16, cudaMemcpyHostToDevice);
 
-	checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
 
-	d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, dev_count, elasticityMode);//MGHT1
-
-
-	checkCudaErrors(cudaUnbindTexture(volumeTex));
-	
+	//checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
+	//d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, dev_count, elasticityMode);
+	//checkCudaErrors(cudaUnbindTexture(volumeTex));
+	//float* density = lsgridMesh->EL;
+	//cudaMemcpy(density, dev_density, sizeof(float)*tet_number, cudaMemcpyDeviceToHost);
+	//int* count = new int[tet_number];
+	//cudaMemcpy(count, dev_count, sizeof(int)*tet_number, cudaMemcpyDeviceToHost);
 
 	float* density = lsgridMesh->EL;
-	cudaMemcpy(density, dev_density, sizeof(float)*tet_number, cudaMemcpyDeviceToHost);
 	int* count = new int[tet_number];
-	cudaMemcpy(count, dev_count, sizeof(int)*tet_number, cudaMemcpyDeviceToHost);
-	
-	//float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
-	//float spacingCoeff = spacing.x*spacing.y*spacing.z;
-	//float spacingCoeff = 1; //should not consider spacing, since here the volume of tet is actually the number of voxels
+	memset(density, 0, sizeof(float)*tet_number);
+	memset(count, 0, sizeof(int)*tet_number);
+	computeDensityForVolumeCPU(size, spacing, step, nStep, invMeshTransMatMemPointer, GetTet(), GetX(), density, count, elasticityMode, v.get());
+
+	std::vector<float> forDebug2(density, density + tet_number);
+	std::vector<float> forDebug3(count, count + tet_number);
+
+
+
+
 	if (elasticityMode == 3)
 	{
 		for (int i = 0; i < tet_number; i++) {
@@ -690,109 +680,8 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<V
 	cudaFree(dev_count);
 }
 
-void LineSplitModelGrid::SetElasticityByTetEntropyOfVolumeCUDA(std::shared_ptr<Volume> v)
-{
-
-	cudaExtent size = v->volumeCuda.size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp33(size.width, blockSize.x), iDivUp33(size.height, blockSize.y), iDivUp33(size.depth, blockSize.z));
-
-	int tet_number = GetTetNumber();
-
-	float* dev_density;
-	int* dev_binCount;
-	cudaMalloc((void**)&dev_density, sizeof(float)* tet_number);
-	cudaMemset(dev_density, 0, sizeof(float)*tet_number);
-	cudaMalloc((void**)&dev_binCount, sizeof(int)* tet_number*10);
-	cudaMemset(dev_binCount, 0, sizeof(int)*tet_number * 10);
-
-	int3 dataSizes = v->size;
-	float3 spacing = v->spacing;
-	float step = GetStep();
-	int3 nStep = GetNumSteps();
-
-	glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
-	float* invMeshTransMatMemPointer = glm::value_ptr(invMeshTransMat);
-	float* dev_invMeshTrans;
-	cudaMalloc((void**)&dev_invMeshTrans, sizeof(float)* 16);
-	cudaMemcpy(dev_invMeshTrans, invMeshTransMatMemPointer, sizeof(float)* 16, cudaMemcpyHostToDevice);
-
-	checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
-	d_computeBinCountForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_binCount);
-	checkCudaErrors(cudaUnbindTexture(volumeTex));
-
-	dim3 blockSize2(64, 0, 1);
-	dim3 gridSize2(iDivUp33(tet_number,64), 1, 1);
-	d_computeTetEntropyForVolume << <gridSize2, blockSize2 >> >(tet_number, dev_density, dev_binCount);
-
-	float* density = lsgridMesh->EL;
-	cudaMemcpy(density, dev_density, sizeof(float)*tet_number, cudaMemcpyDeviceToHost);
-	
-
-	for (int i = 0; i < tet_number; i++) {
-		density[i] = 100 + 2000 * pow(density[i], 2);
- 	}
-	minElas = 100;
-	maxElasEstimate = 2100;
-	//std::vector<float> forDebug(density, density + tet_number);
-	//std::vector<int> forDebug2(10*tet_number);
-	//cudaMemcpy(&(forDebug2[0]), dev_binCount, sizeof(int)* 10 * tet_number, cudaMemcpyDeviceToHost);
-
-	cudaFree(dev_density);
-	cudaFree(dev_binCount);
-}
-
-/*
-void LineSplitModelGrid::SetElasticityByTetVarianceOfVolumeCUDA(std::shared_ptr<Volume> v)
-{
-
-	//cudaExtent size = v->volumeCuda.size;
-	//unsigned int dim = 32;
-	//dim3 blockSize(dim, dim, 1);
-	//dim3 gridSize(iDivUp33(size.width, blockSize.x), iDivUp33(size.height, blockSize.y), iDivUp33(size.depth, blockSize.z));
-
-	//int tet_number = GetTetNumber();
-
-	//float* dev_density, *dev_variance;
-	//cudaMalloc((void**)&dev_density, sizeof(float)* tet_number);
-	//cudaMemset(dev_density, 0, sizeof(float)*tet_number);
-	//cudaMalloc((void**)&dev_variance, sizeof(float)* tet_number);
-	//cudaMemset(dev_variance, 0, sizeof(float)*tet_number);
-
-	//int3 dataSizes = v->size;
-	//float3 spacing = v->spacing;
-	//float step = GetStep();
-	//int3 nStep = GetNumSteps();
-
-	//glm::mat4 invMeshTransMat = glm::inverse(meshTransMat);
-	//float* invMeshTransMatMemPointer = glm::value_ptr(invMeshTransMat);
-	//float* dev_invMeshTrans;
-	//cudaMalloc((void**)&dev_invMeshTrans, sizeof(float)* 16);
-	//cudaMemcpy(dev_invMeshTrans, invMeshTransMatMemPointer, sizeof(float)* 16, cudaMemcpyHostToDevice);
-
-	//checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
-
-	//d_computeDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density);
-	//d_computeVarianceForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, lsgridMesh->dev_tetVolumeOriginal, dev_variance);
 
 
-	//checkCudaErrors(cudaUnbindTexture(volumeTex));
-
-
-	//float* variance = lsgridMesh->EL;
-	//cudaMemcpy(variance, dev_variance, sizeof(float)*tet_number, cudaMemcpyDeviceToHost);
-
-	//float* tetVolumeOriginal = lsgridMesh->tetVolumeOriginal;
-	//float spacingCoeff = spacing.x*spacing.y*spacing.z; ///!!! not good!!!
-	//for (int i = 0; i < tet_number; i++) {
-	//	variance[i] = 500 + 100000 * (variance[i] / (tetVolumeOriginal[i] / spacingCoeff));
-	//}
-	//std::vector<float> forDebug(variance, variance + tet_number);
-	//cudaFree(dev_density);
-	//cudaFree(dev_variance);
-}
-*/
 
 void LineSplitModelGrid::SetElasticityForVolume(std::shared_ptr<Volume> v)
 {
@@ -800,8 +689,6 @@ void LineSplitModelGrid::SetElasticityForVolume(std::shared_ptr<Volume> v)
 		SetElasticityByTetDensityOfVolumeCUDA(v);
 	else if (elasticityMode == 0)
 		SetElasticitySimple(200);
-	else if (elasticityMode == 4)
-		SetElasticityByTetEntropyOfVolumeCUDA(v);
 	else{
 		std::cerr << "density mode error" << std::endl;
 		exit(0);

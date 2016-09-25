@@ -505,6 +505,10 @@ __device__ inline bool within_device(float v)
 	return v >= 0 && v <= 1;
 }
 
+inline bool within(float v)
+{
+	return v >= 0 && v <= 1;
+}
 
 __device__ __host__
 inline float Determinant4x4(const float4& v0,

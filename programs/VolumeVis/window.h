@@ -89,6 +89,8 @@ private:
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
 	QLabel *meshResLabel;
 
+	float deformForceConstant = 100;
+
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
 	std::shared_ptr<VRVolumeRenderableCUDA> vrVolumeRenderable;

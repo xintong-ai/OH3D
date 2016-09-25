@@ -87,6 +87,7 @@ private:
 	std::shared_ptr<Particle> inputParticle;
 
 	QLabel *deformForceLabel;
+	float deformForceConstant = 10;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;

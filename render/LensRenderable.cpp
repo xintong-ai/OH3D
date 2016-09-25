@@ -537,7 +537,6 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 				break;
 			}
 			else if (l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
-				std::cout << "dfefaeaw" << std::endl;
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
 				pickedLens = i;
 				break;
@@ -1236,3 +1235,43 @@ bool LensRenderable::OnLensInnerBoundary(int2 p1, int2 p2)
 	return ret;
 }
 
+
+void LensRenderable::SaveState(const char* filename)
+{
+	std::ofstream myfile;
+	myfile.open(filename);
+
+	if (lenses.size() == 0)
+		return;
+	LineLens3D* l = (LineLens3D*)lenses.back();
+	myfile << l->c.x << " " << l->c.y << " " << l->c.z << std::endl;
+	
+	myfile << l->ctrlPoint1Abs.x << " " << l->ctrlPoint1Abs.y << std::endl;
+	myfile << l->ctrlPoint2Abs.x << " " << l->ctrlPoint2Abs.y << std::endl;
+	myfile << l->focusRatio;
+	myfile.close();
+}
+
+void LensRenderable::LoadState(const char* filename)
+{
+	std::ifstream ifs(filename, std::ifstream::in);
+	if (ifs.is_open()) {
+		if (lenses.size() == 0)
+			return;
+		LineLens3D* l = (LineLens3D*)lenses.back();
+
+		float3 _c;
+		ifs >> _c.x >> _c.y >> _c.z;
+		l->SetCenter(_c);
+
+		ifs >> l->ctrlPoint1Abs.x;
+		ifs >> l->ctrlPoint1Abs.y;
+		ifs >> l->ctrlPoint2Abs.x;
+		ifs >> l->ctrlPoint2Abs.y;
+
+		ifs >> l->focusRatio;
+
+		ifs.close();
+		l->justChanged = true;
+	}
+}

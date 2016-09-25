@@ -33,14 +33,12 @@ class LineSplitModelGrid
 
 
 	const float	time_step = 1 / 30.0;
-	float deformForce = 32;
+	float deformForce = 30;
 
 	//density related
 	void SetElasticitySimple(float v);
 	void SetElasticityByTetDensityOfPartice(int n); //suppose the tet id for particles have been well set
 	void SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<Volume> v);
-	//void SetElasticityByTetVarianceOfVolumeCUDA(std::shared_ptr<Volume> v);
-	void SetElasticityByTetEntropyOfVolumeCUDA(std::shared_ptr<Volume> v);
 
 	//currently stored
 	float dataMin[3], dataMax[3];

@@ -62,7 +62,7 @@ Window::Window()
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 120);
 		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 
@@ -221,8 +221,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QLabel *deformForceLabelLit = new QLabel("Deform Force");
 	controlLayout->addWidget(deformForceLabelLit);
 	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
-	deformForceSlider->setRange(0, 44);
-	deformForceSlider->setValue(log2(modelGrid->getDeformForce()+1)*4.0);
+	deformForceSlider->setRange(0, 50);
+	deformForceSlider->setValue(modelGrid->getDeformForce() / deformForceConstant);
 	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
 	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
 	QHBoxLayout *deformForceLayout = new QHBoxLayout;
@@ -426,11 +426,13 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 void Window::SlotSaveState()
 {
 	matrixMgr->SaveState("current.state");
+	lensRenderable->SaveState("lens.state");
 }
 
 void Window::SlotLoadState()
 {
 	matrixMgr->LoadState("current.state");
+	lensRenderable->LoadState("lens.state");
 }
 
 
@@ -457,7 +459,7 @@ void Window::SlotDeformModeChanged(bool clicked)
 
 void Window::deformForceSliderValueChanged(int v)
 {
-	float newForce = pow(2, v / 4.0)-1;
+	float newForce = deformForceConstant*v;
 	deformForceLabel->setText(QString::number(newForce));
 	modelGrid->setDeformForce(newForce);
 }

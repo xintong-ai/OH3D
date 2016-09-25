@@ -218,6 +218,7 @@ struct CircleLens :public Lens
 struct LineLens :public Lens
 {
 	float lSemiMajorAxis, lSemiMinorAxis;
+	float axisRatio = 5.0f; // lSemiMajorAxis/lSemiMinorAxis.This is only used for construction. will not be updated after construciton
 	float2 direction; //suppose normalized
 	
 	LineLensInfo lineLensInfo; //for coding easiness, but actually duplicate the related storage
@@ -226,8 +227,7 @@ struct LineLens :public Lens
 
 	LineLens(float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){
 		lSemiMajorAxis = 0;
-		float ratio = 3.0f;
-		lSemiMinorAxis = lSemiMajorAxis / ratio;
+		lSemiMinorAxis = lSemiMajorAxis / axisRatio;
 		direction = make_float2(1.0, 0.0);
 		
 		isConstructing = true;

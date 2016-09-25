@@ -62,3 +62,6 @@ endif()
 if(USE_NEW_LEAP)
 	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()
+
+#set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
+list(APPEND CUDA_NVCC_FLAGS_DEBUG -G -g)

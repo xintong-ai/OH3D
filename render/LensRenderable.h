@@ -58,6 +58,9 @@ public:
 	bool OnLensInnerBoundary(int2 p1, int2 p2);
 	void UpdateLensTwoFingers(int2 p1, int2 p2);
 
+	void SaveState(const char* filename);
+	void LoadState(const char* filename);
+
 public slots:
 	//for keyboard
 	void SlotFocusSizeChanged(int v);

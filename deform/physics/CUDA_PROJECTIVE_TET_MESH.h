@@ -34,6 +34,7 @@
 #include "vector_functions.h"
 #include "helper_math.h"
 #include "helper_cuda.h"
+#include <math.h>       /* cos */
 
 #define GRAVITY			-9.8
 #define RADIUS_SQUARED	0.002//0.01
@@ -396,11 +397,28 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
 
-			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio/2){
-				if (i >= nStep.x * nStep.y * nStep.z)
-					lensForce = moveDir;
-				else if (y == cutY && x>0 && x<nStep.x-1)
-					lensForce = -moveDir;
+			//if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio / 2){
+			//	if (i >= nStep.x * nStep.y * nStep.z)
+			//		lensForce = moveDir;
+			//	else if (y == cutY && x>0 && x<nStep.x - 1)
+			//		lensForce = -moveDir;
+			//}
+
+			float r = abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio);
+			if (r<0.55){
+				if (r<0.45){
+					if (i >= nStep.x * nStep.y * nStep.z)
+						lensForce = moveDir;
+					else if (y == cutY && x>0 && x<nStep.x - 1)
+						lensForce = -moveDir;
+				}
+				else{
+					float rrr = (cos((r-0.45)/0.1*3.1415926) + 1) / 2;
+					if (i >= nStep.x * nStep.y * nStep.z)
+						lensForce = moveDir*rrr;
+					else if (y == cutY && x>0 && x<nStep.x - 1)
+						lensForce = -moveDir*rrr;
+				}
 			}
 		}
 	}

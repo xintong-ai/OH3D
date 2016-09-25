@@ -22,7 +22,9 @@ include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE}
 set(SRCS 
 	Displace.cu 
 	#ModelGrid.cu
-	LineSplitModelGrid.cu ModelVolumeDeformer.cu DeformInterface.cpp)
+	LineSplitModelGrid.cu
+	ModelVolumeDeformer.cu
+	DeformInterface.cpp)
 
 set(HDRS	defines.h
 			Displace.h
@@ -35,5 +37,8 @@ set(HDRS	defines.h
 			DeformInterface.h)
 
 cuda_add_library(deform STATIC ${HDRS} ${SRCS})
+
+#set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
+list(APPEND CUDA_NVCC_FLAGS_DEBUG -G -g)
 
 endif()

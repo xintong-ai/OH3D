@@ -76,7 +76,6 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 		glLineWidth(2);
 		glBegin(GL_LINES);
 
-		//!!! not work for circle lens
 		float minElas = modelGrid->minElas;
 		float maxElas = modelGrid->maxElasEstimate;
 		LineLens3D* len = (LineLens3D*)((*lenses)[0]);

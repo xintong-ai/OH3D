@@ -201,8 +201,7 @@ void LineLens::UpdateInfoFromCtrlPoints(float* mv, float* pj, int winW, int winH
 	direction = ctrlPoint2Abs - ctrlPoint1Abs;
 
 	lSemiMajorAxis = length(direction) / 2;
-	float ratio = 3.0f;
-	lSemiMinorAxis = lSemiMajorAxis / ratio;
+	lSemiMinorAxis = lSemiMajorAxis / axisRatio;
 
 	if (lSemiMajorAxis < 0.000001)
 		direction = make_float2(0, 0);
@@ -464,7 +463,7 @@ void LineLens3D::UpdateLineLensGlobalInfoFromScreenInfo(int winWidth, int winHei
 	v2 = majorAxisGlobal;
 	v3 = normalize(cross(d, cross(d, v2)));
 	lSemiMajorAxisGlobal = dot(v1, v3) / dot(v2, v3);
-	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / 5;//use focusRatio as a default value, but they do not have a ratio equal to either 5 or focusRatio
+	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / axisRatio;
 
 	//cannot compute endPointSemiMinorAxisGlobal in a similar way to endPointSemiMajorAxisGlobal, which will cause non-perpendicular in global space
 };
@@ -525,7 +524,7 @@ void LineLens3D::UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeig
 	frontBaseCenter = lensCen + rz2*lensDir;
 	estMeshBottomCenter = lensCen + rz1*lensDir;
 	lSemiMajorAxisGlobal = dot(drawingSeg, majorAxisGlobal) / 2;
-	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / focusRatio; //use focusRatio as a default value, but they do not have a ratio equal to focusRatio
+	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / axisRatio;
 }
 
 
@@ -728,10 +727,6 @@ void LineLens3D::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, fl
 {
 	ChangefocusRatio(_x, _y, _prex, _prey, mv, pj, winW, winH);
 }
-
-
-
-
 
 
 
