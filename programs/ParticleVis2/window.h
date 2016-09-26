@@ -87,7 +87,9 @@ private:
 	std::shared_ptr<Particle> inputParticle;
 
 	QLabel *deformForceLabel;
+	QLabel *meshResLabel;
 	float deformForceConstant = 10;
+	int meshResolution = 20;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
@@ -125,6 +127,9 @@ private slots:
 	void SlotToggleUsingFeatureSnapping(bool b);
 	void SlotTogglePickingFeature(bool b);
 	void SlotToggleFeaturePickingFinished();
+
+	void SlotAddMeshRes();
+	void SlotMinusMeshRes();
 
 #ifdef USE_LEAP
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);

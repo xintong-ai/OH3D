@@ -30,7 +30,7 @@ public:
 	void draw(float modelview[16], float projection[16]) override;
 	CosmoRenderable(std::shared_ptr<Particle> _particle);
 
-	virtual void setColorMap(COLOR_MAP cm) override;
+	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) override;
 
 protected:
 	void initPickingDrawingObjects();

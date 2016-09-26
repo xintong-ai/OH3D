@@ -48,6 +48,8 @@ public:
 	void GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec, std::vector<float>& _val);
 
 	void OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v);
+	void OutputToVolumeByNormalizedVecDownSample(std::shared_ptr<Volume> v, int c);
+	void OutputToVolumeByNormalizedVecUpSample(std::shared_ptr<Volume> v, int c);
 
 protected:
 	void Load() override;

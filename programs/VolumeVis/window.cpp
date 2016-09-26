@@ -86,6 +86,9 @@ Window::Window()
 		std::shared_ptr<VecReader> reader2;
 		reader2 = std::make_shared<VecReader>(dataPath.c_str());
 		reader2->OutputToVolumeByNormalizedVecMag(inputVolume);
+		//reader2->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
+		//reader2->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
+
 		reader2.reset();
 	}
 	else{
@@ -500,12 +503,34 @@ void Window::SlotSaveState()
 {
 	matrixMgr->SaveState("current.state");
 	lensRenderable->SaveState("lens.state");
+
+	std::ofstream myfile;
+	myfile.open("system.state");
+
+	myfile << modelGrid->getDeformForce() << std::endl;
+	myfile << meshResolution << std::endl;
+	myfile.close();
+
 }
 
 void Window::SlotLoadState()
 {
 	matrixMgr->LoadState("current.state");
 	lensRenderable->LoadState("lens.state");
+
+	std::ifstream ifs("system.state", std::ifstream::in);
+	if (ifs.is_open()) {
+		float f;
+		int res;
+		ifs >> f;
+		ifs >> res;
+
+		deformForceSliderValueChanged(f / deformForceConstant);
+		meshResolution = res;
+		modelGrid->meshResolution = meshResolution;
+		modelGrid->setReinitiationNeed();
+		meshResLabel->setText(QString::number(meshResolution));
+	}
 }
 
 

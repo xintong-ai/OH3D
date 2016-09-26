@@ -160,28 +160,27 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 		Lens *l = lenses->back();
 
 		if (l->justChanged){
-
 			switch (((DeformGLWidget*)actor)->GetDeformModel())
 			{
 			case DEFORM_MODEL::OBJECT_SPACE:
 			{
 				if (l->type == TYPE_LINE)
 					modelGrid->setReinitiationNeed();
-				l->justChanged = false;
 				break;
 			}
 			}
-			//this setting can only do deform based on the last lens
 		}
 
 		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false){
 
-			int winWidth, winHeight;
-			actor->GetWindowSize(winWidth, winHeight);
-
-			float3 dmin, dmax;
-			volume->GetPosRange(dmin, dmax);
-			((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, dmin, dmax);
+			if (l->justChanged){
+				int winWidth, winHeight;
+				actor->GetWindowSize(winWidth, winHeight); 
+				float3 dmin, dmax;
+				volume->GetPosRange(dmin, dmax);
+				((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, dmin, dmax);
+				l->justChanged = false;
+			}
 
 			if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
 				modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume);

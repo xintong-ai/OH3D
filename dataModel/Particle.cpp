@@ -66,18 +66,6 @@ void Particle::setFeature(std::vector<char> _f)
 }
 
 
-void Particle::normalizePos()
-{
-	float3 posave = (posMin + posMax) / 2;
-	for (int i = 0; i < pos.size(); i++) {
-		pos[i] = pos[i] - make_float4(posave,0);
-	}
-	posOrig = pos;
-	posMin = posMin - posave;
-	posMax = posMax - posave;
-}
-
-
 void Particle::featureReshuffle()
 {
 	//since the feature is just tags, we may want to reshuffle the tags due to any reason

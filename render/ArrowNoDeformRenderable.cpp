@@ -72,7 +72,7 @@ GlyphRenderable(_particle)
 }
 
 
-void ArrowNoDeformRenderable::setColorMap(COLOR_MAP cm)
+void ArrowNoDeformRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
 {
 	ColorGradient cg(cm);
 	if (colorByFeature){

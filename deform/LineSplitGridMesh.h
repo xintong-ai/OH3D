@@ -483,7 +483,7 @@ public:
 				n++;
 			}
 		}
-		std::cout << "final mesh size " << nStep[0] << " " << nStep[1] << " " << nStep[2] << "with step length " << step << std::endl;
+		std::cout << "final mesh size " << nStep[0] << " " << nStep[1] << " " << nStep[2] << ", with step length " << step << std::endl;
 		
 		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
 		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;

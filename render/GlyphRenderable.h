@@ -44,7 +44,7 @@ public:
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 
-	virtual void setColorMap(COLOR_MAP cm) = 0;
+	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) = 0;
 	
 	std::vector<float> glyphBright;
 

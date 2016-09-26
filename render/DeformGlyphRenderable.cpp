@@ -96,7 +96,6 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 		case DEFORM_MODEL::SCREEN_SPACE:
 		{
 			deformInterface->RecomputeTarget();
-			l->justChanged = false;
 			break;
 		}
 		case DEFORM_MODEL::OBJECT_SPACE:
@@ -125,10 +124,10 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 			if (l->type == TYPE_LINE && !l->isConstructing){
 				int winWidth, winHeight;
 				actor->GetWindowSize(winWidth, winHeight);
-				//if (l->justChanged){
-				((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, particle->posMin, particle->posMax);
+				if (l->justChanged){
+					((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, particle->posMin, particle->posMax);
 					l->justChanged = false;
-				//}
+				}
 
 				if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
 

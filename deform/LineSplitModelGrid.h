@@ -66,9 +66,6 @@ public:
 	
 	int meshResolution;
 
-
-
-
 	//density related
 	int elasticityMode = 1;
 
@@ -89,8 +86,6 @@ public:
 	void InitializeUniformGrid(std::shared_ptr<Particle> p); //the info of gridMesh only need to be initialized once, so use a different initail stretagy with lsgridMesh
 	void UpdateUniformMesh(float lensCenter[3], float lenDir[3], float focusRatio, float radius);
 	void UpdatePointCoordsUniformMesh(float4* v, int n);
-
-
 
 	//for line mesh only
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }

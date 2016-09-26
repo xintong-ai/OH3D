@@ -42,7 +42,7 @@ CosmoRenderable::CosmoRenderable(std::shared_ptr<Particle> _particle)
 	setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
 }
 
-void CosmoRenderable::setColorMap(COLOR_MAP cm)
+void CosmoRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
 {
 	ColorGradient cg(cm);
 	if (colorByFeature){

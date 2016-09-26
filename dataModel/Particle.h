@@ -42,8 +42,6 @@ public:
 	}
 
 	void featureReshuffle();
-
-	void normalizePos();
 private:
 
 };

@@ -101,8 +101,8 @@ void VecReader::OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v){
 
 	v->size = make_int3(size[0], size[1], size[2]);
 
-	v->spacing = make_float3(1, 1, 1);
-	v->dataOrigin = make_float3(0, 0, 0);;
+	v->spacing = make_float3(1.0, 1.0, 1.0); //may add spacing info into the vecReader?
+	v->dataOrigin = make_float3(0, 0, 0);
 
 	v->values = new float[v->size.x*v->size.y*v->size.z];
 	for (int k = 0; k < v->size.z; k++)
@@ -117,10 +117,64 @@ void VecReader::OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v){
 		}
 	}
 
+	//std::ofstream OutFile;
+	//OutFile.open("nek256mag", std::ofstream::out | std::ofstream::binary);
+	//OutFile.write((char*)v->values, sizeof(float)*v->size.x*v->size.y*v->size.z);
+	//OutFile.close();
+}
 
 
-	std::ofstream OutFile;
-	OutFile.open("nek256mag", std::ofstream::out | std::ofstream::binary);
-	OutFile.write((char*)v->values, sizeof(float)*v->size.x*v->size.y*v->size.z);
-	OutFile.close();
+
+void VecReader::OutputToVolumeByNormalizedVecDownSample(std::shared_ptr<Volume> v, int n)
+{
+	//float n = 1.5;
+
+	v->~Volume();
+
+	v->size = make_int3(size[0] / n, size[1] / n, size[2] / n);
+
+	v->spacing = make_float3(1.0 * n, 1.0 * n, 1.0 * n);
+	v->dataOrigin = make_float3(0, 0, 0);
+
+	v->values = new float[v->size.x*v->size.y*v->size.z];
+	for (int k = 0; k < v->size.z; k++)
+	{
+		for (int j = 0; j < v->size.y; j++)
+		{
+			for (int i = 0; i < v->size.x; i++)
+			{
+				int ind = k*v->size.y * v->size.x + j*v->size.x + i;
+				int indOri = int(k*n)*size[0] * size[1] + int(j*n)*size[0] + int(i*n);
+				v->values[ind] = (val[indOri] - valMin) / (valMax - valMin);
+			}
+		}
+	}
+}
+
+
+void VecReader::OutputToVolumeByNormalizedVecUpSample(std::shared_ptr<Volume> v, int n)
+{
+	//float n = 1.5;
+
+	v->~Volume();
+
+	v->size = make_int3(size[0] * n, size[1] * n, size[2] * n);
+
+	v->spacing = make_float3(1.0 / n, 1.0 / n, 1.0 / n);
+	v->dataOrigin = make_float3(0, 0, 0);
+
+	v->values = new float[v->size.x*v->size.y*v->size.z];
+	for (int k = 0; k < v->size.z; k++)
+	{
+		for (int j = 0; j < v->size.y; j++)
+		{
+			for (int i = 0; i < v->size.x; i++)
+			{
+				int ind = k*v->size.y * v->size.x + j*v->size.x + i;
+				int indOri = k/n*size[0] * size[1] + j/n*size[0] + i/n;
+				//int indOri = k / 3 * 2 * size[0] * size[1] + j / 3 * 2 * size[0] + i / 3 * 2;
+				v->values[ind] = (val[indOri] - valMin) / (valMax - valMin);
+			}
+		}
+	}
 }

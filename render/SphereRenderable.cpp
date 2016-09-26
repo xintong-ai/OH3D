@@ -40,9 +40,9 @@ SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
 	setColorMap(COLOR_MAP::RDYIGN);
 }
 
-void SphereRenderable::setColorMap(COLOR_MAP cm)
+void SphereRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
 {
-	ColorGradient cg(cm, true);
+	ColorGradient cg(cm, isReversed);
 	if (colorByFeature){
 		float vMax = particle->featureMax;
 		float vMin = particle->featureMin;

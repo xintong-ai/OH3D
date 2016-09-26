@@ -37,7 +37,7 @@ public:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 
-	void setColorMap(COLOR_MAP cm);
+	void setColorMap(COLOR_MAP cm, bool isReversed = false);
 
 protected:
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;

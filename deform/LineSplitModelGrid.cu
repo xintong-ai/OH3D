@@ -23,6 +23,7 @@
 #include <helper_cuda.h>
 #include <helper_math.h>
 #include <TransformFunc.h>
+#include <helper_timer.h>
 
 texture<float, 3, cudaReadModeElementType>  volumeTex;
 
@@ -420,6 +421,10 @@ void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, std::shared_p
 		exit(0);
 	}
 
+	StopWatchInterface *timer = 0;
+	sdkCreateTimer(&timer);
+	sdkStartTimer(&timer);
+
 	//can add a lsgridMesh clean function before Initialize. or else delete and readd the lsgridMesh
 	if (lsgridMesh != 0)
 		delete lsgridMesh;
@@ -430,6 +435,10 @@ void LineSplitModelGrid::ReinitiateMeshForParticle(LineLens3D * l, std::shared_p
 	SetElasticityForParticle(p);
 
 	lsgridMesh->Initialize(time_step);
+
+	timer->stop();
+	std::cout << "time used to construct mesh: " << sdkGetAverageTimerValue(&timer) /1000.f << std::endl;
+	sdkDeleteTimer(&timer);
 
 	bMeshNeedReinitiation = false;
 }
@@ -502,14 +511,21 @@ void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr
 		exit(0);
 	}
 
+	StopWatchInterface *timer = 0;
+	sdkCreateTimer(&timer);
+	sdkStartTimer(&timer);
+
 	if (lsgridMesh != 0)
 		delete lsgridMesh;
 	lsgridMesh = new LineSplitGridMesh<float>(dataMin, dataMax, meshResolution, l->c, l->lSemiMajorAxisGlobal, l->lSemiMinorAxisGlobal, l->majorAxisGlobal, l->focusRatio, l->lensDir, meshTransMat);
 
-
 	SetElasticityForVolume(v);
 	
 	lsgridMesh->Initialize(time_step);
+
+	timer->stop();
+	std::cout << "time used to construct mesh: " << sdkGetAverageTimerValue(&timer) / 1000.f << std::endl;
+	sdkDeleteTimer(&timer);
 
 	bMeshNeedReinitiation = false;
 }
@@ -642,8 +658,8 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<V
 	memset(count, 0, sizeof(int)*tet_number);
 	computeDensityForVolumeCPU(size, spacing, step, nStep, invMeshTransMatMemPointer, GetTet(), GetX(), density, count, elasticityMode, v.get());
 
-	std::vector<float> forDebug2(density, density + tet_number);
-	std::vector<float> forDebug3(count, count + tet_number);
+	//std::vector<float> forDebug2(density, density + tet_number);
+	//std::vector<float> forDebug3(count, count + tet_number);
 
 
 
@@ -673,7 +689,6 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<V
 	maxElasEstimate = 2100;
 	
 	//std::vector<float> forDebug(density, density + tet_number);
-	//std::vector<int> forDebug2(count, count + tet_number);
 
 	delete count;
 	cudaFree(dev_density);

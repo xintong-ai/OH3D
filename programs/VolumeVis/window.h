@@ -61,8 +61,6 @@ private:
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
-	int meshResolution = 20;
-
 	std::shared_ptr<QPushButton> delLensBtn;
 	std::shared_ptr<QRadioButton> radioDeformScreen;
 	std::shared_ptr<QRadioButton> radioDeformObject;
@@ -84,12 +82,13 @@ private:
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
 
-	QLabel *deformForceLabel;
 	QLabel *laLabel, *ldLabel, *lsLabel;
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
+	QLabel *deformForceLabel;
 	QLabel *meshResLabel;
 
 	float deformForceConstant = 100;
+	int meshResolution = 20;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;

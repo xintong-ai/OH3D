@@ -62,7 +62,7 @@ Window::Window()
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 120);
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
 		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 
@@ -71,6 +71,7 @@ Window::Window()
 		reader.reset();
 
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
+		glyphRenderable->setColorMap(COLOR_MAP::RDYIGN, true);
 	}
 	else{
 		std::shared_ptr<BinaryParticleReader> reader;
@@ -81,14 +82,13 @@ Window::Window()
 		reader.reset();
 		
 		//inputParticle->featureReshuffle();
-		//inputParticle->normalizePos();
 		//posMin = inputParticle->posMin;
 		//posMax = inputParticle->posMax;
 		
 		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-		//glyphRenderable->colorByFeature = true;
-		//glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+		glyphRenderable->colorByFeature = true;
+		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 	}
 
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
@@ -123,7 +123,7 @@ Window::Window()
 
 	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, 20);
+	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
 	modelGrid->initThrustVectors(inputParticle);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
@@ -198,6 +198,19 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(glyphRenderable.get(), SIGNAL(featurePickingFinished()), this, SLOT(SlotToggleFeaturePickingFinished()));
 
 
+	QHBoxLayout *meshResLayout = new QHBoxLayout;
+	QLabel *meshResLitLabel = new QLabel(("Mesh resolution:  "));
+	QPushButton* addMeshResPushButton = new QPushButton(tr("&+"));
+	addMeshResPushButton->setFixedSize(24, 24);
+	QPushButton* minusMeshResPushButton = new QPushButton(tr("&-"));
+	minusMeshResPushButton->setFixedSize(24, 24);
+	meshResLabel = new QLabel(QString::number(modelGrid->meshResolution));
+	meshResLayout->addWidget(meshResLitLabel);
+	meshResLayout->addWidget(minusMeshResPushButton);
+	meshResLayout->addWidget(addMeshResPushButton);
+	meshResLayout->addWidget(meshResLabel);
+	meshResLayout->addStretch();
+
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
@@ -216,7 +229,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(usingFeaturePickingCheck); 
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(udbeCheck);
-	
+	controlLayout->addLayout(meshResLayout);
+
 	
 	QLabel *deformForceLabelLit = new QLabel("Deform Force");
 	controlLayout->addWidget(deformForceLabelLit);
@@ -243,7 +257,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
-	
+	connect(addMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotAddMeshRes()));
+	connect(minusMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotMinusMeshRes()));
+
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
@@ -427,12 +443,32 @@ void Window::SlotSaveState()
 {
 	matrixMgr->SaveState("current.state");
 	lensRenderable->SaveState("lens.state");
+
+	std::ofstream myfile;
+	myfile.open("system.state");
+
+	myfile << modelGrid->getDeformForce() << std::endl;
+	myfile << meshResolution << std::endl;
+	myfile.close();
 }
 
 void Window::SlotLoadState()
 {
 	matrixMgr->LoadState("current.state");
 	lensRenderable->LoadState("lens.state");
+	std::ifstream ifs("system.state", std::ifstream::in);
+	if (ifs.is_open()) {
+		float f;
+		int res;
+		ifs >> f;
+		ifs >> res;
+
+		deformForceSliderValueChanged(f / deformForceConstant);
+		meshResolution = res;
+		modelGrid->meshResolution = meshResolution;
+		modelGrid->setReinitiationNeed();
+		meshResLabel->setText(QString::number(meshResolution));
+	}
 }
 
 
@@ -462,4 +498,19 @@ void Window::deformForceSliderValueChanged(int v)
 	float newForce = deformForceConstant*v;
 	deformForceLabel->setText(QString::number(newForce));
 	modelGrid->setDeformForce(newForce);
+}
+
+void Window::SlotAddMeshRes()
+{
+	meshResolution++;
+	modelGrid->meshResolution = meshResolution;
+	modelGrid->setReinitiationNeed();
+	meshResLabel->setText(QString::number(meshResolution));
+}
+void Window::SlotMinusMeshRes()
+{
+	meshResolution--;
+	modelGrid->meshResolution = meshResolution;
+	modelGrid->setReinitiationNeed();
+	meshResLabel->setText(QString::number(meshResolution));
 }
