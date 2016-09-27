@@ -472,11 +472,7 @@ void LineLens3D::UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeig
 {
 	float3 lensCen = (ctrlPoint3D1 + ctrlPoint3D2) / 2;
 
-	//ctrlPoint1Abs = Object2Screen(make_float4(ctrlPoint3D1, 1), _mv, _pj, winWidth, winHeight);
-	//ctrlPoint2Abs = Object2Screen(make_float4(ctrlPoint3D2, 1), _mv, _pj, winWidth, winHeight);
-
 	SetCenter(lensCen);
-
 
 	float _invmv[16];
 	float _invpj[16];
@@ -525,6 +521,8 @@ void LineLens3D::UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeig
 	estMeshBottomCenter = lensCen + rz1*lensDir;
 	lSemiMajorAxisGlobal = dot(drawingSeg, majorAxisGlobal) / 2;
 	lSemiMinorAxisGlobal = lSemiMajorAxisGlobal / axisRatio;
+	ctrlPoint3D1 = c - majorAxisGlobal*lSemiMajorAxisGlobal;
+	ctrlPoint3D2 = c + majorAxisGlobal*lSemiMajorAxisGlobal;
 }
 
 
@@ -787,40 +785,98 @@ std::vector<float3> LineLens3D::GetCtrlPoints3DForRendering(float* mv, float* pj
 	return res;
 }
 
-bool LineLens3D::PointOnObjectOuterBoundaryMajorSide(int _x, int _y, float* mv, float* pj, int winW, int winH)
-{
-	float2 center = Object2Screen(make_float4(frontBaseCenter, 1), mv, pj, winW, winH);
-	float2 ctrlP1Screen = Object2Screen(make_float4(frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal, 1), mv, pj, winW, winH);
-	float2 ctrlP2Screen = Object2Screen(make_float4(frontBaseCenter + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio, 1), mv, pj, winW, winH);
-	float2 dirScreen = normalize(ctrlP1Screen - center);
-	float dirScreenLength = length(ctrlP1Screen - center);
-	float2 minorDirScreen = normalize(ctrlP2Screen - center);
-	float minorDirScreenLength = length(ctrlP2Screen - center);
+bool LineLens3D::PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) {
+	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	float dis = length(make_float2(_x, _y) - center);
 
+	float3 axisp1 = frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 axisp2 = frontBaseCenter - minorAxisGlobal/focusRatio*lSemiMajorAxisGlobal;
+	float2 axisp1_screen = Object2Screen(make_float4(axisp1, 1.0f), mv, pj, winW, winH);
+	float2 axisp2_screen = Object2Screen(make_float4(axisp2, 1.0f), mv, pj, winW, winH);
 
-	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
-	float disMinorAbs = abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
-
-	return (abs(disMajorAbs - dirScreenLength) < eps_pixel && disMinorAbs <= minorDirScreenLength/2);
+	float thr = min(length(axisp1_screen - center) / 2, length(axisp2_screen - center) / 2);
+	return dis < thr;
+//	return dis < eps_pixel;
 }
 
-bool LineLens3D::PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, float* pj, int winW, int winH)
+
+bool LineLens3D::PointOnLensCenter3D(float3 pos, float* mv, float* pj, int winW, int winH) {
+	
+	float disMajor = abs(dot(pos - c, majorAxisGlobal));
+	float disMinor = abs(dot(pos - c, minorAxisGlobal));
+
+	return disMajor < lSemiMajorAxisGlobal / 2 && disMinor < lSemiMinorAxisGlobal / focusRatio / 2;
+}
+
+bool LineLens3D::PointInCuboidRegion3D(float3 pos, float* mv, float* pj, int winW, int winH)
 {
-	float2 center = Object2Screen(make_float4(frontBaseCenter, 1), mv, pj, winW, winH);
-	float2 ctrlP1Screen = Object2Screen(make_float4(frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal, 1), mv, pj, winW, winH);
-	float2 ctrlP2Screen = Object2Screen(make_float4(frontBaseCenter + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio, 1), mv, pj, winW, winH);
-	float2 dirScreen = normalize(ctrlP1Screen - center);
-	float dirScreenLength = length(ctrlP1Screen - center);
-	float2 minorDirScreen = normalize(ctrlP2Screen - center);
-	float minorDirScreenLength = length(ctrlP2Screen - center);
+	float3 dir = pos - c;
+	float dx = dot(dir, majorAxisGlobal);
+	float dy = dot(dir, minorAxisGlobal);
+	float dz = dot(dir, lensDir);
+	return abs(dx) < lSemiMajorAxisGlobal && abs(dy)<lSemiMinorAxisGlobal / focusRatio
+		&& dz>0 && dz < length(frontBaseCenter-c);
+}
 
 
-	float2 toPoint = make_float2(_x, _y) - center;
-	float disMajorAbs = abs(toPoint.x*dirScreen.x + toPoint.y*dirScreen.y);
-	float disMinorAbs = abs(toPoint.x*minorDirScreen.x + toPoint.y*minorDirScreen.y);
+bool LineLens3D::PointOnOuterBoundaryWallMajorSide3D(float3 pos, float* mv, float* pj, int winW, int winH)
+{
+	float outerThr = 0.1;
+	float upperHeight = length(frontBaseCenter - c);
+	{
+		float3 axisp1 = c - majorAxisGlobal*lSemiMajorAxisGlobal; //should be same with ctrlPoint3D1
+		float3 dir = pos - axisp1;
+		float prjMajor = dot(dir, majorAxisGlobal);
+		float prjMinor = dot(dir, minorAxisGlobal);
+		float prjZ = dot(dir, lensDir);
+		if (prjMajor<lSemiMajorAxisGlobal*outerThr && prjMajor>-lSemiMajorAxisGlobal*0.5
+			&& abs(prjMinor) < lSemiMinorAxisGlobal / focusRatio*0.5
+			&& prjZ<upperHeight*(1 + outerThr) && prjZ>-upperHeight)
+			return true;
+	}
+	{
+		float3 axisp2 = c + majorAxisGlobal*lSemiMajorAxisGlobal; //should be same with ctrlPoint3D2
+		float3 dir = pos - axisp2;
+		float prjMajor = dot(dir, majorAxisGlobal);
+		float prjMinor = dot(dir, minorAxisGlobal);
+		float prjZ = dot(dir, lensDir);
+		if (prjMajor<lSemiMajorAxisGlobal*outerThr && prjMajor>-lSemiMajorAxisGlobal*0.5
+			&& abs(prjMinor) < lSemiMinorAxisGlobal / focusRatio*0.5
+			&& prjZ<upperHeight*(1 + outerThr) && prjZ>-upperHeight)
+			return true;
+	}
+	return false;
+}
 
-	return (abs(disMinorAbs - minorDirScreenLength) < eps_pixel && disMajorAbs <= dirScreenLength/2);
+bool LineLens3D::PointOnOuterBoundaryWallMinorSide3D(float3 pos, float* mv, float* pj, int winW, int winH)
+{
+	float outerThr = 0.1;
+	float upperHeight = length(frontBaseCenter - c);
+	{
+		float3 axisp1 = c - minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio;
+		float3 dir = pos - axisp1;
+		float prjMajor = dot(dir, majorAxisGlobal);
+		float prjMinor = dot(dir, minorAxisGlobal);
+		float prjZ = dot(dir, lensDir);
+		if (prjMinor<lSemiMinorAxisGlobal / focusRatio*outerThr
+			&& prjMinor>-lSemiMinorAxisGlobal / focusRatio*0.5
+			&& abs(prjMajor) < lSemiMajorAxisGlobal*0.5
+			&& prjZ<upperHeight*(1 + outerThr) && prjZ>-upperHeight)
+			return true;
+	}
+	{
+		float3 axisp2 = c + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio;
+		float3 dir = pos - axisp2;
+		float prjMajor = dot(dir, majorAxisGlobal);
+		float prjMinor = dot(dir, minorAxisGlobal);
+		float prjZ = dot(dir, lensDir);
+		if (prjMinor<lSemiMinorAxisGlobal / focusRatio*outerThr
+			&& prjMinor>-lSemiMinorAxisGlobal / focusRatio*0.5
+			&& abs(prjMajor) < lSemiMajorAxisGlobal*0.5
+			&& prjZ<upperHeight*(1 + outerThr) && prjZ>-upperHeight)
+			return true;
+	}
+	return false;
 }
 
 

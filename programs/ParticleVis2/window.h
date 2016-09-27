@@ -135,7 +135,8 @@ private slots:
 	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
 #endif
 #ifdef USE_NEW_LEAP
-	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+	//void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+	void SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, int numHands);
 #endif
 };
 

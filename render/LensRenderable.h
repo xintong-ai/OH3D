@@ -17,18 +17,25 @@ class LensRenderable :public Renderable
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
 
-	void ChangeLensCenterbyLeap(Lens *l,  float3 p);
-	float3 GetTransferredLeapPos(float3 p);
+
 
 	bool highlightingCenter = false;
+	bool highlightingMajorSide = false;
+	bool highlightingMinorSide = false;
+
+
+	//used for Leap
+	void ChangeLensCenterbyLeap(Lens *l, float3 p);
+	void ChangeLensCenterbyTransferredLeap(Lens *l, float3 p);
+	float3 GetTransferredLeapPos(float3 p);
+	float3 prevPos, prevPointOfLens;
+	bool highlightingCuboidFrame = false;
 
 public:
 
 	std::vector<Lens*>* GetLensesAddr() { return &lenses; }//temperary solution. should put lenses outside of LensRenderable
 
 	float3 snapPos;
-	void SnapLastLens();
-
 	
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;

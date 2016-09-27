@@ -134,10 +134,10 @@ Window::Window()
 	//glyphRenderable->SetVisibility(false);
 	//lensRenderable->SetVisibility(false);
 
-	openGL->AddRenderable("glyph", glyphRenderable.get());
-	openGL->AddRenderable("lenses", lensRenderable.get());
+	openGL->AddRenderable("2glyph", glyphRenderable.get());
+	openGL->AddRenderable("3lenses", lensRenderable.get());
 	//openGL->AddRenderable("grid", gridRenderable.get());
-	openGL->AddRenderable("model", modelGridRenderable.get());
+	openGL->AddRenderable("4model", modelGridRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add straight band lens");
@@ -167,14 +167,18 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	
 	std::vector<float4> pos;
 	pos.push_back(make_float4((posMin + posMax) / 2, 1.0));
+	pos.push_back(make_float4((posMin + posMax) / 2, 1.0));
 	std::vector<float> val;
 	val.push_back(0);
+	val.push_back(0);
 	leapFingerIndicators = std::make_shared<Particle>(pos, val);
-	leapFingerIndicatorVecs.push_back(make_float3(2, 2, 0));
-	
+	leapFingerIndicatorVecs.push_back(make_float3(1, 0, 0));
+	leapFingerIndicatorVecs.push_back(make_float3(1, 0, 0));  //actaully only the length of these two vectors have an effect
+
 	arrowNoDeformRenderable = std::make_shared<ArrowNoDeformRenderable>(leapFingerIndicatorVecs,leapFingerIndicators);
-	arrowNoDeformRenderable->SetVisibility(false);
-	openGL->AddRenderable("9LeapArrow", arrowNoDeformRenderable.get());
+	//arrowNoDeformRenderable->SetVisibility(false);
+	leapFingerIndicators->numParticles = 0; //use numParticles to control how many indicators are drawn on screen
+	openGL->AddRenderable("1LeapArrow", arrowNoDeformRenderable.get());
 
 
 #endif
@@ -268,8 +272,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
 #ifdef USE_NEW_LEAP
-	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
-		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
+	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)),
+		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)));
 #endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
@@ -416,17 +420,23 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 #endif
 
 #ifdef USE_NEW_LEAP
-void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
+void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, int numHands)
 {
 	if (1 == numHands){
 		float4 markerPos;
-		if (lensRenderable->SlotOneHandChanged_lc(make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()), make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), markerPos)){
-			arrowNoDeformRenderable->SetVisibility(true);
-			leapFingerIndicators->pos[0] = markerPos - make_float4(leapFingerIndicatorVecs[0] / 2.0, 0.0);
+		if (lensRenderable->SlotOneHandChanged_lc(make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()), make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), markerPos)){
+
+			openGL->blendOthers = true;
 		}
 		else{
-			arrowNoDeformRenderable->SetVisibility(false);
+//			leapFingerIndicators->numParticles = 0;
+			openGL->blendOthers = false;
+
 		}
+		leapFingerIndicators->numParticles = 1;
+		//leapFingerIndicators->pos[0] = markerPos - make_float4(leapFingerIndicatorVecs[0] / 2.0, 0.0);
+		leapFingerIndicators->pos[0] = markerPos;
+
 		//note when numHands == 1, leftIndexTip is actually thumb index
 	}
 	else if (2 == numHands){
@@ -434,7 +444,6 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 		lensRenderable->SlotTwoHandChanged(
 			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
 			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
-
 	}
 }
 #endif

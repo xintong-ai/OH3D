@@ -104,7 +104,7 @@ struct Lens
 	bool isConstructing;
 	bool isConstructedFromLeap = false;
 
-	bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) {
+	virtual bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < eps_pixel;
@@ -270,8 +270,6 @@ struct LineLens3D :public LineLens
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) override;
 	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) override;
 
-	float3 ctrlPoint3D1, ctrlPoint3D2; //only used during construction/transfornation. afterwards the other variables will be computed and recorded
-
 	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal; //note that for LineLens3D, lSemiMinorAxisGlobal/focusRatio will give the width. lSemiMinorAxisGlobal along only provides a lower limit for the width
 	float3 majorAxisGlobal, lensDir, minorAxisGlobal;
 	float3 frontBaseCenter, estMeshBottomCenter;
@@ -280,10 +278,9 @@ struct LineLens3D :public LineLens
 	void UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
 
 	void UpdateLineLensGlobalInfoFromScreenInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
-	void UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
+
 	
 	void FinishConstructing(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax);
-	void FinishConstructing3D(float* mv, float* pj, int winW, int winH, float3 dataMin, float3 dataMax);
 
 
 	std::vector<float3> GetOuterContourBackBase();
@@ -301,24 +298,28 @@ struct LineLens3D :public LineLens
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override; //for LineLens3D, the inner boundary is usually hidden. so compare to LineLens, this function deals with a different situation, which means points on the two sides at the major direction
 
 
-
 	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
 
 
-	//for future use...
-
-	//bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-	bool PointOnObjectOuterBoundaryMajorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
-	bool PointOnObjectOuterBoundaryMinorSide(int _x, int _y, float* mv, float* pj, int winW, int winH);
-
-
+	bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 
 	void ChangeClipDepth(int v, float* mv, float* pj) override;
 
 
+
+	//used for lens created by Leap
+	float3 ctrlPoint3D1, ctrlPoint3D2;
+	void UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax); 
+	void FinishConstructing3D(float* mv, float* pj, int winW, int winH, float3 dataMin, float3 dataMax);
+	
+	bool PointOnLensCenter3D(float3 pos, float* mv, float* pj, int winW, int winH);
+	bool PointInCuboidRegion3D(float3 pos, float* mv, float* pj, int winW, int winH);
+	bool PointOnOuterBoundaryWallMajorSide3D(float3 pos, float* mv, float* pj, int winW, int winH);
+	bool PointOnOuterBoundaryWallMinorSide3D(float3 pos, float* mv, float* pj, int winW, int winH);
+	//void ChangeLensSize3D(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH);
 
 	//requested by Xin
 	std::vector<float3> GetTwoEndpointsOfBackBase()

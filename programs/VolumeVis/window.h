@@ -107,7 +107,6 @@ private slots:
 	void AddLineLens();
 	void AddCurveBLens(); 
 	void SlotToggleGrid(bool b);
-	void SlotToggleUdbe(bool b);
 	void SlotToggleUsingGlyphSnapping(bool b);
 	void SlotTogglePickingGlyph(bool b);
 	void SlotToggleGlyphPickingFinished();
@@ -128,7 +127,6 @@ private slots:
 	void SlotRbDensityChanged(bool);
 	void SlotRbTransferChanged(bool);
 	void SlotRbGradientChanged(bool);
-	void SlotRbEntropyChanged(bool);
 	
 	void SlotDelLens();
 

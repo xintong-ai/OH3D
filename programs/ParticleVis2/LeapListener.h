@@ -18,7 +18,8 @@ signals:
 	//void UpdatePlane(QVector3D origin, QVector3D normal);
 	void UpdateSkeletonHand(TypeArray2 fingers, TypeArray palm, float sphereRadius);
 	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
-	void UpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+	//void UpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);//original
+	void UpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, int numHands);
 	void translate2(float v);
 	void UpdateGesture(int gesture);
 

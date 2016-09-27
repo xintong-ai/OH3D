@@ -74,8 +74,6 @@ public:
 	float minElas = 0, maxElasEstimate = 1; //used for draw the mesh in image
 	void UpdateMeshDevElasticity(); //need more work to finish
 
-
-
 	//for both mesh
 	LineSplitModelGrid(float dmin[3], float dmax[3], int n);
 
@@ -91,7 +89,7 @@ public:
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 	void ReinitiateMeshForParticle(LineLens3D* l, std::shared_ptr<Particle> p);
 	void ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr<Volume> v);	
-	void UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
+	void UpdateMesh(float3 lensCenter, float3 lensDir, float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
 	void UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId);
 	void MoveMesh(float3 moveDir);
 	//currently for line mesh only

@@ -184,30 +184,13 @@ void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
 
 			if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
 				modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume);
-				modelGrid->UpdateMesh(&(((LineLens3D*)l)->c.x), &(((LineLens3D*)l)->lensDir.x), ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);			
+				modelGrid->UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);			
 				modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), ((LineLens3D*)l)->majorAxisGlobal, ((LineLens3D*)l)->lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
 			}
 		}
 	}
 
 }
-
-
-void VolumeRenderableCUDA::resetVolume()
-{
-	//VolumeCUDA_deinit(&volumeCUDACur);
-
-	//int winWidth, winHeight;
-	//actor->GetWindowSize(winWidth, winHeight);
-
-	//cudaExtent volumeSize = make_cudaExtent(volume->size[0], volume->size[1], volume->size[2]);
-	//VolumeCUDA_init(&volumeCUDACur, volumeSize, volume, 1);
-
-	//isFixed = false;
-	//curDeformDegree = 0;
-}
-
-
 
 
 void VolumeRenderableCUDA::mousePress(int x, int y, int modifier)

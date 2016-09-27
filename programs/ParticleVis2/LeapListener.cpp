@@ -47,22 +47,22 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 		//GetTwoPoints(f, point1, point2);
 		//emit UpdateLine(Leap2QVector(point1), Leap2QVector(point2));
 
-		Leap::Vector thumbTip, indexTipLeft, indexTipRight, indexDir;
+		Leap::Vector thumbTipLeft, thumbTipRight, indexTipLeft, indexTipRight, indexDir;
 		Leap::Hand rightMostHand = f.hands().rightmost();
 		Leap::Hand leftMostHand = f.hands().leftmost();
 		//std::cout << "num of hands:" << f.hands().count() << std::endl;
 		if (1 == f.hands().count())
 		{
-			GetFingers(rightMostHand, thumbTip, indexTipRight, indexDir);
+			GetFingers(rightMostHand, thumbTipRight, indexTipRight, indexDir);
 
-			emit UpdateHands(Leap2QVector(thumbTip), Leap2QVector(indexTipRight), 1);
+			emit UpdateHands(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), QVector3D(0, 0, 0), QVector3D(0, 0, 0), 1);
 		}
 		else if (2 == f.hands().count()){
 			//if (){//leftMostHand.isLeft()){
-			GetFingers(leftMostHand, thumbTip, indexTipLeft, indexDir);
-			GetFingers(rightMostHand, thumbTip, indexTipRight, indexDir);
+			GetFingers(leftMostHand, thumbTipLeft, indexTipLeft, indexDir);
+			GetFingers(rightMostHand, thumbTipRight, indexTipRight, indexDir);
 			//emit UpdateTwoHands(Leap2QVector(thumbTip), Leap2QVector(indexTipLeft), Leap2QVector(indexDir));
-			emit UpdateHands(Leap2QVector(indexTipLeft), Leap2QVector(indexTipRight), 2);
+			emit UpdateHands(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), Leap2QVector(thumbTipLeft), Leap2QVector(indexTipLeft), 2);
 		}
 		//	else{
 		//		//emit UpdateRightHand(Leap2QVector(thumbTip), Leap2QVector(indexTipRight), Leap2QVector(indexDir));

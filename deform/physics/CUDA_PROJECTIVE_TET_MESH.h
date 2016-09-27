@@ -1093,7 +1093,7 @@ public:
 
 
 	//for line lens
-	void UpdateLineMesh(TYPE t, int iterations, TYPE _lensCen[], TYPE _lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
+	void UpdateLineMesh(TYPE t, int iterations, float3 lensCen, float3 lensDir, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -1102,9 +1102,6 @@ public:
 
 		int3 nstep_forDevice = make_int3(nStep[0], nStep[1], nStep[2]);//cannot directly give local pointer to cuda
 		TIMER timer;
-
-		float3 lensCen = make_float3(_lensCen[0], _lensCen[1], _lensCen[2]);
-		float3 lensDir = make_float3(_lenDir[0], _lenDir[1], _lenDir[2]);
 
 		// Step 0 by Cheng Li
 		Set_Fixed_By_Lens_Line << <blocksPerGrid, threadsPerBlock >> >(

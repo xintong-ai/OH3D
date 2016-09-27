@@ -19,6 +19,36 @@
 
 using namespace std;
 
+
+inline
+QMatrix4x4 ArrowNoDeformRenderable::computeRotationMatrix(float3 orientation, float3 _vec)
+{
+	float3 norVec = normalize(_vec);
+	float sinTheta = length(cross(orientation, norVec));
+	float cosTheta = dot(orientation, norVec);
+
+	if (sinTheta<0.00001)
+	{
+		return QMatrix4x4(1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1);
+	}
+	else
+	{
+		float3 axis = normalize(cross(orientation, norVec));
+		return QMatrix4x4(
+			cosTheta + axis.x*axis.x*(1 - cosTheta), axis.x*axis.y*(1 - cosTheta) - axis.z*sinTheta,
+			axis.x*axis.z*(1 - cosTheta) + axis.y*sinTheta, 0,
+			axis.y*axis.x*(1 - cosTheta) + axis.z*sinTheta, cosTheta + axis.y*axis.y*(1 - cosTheta),
+			axis.y*axis.z*(1 - cosTheta) - axis.x*sinTheta, 0,
+			axis.z*axis.x*(1 - cosTheta) - axis.y*sinTheta, axis.z*axis.y*(1 - cosTheta) + axis.x*sinTheta,
+			cosTheta + axis.z*axis.z*(1 - cosTheta), 0,
+			0, 0, 0, 1);
+	}
+}
+
+
 ArrowNoDeformRenderable::ArrowNoDeformRenderable(vector<float3> _vec, std::shared_ptr<Particle> _particle) :
 GlyphRenderable(_particle)
 {
@@ -43,29 +73,7 @@ GlyphRenderable(_particle)
 		if (l < lMin)
 			lMin = l;
 
-		float3 norVec = normalize(_vec[i]);
-		float sinTheta = length(cross(orientation, norVec));
-		float cosTheta = dot(orientation, norVec);
-
-		if (sinTheta<0.00001)
-		{
-			rotations.push_back(QMatrix4x4(1, 0, 0, 0,
-				0, 1, 0, 0,
-				0, 0, 1, 0,
-				0, 0, 0, 1));
-		}
-		else
-		{
-			float3 axis = normalize(cross(orientation, norVec));
-			rotations.push_back(QMatrix4x4(
-				cosTheta + axis.x*axis.x*(1 - cosTheta), axis.x*axis.y*(1 - cosTheta) - axis.z*sinTheta,
-				axis.x*axis.z*(1 - cosTheta) + axis.y*sinTheta, 0,
-				axis.y*axis.x*(1 - cosTheta) + axis.z*sinTheta, cosTheta + axis.y*axis.y*(1 - cosTheta),
-				axis.y*axis.z*(1 - cosTheta) - axis.x*sinTheta, 0,
-				axis.z*axis.x*(1 - cosTheta) - axis.y*sinTheta, axis.z*axis.y*(1 - cosTheta) + axis.x*sinTheta,
-				cosTheta + axis.z*axis.z*(1 - cosTheta), 0,
-				0, 0, 0, 1));
-		}
+		rotations.push_back(computeRotationMatrix(orientation, _vec[i]));
 	}
 
 	setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
@@ -168,7 +176,7 @@ void ArrowNoDeformRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 	void main() {
 
-		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 0.0);
 	}
 	);
 
@@ -259,7 +267,6 @@ void ArrowNoDeformRenderable::DrawWithoutProgram(float modelview[16], float proj
 
 	for (int i = 0; i < particle->numParticles; i++) {
 
-		float4 shift = pos[i];
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -274,12 +281,29 @@ void ArrowNoDeformRenderable::DrawWithoutProgram(float modelview[16], float proj
 		qgl->glUniform3f(sp->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 		qgl->glUniform3f(sp->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(sp->uniform("Shininess"), 5);
-		qgl->glUniform3fv(sp->uniform("Transform"), 1, &shift.x);
 		qgl->glUniformMatrix4fv(sp->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(sp->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
-		//qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
-		qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * rotations[i]).normalMatrix().data());
-		qgl->glUniformMatrix4fv(sp->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
+
+
+		////qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
+		//qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * rotations[i]).normalMatrix().data());
+		//qgl->glUniformMatrix4fv(sp->uniform("SQRotMatrix"), 1, GL_FALSE, rotations[i].data());
+		//qgl->glUniform3fv(sp->uniform("Transform"), 1, &shift.x);
+
+		
+		QVector3D q_IndicatorDir;
+		if(i==0)
+			q_IndicatorDir = QVector3D(QMatrix4x4((q_modelview.inverted()).normalMatrix()).map(QVector4D(-1, 1, 0, 0))).normalized();
+		else
+			q_IndicatorDir = QVector3D(QMatrix4x4((q_modelview.inverted()).normalMatrix()).map(QVector4D(1, 1, 0, 0))).normalized();
+		float3 curVec = make_float3(q_IndicatorDir.x(), q_IndicatorDir.y(), q_IndicatorDir.z());
+		
+		QMatrix4x4 curRotation = computeRotationMatrix(glyphMesh->orientation, curVec);
+		qgl->glUniformMatrix3fv(sp->uniform("NormalMatrix"), 1, GL_FALSE, (q_modelview * curRotation).normalMatrix().data());
+		qgl->glUniformMatrix4fv(sp->uniform("SQRotMatrix"), 1, GL_FALSE, curRotation.data());
+
+		float4 shift = pos[i] - make_float4(curVec / 2.0, 0.0);
+		qgl->glUniform3fv(sp->uniform("Transform"), 1, &shift.x);
 
 
 		float maxScaleInv = 8;
@@ -305,10 +329,17 @@ void ArrowNoDeformRenderable::draw(float modelview[16], float projection[16])
 
 	RecordMatrix(modelview, projection);
 
+	//glEnable(GL_BLEND);
+	////glBlendFunc(GL_SRC_ALPHA, GL_ZERO);	
+	//glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
+
+	//glDisable(GL_BLEND);
 }
+
 
 void ArrowNoDeformRenderable::initPickingDrawingObjects()
 {

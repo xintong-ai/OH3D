@@ -30,7 +30,7 @@ class ArrowNoDeformRenderable :public GlyphRenderable
 
 	void GenVertexBuffer(int nv, float* vertex);
 
-
+	QMatrix4x4 computeRotationMatrix(float3 orientation, float3 _vec);
 
 public:
 	ArrowNoDeformRenderable(std::vector<float3> _vec, std::shared_ptr<Particle> _particle);
@@ -42,7 +42,6 @@ public:
 protected:
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
-
 	void initPickingDrawingObjects();
 	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
 };

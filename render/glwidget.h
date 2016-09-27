@@ -82,6 +82,8 @@ public:
 	
 	INTERACT_MODE GetInteractMode(){ return interactMode; }
 
+	float blendOthers = false;
+
 #ifdef USE_OSVR
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 #endif

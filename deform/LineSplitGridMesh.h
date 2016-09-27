@@ -101,28 +101,15 @@ public:
 	//using CUDA_PROJECTIVE_TET_MESH<TYPE>::damping;
 
 
-	float3 gridMin, gridMax;
 	int nStep[3];
 	float step;
 
-	float3 meshCenter;
 	int cutY;
-	float3 oriMeshCenter;
 
 	float3 lensSpaceOriginInWorld;
 
 
-	//used for temperary mesh
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1)*5)
-	{
-		computeTempShapeInfo(dataMin, dataMax, n);
-		BuildTet();
-		Build_Boundary_Lines();
-		printf("N: %d, %d\n", number, tet_number);
-		control_mag = 500;		//500
-		damping = 0.9;
-		return;
-	}
+
 
 	//used for temperary mesh
 	LineSplitGridMesh() : CUDA_PROJECTIVE_TET_MESH<TYPE>()
@@ -134,26 +121,6 @@ public:
 
 	~LineSplitGridMesh(){};
 
-	//LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>(((n + 1) * (n + 1) * (n + 1) + (n + 1)*(n - 1)) * 5)
-	//{
-	//	//computeShapeInfo and computeInitCoord define a mesh that covers the lens region and nearby region
-	//	computeShapeInfo(dataMin, dataMax, n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir);
-	//	computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
-
-	//	BuildTet();
-	//	Build_Boundary_Lines();
-
-
-	//	//printf("N: %d, %d\n", number, tet_number);
-
-	//	control_mag = 500;		//500
-	//	damping = 0.9;
-
-	//	Allocate_GPU_Memory_InAdvance();
-
-	//	return;
-
-	//}
 
 	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>()
 	{
@@ -221,39 +188,6 @@ public:
 				}
 			}
 		}
-	}
-
-	//used for temperary mesh
-	void computeTempShapeInfo(float dataMin[3], float dataMax[3], int n)
-	{
-		float3 rangeDiff;
-		float gridMinInit[3];
-		float gridMaxInit[3];
-		//float marginScale = 0.1;
-		float marginScale = (length(make_float3(dataMax[0], dataMax[1], dataMax[2]) - make_float3(dataMin[0], dataMin[1], dataMin[2])) / (dataMax[2] - dataMin[2]) - 1) / 2; //make sure the z-dim of the mesh can cover the volume all the time
-		for (int i = 0; i < 3; i++){
-			float marginSize = (dataMax[i] - dataMin[i]) * marginScale;
-			gridMinInit[i] = dataMin[i] - marginSize;
-			gridMaxInit[i] = dataMax[i] + marginSize;
-		}
-		rangeDiff = make_float3(
-			gridMaxInit[0] - gridMinInit[0],
-			gridMaxInit[1] - gridMinInit[1],
-			gridMaxInit[2] - gridMinInit[2]);
-		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
-		//step = (maxDiff / n) * 1.01;
-		step = (maxDiff / n);
-
-		for (int i = 0; i < 3; i++){
-			nStep[i] = ceil((gridMaxInit[i] - gridMinInit[i]) / step) + 1;
-		}
-		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
-		gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
-		gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
-
-		cutY = nStep[1] / 2;
-		oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);
-		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
 	}
 
 	void BuildTet()
@@ -492,11 +426,6 @@ public:
 
 		//lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis - rangeDiff.z / 2.0 * lensDir;
 		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis + rz1 * lensDir;
-
-		//gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
-		//gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
-
-		//oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);
 	}
 
 	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat)

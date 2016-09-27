@@ -99,13 +99,41 @@ void GLWidget::paintGL() {
 	GLfloat projection[16];
 	matrixMgr->GetModelView(modelview);
 	matrixMgr->GetProjection(projection, width, height);
-	for (auto renderer : renderers)
-	{
-		renderer.second->DrawBegin();
-		renderer.second->draw(modelview, projection);
-		renderer.second->DrawEnd(renderer.first.c_str());
-	}
 
+
+
+	if (blendOthers){ //only used for USE_NEW_LEAP
+		for (auto renderer : renderers)
+		{
+			renderer.second->DrawBegin();
+
+			if (std::string(renderer.first).find("Leap") != std::string::npos || std::string(renderer.first).find("lenses") != std::string::npos)
+			{
+				renderer.second->draw(modelview, projection);
+				renderer.second->DrawEnd(renderer.first.c_str());
+			}
+			else
+			{
+				glEnable(GL_BLEND);
+				glBlendColor(0.0f, 0.0f, 0.0f, 0.5f);
+				glBlendFunc(GL_CONSTANT_ALPHA, GL_CONSTANT_ALPHA);
+
+				renderer.second->draw(modelview, projection);
+				renderer.second->DrawEnd(renderer.first.c_str());
+
+				glDisable(GL_BLEND);
+			}
+		}
+	}
+	else{
+		for (auto renderer : renderers)
+		{
+			renderer.second->DrawBegin();
+			renderer.second->draw(modelview, projection);
+			renderer.second->DrawEnd(renderer.first.c_str());
+		}
+	}
+	
     TimerEnd();
 #ifdef USE_OSVR
 	if (nullptr != vrWidget){

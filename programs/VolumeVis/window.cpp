@@ -162,16 +162,13 @@ std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
-	//QCheckBox* udbeCheck = new QCheckBox("Use Density Based Elasticity", this);
-	//udbeCheck->setChecked(modelGrid->useDensityBasedElasticity);
-
+	
 	QGroupBox *gbStiffnessMode = new QGroupBox(tr("Stiffness Mode"));
 	QVBoxLayout *layoutStiffnessMode = new QVBoxLayout;
 	QRadioButton* rbUniform = new QRadioButton(tr("&Uniform Stiffness"));
 	QRadioButton* rbDensity = new QRadioButton(tr("&Density Based Stiffness"));
 	QRadioButton* rbTransfer = new QRadioButton(tr("&Transfer Density Based Stiffness"));
 	QRadioButton* rbGradient = new QRadioButton(tr("&Gradient Based Stiffness"));
-	QRadioButton* rbEntropy = new QRadioButton(tr("&Entropy Based Stiffness"));
 	if (modelGrid->elasticityMode == 0){
 		rbUniform->setChecked(true);
 	}
@@ -184,14 +181,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	else if (modelGrid->elasticityMode == 3){
 		rbGradient->setChecked(true);
 	}
-	else if (modelGrid->elasticityMode == 4){
-		rbEntropy->setChecked(true);
-	}
+
 	layoutStiffnessMode->addWidget(rbUniform);
 	layoutStiffnessMode->addWidget(rbDensity);
 	layoutStiffnessMode->addWidget(rbTransfer);
 	layoutStiffnessMode->addWidget(rbGradient);
-	//layoutStiffnessMode->addWidget(rbEntropy);
 	gbStiffnessMode->setLayout(layoutStiffnessMode);
 
 	QHBoxLayout *meshResLayout = new QHBoxLayout;
@@ -388,7 +382,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(minusMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotMinusMeshRes()));
 	
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
-	//connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 #ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
@@ -408,7 +401,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(rbDensity, SIGNAL(clicked(bool)), this, SLOT(SlotRbDensityChanged(bool))); 
 	connect(rbTransfer, SIGNAL(clicked(bool)), this, SLOT(SlotRbTransferChanged(bool)));
 	connect(rbGradient, SIGNAL(clicked(bool)), this, SLOT(SlotRbGradientChanged(bool)));
-	connect(rbEntropy, SIGNAL(clicked(bool)), this, SLOT(SlotRbEntropyChanged(bool)));
 	
 
 	mainLayout->addWidget(openGL.get(), 3);
@@ -452,11 +444,6 @@ void Window::SlotToggleGrid(bool b)
 	modelGridRenderable->SetVisibility(b);
 }
 
-void Window::SlotToggleUdbe(bool b)
-{
-	//modelGrid->useDensityBasedElasticity = b;
-	//modelGrid->setReinitiationNeed();
-}
 
 Window::~Window() {
 }
@@ -625,13 +612,7 @@ void Window::SlotRbGradientChanged(bool b)
 		modelGrid->setReinitiationNeed();
 	}
 }
-void Window::SlotRbEntropyChanged(bool b)
-{
-	if (b){
-		modelGrid->elasticityMode = 4;
-		modelGrid->setReinitiationNeed();
-	}
-}
+
 
 void Window::SlotDelLens()
 {

@@ -83,8 +83,6 @@ public:
 	float brightness = 1.3;
 
 
-	void resetVolume();
-
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void mousePress(int x, int y, int modifier) override;

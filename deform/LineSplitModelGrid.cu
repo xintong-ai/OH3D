@@ -644,19 +644,19 @@ void LineSplitModelGrid::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<V
 	cudaMemcpy(dev_invMeshTrans, invMeshTransMatMemPointer, sizeof(float)* 16, cudaMemcpyHostToDevice);
 
 
-	//checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
-	//d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, dev_count, elasticityMode);
-	//checkCudaErrors(cudaUnbindTexture(volumeTex));
-	//float* density = lsgridMesh->EL;
-	//cudaMemcpy(density, dev_density, sizeof(float)*tet_number, cudaMemcpyDeviceToHost);
-	//int* count = new int[tet_number];
-	//cudaMemcpy(count, dev_count, sizeof(int)*tet_number, cudaMemcpyDeviceToHost);
-
+	checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
+	d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, dev_count, elasticityMode);
+	checkCudaErrors(cudaUnbindTexture(volumeTex));
 	float* density = lsgridMesh->EL;
+	cudaMemcpy(density, dev_density, sizeof(float)*tet_number, cudaMemcpyDeviceToHost);
 	int* count = new int[tet_number];
-	memset(density, 0, sizeof(float)*tet_number);
-	memset(count, 0, sizeof(int)*tet_number);
-	computeDensityForVolumeCPU(size, spacing, step, nStep, invMeshTransMatMemPointer, GetTet(), GetX(), density, count, elasticityMode, v.get());
+	cudaMemcpy(count, dev_count, sizeof(int)*tet_number, cudaMemcpyDeviceToHost);
+
+	//float* density = lsgridMesh->EL;
+	//int* count = new int[tet_number];
+	//memset(density, 0, sizeof(float)*tet_number);
+	//memset(count, 0, sizeof(int)*tet_number);
+	//computeDensityForVolumeCPU(size, spacing, step, nStep, invMeshTransMatMemPointer, GetTet(), GetX(), density, count, elasticityMode, v.get());
 
 	//std::vector<float> forDebug2(density, density + tet_number);
 	//std::vector<float> forDebug3(count, count + tet_number);
@@ -715,10 +715,10 @@ void LineSplitModelGrid::UpdateMeshDevElasticity()
 	lsgridMesh->UpdateMeshDevElasticity();
 }
 
-void LineSplitModelGrid::UpdateMesh(float lensCenter[3], float lenDir[3], float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
+void LineSplitModelGrid::UpdateMesh(float3 lensCenter, float3 lenDir, float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
 {
 	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->UpdateLineMesh(time_step, 4, lensCenter, lenDir, lsgridMesh->meshCenter, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
+		lsgridMesh->UpdateLineMesh(time_step, 4, lensCenter, lenDir, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
 	return;
 }
 
@@ -829,20 +829,18 @@ float3 LineSplitModelGrid::GetGridMin()
 {
 	if (gridType == GRID_TYPE::UNIFORM_GRID)
 		return gridMesh->gridMin;
-	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		return lsgridMesh->gridMin;
-	else
-		return make_float3(0, 0, 0);
+	else {
+		std::cerr << "error GetGridMin()" << std::endl;
+	}
 }
 
 float3 LineSplitModelGrid::GetGridMax()
 {
 	if (gridType == GRID_TYPE::UNIFORM_GRID)
 		return gridMesh->gridMax;
-	else if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		return lsgridMesh->gridMax;
-	else
-		return make_float3(0, 0, 0);
+	else {
+		std::cerr << "error GetGridMax()" << std::endl;
+	}
 }
 
 int3 LineSplitModelGrid::GetNumSteps()

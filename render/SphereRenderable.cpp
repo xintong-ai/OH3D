@@ -147,6 +147,7 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 	void main() {
 		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+		//FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 0.5);
 	}
 	);
 
