@@ -239,7 +239,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QLabel *deformForceLabelLit = new QLabel("Deform Force");
 	controlLayout->addWidget(deformForceLabelLit);
 	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
-	deformForceSlider->setRange(0, 50);
+	deformForceSlider->setRange(0, 80);
 	deformForceSlider->setValue(modelGrid->getDeformForce() / deformForceConstant);
 	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
 	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
@@ -429,21 +429,33 @@ void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, Q
 			openGL->blendOthers = true;
 		}
 		else{
-//			leapFingerIndicators->numParticles = 0;
 			openGL->blendOthers = false;
-
 		}
 		leapFingerIndicators->numParticles = 1;
-		//leapFingerIndicators->pos[0] = markerPos - make_float4(leapFingerIndicatorVecs[0] / 2.0, 0.0);
-		leapFingerIndicators->pos[0] = markerPos;
 
-		//note when numHands == 1, leftIndexTip is actually thumb index
+		leapFingerIndicators->pos[0] = markerPos;
 	}
 	else if (2 == numHands){
-		//
-		lensRenderable->SlotTwoHandChanged(
+		
+		float4 markerPosRight, markerPosLeft;
+		bool forceChanged = false;
+		float f = modelGrid->getDeformForce();
+		if (lensRenderable->SlotTwoHandChanged_lc(
+			make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()),
+			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), 
+			make_float3(leftThumbTip.x(), leftThumbTip.y(), leftThumbTip.z()),
 			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
-			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
+			markerPosRight, markerPosLeft, leapFingerIndicators->val[0], leapFingerIndicators->val[1], f)){
+			openGL->blendOthers = true;
+			deformForceSliderValueChanged(f / deformForceConstant);
+		}
+		else{
+			openGL->blendOthers = false;
+		}
+		leapFingerIndicators->numParticles = 2;
+
+		leapFingerIndicators->pos[0] = markerPosRight;
+		leapFingerIndicators->pos[1] = markerPosLeft;
 	}
 }
 #endif

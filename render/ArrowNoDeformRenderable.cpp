@@ -310,6 +310,17 @@ void ArrowNoDeformRenderable::DrawWithoutProgram(float modelview[16], float proj
 		qgl->glUniform1f(sp->uniform("Bright"), glyphBright[i]);
 		qgl->glUniform1f(sp->uniform("Scale"), length(vecs[i]));
 
+		if (particle->val[i] == 0){
+			sphereColor[i].x = 1.0;
+			sphereColor[i].y = 0.0;
+			sphereColor[i].z = 0.0;
+		}
+		else{
+			sphereColor[i].x = 1.0;
+			sphereColor[i].y = 1.0;
+			sphereColor[i].z = 1.0;
+		}
+
 		if (i != snappedGlyphId){
 			qgl->glUniform3fv(sp->uniform("Ka"), 1, &sphereColor[i].x);
 		}

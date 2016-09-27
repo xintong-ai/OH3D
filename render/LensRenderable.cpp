@@ -406,7 +406,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 					if (highlightingMajorSide){
 						glLineWidth(8);
-						glColor3f(0.82f, 0.31f, 0.67f);
+						glColor3f(0.82f*1.1, 0.31f*1.1, 0.67f*1.1);
 						glBegin(GL_LINES);
 						float3 v = PointsForContourOuterBack[0], v2 = PointsForContourOuterBack[3]; glVertex3f(v.x, v.y, v.z);
 						glVertex3f(v2.x, v2.y, v2.z);
@@ -446,7 +446,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 						if (highlightingMinorSide){
 							glLineWidth(8);
-							glColor3f(0.82f, 0.31f, 0.67f);
+							glColor3f(0.82f*1.1, 0.31f*1.1, 0.67f*1.1);
 							glBegin(GL_LINES);
 							float3 v = PointsForContourOuterBack[0], v2 = PointsForContourOuterBack[1]; glVertex3f(v.x, v.y, v.z);
 							glVertex3f(v2.x, v2.y, v2.z);
@@ -858,6 +858,13 @@ inline float3 GetNormalizedLeapPos(float3 p)
 	return leapPos;
 }
 
+inline bool outOfDomain(float3 p, float3 pmin, float3 pmax)
+{
+	float3 difmin = p - pmin, difmax = p - pmax;
+
+	return min(difmin.x, min(difmin.y, difmin.z))<0 || max(difmax.x, max(difmax.y, difmax.z))>0;
+}
+
 float3 LensRenderable::GetTransferredLeapPos(float3 p)
 {
 	//float3 posMin, posMax;
@@ -951,6 +958,112 @@ void LensRenderable::SlotTwoHandChanged(float3 l, float3 r)
 	}
 }
 
+
+bool LensRenderable::SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIndexLeap, float3 leftThumpLeap, float3 leftIndexLeap, float4 &markerPosRight, float4 &markerPosLeft, float &valRight, float &valLeft, float &f)
+{
+	float3 curPosLeft = GetTransferredLeapPos(rightIndexLeap);
+	markerPosRight = make_float4(curPosLeft, 1.0);
+	float3 curPosRight = GetTransferredLeapPos(leftIndexLeap);
+	markerPosLeft = make_float4(curPosRight, 1.0);
+
+	if (lenses.size() == 0){
+		float3 pmin, pmax;
+		actor->GetPosRange(pmin, pmax);
+		if (outOfDomain(curPosLeft, pmin, pmax) && outOfDomain(curPosRight, pmin, pmax)){
+			return false;
+		}
+		else{
+			return true;
+		}
+	}
+
+	//lenses.size() > 0
+	LineLens3D* l = (LineLens3D*)lenses.back();
+
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+
+	float enterPichThr = 25, leavePinchThr = 35; //different threshold to avoid shaking
+	float dleft = length(leftThumpLeap - leftIndexLeap);
+	float dright = length(rightThumpLeap - rightIndexLeap);
+
+	switch (actor->GetInteractMode())
+	{
+	case INTERACT_MODE::TRANSFORMATION:
+	{
+		if (l->PointInCuboidRegion3D(curPosLeft, modelview, projection, winSize.x, winSize.y)
+			&& l->PointInCuboidRegion3D(curPosRight, modelview, projection, winSize.x, winSize.y)){
+			highlightingCenter = false;
+			highlightingMajorSide = false;
+			highlightingMinorSide = false;
+			highlightingCuboidFrame = true;		
+			valLeft = 1;
+			valRight = 1;
+
+			if (dright < enterPichThr && dleft < enterPichThr){
+				actor->SetInteractMode(INTERACT_MODE::CHANGING_FORCE);
+				preForce = f;
+				prevPos = curPosRight;
+				prevPos2 = curPosLeft;
+				return true;
+			}
+		}
+		else if (l->PointInCuboidRegion3D(curPosLeft, modelview, projection, winSize.x, winSize.y)){
+			highlightingCenter = false;
+			highlightingMajorSide = false;
+			highlightingMinorSide = false;
+			highlightingCuboidFrame = true;
+			valLeft = 0;
+			valRight = 1;
+		}
+		else if (l->PointInCuboidRegion3D(curPosRight, modelview, projection, winSize.x, winSize.y)){
+			highlightingCenter = false;
+			highlightingMajorSide = false;
+			highlightingMinorSide = false;
+			highlightingCuboidFrame = true; 
+			valLeft = 1;
+			valRight = 0;
+		}
+		else{
+			highlightingCenter = false;
+			highlightingMajorSide = false;
+			highlightingMinorSide = false;
+			highlightingCuboidFrame = false;
+			valLeft = 0;
+			valRight = 0;
+
+			float3 pmin, pmax;
+			actor->GetPosRange(pmin, pmax);
+			if (outOfDomain(curPosLeft, pmin, pmax) && outOfDomain(curPosRight, pmin, pmax)){
+				return false;
+			}
+			else{
+				return true;
+			}
+		}
+		break;												
+	}
+	case INTERACT_MODE::CHANGING_FORCE:
+	{
+		if (dright > leavePinchThr || dleft > leavePinchThr){
+			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+		}
+		else{
+			f = preForce + (abs(dot(curPosRight - curPosLeft, l->minorAxisGlobal)) - abs(dot(prevPos2 - prevPos, l->minorAxisGlobal)))*3;
+			if (f < 0)
+				f = 0;
+			//send back new force
+		}
+		return true;
+		break;
+	}
+	}
+}
+
+
 void LensRenderable::ChangeLensCenterbyTransferredLeap(Lens *l, float3 p)
 {
 	if (DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
@@ -983,8 +1096,8 @@ void LensRenderable::ChangeLensCenterbyLeap(Lens *l, float3 p)
 
 		float3 newCenter = GetTransferredLeapPos(p);
 
-		std::cout << "indexLeap " << p.x << " " << p.y << " " << p.z << std::endl;
-		std::cout << "newCenter " << newCenter.x << " " << newCenter.y << " " << newCenter.z << std::endl;
+		//std::cout << "indexLeap " << p.x << " " << p.y << " " << p.z << std::endl;
+		//std::cout << "newCenter " << newCenter.x << " " << newCenter.y << " " << newCenter.z << std::endl;
 
 		if (l->type == LENS_TYPE::TYPE_LINE){
 			float3 moveDir = newCenter - l->c;
@@ -1055,6 +1168,9 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 	actor->GetModelview(modelview);
 	actor->GetProjection(projection);
 
+	float3 curPos = GetTransferredLeapPos(indexLeap);
+	markerPos = make_float4(curPos, 1.0);
+
 
 	if (lenses.size() == 0){
 		
@@ -1067,28 +1183,33 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 			//l->justChanged = true; //constructing first, then set justChanged
 			actor->UpdateGL();
 			actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
-			float3 curPos = GetTransferredLeapPos(indexLeap);
 			((LineLens3D *)l)->ctrlPoint3D1 = curPos;
 			((LineLens3D *)l)->ctrlPoint3D2 = curPos;
-			markerPos = make_float4(curPos, 1.0);
 
 			return true;
 		}
 		else{
-			//add global rotation
-
-			float3 curPos = GetTransferredLeapPos(indexLeap);
-			markerPos = make_float4(curPos, 1);
+			//add global rotation?
+			float3 pmin, pmax;
+			actor->GetPosRange(pmin, pmax);
+			if (outOfDomain(curPos, pmin, pmax)){
+				return false;
+			}
+			else{
+				return true;
+			}
 			return true;
 		}
 	}
-	else{
+	else{	//lenses.size()>0
 		LineLens3D* l = (LineLens3D*)lenses.back();
-		if (actor->GetInteractMode() == INTERACT_MODE::ADDING_LENS){
+
+		switch (actor->GetInteractMode())
+		{
+		case INTERACT_MODE::ADDING_LENS:
+		{
 			if (d < leavePinchThr){
-				l->ctrlPoint3D2 = GetTransferredLeapPos(indexLeap);
-				float3 curPos = GetTransferredLeapPos(indexLeap);
-				markerPos = make_float4(curPos, 1.0);
+				l->ctrlPoint3D2 = curPos;
 				return true;
 			}
 			else {
@@ -1098,29 +1219,21 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 
 				l->justChanged = true;
 
-				float3 curPos = GetTransferredLeapPos(indexLeap);
-				markerPos = make_float4(curPos, 1.0);
-
 				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 				return true;
 			}
+			break;
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION)
+		case INTERACT_MODE::TRANSFORMATION:
 		{
 			if (d < enterPichThr){
-				float3 curPos = GetTransferredLeapPos(indexLeap);
-				markerPos = make_float4(curPos, 1.0);
 
 				if (l->PointOnLensCenter3D(curPos, modelview, projection, winSize.x, winSize.y)){
 					actor->SetInteractMode(INTERACT_MODE::MOVE_LENS);
-					highlightingCenter = true;
-					highlightingCuboidFrame = false;
 					prevPos = curPos;
 					prevPointOfLens = l->c;
 				}
 				else if (l->PointOnOuterBoundaryWallMajorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
-					highlightingMajorSide = true;
-					highlightingCuboidFrame = false;
 					actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
 					prevPos = curPos;
 					if (length(curPos - l->ctrlPoint3D1) < length(curPos - l->ctrlPoint3D2)){
@@ -1131,8 +1244,6 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 					}
 				}
 				else if (l->PointOnOuterBoundaryWallMinorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
-					highlightingMinorSide = true;
-					highlightingCuboidFrame = false;
 					actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
 					prevPos = curPos;
 					float3 pp1 = l->c - l->minorAxisGlobal*l->lSemiMinorAxisGlobal / l->focusRatio;
@@ -1147,48 +1258,66 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 				return true;
 			}
 			else{
-		
-				float3 curPos = GetTransferredLeapPos(indexLeap);
-				markerPos = make_float4(curPos, 1.0);
 				float3 pmin, pmax;
 				actor->GetPosRange(pmin, pmax);
-				float3 difmin = curPos - pmin, difmax = curPos - pmax;
-				if (min(difmin.x, min(difmin.y, difmin.z))<0 || max(difmax.x, max(difmax.y, difmax.z))>0){
+				if (outOfDomain(curPos, pmin, pmax)){
 					return false;
 				}
 				else{
-					if (l->PointInCuboidRegion3D(curPos, modelview, projection, winSize.x, winSize.y))
-						highlightingCuboidFrame = true;
-					else
+					if (l->PointOnLensCenter3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = true;
+						highlightingMajorSide = false;
+						highlightingMinorSide = false;
 						highlightingCuboidFrame = false;
+					}
+					else if (l->PointOnOuterBoundaryWallMajorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = false;
+						highlightingMajorSide = true;
+						highlightingMinorSide = false;
+						highlightingCuboidFrame = false;
+					}
+					else if (l->PointOnOuterBoundaryWallMinorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = false;
+						highlightingMajorSide = false;
+						highlightingMinorSide = true;
+						highlightingCuboidFrame = false;
+					}
+					else if (l->PointInCuboidRegion3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = false;
+						highlightingMajorSide = false;
+						highlightingMinorSide = false;
+						highlightingCuboidFrame = true;
+					}
+					else{
+						highlightingCenter = false;
+						highlightingMajorSide = false;
+						highlightingMinorSide = false;
+						highlightingCuboidFrame = false;
+					}
 				}
 				return true;
 			}
+			break;
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS){
-			float3 curPos = GetTransferredLeapPos(indexLeap);
-			markerPos = make_float4(curPos, 1.0); 
-			
+		case INTERACT_MODE::MOVE_LENS:
+		{
 			if (d > leavePinchThr){
 				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 				(lenses.back())->justChanged = true;
-				highlightingCenter = false;
 			}
 			else{
 				//ChangeLensCenterbyLeap(lenses.back(), indexLeap);
 				float3 moveDir = curPos - prevPos;
 				ChangeLensCenterbyTransferredLeap(lenses.back(), prevPointOfLens + moveDir);
 			}
-			return true;
+			return true; 
+			break;
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE){
-			float3 curPos = GetTransferredLeapPos(indexLeap);
-			markerPos = make_float4(curPos, 1.0);
-
+		case INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE:
+		{
 			if (d > leavePinchThr){
 				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 				(lenses.back())->justChanged = true;
-				highlightingMajorSide = false;
 			}
 			else{
 				float3 moveDir = curPos - prevPos;
@@ -1200,12 +1329,10 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 				}
 			}
 			return true;
+			break;
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE){
-			float3 curPos = GetTransferredLeapPos(indexLeap);
-			markerPos = make_float4(curPos, 1.0);
-
-
+		case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
+		{
 			float3 moveDir = curPos - prevPos;
 			float3 pp = prevPointOfLens + moveDir;
 			float newMinorDis = abs(dot(pp - l->c, l->minorAxisGlobal));
@@ -1213,30 +1340,19 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 			if (d > leavePinchThr || newMinorDis <= l->lSemiMinorAxisGlobal){
 				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 				(lenses.back())->justChanged = true;
-				highlightingMinorSide = false;
+				//highlightingMinorSide = false;
 			}
 			else{
-				//float3 moveDir = curPos - prevPos;
-				//float3 pp = prevPointOfLens + moveDir;
-				l->focusRatio = l->lSemiMinorAxisGlobal / newMinorDis;
-					
-				//float3 moveDir = curPos - prevPos;
-				//float3 pp1 = l->c - l->minorAxisGlobal*l->lSemiMinorAxisGlobal / l->focusRatio;
-				//float3 pp2 = l->c + l->minorAxisGlobal*l->lSemiMinorAxisGlobal / l->focusRatio;
-				//if (length(curPos - pp1) < length(curPos - pp2)){
-				//	pp1 = prevPointOfLens + moveDir;
-				//	l->focusRatio = abs(dot(pp1 - l->c, l->minorAxisGlobal)) / l->lSemiMinorAxisGlobal;
-				//}
-				//else{
-				//	pp2 = prevPointOfLens + moveDir;
-				//	l->focusRatio = abs(dot(pp2 - l->c, l->minorAxisGlobal)) / l->lSemiMinorAxisGlobal;
-				//}
+				l->focusRatio = l->lSemiMinorAxisGlobal / newMinorDis;			
 			}
 			return true;
+			break;
 		}
-		else{
+		default:
+		{
 			//do nothing
 			return false;
+		}
 		}
 	}
 }

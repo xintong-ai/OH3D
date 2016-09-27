@@ -28,7 +28,8 @@ class LensRenderable :public Renderable
 	void ChangeLensCenterbyLeap(Lens *l, float3 p);
 	void ChangeLensCenterbyTransferredLeap(Lens *l, float3 p);
 	float3 GetTransferredLeapPos(float3 p);
-	float3 prevPos, prevPointOfLens;
+	float3 prevPos, prevPos2, prevPointOfLens;
+	float preForce;
 	bool highlightingCuboidFrame = false;
 
 public:
@@ -81,6 +82,7 @@ public:
 	void SlotOneHandChanged(float3 p);
 	bool SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos);
 	void SlotTwoHandChanged(float3 l, float3 r);
+	bool SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIndexLeap, float3 leftThumpLeap, float3 leftIndexLeap, float4 &markerPosRight, float4 &markerPosLeft, float &valRight, float &valLeft, float &f);
 
 };
 #endif

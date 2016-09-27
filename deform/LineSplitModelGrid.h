@@ -33,7 +33,7 @@ class LineSplitModelGrid
 
 
 	const float	time_step = 1 / 30.0;
-	float deformForce = 30;
+	float deformForce = 0;// 30;
 
 	//density related
 	void SetElasticitySimple(float v);

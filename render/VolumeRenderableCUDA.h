@@ -31,8 +31,6 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
 	
-	//default volume to render when not using deformation
-	std::shared_ptr<Volume> volume = 0;
 
 	//interfaces for deformation computing and deformed data
 	std::vector<Lens*> *lenses = 0;
@@ -40,6 +38,10 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer = 0;
 
 public:
+	//default volume to render when not using deformation
+	std::shared_ptr<Volume> volume = 0;
+
+
 	void SetModelGrid(LineSplitModelGrid* _modelGrid){ modelGrid = _modelGrid; }
 	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
 	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }

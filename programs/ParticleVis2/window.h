@@ -88,7 +88,7 @@ private:
 
 	QLabel *deformForceLabel;
 	QLabel *meshResLabel;
-	float deformForceConstant = 10;
+	float deformForceConstant = 3;
 	int meshResolution = 20;
 
 #ifdef USE_OSVR
