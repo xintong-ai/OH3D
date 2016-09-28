@@ -189,9 +189,10 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 
 void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
-	//qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	//qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	//qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
+	//glBindBuffer(GL_ARRAY_BUFFER, vbo_vert), glVertexAttribPointer,glEnableVertexAttribArray, glDisableVertexAttribArray, and glBindBuffer(GL_ARRAY_BUFFER, 0) cannot be commented since they are used by VR!!!!!!!!!!!!
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 	m_vao->bind();
 	for (int i = 0; i < particle->numParticles; i++) {
 		glPushMatrix();
@@ -233,8 +234,8 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 		glPopMatrix();
 	}
 	m_vao->release();
-	//qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
-	//qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 }
 

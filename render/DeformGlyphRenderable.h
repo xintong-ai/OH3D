@@ -30,7 +30,7 @@ public:
 
 	void DisplacePoints(std::vector<float2>& pts);
 
-	void EnableDisplace(bool v){ displaceEnabled = v; }
+	void SetDisplace(bool v){ displaceEnabled = v; }
 	std::shared_ptr<DeformInterface> deformInterface;
 	LineSplitModelGrid* modelGrid;
 	float3 findClosetGlyph(float3 aim);

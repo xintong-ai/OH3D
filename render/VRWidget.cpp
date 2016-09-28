@@ -1,4 +1,4 @@
-#include "VRwidget.h"
+#include "VRWidget.h"
 #include "vector_types.h"
 #include "vector_functions.h"
 #include <iostream>

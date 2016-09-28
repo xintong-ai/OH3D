@@ -111,6 +111,23 @@ Window::Window()
 		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
 		vrWidget->AddRenderable("lens", lensRenderable.get());
 		openGL->SetVRWidget(vrWidget.get());
+
+	//vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
+	//vrWidget->setWindowFlags(Qt::Window);
+	//std::shared_ptr<DeformGlyphRenderable> glyphRenderable2;
+	//if (std::string(dataPath).find(".vtu") != std::string::npos){
+	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
+	//	glyphRenderable2->setColorMap(COLOR_MAP::RDYIGN, true);
+	//}
+	//else{
+	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
+	//	glyphRenderable2->colorByFeature = true;
+	//	glyphRenderable2->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+	//}
+	//glyphRenderable2->SetDisplace(false);
+	//vrWidget->AddRenderable("glyph", glyphRenderable2.get());
+	//vrWidget->AddRenderable("lens", lensRenderable.get());
+	//openGL->SetVRWidget(vrWidget.get());
 #endif
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
