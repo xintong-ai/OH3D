@@ -92,6 +92,42 @@ void RawVolumeReader::GetPosRange(float3& posMin, float3& posMax)
 }
 
 
+void RawVolumeReader::OutputToVolumeByNormalizedValueWithPadding(std::shared_ptr<Volume> v, int nn)
+{
+	v->~Volume();
+
+	v->size = dataSizes + make_int3(0,nn,0);
+
+	v->spacing = spacing;
+	v->dataOrigin = dataOrigin;
+
+	v->values = new float[v->size.x*v->size.y*v->size.z];
+	for (int k = 0; k < v->size.z; k++)
+	{
+		for (int j = 0; j < v->size.y; j++)
+		{
+			for (int i = 0; i < v->size.x; i++)
+			{
+				int ind = k*v->size.y * v->size.x + j*v->size.x + i;
+
+				int jj = j - nn;
+				if (jj < 0)
+					v->values[ind] = 1.0;
+				else{
+
+					int indOri = k*dataSizes.y * dataSizes.x + jj*dataSizes.x + i;
+
+					v->values[ind] = (data[indOri] - minVal) / (maxVal - minVal);
+				}
+			}
+		}
+	}
+
+}
+
+
+
+
 void RawVolumeReader::OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v)
 {
 	v->~Volume();
@@ -113,5 +149,4 @@ void RawVolumeReader::OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v)
 			}
 		}
 	}
-
 }

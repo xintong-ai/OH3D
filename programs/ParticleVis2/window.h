@@ -70,6 +70,8 @@ private:
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
 
+	QSlider *deformForceSlider;
+
 	QCheckBox* usingGlyphSnappingCheck;
 	QCheckBox* usingGlyphPickingCheck;
 	QCheckBox* freezingFeatureCheck;
@@ -113,8 +115,10 @@ private slots:
 	void AddLineLens();
 	void AddCurveBLens(); 
 	void SlotDelLens();
-	void SlotToggleGrid(bool b);
+	void SlotToggleGrid(bool b); 
 	void SlotToggleUdbe(bool b);
+	void SlotToggleCbChangeLensWhenRotateData(bool b);
+	void SlotToggleCbDrawInsicionOnCenterFace(bool b);
 	void SlotToggleUsingGlyphSnapping(bool b);
 	void SlotTogglePickingGlyph(bool b);
 	void SlotToggleGlyphPickingFinished();
@@ -127,6 +131,11 @@ private slots:
 	void SlotToggleUsingFeatureSnapping(bool b);
 	void SlotTogglePickingFeature(bool b);
 	void SlotToggleFeaturePickingFinished();
+
+	void SlotRbUniformChanged(bool);
+	void SlotRbDensityChanged(bool);
+	void SlotRbTransferChanged(bool);
+	void SlotRbGradientChanged(bool);
 
 	void SlotAddMeshRes();
 	void SlotMinusMeshRes();

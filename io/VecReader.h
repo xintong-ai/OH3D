@@ -50,6 +50,7 @@ public:
 	void OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v);
 	void OutputToVolumeByNormalizedVecDownSample(std::shared_ptr<Volume> v, int c);
 	void OutputToVolumeByNormalizedVecUpSample(std::shared_ptr<Volume> v, int c);
+	void OutputToVolumeByNormalizedVecMagWithPadding(std::shared_ptr<Volume> v, int nn);
 
 protected:
 	void Load() override;

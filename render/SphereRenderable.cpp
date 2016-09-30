@@ -38,6 +38,8 @@ SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
 {
 	sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
 	setColorMap(COLOR_MAP::RDYIGN);
+
+	//glyphSizeAdjust = 5;
 }
 
 void SphereRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
@@ -56,7 +58,7 @@ void SphereRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
 		float vMin = particle->valMin;
 		for (int i = 0; i < particle->val.size(); i++) {
 			float valScaled = (particle->val[i] - vMin) / (vMax - vMin);
-			//valScaled = clamp(valScaled * 2-1, 0.0f, 1.0f); //for phi of cosmology
+			//valScaled = clamp(valScaled * 2.5-1.5, 0.0f, 1.0f); //for phi of cosmology
 			cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
 		}
 	}
@@ -201,8 +203,6 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 		//float scale = pow(sphereSize[i], 0.333) * 0.01;
 
 		//std::cout << sphereSize[i] << " ";
-
-        
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();

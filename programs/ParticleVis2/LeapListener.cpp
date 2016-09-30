@@ -27,7 +27,9 @@ inline QVector<QVector<QVector3D>> Leap2QVector(std::vector<std::vector<Leap::Ve
 void LeapListener::onFrame(const Leap::Controller & ctl)
 {
 
-	if(timer->elapsed() > 16.7)
+//	if(timer->elapsed() > 16.7)
+	if (timer->elapsed() > 50)
+
 	{
 		Leap::Frame f = ctl.frame();
 		setObjectName(QString::number(f.id()));

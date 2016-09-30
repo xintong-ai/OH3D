@@ -20,7 +20,8 @@ public:
 	RawVolumeReader(const char* filename, int3 _dim, float3 _origin, float3 _spacing, bool _isUnsignedShort);
 
 	void OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v);
-	
+	void OutputToVolumeByNormalizedValueWithPadding(std::shared_ptr<Volume> v, int nn);
+
 	void GetPosRange(float3& posMin, float3& posMax) override;
 
 	~RawVolumeReader();

@@ -135,7 +135,251 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		}
 	}
 	//temporarily changed for line lens object space debugging
-	if (DEFORM_MODEL::SCREEN_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
+	
+	if (DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
+		int2 winSize = actor->GetWindowSize();
+
+		for (int i = 0; i < lenses.size(); i++) {
+			Lens* l = lenses[i];
+			if (l->type == LENS_TYPE::TYPE_LINE){
+				if (l->isConstructing){
+					if (l->isConstructedFromLeap){ //when using leap motion
+						glMatrixMode(GL_PROJECTION);
+						glPushMatrix();
+						glLoadIdentity();
+						glLoadMatrixf(projection);
+						glMatrixMode(GL_MODELVIEW);
+						glPushMatrix();
+						glLoadIdentity();
+						glLoadMatrixf(modelview);
+
+						glLineWidth(4);
+
+						glColor3f(0.39f, 0.89f, 0.26f);
+			
+						std::vector<float3> PointsForIncisionBack = ((LineLens3D*)l)->GetCtrlPoints3DForRendering(modelview, projection, winSize.x, winSize.y);
+						glBegin(GL_LINES);
+						for (auto v : PointsForIncisionBack)
+							glVertex3f(v.x, v.y, v.z);
+						glEnd();
+
+						glMatrixMode(GL_PROJECTION);
+						glPopMatrix();
+						glMatrixMode(GL_MODELVIEW);
+						glPopMatrix();
+					}
+					else{ //when NOT using leap motion
+						glMatrixMode(GL_PROJECTION);
+						glPushMatrix();
+						glLoadIdentity();
+						glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
+
+						glMatrixMode(GL_MODELVIEW);
+						glPushMatrix();
+						glLoadIdentity();
+
+						glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+						glLineWidth(4);
+
+						std::vector<float2> lensContour = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
+						glColor3f(0.39f, 0.89f, 0.26f);
+						glBegin(GL_LINES);
+						for (auto v : lensContour)
+							glVertex2f(v.x, v.y);
+						glEnd();
+
+						glPopAttrib();
+						//restore the original 3D coordinate system
+						glMatrixMode(GL_PROJECTION);
+						glPopMatrix();
+						glMatrixMode(GL_MODELVIEW);
+						glPopMatrix();
+					}
+				}
+				else //finished Constructing
+				{
+					glMatrixMode(GL_PROJECTION);
+					glPushMatrix();
+					glLoadIdentity();
+					glLoadMatrixf(projection);
+					glMatrixMode(GL_MODELVIEW);
+					glPushMatrix();
+					glLoadIdentity();
+					glLoadMatrixf(modelview);
+
+					if (highlightingCuboidFrame)
+						glLineWidth(8);
+					else
+						glLineWidth(4);
+					std::vector<float3> PointsForContourOuterCenter = ((LineLens3D*)l)->GetOuterContourCenterFace();
+					std::vector<float3> PointsForContourOuterFront = ((LineLens3D*)l)->GetOuterContourFrontFace();
+
+
+					glColor3f(0.82f, 0.31f, 0.67f);
+					PointsForContourOuterCenter = ((LineLens3D*)l)->GetOuterContourCenterFace();
+					PointsForContourOuterFront = ((LineLens3D*)l)->GetOuterContourFrontFace();
+					glBegin(GL_LINE_LOOP);
+					for (auto v : PointsForContourOuterCenter)
+						glVertex3f(v.x, v.y, v.z);
+					glEnd();
+					glBegin(GL_LINE_LOOP);
+					for (auto v : PointsForContourOuterFront)
+						glVertex3f(v.x, v.y, v.z);
+					glEnd();
+					glBegin(GL_LINES);
+					for (int i = 0; i < PointsForContourOuterCenter.size(); i++){
+						float3 v = PointsForContourOuterCenter[i], v2 = PointsForContourOuterFront[i];
+						glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+					}
+					glEnd();
+
+					if (drawFullRetractor){
+						std::vector<float3> PointsForContourOuterBack = ((LineLens3D*)l)->GetOuterContourBackFace();
+						glBegin(GL_LINE_LOOP);
+						for (auto v : PointsForContourOuterBack)
+							glVertex3f(v.x, v.y, v.z);
+						glEnd();
+
+						glBegin(GL_LINES);
+						for (int i = 0; i < PointsForContourOuterCenter.size(); i++){
+							float3 v = PointsForContourOuterCenter[i], v2 = PointsForContourOuterBack[i];
+							glVertex3f(v.x, v.y, v.z);
+							glVertex3f(v2.x, v2.y, v2.z);
+						}
+						glEnd();
+					}
+
+					if (highlightingMajorSide){
+						glLineWidth(8);
+						glColor3f(0.82f*1.1, 0.31f*1.1, 0.67f*1.1);
+						glBegin(GL_LINES);
+						float3 v = PointsForContourOuterCenter[0], v2 = PointsForContourOuterCenter[3]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						v = PointsForContourOuterCenter[2], v2 = PointsForContourOuterCenter[1]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						v = PointsForContourOuterFront[0], v2 = PointsForContourOuterFront[3]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						v = PointsForContourOuterFront[2], v2 = PointsForContourOuterFront[1]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						glEnd();
+					}
+					else if (highlightingMinorSide){
+						glLineWidth(8);
+						glColor3f(0.82f*1.1, 0.31f*1.1, 0.67f*1.1);
+						glBegin(GL_LINES);
+						float3 v = PointsForContourOuterCenter[0], v2 = PointsForContourOuterCenter[1]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						v = PointsForContourOuterCenter[2], v2 = PointsForContourOuterCenter[3]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						v = PointsForContourOuterFront[0], v2 = PointsForContourOuterFront[1]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						v = PointsForContourOuterFront[2], v2 = PointsForContourOuterFront[3]; glVertex3f(v.x, v.y, v.z);
+						glVertex3f(v2.x, v2.y, v2.z);
+						glEnd();		
+					}
+
+
+					//incision
+					if (actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE)
+					{
+						if (l->isConstructedFromLeap){
+							glLineWidth(4);
+							glColor3f(0.39f, 0.89f, 0.26f);
+							glBegin(GL_LINES);
+							float3 v = ((LineLens3D*)l)->ctrlPoint3D1, v2 = ((LineLens3D*)l)->ctrlPoint3D2;
+							glVertex3f(v.x, v.y, v.z);
+							glVertex3f(v2.x, v2.y, v2.z);
+							glEnd();
+						}
+						else{
+							glMatrixMode(GL_PROJECTION);
+							glPushMatrix();
+							glLoadIdentity();
+							glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
+
+							glMatrixMode(GL_MODELVIEW);
+							glPushMatrix();
+							glLoadIdentity();
+
+							glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+							glLineWidth(4);
+
+							float2 v = ((LineLens3D*)l)->ctrlPoint1Abs, v2 = ((LineLens3D*)l)->ctrlPoint2Abs;
+							glColor3f(0.39f, 0.89f, 0.26f);
+							glBegin(GL_LINES);
+							glVertex2f(v.x, v.y);
+							glVertex2f(v2.x, v2.y);
+							glEnd();
+
+							glPopAttrib();
+							//restore the original 3D coordinate system
+							glMatrixMode(GL_PROJECTION);
+							glPopMatrix();
+							glMatrixMode(GL_MODELVIEW);
+							glPopMatrix();
+						}
+					}
+					else{
+						glLineWidth(4);
+						glColor3f(0.39f, 0.89f, 0.26f);
+						std::vector<float3> PointsForIncision;
+						if (l->isConstructedFromLeap || drawInsicionOnCenterFace){
+							PointsForIncision = ((LineLens3D*)l)->GetIncisionCenter();
+						}
+						else{
+							PointsForIncision = ((LineLens3D*)l)->GetIncisionFront();
+						}
+						glBegin(GL_LINES);
+						for (auto v : PointsForIncision)
+							glVertex3f(v.x, v.y, v.z);
+						glEnd();
+					}
+
+					glMatrixMode(GL_PROJECTION);
+					glPopMatrix();
+					glMatrixMode(GL_MODELVIEW);
+					glPopMatrix();
+
+				}
+			}
+			else if (l->type == LENS_TYPE::TYPE_CIRCLE){ //same with screen space
+				glMatrixMode(GL_PROJECTION);
+				glPushMatrix();
+				glLoadIdentity();
+				glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
+
+				glMatrixMode(GL_MODELVIEW);
+				glPushMatrix();
+				glLoadIdentity();
+
+				glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
+				glLineWidth(4);
+
+				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
+				glColor3f(0.39f, 0.89f, 0.26f);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+
+				glColor3f(0.82f, 0.31f, 0.67f);
+				std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
+				glBegin(GL_LINE_LOOP);
+				for (auto v : lensOuterContour)
+					glVertex2f(v.x, v.y);
+				glEnd();
+
+				glPopAttrib();
+				//restore the original 3D coordinate system
+				glMatrixMode(GL_PROJECTION);
+				glPopMatrix();
+				glMatrixMode(GL_MODELVIEW);
+				glPopMatrix();
+			}
+		}
+	}
+	else if (DEFORM_MODEL::SCREEN_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
 		int2 winSize = actor->GetWindowSize();
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
@@ -150,7 +394,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glLineWidth(4);
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
-			
+
 			std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
 			glColor3f(0.39f, 0.89f, 0.26f);
 			glBegin(GL_LINE_LOOP);
@@ -213,7 +457,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				{
 					glColor3f(0.8f, 0.0f, 0.8f);
 					glBegin(GL_POINTS);
-					for (int i = 0; i < pp.size(); i+=2){
+					for (int i = 0; i < pp.size(); i += 2){
 						float2 v = pp[i];
 						glVertex2f(v.x, v.y);
 					}
@@ -221,10 +465,10 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 						float2 v = nn[i];
 						glVertex2f(v.x, v.y);
 					}
-					
+
 
 					glColor3f(0.0, 0.0f, 1.0);
-					for (int i = 0; i < subp.size(); i+=2){
+					for (int i = 0; i < subp.size(); i += 2){
 						float2 v = subp[i];
 						glVertex2f(v.x, v.y);
 					}
@@ -264,211 +508,8 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		glMatrixMode(GL_MODELVIEW);
 		glPopMatrix();
 
-		
+
 	}
-	else if (DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
-		int2 winSize = actor->GetWindowSize();
-
-		for (int i = 0; i < lenses.size(); i++) {
-			Lens* l = lenses[i];
-			if (l->type == LENS_TYPE::TYPE_CIRCLE){ //same with screen space
-				glMatrixMode(GL_PROJECTION);
-				glPushMatrix();
-				glLoadIdentity();
-				glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
-
-				glMatrixMode(GL_MODELVIEW);
-				glPushMatrix();
-				glLoadIdentity();
-
-				glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
-				glLineWidth(4);
-
-				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
-				glColor3f(0.39f, 0.89f, 0.26f);
-				glBegin(GL_LINE_LOOP);
-				for (auto v : lensContour)
-					glVertex2f(v.x, v.y);
-				glEnd();
-
-				glColor3f(0.82f, 0.31f, 0.67f);
-				std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
-				glBegin(GL_LINE_LOOP);
-				for (auto v : lensOuterContour)
-					glVertex2f(v.x, v.y);
-				glEnd();
-
-				glPopAttrib();
-				//restore the original 3D coordinate system
-				glMatrixMode(GL_PROJECTION);
-				glPopMatrix();
-				glMatrixMode(GL_MODELVIEW);
-				glPopMatrix();
-			}
-			else if (l->type == LENS_TYPE::TYPE_LINE){
-				if (l->isConstructing){
-					if (l->isConstructedFromLeap){ //when using leap motion
-						glMatrixMode(GL_PROJECTION);
-						glPushMatrix();
-						glLoadIdentity();
-						glLoadMatrixf(projection);
-						glMatrixMode(GL_MODELVIEW);
-						glPushMatrix();
-						glLoadIdentity();
-						glLoadMatrixf(modelview);
-
-						glLineWidth(4);
-
-						glColor3f(0.39f, 0.89f, 0.26f);
-			
-						std::vector<float3> PointsForIncisionBack = ((LineLens3D*)l)->GetCtrlPoints3DForRendering(modelview, projection, winSize.x, winSize.y);
-						glBegin(GL_LINES);
-						for (auto v : PointsForIncisionBack)
-							glVertex3f(v.x, v.y, v.z);
-						glEnd();
-
-						glMatrixMode(GL_PROJECTION);
-						glPopMatrix();
-						glMatrixMode(GL_MODELVIEW);
-						glPopMatrix();
-					}
-					else{ //when NOT using leap motion
-						glMatrixMode(GL_PROJECTION);
-						glPushMatrix();
-						glLoadIdentity();
-						glOrtho(0.0, winSize.x - 1, 0.0, winSize.y - 1, -1, 1);
-
-						glMatrixMode(GL_MODELVIEW);
-						glPushMatrix();
-						glLoadIdentity();
-
-						glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
-						glLineWidth(4);
-
-						std::vector<float2> lensContour = l->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);
-						glColor3f(0.39f, 0.89f, 0.26f);
-						glBegin(GL_LINES);
-						for (auto v : lensContour)
-							glVertex2f(v.x, v.y);
-						glEnd();
-
-						glColor3f(0.82f, 0.31f, 0.67f);
-						std::vector<float2> lensOuterContour = l->GetOuterContour(modelview, projection, winSize.x, winSize.y);
-						glBegin(GL_LINE_LOOP);
-						for (auto v : lensOuterContour)
-							glVertex2f(v.x, v.y);
-						glEnd();
-
-						glPopAttrib();
-						//restore the original 3D coordinate system
-						glMatrixMode(GL_PROJECTION);
-						glPopMatrix();
-						glMatrixMode(GL_MODELVIEW);
-						glPopMatrix();
-					}
-				}
-				else //finished Constructing
-				{
-					glMatrixMode(GL_PROJECTION);
-					glPushMatrix();
-					glLoadIdentity();
-					glLoadMatrixf(projection);
-					glMatrixMode(GL_MODELVIEW);
-					glPushMatrix();
-					glLoadIdentity();
-					glLoadMatrixf(modelview);
-
-			
-
-					if(highlightingCuboidFrame)
-						glLineWidth(8);
-					else
-						glLineWidth(4);
-
-					glColor3f(0.82f, 0.31f, 0.67f);
-					std::vector<float3> PointsForContourOuterBack = ((LineLens3D*)l)->GetOuterContourBackBase();
-					std::vector<float3> PointsForContourOuterFront = ((LineLens3D*)l)->GetOuterContourFrontBase();
-					glBegin(GL_LINE_LOOP);
-					for (auto v : PointsForContourOuterBack)
-						glVertex3f(v.x, v.y, v.z);
-					glEnd();
-					glBegin(GL_LINE_LOOP);
-					for (auto v : PointsForContourOuterFront)
-						glVertex3f(v.x, v.y, v.z);
-					glEnd();
-					glBegin(GL_LINES);
-					for (int i = 0; i < PointsForContourOuterBack.size(); i++){
-						float3 v = PointsForContourOuterBack[i], v2 = PointsForContourOuterFront[i];
-						glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);
-					}
-					glEnd();
-
-					if (highlightingMajorSide){
-						glLineWidth(8);
-						glColor3f(0.82f*1.1, 0.31f*1.1, 0.67f*1.1);
-						glBegin(GL_LINES);
-						float3 v = PointsForContourOuterBack[0], v2 = PointsForContourOuterBack[3]; glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);
-						v = PointsForContourOuterBack[2], v2 = PointsForContourOuterBack[1]; glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);
-						v = PointsForContourOuterFront[0], v2 = PointsForContourOuterFront[3]; glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);
-						v = PointsForContourOuterFront[2], v2 = PointsForContourOuterFront[1]; glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);
-						glEnd();
-
-						glLineWidth(4);
-						glColor3f(0.39f, 0.89f, 0.26f);
-						glBegin(GL_LINES);
-						v = ((LineLens3D*)l)->ctrlPoint3D1, v2 = ((LineLens3D*)l)->ctrlPoint3D2;
-						glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);	
-						glEnd();
-					}
-					else{
-						glLineWidth(4);
-
-						glColor3f(0.39f, 0.89f, 0.26f);
-						if (l->isConstructedFromLeap){
-							std::vector<float3> PointsForIncisionBack = ((LineLens3D*)l)->GetIncisionBack();
-							glBegin(GL_LINES);
-							for (auto v : PointsForIncisionBack)
-								glVertex3f(v.x, v.y, v.z);
-						}
-						else{
-							std::vector<float3> PointsForIncisionFront = ((LineLens3D*)l)->GetIncisionFront();
-							glBegin(GL_LINES);
-							for (auto v : PointsForIncisionFront)
-								glVertex3f(v.x, v.y, v.z);
-						}
-						glEnd();
-
-						if (highlightingMinorSide){
-							glLineWidth(8);
-							glColor3f(0.82f*1.1, 0.31f*1.1, 0.67f*1.1);
-							glBegin(GL_LINES);
-							float3 v = PointsForContourOuterBack[0], v2 = PointsForContourOuterBack[1]; glVertex3f(v.x, v.y, v.z);
-							glVertex3f(v2.x, v2.y, v2.z);
-							v = PointsForContourOuterBack[2], v2 = PointsForContourOuterBack[3]; glVertex3f(v.x, v.y, v.z);
-							glVertex3f(v2.x, v2.y, v2.z);
-							v = PointsForContourOuterFront[0], v2 = PointsForContourOuterFront[1]; glVertex3f(v.x, v.y, v.z);
-							glVertex3f(v2.x, v2.y, v2.z);
-							v = PointsForContourOuterFront[2], v2 = PointsForContourOuterFront[3]; glVertex3f(v.x, v.y, v.z);
-							glVertex3f(v2.x, v2.y, v2.z);
-							glEnd();
-						}
-					}
-
-					glMatrixMode(GL_PROJECTION);
-					glPopMatrix();
-					glMatrixMode(GL_MODELVIEW);
-					glPopMatrix();
-				}
-			}
-		}
-	}
-	
 }
 
 void LensRenderable::AddCircleLens()
@@ -507,10 +548,12 @@ void LensRenderable::AddLineLens3D()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l;
 	if (lastLensCenterRecorded){
-		l = new LineLens3D(lastLensCenter, 0.3);
+		//l = new LineLens3D(lastLensCenter, 0.3);
+		l = new LineLens3D(lastLensCenter, 0.193742);
 	}
 	else{
-		l = new LineLens3D(actor->DataCenter(), 0.3);
+		//l = new LineLens3D(actor->DataCenter(), 0.3);
+		l = new LineLens3D(actor->DataCenter(), 0.193742);
 	}
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
@@ -690,12 +733,12 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 				l->justChanged = true;
 			}
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
-			//if (lenses.size() > 0){
-			//	Lens* l = lenses[lenses.size() - 1];
-			//	l->justChanged = true;
-			//}
-			;
+		else if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && changeLensWhenRotateData){
+			//this decides whether to relocate the mesh when rotating the data
+			if (lenses.size() > 0){
+				Lens* l = lenses[lenses.size() - 1];
+				l->justChanged = true;
+			}
 		}
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS && isSnapToFeature){
 			/*// !!! DON'T DELETE !!!
@@ -808,8 +851,12 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 	{
 		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE)
 			lenses[pickedLens]->ChangeLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
-		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE)
+		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
 			lenses[pickedLens]->ChangeObjectLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
+			float3 pmin, pmax;
+			actor->GetPosRange(pmin, pmax);
+			((LineLens3D*)(lenses[pickedLens]))->UpdateLineLensGlobalInfoFromScreenInfo(winSize.x, winSize.y, modelview, projection, pmin, pmax);
+		}
 		break;
 	}
 	case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
@@ -826,6 +873,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 
 bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 {
+	actor->startTime = clock();
+
 	int2 winSize = actor->GetWindowSize();
 	GLfloat modelview[16];
 	GLfloat projection[16];
@@ -838,8 +887,11 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
 			l->ChangeClipDepth(delta, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
-
 		}
+		if (l->GetType() == LENS_TYPE::TYPE_LINE && DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
+			((LineLens3D*)l)->UpdateCtrlPoints(modelview, projection, winSize.x, winSize.y);
+		}
+
 	}
 	return insideAnyLens;
 }
@@ -995,37 +1047,34 @@ bool LensRenderable::SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIn
 	case INTERACT_MODE::TRANSFORMATION:
 	{
 		if (l->PointInCuboidRegion3D(curPosLeft, modelview, projection, winSize.x, winSize.y)
-			&& l->PointInCuboidRegion3D(curPosRight, modelview, projection, winSize.x, winSize.y)){
+			|| l->PointInCuboidRegion3D(curPosRight, modelview, projection, winSize.x, winSize.y)){
 			highlightingCenter = false;
 			highlightingMajorSide = false;
 			highlightingMinorSide = false;
 			highlightingCuboidFrame = true;		
-			valLeft = 1;
-			valRight = 1;
+			
 
 			if (dright < enterPichThr && dleft < enterPichThr){
 				actor->SetInteractMode(INTERACT_MODE::CHANGING_FORCE);
 				preForce = f;
 				prevPos = curPosRight;
 				prevPos2 = curPosLeft;
-				return true;
+				valLeft = 1;
+				valRight = 1;
 			}
-		}
-		else if (l->PointInCuboidRegion3D(curPosLeft, modelview, projection, winSize.x, winSize.y)){
-			highlightingCenter = false;
-			highlightingMajorSide = false;
-			highlightingMinorSide = false;
-			highlightingCuboidFrame = true;
-			valLeft = 0;
-			valRight = 1;
-		}
-		else if (l->PointInCuboidRegion3D(curPosRight, modelview, projection, winSize.x, winSize.y)){
-			highlightingCenter = false;
-			highlightingMajorSide = false;
-			highlightingMinorSide = false;
-			highlightingCuboidFrame = true; 
-			valLeft = 1;
-			valRight = 0;
+			else if (dright < enterPichThr){
+				valLeft = 1;
+				valRight = 0;
+			}
+			else if (dleft < enterPichThr){
+				valLeft = 0;
+				valRight = 1;
+			}
+			else{
+				valLeft = 0;
+				valRight = 0;
+			}
+			return true;
 		}
 		else{
 			highlightingCenter = false;
@@ -1152,7 +1201,7 @@ void LensRenderable::SlotOneHandChanged(float3 p)
 	}
 }
 
-bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos)
+bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos, float &valRight)
 {
 	//currently only work for line lens 3D
 	//std::cout << "thumpLeap " << thumpLeap.x << " " << thumpLeap.y << " " << thumpLeap.z << std::endl;
@@ -1185,7 +1234,7 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 			actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
 			((LineLens3D *)l)->ctrlPoint3D1 = curPos;
 			((LineLens3D *)l)->ctrlPoint3D2 = curPos;
-
+			valRight = 1;
 			return true;
 		}
 		else{
@@ -1227,7 +1276,7 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 		case INTERACT_MODE::TRANSFORMATION:
 		{
 			if (d < enterPichThr){
-
+				valRight = 1;
 				if (l->PointOnLensCenter3D(curPos, modelview, projection, winSize.x, winSize.y)){
 					actor->SetInteractMode(INTERACT_MODE::MOVE_LENS);
 					prevPos = curPos;
@@ -1258,6 +1307,7 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 				return true;
 			}
 			else{
+				valRight = 0;
 				float3 pmin, pmax;
 				actor->GetPosRange(pmin, pmax);
 				if (outOfDomain(curPos, pmin, pmax)){

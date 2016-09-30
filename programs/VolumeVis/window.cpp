@@ -88,7 +88,8 @@ Window::Window()
 		reader2->OutputToVolumeByNormalizedVecMag(inputVolume);
 		//reader2->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
 		//reader2->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-
+		//reader2->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
+		
 		reader2.reset();
 	}
 	else{
@@ -153,17 +154,35 @@ Window::Window()
 	openGL->AddRenderable("model", modelGridRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
-	addLineLensBtn = new QPushButton("Add straight band lens");
-	delLensBtn = std::make_shared<QPushButton>("Delete a lens");
+	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
+	delLensBtn = std::make_shared<QPushButton>("Delete the Virtual Retractor");
 	//addCurveBLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
-	QCheckBox* gridCheck = new QCheckBox("Grid", this);
+	QCheckBox* gridCheck = new QCheckBox("Show Grid", this);
 	
-	QGroupBox *gbStiffnessMode = new QGroupBox(tr("Stiffness Mode"));
+	QCheckBox* cbChangeLensWhenRotateData = new QCheckBox("Change Lens When Rotate Data", this);
+	cbChangeLensWhenRotateData->setChecked(lensRenderable->changeLensWhenRotateData);
+	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
+	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
+
+	modelGrid->setDeformForce(2000);
+	QLabel *deformForceLabelLit = new QLabel("Deform Force:");
+	//controlLayout->addWidget(deformForceLabelLit);
+	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
+	deformForceSlider->setRange(0, 50);
+	deformForceSlider->setValue(modelGrid->getDeformForce() / deformForceConstant);
+	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
+	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
+	QHBoxLayout *deformForceLayout = new QHBoxLayout;
+	deformForceLayout->addWidget(deformForceSlider);
+	deformForceLayout->addWidget(deformForceLabel);
+
+
+	QGroupBox *gbStiffnessMode = new QGroupBox(tr("Stiffness Mode:"));
 	QVBoxLayout *layoutStiffnessMode = new QVBoxLayout;
 	QRadioButton* rbUniform = new QRadioButton(tr("&Uniform Stiffness"));
 	QRadioButton* rbDensity = new QRadioButton(tr("&Density Based Stiffness"));
@@ -182,14 +201,14 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 		rbGradient->setChecked(true);
 	}
 
-	layoutStiffnessMode->addWidget(rbUniform);
 	layoutStiffnessMode->addWidget(rbDensity);
 	layoutStiffnessMode->addWidget(rbTransfer);
 	layoutStiffnessMode->addWidget(rbGradient);
+	layoutStiffnessMode->addWidget(rbUniform);
 	gbStiffnessMode->setLayout(layoutStiffnessMode);
 
 	QHBoxLayout *meshResLayout = new QHBoxLayout;
-	QLabel *meshResLitLabel = new QLabel(("Mesh resolution:  "));
+	QLabel *meshResLitLabel = new QLabel(("Mesh Resolution:  "));
 	QPushButton* addMeshResPushButton = new QPushButton(tr("&+"));
 	addMeshResPushButton->setFixedSize(24, 24);
 	QPushButton* minusMeshResPushButton = new QPushButton(tr("&-"));
@@ -231,7 +250,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	controlLayout->addWidget(addLensBtn);
+	//controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
 	//controlLayout->addWidget(addCurveBLensBtn);
@@ -239,28 +258,21 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 	//controlLayout->addWidget(groupBox);
-	controlLayout->addWidget(transSizeLabel);
-	controlLayout->addWidget(transSizeSlider);
+	//controlLayout->addWidget(transSizeLabel);
+	//controlLayout->addWidget(transSizeSlider);
 	//controlLayout->addWidget(usingGlyphSnappingCheck);
 	//controlLayout->addWidget(usingGlyphPickingCheck);
 	controlLayout->addWidget(gridCheck);
 	//controlLayout->addWidget(udbeCheck);
+	controlLayout->addWidget(cbChangeLensWhenRotateData);
+	controlLayout->addWidget(cbDrawInsicionOnCenterFace); 
 	controlLayout->addLayout(meshResLayout);
+	controlLayout->addWidget(deformForceLabelLit);
+	controlLayout->addLayout(deformForceLayout);
 	controlLayout->addWidget(gbStiffnessMode);
 
 
-	modelGrid->setDeformForce(2000);
-	QLabel *deformForceLabelLit = new QLabel("Deform Force");
-	//controlLayout->addWidget(deformForceLabelLit);
-	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
-	deformForceSlider->setRange(0, 50);
-	deformForceSlider->setValue(modelGrid->getDeformForce()/deformForceConstant);
-	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
-	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
-	QHBoxLayout *deformForceLayout = new QHBoxLayout;
-	deformForceLayout->addWidget(deformForceSlider);
-	deformForceLayout->addWidget(deformForceLabel);
-	controlLayout->addLayout(deformForceLayout);
+	
 
 
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
@@ -367,7 +379,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	rcLayout->addLayout(lsLayout);
 	rcGroupBox->setLayout(rcLayout);
 
-	controlLayout->addWidget(rcGroupBox);
+	//controlLayout->addWidget(rcGroupBox);
 
 
 	controlLayout->addStretch();

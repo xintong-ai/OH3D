@@ -8,7 +8,7 @@ class SolidSphere;
 class LensRenderable :public Renderable
 {
 	Q_OBJECT
-	
+
 	std::vector<Lens*> lenses;
 	float3 lastLensCenter;
 	bool lastLensCenterRecorded = false;
@@ -16,7 +16,6 @@ class LensRenderable :public Renderable
 	int pickedLens = -1;
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
-
 
 
 	bool highlightingCenter = false;
@@ -34,10 +33,15 @@ class LensRenderable :public Renderable
 
 public:
 
+	bool drawFullRetractor = false;
+
 	std::vector<Lens*>* GetLensesAddr() { return &lenses; }//temperary solution. should put lenses outside of LensRenderable
 
 	float3 snapPos;
 	
+	bool changeLensWhenRotateData = false;
+	bool drawInsicionOnCenterFace = false;
+
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	LensRenderable();
@@ -80,7 +84,7 @@ public slots:
 //public slots: //those function are called by slot functions but are not slots themselves
 public:
 	void SlotOneHandChanged(float3 p);
-	bool SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos);
+	bool SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos, float &valRight);
 	void SlotTwoHandChanged(float3 l, float3 r);
 	bool SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIndexLeap, float3 leftThumpLeap, float3 leftIndexLeap, float4 &markerPosRight, float4 &markerPosLeft, float &valRight, float &valLeft, float &f);
 

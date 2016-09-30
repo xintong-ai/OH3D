@@ -75,9 +75,10 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 			if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
 				float lensCen2PProj = dot(lenCen2P, lensDir);
 				if (lensCen2PProj < 0){		
-					//float candLight = 1.0f / (alpha * abs(lensCen2PProj) + 1.0f);
-					//thrust::get<4>(t) = candLight>dark ? candLight : dark;
 					thrust::get<4>(t) = max(1.0f / (alpha * abs(lensCen2PProj) + 1.0f), dark);
+				}
+				else{
+					thrust::get<4>(t) = 1.0f * (1 + alpha / 5 * abs(lensCen2PProj));
 				}
 			}
 			else{

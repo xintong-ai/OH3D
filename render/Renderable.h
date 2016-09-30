@@ -41,6 +41,7 @@ class Renderable: public QObject
 	int fpsCount = 0;        // FPS count for averaging
 	int fpsLimit = 128;        // FPS limit for sampling
 
+
 public:
 	Renderable();
     ~Renderable();
@@ -122,6 +123,7 @@ protected:
 	bool visible = true;
 
 	//bool drawScreenSpace = false;
+
 
 private:
     void AllocOutImage();

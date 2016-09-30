@@ -552,6 +552,7 @@ void LineLens3D::FinishConstructing3D(float* _mv, float* _pj, int winW, int winH
 bool LineLens3D::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH)
 {
 	//dot product of (_x-x, _y-y) and direction
+	float2 direction = normalize(ctrlPoint2Abs - ctrlPoint1Abs);
 	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 	float2 toPoint = make_float2(_x - center.x, _y - center.y);
 	float disMajor = toPoint.x*direction.x + toPoint.y*direction.y;
@@ -560,8 +561,8 @@ bool LineLens3D::PointInsideLens(int _x, int _y, float* mv, float* pj, int winW,
 	{
 		float2 minorDirection = make_float2(-direction.y, direction.x);
 		//dot product of (_x-x, _y-y) and minorDirection
-		float disMinor = (_x - center.x)*minorDirection.x + (_y - center.y)*minorDirection.y;
-		if (abs(disMinor) < length(ctrlPoint2Abs - ctrlPoint1Abs) / 2*focusRatio)
+		float disMinor = dot(toPoint, minorDirection);
+		if (abs(disMinor) < length(ctrlPoint2Abs - ctrlPoint1Abs) / 2/ axisRatio/focusRatio)
 			return true;
 	}
 	return false;
@@ -728,7 +729,7 @@ void LineLens3D::ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, fl
 
 
 
-std::vector<float3> LineLens3D::GetOuterContourBackBase()
+std::vector<float3> LineLens3D::GetOuterContourCenterFace()
 {
 	std::vector<float3> ret;
 	float3 cp1 = c - majorAxisGlobal*lSemiMajorAxisGlobal;
@@ -741,7 +742,20 @@ std::vector<float3> LineLens3D::GetOuterContourBackBase()
 	return ret;
 }
 
-std::vector<float3> LineLens3D::GetOuterContourFrontBase()
+std::vector<float3> LineLens3D::GetOuterContourBackFace()
+{
+	std::vector<float3> ret;
+	float3 cp1 = estMeshBottomCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
+	float3 cp2 = estMeshBottomCenter + majorAxisGlobal*lSemiMajorAxisGlobal;
+
+	ret.push_back(cp1 - minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	ret.push_back(cp2 - minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	ret.push_back(cp2 + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	ret.push_back(cp1 + minorAxisGlobal*lSemiMinorAxisGlobal / focusRatio);
+	return ret;
+}
+
+std::vector<float3> LineLens3D::GetOuterContourFrontFace()
 {
 	std::vector<float3> ret;
 	float3 cp1 = frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal;
@@ -762,7 +776,7 @@ std::vector<float3> LineLens3D::GetIncisionFront()
 	return ret;
 }
 
-std::vector<float3> LineLens3D::GetIncisionBack()
+std::vector<float3> LineLens3D::GetIncisionCenter()
 {
 	std::vector<float3> ret;
 	//if (isConstructing && isConstructedFromLeap)
@@ -770,6 +784,40 @@ std::vector<float3> LineLens3D::GetIncisionBack()
 	ret.push_back(c + majorAxisGlobal*lSemiMajorAxisGlobal);
 	return ret;
 }
+
+void LineLens3D::UpdateCtrlPoints(float* mv, float* pj, int winW, int winH)
+{
+	ctrlPoint1Abs = Object2Screen(make_float4(frontBaseCenter - majorAxisGlobal*lSemiMajorAxisGlobal,1.0), mv, pj, winW, winH);
+	ctrlPoint2Abs = Object2Screen(make_float4(frontBaseCenter + majorAxisGlobal*lSemiMajorAxisGlobal, 1.0), mv, pj, winW, winH);
+}
+
+std::vector<float3> LineLens3D::Get3DCoordOfCtrlPoints(float* mv, float* pj, int winW, int winH)
+{
+	float _invmv[16];
+	float _invpj[16];
+	invertMatrix(pj, _invpj);
+	invertMatrix(mv, _invmv);
+
+	std::vector<float3> res;
+	//if (isConstructing){
+	res.push_back(make_float3(Clip2ObjectGlobal(make_float4(make_float3(Screen2Clip(ctrlPoint1Abs, winW, winH), -1), 1.0), _invmv, _invpj)));
+	res.push_back(make_float3(Clip2ObjectGlobal(make_float4(make_float3(Screen2Clip(ctrlPoint2Abs, winW, winH), -1), 1.0), _invmv, _invpj)));
+	//}
+	//else{
+	//	float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+	//	float2 ctrlPoint1 = center - direction*lSemiMajorAxis;
+	//	float2 ctrlPoint2 = center + direction*lSemiMajorAxis;
+	//	res.push_back(ctrlPoint1);
+	//	res.push_back(ctrlPoint2);
+	//	float2 minorDirection = make_float2(-direction.y, direction.x);
+	//	float2 semiCtrlPoint1 = center - minorDirection*lSemiMinorAxis;
+	//	float2 semiCtrlPoint2 = center + minorDirection*lSemiMinorAxis;
+	//	res.push_back(semiCtrlPoint1);
+	//	res.push_back(semiCtrlPoint2);
+	//}
+	return res;
+}
+
 
 std::vector<float3> LineLens3D::GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH)
 {

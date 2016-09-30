@@ -16,7 +16,7 @@ class DeformGlyphRenderable: public GlyphRenderable
 	void StartDeformTimer();
 	void StopDeformTimer();
 	bool displaceEnabled = true;
-
+	
 public:
 	std::vector<Lens*> *lenses = 0; // a reference of the lenses, which is stored in LensRenderable now
 

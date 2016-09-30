@@ -273,6 +273,7 @@ __device__ float3 GetColourXin(float v, float vmin, float vmax)
 
 __device__ float3 GetColourDiverge(float v)
 {
+	//if (v > 0.8)v = (v-0.8)/2+0.8;//for NEK image
 	//can be accelerated!!
 	int pos = 0;
 	bool notFound = true;
@@ -307,6 +308,9 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
 	const float3 boxMax = spacing*make_float3(volumeSize);
+	//const float3 boxMin = make_float3(0.0f, 114.0f, 0.0f);
+	//const float3 boxMax = spacing*make_float3(256, 115, 256);//for NEK image
+
 
 	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
 	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
@@ -325,7 +329,8 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 	if (!hit)
 	{
 		float4 sum = make_float4(0.0f);
-		sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
+		//sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
+		sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 		d_output[y*imageW + x] = rgbaFloatToInt(sum);
 		return;
 	}
@@ -342,7 +347,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 	float t = tnear;
 	float3 pos = eyeRay.o + eyeRay.d*tnear;
 	float3 step = eyeRay.d*tstep;
-	float lightingThr = 0.001;
+	float lightingThr = 0.000001;
 
 	float fragDepth = 1.0;
 

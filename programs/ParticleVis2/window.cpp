@@ -63,7 +63,7 @@ Window::Window()
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
-		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
+				//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 
 		reader->GetPosRange(posMin, posMax);
@@ -80,13 +80,15 @@ Window::Window()
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
-		
+
+		deformForceConstant = 2;
+
 		//inputParticle->featureReshuffle();
-		//posMin = inputParticle->posMin;
-		//posMax = inputParticle->posMax;
 		
 		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
+		//glyphRenderable->setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
+		
 		glyphRenderable->colorByFeature = true;
 		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 	}
@@ -104,13 +106,20 @@ Window::Window()
 	glyphRenderable->lenses = lensRenderable->GetLensesAddr();
 
 	//lensRenderable->SetDrawScreenSpace(false);
-#ifdef USE_OSVR
+#ifdef USE_OSVR 
 		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
 		vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
-		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
-		vrWidget->AddRenderable("lens", lensRenderable.get());
+		vrWidget->AddRenderable("6glyph", vrGlyphRenderable.get());
+		vrWidget->AddRenderable("7lens", lensRenderable.get());
+
+		std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable2;
+		vrGlyphRenderable2 = std::make_shared<VRGlyphRenderable>(arrowNoDeformRenderable.get());
+		//vrWidget->AddRenderable("9arrow", vrGlyphRenderable2.get());
+
 		openGL->SetVRWidget(vrWidget.get());
+
+
 
 	//vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 	//vrWidget->setWindowFlags(Qt::Window);
@@ -156,17 +165,23 @@ Window::Window()
 	//openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("4model", modelGridRenderable.get());
 	///********controls******/
-	addLensBtn = new QPushButton("Add circle lens");
-	addLineLensBtn = new QPushButton("Add straight band lens");
-	delLensBtn = std::make_shared<QPushButton>("Delete a lens");
+	addLensBtn = new QPushButton("Add old lens");
+	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
+	delLensBtn = std::make_shared<QPushButton>("Delete the Virtual Retractor");
 	addCurveBLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
-	QCheckBox* gridCheck = new QCheckBox("Grid", this);
-	QCheckBox* udbeCheck = new QCheckBox("Use Density Based Elasticity", this);
+	QCheckBox* gridCheck = new QCheckBox("Show Grid", this);
+	QCheckBox* udbeCheck = new QCheckBox("Use Density Based Stiffness", this);
 	udbeCheck->setChecked(modelGrid->elasticityMode >0);
+	
+	
+	QCheckBox* cbChangeLensWhenRotateData = new QCheckBox("Change Lens When Rotate Data", this); 
+	cbChangeLensWhenRotateData->setChecked(lensRenderable->changeLensWhenRotateData);
+	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
+	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
 
 	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
 	QSlider* transSizeSlider = CreateSlider();
@@ -220,7 +235,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 	QHBoxLayout *meshResLayout = new QHBoxLayout;
-	QLabel *meshResLitLabel = new QLabel(("Mesh resolution:  "));
+	QLabel *meshResLitLabel = new QLabel(("Mesh Resolution:  "));
 	QPushButton* addMeshResPushButton = new QPushButton(tr("&+"));
 	addMeshResPushButton->setFixedSize(24, 24);
 	QPushButton* minusMeshResPushButton = new QPushButton(tr("&-"));
@@ -233,7 +248,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	meshResLayout->addStretch();
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	controlLayout->addWidget(addLensBtn);
+	//controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
 	//controlLayout->addWidget(addCurveBLensBtn);
@@ -241,21 +256,23 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 	//controlLayout->addWidget(groupBox);
-	controlLayout->addWidget(transSizeLabel);
-	controlLayout->addWidget(transSizeSlider);
-	controlLayout->addWidget(usingGlyphSnappingCheck);
-	controlLayout->addWidget(usingGlyphPickingCheck);
-	controlLayout->addWidget(freezingFeatureCheck);
-	controlLayout->addWidget(usingFeatureSnappingCheck);
-	controlLayout->addWidget(usingFeaturePickingCheck); 
-	controlLayout->addWidget(gridCheck);
-	controlLayout->addWidget(udbeCheck);
+	
+	//controlLayout->addWidget(transSizeLabel);
+	//controlLayout->addWidget(transSizeSlider);
+	//controlLayout->addWidget(usingGlyphSnappingCheck);
+	//controlLayout->addWidget(usingGlyphPickingCheck);
+	//controlLayout->addWidget(freezingFeatureCheck);
+	//controlLayout->addWidget(usingFeatureSnappingCheck);
+	//controlLayout->addWidget(usingFeaturePickingCheck); 
+	controlLayout->addWidget(gridCheck); 
+	controlLayout->addWidget(cbChangeLensWhenRotateData);
+	controlLayout->addWidget(cbDrawInsicionOnCenterFace);
 	controlLayout->addLayout(meshResLayout);
 
 	
-	QLabel *deformForceLabelLit = new QLabel("Deform Force");
+	QLabel *deformForceLabelLit = new QLabel("Deform Force:");
 	controlLayout->addWidget(deformForceLabelLit);
-	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
+	deformForceSlider = new QSlider(Qt::Horizontal);
 	deformForceSlider->setRange(0, 80);
 	deformForceSlider->setValue(modelGrid->getDeformForce() / deformForceConstant);
 	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
@@ -264,9 +281,32 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	deformForceLayout->addWidget(deformForceSlider);
 	deformForceLayout->addWidget(deformForceLabel);
 	controlLayout->addLayout(deformForceLayout);
-	
-	
-	
+	//controlLayout->addWidget(udbeCheck);
+
+	QGroupBox *gbStiffnessMode = new QGroupBox(tr("Stiffness Mode:"));
+	QVBoxLayout *layoutStiffnessMode = new QVBoxLayout;
+	QRadioButton* rbUniform = new QRadioButton(tr("&Uniform Stiffness"));
+	QRadioButton* rbDensity = new QRadioButton(tr("&Density Based Stiffness"));
+	QRadioButton* rbTransfer = new QRadioButton(tr("&Transfer Density Based Stiffness"));
+	QRadioButton* rbGradient = new QRadioButton(tr("&Gradient Based Stiffness"));
+	if (modelGrid->elasticityMode == 0){
+		rbUniform->setChecked(true);
+	}
+	else if (modelGrid->elasticityMode == 1){
+		rbDensity->setChecked(true);
+	}
+	else if (modelGrid->elasticityMode == 2){
+		rbTransfer->setChecked(true);
+	}
+	else if (modelGrid->elasticityMode == 3){
+		rbGradient->setChecked(true);
+	}
+	layoutStiffnessMode->addWidget(rbDensity);
+	layoutStiffnessMode->addWidget(rbTransfer);
+	layoutStiffnessMode->addWidget(rbGradient);
+	layoutStiffnessMode->addWidget(rbUniform);
+	gbStiffnessMode->setLayout(layoutStiffnessMode);
+	controlLayout->addWidget(gbStiffnessMode);
 	
 	controlLayout->addStretch();
 
@@ -280,9 +320,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	connect(addMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotAddMeshRes()));
 	connect(minusMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotMinusMeshRes()));
-
+	
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
-	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
+	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool))); 
+	connect(cbChangeLensWhenRotateData, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbChangeLensWhenRotateData(bool)));
+	connect(cbDrawInsicionOnCenterFace, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbDrawInsicionOnCenterFace(bool)));
 	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 #ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
@@ -299,6 +341,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(usingFeaturePickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingFeature(bool)));
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
+
+	connect(rbUniform, SIGNAL(clicked(bool)), this, SLOT(SlotRbUniformChanged(bool)));
+	connect(rbDensity, SIGNAL(clicked(bool)), this, SLOT(SlotRbDensityChanged(bool)));
+	connect(rbTransfer, SIGNAL(clicked(bool)), this, SLOT(SlotRbTransferChanged(bool)));
+	connect(rbGradient, SIGNAL(clicked(bool)), this, SLOT(SlotRbGradientChanged(bool)));
 	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
@@ -394,6 +441,7 @@ void Window::SlotTogglePickingFeature(bool b)
 void Window::SlotToggleGrid(bool b)
 {
 	modelGridRenderable->SetVisibility(b);
+	lensRenderable->drawFullRetractor = b;
 }
 
 void Window::SlotToggleUdbe(bool b)
@@ -408,6 +456,22 @@ void Window::SlotToggleUdbe(bool b)
 	//modelGrid->SetElasticityForParticle(inputParticle);
 	//modelGrid->UpdateMeshDevElasticity();
 	//comparing to reinitiate the whole mesh, this does not work well
+}
+
+void Window::SlotToggleCbChangeLensWhenRotateData(bool b)
+{
+	if (b)
+		lensRenderable->changeLensWhenRotateData = true;
+	else
+		lensRenderable->changeLensWhenRotateData = false;
+}
+
+void Window::SlotToggleCbDrawInsicionOnCenterFace(bool b)
+{
+	if (b)
+		lensRenderable->drawInsicionOnCenterFace = true;
+	else
+		lensRenderable->drawInsicionOnCenterFace = false;
 }
 
 Window::~Window() {
@@ -441,7 +505,7 @@ void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, Q
 {
 	if (1 == numHands){
 		float4 markerPos;
-		if (lensRenderable->SlotOneHandChanged_lc(make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()), make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), markerPos)){
+		if (lensRenderable->SlotOneHandChanged_lc(make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()), make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), markerPos, leapFingerIndicators->val[0])){
 
 			openGL->blendOthers = true;
 		}
@@ -506,6 +570,8 @@ void Window::SlotLoadState()
 		modelGrid->meshResolution = meshResolution;
 		modelGrid->setReinitiationNeed();
 		meshResLabel->setText(QString::number(meshResolution));
+		deformForceSlider->setValue(f / deformForceConstant);
+
 	}
 }
 
@@ -536,6 +602,8 @@ void Window::deformForceSliderValueChanged(int v)
 	float newForce = deformForceConstant*v;
 	deformForceLabel->setText(QString::number(newForce));
 	modelGrid->setDeformForce(newForce);
+	openGL->startTime = clock();
+
 }
 
 void Window::SlotAddMeshRes()
@@ -551,4 +619,34 @@ void Window::SlotMinusMeshRes()
 	modelGrid->meshResolution = meshResolution;
 	modelGrid->setReinitiationNeed();
 	meshResLabel->setText(QString::number(meshResolution));
+}
+
+
+void Window::SlotRbUniformChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 0;
+		modelGrid->setReinitiationNeed();
+	}
+}
+void Window::SlotRbDensityChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 1;
+		modelGrid->setReinitiationNeed();
+	}
+}
+void Window::SlotRbTransferChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 2;
+		modelGrid->setReinitiationNeed();
+	}
+}
+void Window::SlotRbGradientChanged(bool b)
+{
+	if (b){
+		modelGrid->elasticityMode = 3;
+		modelGrid->setReinitiationNeed();
+	}
 }

@@ -11,6 +11,7 @@
 #include <vector_functions.h>
 #include <memory>
 #include <CMakeConfig.h>
+#include <ctime>
 
 enum INTERACT_MODE{
 	//	DRAG_LENS_EDGE,
@@ -90,7 +91,7 @@ public:
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 #endif
 
-
+	clock_t startTime;
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;

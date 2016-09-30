@@ -99,7 +99,10 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 			break;
 		}
 		case DEFORM_MODEL::OBJECT_SPACE:
-		{
+		{	
+										   
+			actor->startTime = clock();
+
 			if (l->type == TYPE_LINE)
 				modelGrid->setReinitiationNeed();
 			break;
@@ -139,6 +142,10 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 					//	//modelGrid->MoveMesh(l->moveVec);
 					//	l->justMoved = false;
 					//}
+					
+					double secondsPassed = (clock() - actor->startTime) / CLOCKS_PER_SEC;
+					if (secondsPassed > 5)
+						return;
 
 					modelGrid->UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 

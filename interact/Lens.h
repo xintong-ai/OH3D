@@ -283,11 +283,14 @@ struct LineLens3D :public LineLens
 	void FinishConstructing(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax);
 
 
-	std::vector<float3> GetOuterContourBackBase();
-	std::vector<float3> GetOuterContourFrontBase();
+	std::vector<float3> GetOuterContourCenterFace();
+	std::vector<float3> GetOuterContourFrontFace();
+	std::vector<float3> GetOuterContourBackFace();
 
 	std::vector<float3> GetIncisionFront();
-	std::vector<float3> GetIncisionBack();
+	std::vector<float3> GetIncisionCenter();
+	std::vector<float3> Get3DCoordOfCtrlPoints(float* mv, float* pj, int winW, int winH);
+	void UpdateCtrlPoints(float* mv, float* pj, int winW, int winH); //used after mouse wheel
 	std::vector<float3> GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH);
 
 

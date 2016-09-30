@@ -96,6 +96,36 @@ void VecReader::GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec,
 }
 
 
+
+void VecReader::OutputToVolumeByNormalizedVecMagWithPadding(std::shared_ptr<Volume> v, int nn){
+
+	v->~Volume();
+
+	v->size = make_int3(size[0], size[1], size[2]) + make_int3(0, nn, 0);;
+
+	v->spacing = make_float3(1.0, 1.0, 1.0); //may add spacing info into the vecReader?
+	v->dataOrigin = make_float3(0, 0, 0);
+
+	v->values = new float[v->size.x*v->size.y*v->size.z];
+	for (int k = 0; k < v->size.z; k++)
+	{
+		for (int j = 0; j < v->size.y; j++)
+		{
+			for (int i = 0; i < v->size.x; i++)
+			{
+				int ind = k*v->size.y * v->size.x + j*v->size.x + i;
+				int jj = j - nn;
+				if (jj < 0){
+					v->values[ind] = 0.0;
+				}
+				else{
+					int indOri = k*size[1] * size[0] + jj*size[0] + i;
+					v->values[ind] = (val[indOri] - valMin) / (valMax - valMin);
+				}
+			}
+		}
+	}
+}
 void VecReader::OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v){
 	v->~Volume();
 

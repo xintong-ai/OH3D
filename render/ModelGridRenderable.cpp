@@ -84,18 +84,18 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 		for (int i = 0; i < modelGrid->GetLNumber(); i++){
 
-			float cc = (e[i / 6] - minElas) / (maxElas - minElas);
-			glColor4f(cc, 1.0f-cc, 0, 0.5);
+			//float cc = (e[i / 6] - minElas) / (maxElas - minElas);
+			//glColor4f(cc, 1.0f-cc, 0, 0.5);
 
-			//glColor4f(0.2f, 0.8f, 0.1, 0.5);
+			glColor4f(0.2f, 0.8f, 0.1, 0.5);
 
 			float *pp1 = lx + 3 * l[i * 2], *pp2 = lx + 3 * l[i * 2 + 1];
 			float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
 			float3 v2 = make_float3(pp2[0], pp2[1], pp2[2]);
-			if (dot(v1 - lensCen, lensDir)>0 || dot(v2 - lensCen, lensDir) > 0){
+			//if (dot(v1 - lensCen, lensDir)>0 || dot(v2 - lensCen, lensDir) > 0){
 				glVertex3fv(pp1);
 				glVertex3fv(pp2);
-			}
+			//}
 		}
 		glEnd();
 		glDisable(GL_BLEND);

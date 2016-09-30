@@ -29,7 +29,6 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allow
 		channelDesc = cudaCreateChannelDesc(32, 32, 0, 0, cudaChannelFormatKindFloat);
 	}
 
-
 	checkCudaErrors(cudaMalloc3DArray(&content, &channelDesc, size, allowStore ? cudaArraySurfaceLoadStore : 0));
 
 	// copy data to 3D array

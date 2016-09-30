@@ -1,8 +1,6 @@
 #ifndef LINESPLIT_MODEL_GRID_H
 #define LINESPLIT_MODEL_GRID_H
 #include <vector>
-//#include <ModelGrid.h> //plan to inheritate ModelGrid class in the future
-
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
@@ -30,8 +28,7 @@ class LineSplitModelGrid
 
 	std::vector<float4> vBaryCoord;
 	std::vector<int> vIdx;
-
-
+	
 	const float	time_step = 1 / 30.0;
 	float deformForce = 0;// 30;
 
