@@ -83,7 +83,7 @@ public:
 	void createDefaultRainbowCosmologyMapGradient()
 	{
 		color.clear();
-		color.push_back(ColorPoint(0.3, 0.3, 0.3, 0.0f));    // grey for 0 value particles
+		color.push_back(ColorPoint(0.5, 0.5, 0.5, 0.0f));    // grey for 0 value particles
 		color.push_back(ColorPoint(0, 0, 1, 0.00001f));      // Blue.
 		color.push_back(ColorPoint(0, 1, 1, 0.25f));     // Cyan.
 		color.push_back(ColorPoint(0, 1, 0, 0.5f));      // Green.

@@ -219,6 +219,8 @@ struct LineLens :public Lens
 {
 	float lSemiMajorAxis, lSemiMinorAxis;
 	float axisRatio = 5.0f; // lSemiMajorAxis/lSemiMinorAxis.This is only used for construction. will not be updated after construciton
+	//float axisRatio = 2.5f; //for VR
+
 	float2 direction; //suppose normalized
 	
 	LineLensInfo lineLensInfo; //for coding easiness, but actually duplicate the related storage

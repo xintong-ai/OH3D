@@ -96,6 +96,11 @@ private:
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
 	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
+
+	//for test
+	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable2;
+	std::shared_ptr<LensRenderable> lensRenderable2;
+
 #endif
 #ifdef USE_LEAP
 	LeapListener* listener;
@@ -116,6 +121,7 @@ private slots:
 	void AddCurveBLens(); 
 	void SlotDelLens();
 	void SlotToggleGrid(bool b); 
+	void SlotToggleBackFace(bool b);
 	void SlotToggleUdbe(bool b);
 	void SlotToggleCbChangeLensWhenRotateData(bool b);
 	void SlotToggleCbDrawInsicionOnCenterFace(bool b);
@@ -146,6 +152,7 @@ private slots:
 #ifdef USE_NEW_LEAP
 	//void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
 	void SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, int numHands);
+	void SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, QVector3D rightMiddleTip, QVector3D rightRingTip, int numHands);
 #endif
 };
 

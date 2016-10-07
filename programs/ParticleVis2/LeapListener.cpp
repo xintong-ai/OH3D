@@ -55,9 +55,14 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 		//std::cout << "num of hands:" << f.hands().count() << std::endl;
 		if (1 == f.hands().count())
 		{
-			GetFingers(rightMostHand, thumbTipRight, indexTipRight, indexDir);
+			//GetFingers(rightMostHand, thumbTipRight, indexTipRight, indexDir);
+			//emit UpdateHands(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), QVector3D(0, 0, 0), QVector3D(0, 0, 0), 1);
 
-			emit UpdateHands(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), QVector3D(0, 0, 0), QVector3D(0, 0, 0), 1);
+			Leap::Vector middleTipRight, ringTipRight;
+			GetFingers(rightMostHand, thumbTipRight, indexTipRight, middleTipRight, ringTipRight);
+			emit UpdateHandsNew(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), QVector3D(0, 0, 0), QVector3D(0, 0, 0), Leap2QVector(middleTipRight), Leap2QVector(ringTipRight), 1);
+
+
 		}
 		else if (2 == f.hands().count()){
 			//if (){//leftMostHand.isLeft()){

@@ -52,6 +52,8 @@ QMatrix4x4 ArrowNoDeformRenderable::computeRotationMatrix(float3 orientation, fl
 ArrowNoDeformRenderable::ArrowNoDeformRenderable(vector<float3> _vec, std::shared_ptr<Particle> _particle) :
 GlyphRenderable(_particle)
 {
+	cout << "ArrowNoDeformRenderable started" << endl;
+
 	if (particle->numParticles != _vec.size()){
 		cerr << "ArrowNoDeformRenderable constructing fault";
 		exit(0);
@@ -77,6 +79,7 @@ GlyphRenderable(_particle)
 	}
 
 	setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
+	cout << "ArrowNoDeformRenderable created" << endl;
 }
 
 
@@ -232,6 +235,7 @@ void ArrowNoDeformRenderable::GenVertexBuffer(int nv, float* vertex)
 
 void ArrowNoDeformRenderable::init()
 {
+	cout << "ArrowNoDeformRenderable init created" << endl;
 
 	GlyphRenderable::init();
 
@@ -241,17 +245,20 @@ void ArrowNoDeformRenderable::init()
 	//glyphMesh has been created, and by now must be create during construstion
 
 	m_vao->bind();
-
 	LoadShaders(glProg);
 
 	GenVertexBuffer(glyphMesh->GetNumVerts(), glyphMesh->GetVerts());
 
-	//initPickingDrawingObjects();
+	initPickingDrawingObjects();
 	m_vao->release();
+
+	cout << "ArrowNoDeformRenderable init finished" << endl;
+
 }
 
 void ArrowNoDeformRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
+	return;
 	int firstVertex = 0;
 	int firstIndex = 0;
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
@@ -263,6 +270,7 @@ void ArrowNoDeformRenderable::DrawWithoutProgram(float modelview[16], float proj
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
 	qgl->glVertexAttribPointer(sp->attribute("VertexColor"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(sp->attribute("VertexColor"));
+	
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
 	for (int i = 0; i < particle->numParticles; i++) {
@@ -330,6 +338,13 @@ void ArrowNoDeformRenderable::DrawWithoutProgram(float modelview[16], float proj
 		glColor3f(1, 1, 0);
 		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());
 	}
+
+	qgl->glDisableVertexAttribArray(sp->attribute("VertexPosition"));
+	qgl->glDisableVertexAttribArray(sp->attribute("VertexNormal"));
+	qgl->glDisableVertexAttribArray(sp->attribute("VertexColor"));
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
 }
 
 

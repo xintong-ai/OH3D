@@ -98,6 +98,68 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
+#ifdef USE_NEW_LEAP
+	//draw cursor currently
+	//add transparency later
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	glLoadMatrixf(projection);
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+	glLoadMatrixf(modelview);
+
+
+	glLineWidth(32);
+	glColor3f(0.82f, 0.0f, 0.0f);
+
+	QMatrix4x4 q_modelview = QMatrix4x4(modelview);
+	q_modelview = q_modelview.transposed();
+
+	for (int i = 0; i < activedCursors; i++){
+		QVector3D q_IndicatorDir;
+		if (i == 0)
+			q_IndicatorDir = QVector3D(QMatrix4x4((q_modelview.inverted()).normalMatrix()).map(QVector4D(-1, 1, 0, 0))).normalized();
+		else
+			q_IndicatorDir = QVector3D(QMatrix4x4((q_modelview.inverted()).normalMatrix()).map(QVector4D(1, 1, 0, 0))).normalized();
+		float3 curVec = make_float3(q_IndicatorDir.x(), q_IndicatorDir.y(), q_IndicatorDir.z());
+
+		if (cursorColor[i] == 0){
+			glColor3f(1.0f, 0.0f, 0.0f);
+		}
+		else if (cursorColor[i] == 1){
+			glColor3f(1.0f, 1.0f, 1.0f);
+		}
+		else if (cursorColor[i] == 2){
+			glColor3f(0.0f, 0.0f, 1.0f);
+		}
+
+		glBegin(GL_LINES);
+		glVertex3f(cursorPos[i].x, cursorPos[i].y, cursorPos[i].z);
+		glVertex3f(cursorPos[i].x - curVec.x, cursorPos[i].y - curVec.y, cursorPos[i].z - curVec.z);
+		glEnd();
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glEnable(GL_POINT_SMOOTH);
+		glPointSize(28.0);
+		glBegin(GL_POINTS);
+		glVertex3f(cursorPos[i].x, cursorPos[i].y, cursorPos[i].z);
+		glEnd();
+	}
+
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+#endif
+
+
+
+
+
 	if (highlightingCenter){
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
@@ -198,6 +260,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				}
 				else //finished Constructing
 				{
+					glDisable(GL_BLEND);
 					glMatrixMode(GL_PROJECTION);
 					glPushMatrix();
 					glLoadIdentity();
@@ -218,22 +281,22 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 					glColor3f(0.82f, 0.31f, 0.67f);
 					PointsForContourOuterCenter = ((LineLens3D*)l)->GetOuterContourCenterFace();
 					PointsForContourOuterFront = ((LineLens3D*)l)->GetOuterContourFrontFace();
-					glBegin(GL_LINE_LOOP);
-					for (auto v : PointsForContourOuterCenter)
-						glVertex3f(v.x, v.y, v.z);
-					glEnd();
+						glBegin(GL_LINE_LOOP);
+						for (auto v : PointsForContourOuterCenter)
+							glVertex3f(v.x, v.y, v.z);
+						glEnd();
+					
 					glBegin(GL_LINE_LOOP);
 					for (auto v : PointsForContourOuterFront)
 						glVertex3f(v.x, v.y, v.z);
-					glEnd();
-					glBegin(GL_LINES);
-					for (int i = 0; i < PointsForContourOuterCenter.size(); i++){
-						float3 v = PointsForContourOuterCenter[i], v2 = PointsForContourOuterFront[i];
-						glVertex3f(v.x, v.y, v.z);
-						glVertex3f(v2.x, v2.y, v2.z);
-					}
-					glEnd();
-
+					glEnd();	
+						glBegin(GL_LINES);
+						for (int i = 0; i < PointsForContourOuterCenter.size(); i++){
+							float3 v = PointsForContourOuterCenter[i], v2 = PointsForContourOuterFront[i];
+							glVertex3f(v.x, v.y, v.z);
+							glVertex3f(v2.x, v2.y, v2.z);
+						}
+						glEnd();
 					if (drawFullRetractor){
 						std::vector<float3> PointsForContourOuterBack = ((LineLens3D*)l)->GetOuterContourBackFace();
 						glBegin(GL_LINE_LOOP);
@@ -517,10 +580,10 @@ void LensRenderable::AddCircleLens()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l;
 	if (lastLensCenterRecorded){
-		l = new CircleLens(winSize.y * 0.1, lastLensCenter);
+		l = new CircleLens(winSize.y * 0.2, lastLensCenter);
 	}
 	else{
-		l = new CircleLens(winSize.y * 0.1, actor->DataCenter());
+		l = new CircleLens(winSize.y * 0.2, actor->DataCenter());
 	}
 	lenses.push_back(l);
 	l->justChanged = true;
@@ -548,12 +611,14 @@ void LensRenderable::AddLineLens3D()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l;
 	if (lastLensCenterRecorded){
-		//l = new LineLens3D(lastLensCenter, 0.3);
-		l = new LineLens3D(lastLensCenter, 0.193742);
+		l = new LineLens3D(lastLensCenter, 0.3);
+		//l = new LineLens3D(lastLensCenter, 0.5); //for VR
+		//l = new LineLens3D(lastLensCenter, 0.193742);
 	}
 	else{
-		//l = new LineLens3D(actor->DataCenter(), 0.3);
-		l = new LineLens3D(actor->DataCenter(), 0.193742);
+		l = new LineLens3D(lastLensCenter, 0.3);
+		//l = new LineLens3D(actor->DataCenter(), 0.5);
+		//l = new LineLens3D(actor->DataCenter(), 0.193742);
 	}
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
@@ -1013,10 +1078,11 @@ void LensRenderable::SlotTwoHandChanged(float3 l, float3 r)
 
 bool LensRenderable::SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIndexLeap, float3 leftThumpLeap, float3 leftIndexLeap, float4 &markerPosRight, float4 &markerPosLeft, float &valRight, float &valLeft, float &f)
 {
-	float3 curPosLeft = GetTransferredLeapPos(rightIndexLeap);
-	markerPosRight = make_float4(curPosLeft, 1.0);
-	float3 curPosRight = GetTransferredLeapPos(leftIndexLeap);
-	markerPosLeft = make_float4(curPosRight, 1.0);
+	float3 curPosLeft = GetTransferredLeapPos(leftIndexLeap);
+	markerPosLeft = make_float4(curPosLeft, 1.0);
+
+	float3 curPosRight = GetTransferredLeapPos(rightIndexLeap);
+	markerPosRight = make_float4(curPosRight, 1.0);
 
 	if (lenses.size() == 0){
 		float3 pmin, pmax;
@@ -1037,43 +1103,47 @@ bool LensRenderable::SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIn
 	GLfloat projection[16];
 	actor->GetModelview(modelview);
 	actor->GetProjection(projection);
+#ifdef USE_OSVR
+	float enterPichThr = 30, leavePinchThr = enterPichThr + 10;
+#else
+	float enterPichThr = 25, leavePinchThr = enterPichThr + 10; //different threshold to avoid shaking
+#endif
 
-	float enterPichThr = 25, leavePinchThr = 35; //different threshold to avoid shaking
-	float dleft = length(leftThumpLeap - leftIndexLeap);
+	float dleft = length(leftThumpLeap - leftIndexLeap)/1.2;
 	float dright = length(rightThumpLeap - rightIndexLeap);
 
 	switch (actor->GetInteractMode())
 	{
 	case INTERACT_MODE::TRANSFORMATION:
 	{
-		if (l->PointInCuboidRegion3D(curPosLeft, modelview, projection, winSize.x, winSize.y)
-			|| l->PointInCuboidRegion3D(curPosRight, modelview, projection, winSize.x, winSize.y)){
+		if (dright < enterPichThr && dleft < enterPichThr){
+			actor->SetInteractMode(INTERACT_MODE::CHANGING_FORCE);
+			preForce = f;
+			prevPos = curPosRight;
+			prevPos2 = curPosLeft;
+			valLeft = 1;
+			valRight = 1;
+		}
+		else if (dright < enterPichThr){
+			valLeft = 0;
+			valRight = 1;
+		}
+		else if (dleft < enterPichThr){
+			valLeft = 1;
+			valRight = 0;
+		}
+		else{
+			valLeft = 0;
+			valRight = 0;
+		}
+
+		if (false)//(l->PointInCuboidRegion3D(curPosLeft, modelview, projection, winSize.x, winSize.y)			|| l->PointInCuboidRegion3D(curPosRight, modelview, projection, winSize.x, winSize.y))
+		{
 			highlightingCenter = false;
 			highlightingMajorSide = false;
 			highlightingMinorSide = false;
 			highlightingCuboidFrame = true;		
-			
-
-			if (dright < enterPichThr && dleft < enterPichThr){
-				actor->SetInteractMode(INTERACT_MODE::CHANGING_FORCE);
-				preForce = f;
-				prevPos = curPosRight;
-				prevPos2 = curPosLeft;
-				valLeft = 1;
-				valRight = 1;
-			}
-			else if (dright < enterPichThr){
-				valLeft = 1;
-				valRight = 0;
-			}
-			else if (dleft < enterPichThr){
-				valLeft = 0;
-				valRight = 1;
-			}
-			else{
-				valLeft = 0;
-				valRight = 0;
-			}
+	
 			return true;
 		}
 		else{
@@ -1081,8 +1151,6 @@ bool LensRenderable::SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIn
 			highlightingMajorSide = false;
 			highlightingMinorSide = false;
 			highlightingCuboidFrame = false;
-			valLeft = 0;
-			valRight = 0;
 
 			float3 pmin, pmax;
 			actor->GetPosRange(pmin, pmax);
@@ -1208,7 +1276,12 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 	//std::cout << "indexLeap " << indexLeap.x << " " << indexLeap.y << " " << indexLeap.z << std::endl;
 
 
-	float enterPichThr = 25, leavePinchThr = 35; //different threshold to avoid shaking
+#ifdef USE_OSVR
+	float enterPichThr = 35, leavePinchThr = enterPichThr + 10;
+#else
+	float enterPichThr = 25, leavePinchThr = enterPichThr + 10; //different threshold to avoid shaking
+#endif
+
 	float d = length(thumpLeap - indexLeap);
 	
 	int2 winSize = actor->GetWindowSize();
@@ -1218,12 +1291,16 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 	actor->GetProjection(projection);
 
 	float3 curPos = GetTransferredLeapPos(indexLeap);
+	//float3 curPos = (GetTransferredLeapPos(thumpLeap) + GetTransferredLeapPos(indexLeap)) / 2;
+
+	
 	markerPos = make_float4(curPos, 1.0);
 
 
 	if (lenses.size() == 0){
-		
-		if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && d < enterPichThr){
+		float3 pmin, pmax;
+		actor->GetPosRange(pmin, pmax);
+		if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && d < enterPichThr && !outOfDomain(curPos, pmin, pmax)){
 
 			Lens* l = new LineLens3D(actor->DataCenter(), 0.3);
 			l->isConstructedFromLeap = true;
@@ -1239,8 +1316,7 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 		}
 		else{
 			//add global rotation?
-			float3 pmin, pmax;
-			actor->GetPosRange(pmin, pmax);
+
 			if (outOfDomain(curPos, pmin, pmax)){
 				return false;
 			}
@@ -1387,7 +1463,7 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 			float3 pp = prevPointOfLens + moveDir;
 			float newMinorDis = abs(dot(pp - l->c, l->minorAxisGlobal));
 
-			if (d > leavePinchThr || newMinorDis <= l->lSemiMinorAxisGlobal){
+			if (d > leavePinchThr && newMinorDis > l->lSemiMinorAxisGlobal){
 				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 				(lenses.back())->justChanged = true;
 				//highlightingMinorSide = false;
@@ -1407,7 +1483,253 @@ bool LensRenderable::SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, f
 	}
 }
 
+bool LensRenderable::SlotOneHandChangedNew_lc(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap, float4 &markerPos, float &valRight, float &f)
+{
+	//currently only work for line lens 3D
+	//std::cout << "thumpLeap " << thumpLeap.x << " " << thumpLeap.y << " " << thumpLeap.z << std::endl;
+	//std::cout << "indexLeap " << indexLeap.x << " " << indexLeap.y << " " << indexLeap.z << std::endl;
 
+
+#ifdef USE_OSVR
+	float enterPichThr = 35, leavePinchThr = enterPichThr + 10;
+#else
+	float enterPichThr = 25, leavePinchThr = enterPichThr + 10; //different threshold to avoid shaking
+#endif
+
+	float d = length(thumpLeap - indexLeap);
+
+	int2 winSize = actor->GetWindowSize();
+	GLfloat modelview[16];
+	GLfloat projection[16];
+	actor->GetModelview(modelview);
+	actor->GetProjection(projection);
+
+	float3 curPos = GetTransferredLeapPos(indexLeap);
+	//float3 curPos = (GetTransferredLeapPos(thumpLeap) + GetTransferredLeapPos(indexLeap)) / 2;
+
+
+	markerPos = make_float4(curPos, 1.0);
+
+
+	if (lenses.size() == 0){
+		float3 pmin, pmax;
+		actor->GetPosRange(pmin, pmax);
+		if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && d < enterPichThr && !outOfDomain(curPos, pmin, pmax)){
+
+			Lens* l = new LineLens3D(actor->DataCenter(), 0.3);
+			l->isConstructedFromLeap = true;
+
+			lenses.push_back(l);
+			//l->justChanged = true; //constructing first, then set justChanged
+			actor->UpdateGL();
+			actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
+			((LineLens3D *)l)->ctrlPoint3D1 = curPos;
+			((LineLens3D *)l)->ctrlPoint3D2 = curPos;
+			valRight = 1;
+			return true;
+		}
+		else{
+			//add global rotation?
+
+			if (outOfDomain(curPos, pmin, pmax)){
+				return false;
+			}
+			else{
+				return true;
+			}
+			return true;
+		}
+	}
+	else{	//lenses.size()>0
+		LineLens3D* l = (LineLens3D*)lenses.back();
+
+
+#ifdef USE_OSVR
+		float d2 = length(middleLeap - indexLeap) / 1.1;
+		float d3 = length(middleLeap - ringLeap) / 1.1;
+#else
+		float d2 = length(middleLeap - indexLeap) / 1.2;
+		float d3 = length(middleLeap - ringLeap) / 1.2;
+#endif
+
+
+
+		switch (actor->GetInteractMode())
+		{
+		case INTERACT_MODE::ADDING_LENS:
+		{
+			if (d < leavePinchThr){
+				l->ctrlPoint3D2 = curPos;
+				return true;
+			}
+			else {
+				float3 posMin, posMax;
+				actor->GetPosRange(posMin, posMax);
+				l->FinishConstructing3D(modelview, projection, winSize.x, winSize.y, posMin, posMax);
+
+				l->justChanged = true;
+
+				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+				return true;
+			}
+			break;
+		}
+		case INTERACT_MODE::TRANSFORMATION:
+		{
+			if (d < enterPichThr){
+				valRight = 1;
+				if (l->PointOnLensCenter3D(curPos, modelview, projection, winSize.x, winSize.y)){
+					actor->SetInteractMode(INTERACT_MODE::MOVE_LENS);
+					prevPos = curPos;
+					prevPointOfLens = l->c;
+				}
+				else if (l->PointOnOuterBoundaryWallMajorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
+					actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
+					prevPos = curPos;
+					if (length(curPos - l->ctrlPoint3D1) < length(curPos - l->ctrlPoint3D2)){
+						prevPointOfLens = l->ctrlPoint3D1;
+					}
+					else{
+						prevPointOfLens = l->ctrlPoint3D2;
+					}
+				}
+				else if (l->PointOnOuterBoundaryWallMinorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
+					actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE);
+					prevPos = curPos;
+					float3 pp1 = l->c - l->minorAxisGlobal*l->lSemiMinorAxisGlobal / l->focusRatio;
+					float3 pp2 = l->c + l->minorAxisGlobal*l->lSemiMinorAxisGlobal / l->focusRatio;
+					if (length(curPos - pp1) < length(curPos - pp2)){
+						prevPointOfLens = pp1;
+					}
+					else{
+						prevPointOfLens = pp2;
+					}
+				}
+				return true;
+			}
+			else if (d2<enterPichThr && d3<enterPichThr){
+				actor->SetInteractMode(INTERACT_MODE::CHANGING_FORCE);
+				preForce = f;
+				prevPos = curPos;
+
+				valRight = 2;
+			}
+			else{
+				valRight = 0;
+				float3 pmin, pmax;
+				actor->GetPosRange(pmin, pmax);
+				if (outOfDomain(curPos, pmin, pmax)){
+					return false;
+				}
+				else{
+					if (l->PointOnLensCenter3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = true;
+						highlightingMajorSide = false;
+						highlightingMinorSide = false;
+						highlightingCuboidFrame = false;
+					}
+					else if (l->PointOnOuterBoundaryWallMajorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = false;
+						highlightingMajorSide = true;
+						highlightingMinorSide = false;
+						highlightingCuboidFrame = false;
+					}
+					else if (l->PointOnOuterBoundaryWallMinorSide3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = false;
+						highlightingMajorSide = false;
+						highlightingMinorSide = true;
+						highlightingCuboidFrame = false;
+					}
+					else if (l->PointInCuboidRegion3D(curPos, modelview, projection, winSize.x, winSize.y)){
+						highlightingCenter = false;
+						highlightingMajorSide = false;
+						highlightingMinorSide = false;
+						highlightingCuboidFrame = true;
+					}
+					else{
+						highlightingCenter = false;
+						highlightingMajorSide = false;
+						highlightingMinorSide = false;
+						highlightingCuboidFrame = false;
+					}
+				}
+				return true;
+			}
+			break;
+		}
+		case INTERACT_MODE::CHANGING_FORCE:
+		{
+			if (d2 > leavePinchThr || d3 > leavePinchThr){
+				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+				valRight = 0;
+			}
+			else{
+				float3 c = l->c;
+				f = preForce + (abs(dot(curPos - c, l->minorAxisGlobal)) - abs(dot(prevPos - c, l->minorAxisGlobal))) * 2*3;
+				if (f < 0)
+					f = 0;
+				//send back new force
+			}
+			return true;
+			break;
+		}
+		case INTERACT_MODE::MOVE_LENS:
+		{
+			if (d > leavePinchThr){
+				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+				(lenses.back())->justChanged = true;
+			}
+			else{
+				//ChangeLensCenterbyLeap(lenses.back(), indexLeap);
+				float3 moveDir = curPos - prevPos;
+				ChangeLensCenterbyTransferredLeap(lenses.back(), prevPointOfLens + moveDir);
+			}
+			return true;
+			break;
+		}
+		case INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE:
+		{
+			if (d > leavePinchThr){
+				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+				(lenses.back())->justChanged = true;
+			}
+			else{
+				float3 moveDir = curPos - prevPos;
+				if (length(curPos - l->ctrlPoint3D1) < length(curPos - l->ctrlPoint3D2)){
+					l->ctrlPoint3D1 = prevPointOfLens + moveDir;
+				}
+				else{
+					l->ctrlPoint3D2 = prevPointOfLens + moveDir;
+				}
+			}
+			return true;
+			break;
+		}
+		case INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE:
+		{
+			float3 moveDir = curPos - prevPos;
+			float3 pp = prevPointOfLens + moveDir;
+			float newMinorDis = abs(dot(pp - l->c, l->minorAxisGlobal));
+
+			if (d > leavePinchThr && newMinorDis > l->lSemiMinorAxisGlobal){
+				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+				(lenses.back())->justChanged = true;
+				//highlightingMinorSide = false;
+			}
+			else{
+				l->focusRatio = l->lSemiMinorAxisGlobal / newMinorDis;
+			}
+			return true;
+			break;
+		}
+		default:
+		{
+				   //do nothing
+				   return false;
+		}
+		}
+	}
+}
 
 //////////////////////////////////	//for keyboard /////////////////////
 
@@ -1459,6 +1781,7 @@ void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
 
 void LensRenderable::SlotDelLens()
 {
+	activedCursors = 0;
 	if (lenses.size() > 0){
 		lastLensCenter = make_float3(lenses.back()->GetCenter());
 		lastLensCenterRecorded = true;

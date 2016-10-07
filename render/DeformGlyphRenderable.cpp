@@ -144,7 +144,7 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 					//}
 					
 					double secondsPassed = (clock() - actor->startTime) / CLOCKS_PER_SEC;
-					if (secondsPassed > 5)
+					if (secondsPassed > 15)
 						return;
 
 					modelGrid->UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
@@ -157,9 +157,12 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 				q_modelview = q_modelview.transposed();
 				QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
 				cameraObj = cameraObj / cameraObj.w();
-				float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
-				float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
-				float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
+				//float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
+				//float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
+				//float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
+				float3 lensCen = l->c;
+				float focusRatio = l->focusRatio;
+				float radius = ((CircleLens*)l)->objectRadius;
 
 				float3 lensDir = make_float3(
 					cameraObj.x() - lensCen.x,
@@ -231,16 +234,17 @@ void DeformGlyphRenderable::mousePress(int x, int y, int modifier)
 		int pickedGlyphId = cursorPixel[0] + cursorPixel[1] * 256 + cursorPixel[2] * 256 * 256 - 1;
 
 		if (pickedGlyphId != -1){
+			std::cout << "pickedGlyph feature " << (int)(particle->feature[pickedGlyphId]) << std::endl;
 			snappedGlyphId = pickedGlyphId;
-			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
-			for (int i = 0; i < lenses.size(); i++) {
-				Lens* l = lenses[i];
-				l->SetCenter(make_float3(particle->posOrig[snappedGlyphId]));
-			}
+			//std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
+			//for (int i = 0; i < lenses.size(); i++) {
+			//	Lens* l = lenses[i];
+			//	l->SetCenter(make_float3(particle->posOrig[snappedGlyphId]));
+			//}
 		}
 
 		isPickingGlyph = false;
-		emit glyphPickingFinished();
+		//emit glyphPickingFinished();
 	}
 	else if (isPickingFeature){
 		qgl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);

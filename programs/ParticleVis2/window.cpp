@@ -63,7 +63,7 @@ Window::Window()
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
-				//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
+		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 
 		reader->GetPosRange(posMin, posMax);
@@ -83,7 +83,7 @@ Window::Window()
 
 		deformForceConstant = 2;
 
-		//inputParticle->featureReshuffle();
+		inputParticle->featureReshuffle();
 		
 		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
@@ -106,38 +106,7 @@ Window::Window()
 	glyphRenderable->lenses = lensRenderable->GetLensesAddr();
 
 	//lensRenderable->SetDrawScreenSpace(false);
-#ifdef USE_OSVR 
-		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
-		vrWidget->setWindowFlags(Qt::Window);
-		vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
-		vrWidget->AddRenderable("6glyph", vrGlyphRenderable.get());
-		vrWidget->AddRenderable("7lens", lensRenderable.get());
 
-		std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable2;
-		vrGlyphRenderable2 = std::make_shared<VRGlyphRenderable>(arrowNoDeformRenderable.get());
-		//vrWidget->AddRenderable("9arrow", vrGlyphRenderable2.get());
-
-		openGL->SetVRWidget(vrWidget.get());
-
-
-
-	//vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
-	//vrWidget->setWindowFlags(Qt::Window);
-	//std::shared_ptr<DeformGlyphRenderable> glyphRenderable2;
-	//if (std::string(dataPath).find(".vtu") != std::string::npos){
-	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
-	//	glyphRenderable2->setColorMap(COLOR_MAP::RDYIGN, true);
-	//}
-	//else{
-	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
-	//	glyphRenderable2->colorByFeature = true;
-	//	glyphRenderable2->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
-	//}
-	//glyphRenderable2->SetDisplace(false);
-	//vrWidget->AddRenderable("glyph", glyphRenderable2.get());
-	//vrWidget->AddRenderable("lens", lensRenderable.get());
-	//openGL->SetVRWidget(vrWidget.get());
-#endif
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
@@ -173,17 +142,18 @@ Window::Window()
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
-	QCheckBox* gridCheck = new QCheckBox("Show Grid", this);
-	QCheckBox* udbeCheck = new QCheckBox("Use Density Based Stiffness", this);
+	QCheckBox* gridCheck = new QCheckBox("Show the Mesh", this);
+	QCheckBox* cbBackFace = new QCheckBox("Show the Back Face", this);
+	QCheckBox* udbeCheck = new QCheckBox("Use Density Based Stiffness");
 	udbeCheck->setChecked(modelGrid->elasticityMode >0);
 	
 	
-	QCheckBox* cbChangeLensWhenRotateData = new QCheckBox("Change Lens When Rotate Data", this); 
+	QCheckBox* cbChangeLensWhenRotateData = new QCheckBox("View Dependency", this); 
 	cbChangeLensWhenRotateData->setChecked(lensRenderable->changeLensWhenRotateData);
 	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
 	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
 
-	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
+	QLabel* transSizeLabel = new QLabel("Transition region size:");
 	QSlider* transSizeSlider = CreateSlider();
 #ifdef USE_LEAP
 	listener = new LeapListener();
@@ -210,10 +180,61 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	arrowNoDeformRenderable = std::make_shared<ArrowNoDeformRenderable>(leapFingerIndicatorVecs,leapFingerIndicators);
 	//arrowNoDeformRenderable->SetVisibility(false);
 	leapFingerIndicators->numParticles = 0; //use numParticles to control how many indicators are drawn on screen
-	openGL->AddRenderable("1LeapArrow", arrowNoDeformRenderable.get());
-
-
+	
+	
+	//openGL->AddRenderable("1LeapArrow", arrowNoDeformRenderable.get()); //must be drawn first than glyphs
 #endif
+
+#ifdef USE_OSVR 
+	vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
+	vrWidget->setWindowFlags(Qt::Window);
+	vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
+	
+	lensRenderable2 = std::make_shared<LensRenderable>();;
+//	glyphRenderable->lenses = lensRenderable->GetLensesAddr();
+	
+	vrWidget->AddRenderable("6glyph", vrGlyphRenderable.get());
+	vrWidget->AddRenderable("7lens", lensRenderable.get());
+
+
+	//vrWidget->AddRenderable("7lens", lensRenderable2.get());
+
+
+	//vrGlyphRenderable2 = std::make_shared<VRGlyphRenderable>(arrowNoDeformRenderable.get());
+	//vrWidget->AddRenderable("9arrow", vrGlyphRenderable2.get());
+
+
+	//std::shared_ptr<DeformGlyphRenderable> glyphRenderable3 = std::make_shared<SphereRenderable>(inputParticle);
+	//glyphRenderable3->lenses = lensRenderable->GetLensesAddr();
+	//std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable3 = std::make_shared<VRGlyphRenderable>(glyphRenderable3.get());
+	//vrWidget->AddRenderable("8wrweglyph", vrGlyphRenderable3.get());
+
+
+
+
+	openGL->SetVRWidget(vrWidget.get());
+
+
+
+	//vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
+	//vrWidget->setWindowFlags(Qt::Window);
+	//std::shared_ptr<DeformGlyphRenderable> glyphRenderable2;
+	//if (std::string(dataPath).find(".vtu") != std::string::npos){
+	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
+	//	glyphRenderable2->setColorMap(COLOR_MAP::RDYIGN, true);
+	//}
+	//else{
+	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
+	//	glyphRenderable2->colorByFeature = true;
+	//	glyphRenderable2->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+	//}
+	//glyphRenderable2->SetDisplace(false);
+	//vrWidget->AddRenderable("glyph", glyphRenderable2.get());
+	//vrWidget->AddRenderable("lens", lensRenderable.get());
+	//openGL->SetVRWidget(vrWidget.get());
+#endif
+
+
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
@@ -224,11 +245,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	deformModeLayout->addWidget(radioDeformObject.get());
 	groupBox->setLayout(deformModeLayout);
 
-	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph", this);
-	usingGlyphPickingCheck = new QCheckBox("Picking Glyph", this);
-	freezingFeatureCheck = new QCheckBox("Freezing Feature", this);
-	usingFeatureSnappingCheck = new QCheckBox("Snapping Feature", this);
-	usingFeaturePickingCheck = new QCheckBox("Picking Feature", this);
+	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph");
+	usingGlyphPickingCheck = new QCheckBox("Picking Glyph");
+	freezingFeatureCheck = new QCheckBox("Freezing Feature");
+	usingFeatureSnappingCheck = new QCheckBox("Snapping Feature");
+	usingFeaturePickingCheck = new QCheckBox("Picking Feature");
 
 	connect(glyphRenderable.get(), SIGNAL(glyphPickingFinished()), this, SLOT(SlotToggleGlyphPickingFinished()));
 	connect(glyphRenderable.get(), SIGNAL(featurePickingFinished()), this, SLOT(SlotToggleFeaturePickingFinished()));
@@ -248,7 +269,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	meshResLayout->addStretch();
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	//controlLayout->addWidget(addLensBtn);
+	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
 	//controlLayout->addWidget(addCurveBLensBtn);
@@ -260,11 +281,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(transSizeLabel);
 	//controlLayout->addWidget(transSizeSlider);
 	//controlLayout->addWidget(usingGlyphSnappingCheck);
-	//controlLayout->addWidget(usingGlyphPickingCheck);
+	controlLayout->addWidget(usingGlyphPickingCheck);
 	//controlLayout->addWidget(freezingFeatureCheck);
 	//controlLayout->addWidget(usingFeatureSnappingCheck);
 	//controlLayout->addWidget(usingFeaturePickingCheck); 
 	controlLayout->addWidget(gridCheck); 
+	controlLayout->addWidget(cbBackFace); 
 	controlLayout->addWidget(cbChangeLensWhenRotateData);
 	controlLayout->addWidget(cbDrawInsicionOnCenterFace);
 	controlLayout->addLayout(meshResLayout);
@@ -322,17 +344,21 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(minusMeshResPushButton, SIGNAL(clicked()), this, SLOT(SlotMinusMeshRes()));
 	
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
-	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool))); 
+	connect(cbBackFace, SIGNAL(clicked(bool)), this, SLOT(SlotToggleBackFace(bool)));
+	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
 	connect(cbChangeLensWhenRotateData, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbChangeLensWhenRotateData(bool)));
 	connect(cbDrawInsicionOnCenterFace, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbDrawInsicionOnCenterFace(bool)));
-	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
+	//connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 #ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
 #ifdef USE_NEW_LEAP
-	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)),
-		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)));
+	//connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)),
+	//	this, SLOT(SlotUpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)));
+	connect(listener, SIGNAL(UpdateHandsNew(QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, int)),
+		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, int)));
+
 #endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
@@ -376,6 +402,7 @@ void Window::SlotDelLens()
 	lensRenderable->SlotDelLens();
 	inputParticle->pos = inputParticle->posOrig;
 	glyphRenderable->glyphBright.assign(inputParticle->numParticles, 1.0);
+	openGL->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 }
 
 void Window::SlotToggleUsingGlyphSnapping(bool b)
@@ -441,8 +468,13 @@ void Window::SlotTogglePickingFeature(bool b)
 void Window::SlotToggleGrid(bool b)
 {
 	modelGridRenderable->SetVisibility(b);
+}
+
+void Window::SlotToggleBackFace(bool b)
+{
 	lensRenderable->drawFullRetractor = b;
 }
+
 
 void Window::SlotToggleUdbe(bool b)
 {
@@ -513,13 +545,15 @@ void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, Q
 			openGL->blendOthers = false;
 		}
 		leapFingerIndicators->numParticles = 1;
-
 		leapFingerIndicators->pos[0] = markerPos;
+
+		lensRenderable->activedCursors = 1;
+		lensRenderable->cursorPos[0] = make_float3(markerPos);
+		lensRenderable->cursorColor[0] = leapFingerIndicators->val[0];
 	}
 	else if (2 == numHands){
 		
 		float4 markerPosRight, markerPosLeft;
-		bool forceChanged = false;
 		float f = modelGrid->getDeformForce();
 		if (lensRenderable->SlotTwoHandChanged_lc(
 			make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()),
@@ -528,7 +562,8 @@ void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, Q
 			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
 			markerPosRight, markerPosLeft, leapFingerIndicators->val[0], leapFingerIndicators->val[1], f)){
 			openGL->blendOthers = true;
-			deformForceSliderValueChanged(f / deformForceConstant);
+			//deformForceSliderValueChanged(f / deformForceConstant);
+			deformForceSlider->setValue(f / deformForceConstant);
 		}
 		else{
 			openGL->blendOthers = false;
@@ -537,7 +572,44 @@ void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, Q
 
 		leapFingerIndicators->pos[0] = markerPosRight;
 		leapFingerIndicators->pos[1] = markerPosLeft;
+
+		lensRenderable->activedCursors = 2;
+		lensRenderable->cursorPos[0] = make_float3(markerPosRight);
+		lensRenderable->cursorPos[1] = make_float3(markerPosLeft);
+		lensRenderable->cursorColor[0] = leapFingerIndicators->val[0];
+		lensRenderable->cursorColor[1] = leapFingerIndicators->val[1];
 	}
+}
+
+
+
+void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, QVector3D rightMiddleTip, QVector3D rightRingTip, int numHands)
+{
+	if (1 == numHands){
+		float4 markerPos;
+		float f = modelGrid->getDeformForce();
+		if (lensRenderable->SlotOneHandChangedNew_lc(
+			make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()), 
+			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), 
+			make_float3(rightMiddleTip.x(), rightMiddleTip.y(), rightMiddleTip.z()),
+			make_float3(rightRingTip.x(), rightRingTip.y(), rightRingTip.z()),
+			markerPos, leapFingerIndicators->val[0], f)){
+
+			openGL->blendOthers = true;
+			deformForceSlider->setValue(f / deformForceConstant);
+
+		}
+		else{
+			openGL->blendOthers = false;
+		}
+		leapFingerIndicators->numParticles = 1;
+		leapFingerIndicators->pos[0] = markerPos;
+
+		lensRenderable->activedCursors = 1;
+		lensRenderable->cursorPos[0] = make_float3(markerPos);
+		lensRenderable->cursorColor[0] = leapFingerIndicators->val[0];
+	}
+
 }
 #endif
 
@@ -565,13 +637,11 @@ void Window::SlotLoadState()
 		ifs >> f;
 		ifs >> res;
 
-		deformForceSliderValueChanged(f / deformForceConstant);
 		meshResolution = res;
 		modelGrid->meshResolution = meshResolution;
 		modelGrid->setReinitiationNeed();
 		meshResLabel->setText(QString::number(meshResolution));
-		deformForceSlider->setValue(f / deformForceConstant);
-
+		deformForceSlider->setValue(f / deformForceConstant); //will also call the connected slot
 	}
 }
 

@@ -31,7 +31,6 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
 	
-
 	//interfaces for deformation computing and deformed data
 	std::vector<Lens*> *lenses = 0;
 	LineSplitModelGrid *modelGrid = 0;
@@ -58,31 +57,31 @@ public:
 	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
 	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
 	
-	////NEK
-	////lighting
-	//float la = 1.0, ld = 0.2, ls = 0.1;
-	//////MGHT2
-	////transfer function
-	//float transFuncP1 = 0.55;
-	//float transFuncP2 = 0.13;
-	//float density = 1;
-	////ray casting
-	//int maxSteps = 768;
-	//float tstep = 0.25f;
-	//float brightness = 1.0;
-
-
-	//////MGHT2
+	//NEK
 	//lighting
-	float la = 1.0, ld = 0.2, ls = 0.7;
+	float la = 1.0, ld = 0.2, ls = 0.1;
+	////MGHT2
 	//transfer function
-	float transFuncP1 = 0.44;// 0.55;
-	float transFuncP2 = 0.29;// 0.13;
-	float density = 1.25;
+	float transFuncP1 = 0.55;
+	float transFuncP2 = 0.13;
+	float density = 1;
 	//ray casting
-	int maxSteps = 512;
+	int maxSteps = 768;
 	float tstep = 0.25f;
-	float brightness = 1.3;
+	float brightness = 1.0;
+
+
+	////////MGHT2
+	////lighting
+	//float la = 1.0, ld = 0.2, ls = 0.7;
+	////transfer function
+	//float transFuncP1 = 0.44;// 0.55;
+	//float transFuncP2 = 0.29;// 0.13;
+	//float density = 1.25;
+	////ray casting
+	//int maxSteps = 512;
+	//float tstep = 0.25f;
+	//float brightness = 1.3;
 
 
 	void init() override;

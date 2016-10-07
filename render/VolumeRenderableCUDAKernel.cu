@@ -1,6 +1,7 @@
 #include "VolumeRenderableCUDAKernel.h"
 #include <helper_math.h>
 #include <iostream>
+#include <TransformFunc.h>
 
 #include <stdlib.h>
 
@@ -414,11 +415,183 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 
 
+__global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float* dev_pts)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+
+	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
+	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInWorld;
+	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
+	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
+	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (!hit)
+	{
+		float4 sum = make_float4(0.0f);
+		sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		return;
+	}
+
+
+
+	if (tnear < 0.0f) tnear = 0.0f;     // clamp to near plane
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+	float lightingThr = 0.000001;
+
+	float fragDepth = 1.0;
+
+	const float4 lineCol = make_float4(0.82f, 0.31f, 0.67f, 1.0f)/1.2f;
+	const float lineWidth = 1.0f;
+	const float2 ws = make_float2(imageW, imageH);
+
+	bool needBlend = false;
+
+	float3 *points = (float3 *)dev_pts;
+	float2 pointsScreen[8];
+	float depth[8];
+	for (int i = 0; i < 8; i++){
+		float4 posInClip = divW(mul(c_MVPMatrix, make_float4(points[i], 1.0f)));
+		depth[i] = posInClip.z / 2.0f + 0.5f;
+		pointsScreen[i] = (make_float2(posInClip.x, posInClip.y) / 2.0f + 0.5f)*ws;
+	}
+	float2 pix = make_float2(x, y);
+	for (int i = 0; i < 4; i++){
+		float2 vec = pix - pointsScreen[i];
+
+		float2 dir = normalize(pointsScreen[i + 4] - pointsScreen[i]);
+		float dis = dot(vec, dir);
+		
+		float2 minordir = make_float2(-dir.y, dir.x);
+		float disMinor = abs(dot(vec, minordir));
+
+		if (disMinor < lineWidth && dis>0 && dis<length(pointsScreen[i + 4] - pointsScreen[i])){
+			needBlend = true;
+
+			//!!!estimation, not precise
+			///see https://rootllama.wordpress.com/2014/06/20/ray-line-segment-intersection-test-in-2d/
+			float3 v1 = eyeRay.o - points[i], v2 = points[i + 4] - points[i], v3 = normalize(cross(eyeRay.d, cross(eyeRay.d, v2)));
+			tfar = min(tfar, length(cross(v2, v1)) / abs(dot(v2, v3)));
+			break;
+		}
+	}
+	if (!needBlend){
+		for (int i = 0; i < 4; i++){
+			float2 vec = pix - pointsScreen[i];
+			int j = i + 1;
+			if (j >= 4)
+				j = 0;
+			float2 dir = normalize(pointsScreen[j] - pointsScreen[i]);
+			float dis = dot(vec, dir);
+
+			float2 minordir = make_float2(-dir.y, dir.x);
+			float disMinor = abs(dot(vec, minordir));
+
+			if (disMinor < lineWidth && dis>0 && dis<length(pointsScreen[j] - pointsScreen[i])){
+				needBlend = true;
+
+				//!!!estimation, not precise
+				///see https://rootllama.wordpress.com/2014/06/20/ray-line-segment-intersection-test-in-2d/
+				float3 v1 = eyeRay.o - points[i], v2 = points[j] - points[i], v3 = normalize(cross(eyeRay.d, cross(eyeRay.d, v2)));
+				tfar = min(tfar, length(cross(v2, v1)) / abs(dot(v2, v3)));
+				break;
+			}
+		}
+	}
+
+
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+
+		// lookup in transfer function texture
+		float4 col;
+
+		float3 cc;
+		if (useColor)
+			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
+		else
+			cc = make_float3(funcRes, funcRes, funcRes);
+
+
+		float3 posInWorld = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0f);
+		}
+		else
+		{
+			col = make_float4(la*cc, funcRes);
+		}
+
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0f)));
+			fragDepth = posInClip.z / 2.0f + 0.5f;
+			break;
+		}
+
+		t += tstep;
+
+		if (t > tfar){
+			if (needBlend){
+				sum = sum + lineCol*(1.0f - sum.w);
+				float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0f)));
+				fragDepth = posInClip.z / 2.0f + 0.5f;
+			}
+			else{
+				float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0f)));
+				fragDepth = posInClip.z / 2.0f + 0.5f;
+			}
+			break;
+		}
+
+		pos += step;
+	}
+
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+}
+
 void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 	float density, float brightness,
 	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
 {
-
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 
@@ -428,10 +601,23 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 
 	//checkCudaErrors(cudaUnbindTexture(volumeTexValueForRC));
 	//checkCudaErrors(cudaUnbindTexture(volumeTexGradient));
-
-
 }
 
+void VolumeRender_render2(uint *d_output, uint imageW, uint imageH,
+	float density, float brightness,
+	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, std::vector<float3> lensPoints)
+{
+	dim3 blockSize = dim3(16, 16, 1);
+	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
+
+	float* dev_pts;
+	cudaMalloc((void**)&dev_pts, sizeof(float3)* 8);
+	cudaMemcpy(dev_pts, &(lensPoints[0]), sizeof(float3)* 8, cudaMemcpyHostToDevice);
+
+	d_render_preint2 << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInWorld, volumeSize, maxSteps, tstep, useColor, dev_pts);
+
+	cudaFree(dev_pts);
+}
 
 
 __global__ void

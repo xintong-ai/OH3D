@@ -20,6 +20,7 @@ signals:
 	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
 	//void UpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);//original
 	void UpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, int numHands);
+	void UpdateHandsNew(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, QVector3D rightMiddleTip, QVector3D rightRingTip, int numHands);
 	void translate2(float v);
 	void UpdateGesture(int gesture);
 

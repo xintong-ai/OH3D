@@ -32,6 +32,10 @@ class LensRenderable :public Renderable
 	bool highlightingCuboidFrame = false;
 
 public:
+	int activedCursors = 0;
+	int cursorColor[2];
+	float3 cursorPos[2];
+
 
 	bool drawFullRetractor = false;
 
@@ -39,7 +43,7 @@ public:
 
 	float3 snapPos;
 	
-	bool changeLensWhenRotateData = false;
+	bool changeLensWhenRotateData = true;
 	bool drawInsicionOnCenterFace = false;
 
 	void init() override;
@@ -85,6 +89,7 @@ public slots:
 public:
 	void SlotOneHandChanged(float3 p);
 	bool SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos, float &valRight);
+	bool LensRenderable::SlotOneHandChangedNew_lc(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap, float4 &markerPos, float &valRight, float &f);
 	void SlotTwoHandChanged(float3 l, float3 r);
 	bool SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIndexLeap, float3 leftThumpLeap, float3 leftIndexLeap, float4 &markerPosRight, float4 &markerPosLeft, float &valRight, float &valLeft, float &f);
 

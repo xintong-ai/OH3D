@@ -74,18 +74,12 @@ void SphereRenderable::init()
     m_vao = std::make_shared<QOpenGLVertexArrayObject>();
     m_vao->create();
 
-
-
 	glyphMesh = std::make_shared<GLSphere>(1, 8);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
+	
     m_vao->bind();
     LoadShaders(glProg);
 
-	GenVertexBuffer(glyphMesh->GetNumVerts(),
-		glyphMesh->GetVerts());
-
-
+	GenVertexBuffer(glyphMesh->GetNumVerts(), glyphMesh->GetVerts());
 
 	initPickingDrawingObjects();
     m_vao->release();

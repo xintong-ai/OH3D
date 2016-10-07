@@ -3,6 +3,7 @@
 
 #include <cuda_runtime.h>
 #include "Volume.h"
+#include <vector>
 
 
 #define VOLUMERENDER_TFS              2
@@ -20,6 +21,9 @@ extern "C" {
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
 		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor);
+	void VolumeRender_render2(uint *d_output, uint imageW, uint imageH,
+		float density, float brightness,
+		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, std::vector<float3> lensPoints);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);

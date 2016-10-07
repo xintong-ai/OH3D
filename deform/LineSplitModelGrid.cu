@@ -67,7 +67,8 @@ struct functor_UpdatePointCoordsAndBrightByLineLensMesh
 		const float dark = 0.5;
 		float3 lenCen2P = make_float3(thrust::get<0>(t)) - lensCenter;
 
-		float alpha = 0.25f;//for FPM data
+		//float alpha = 0.25f*2; //for Cosmology
+		float alpha = 0.25f; //for FPM
 		float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
 		float3 minorAxis = cross(lensDir, majorAxis);
 		float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
