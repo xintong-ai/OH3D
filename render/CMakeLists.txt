@@ -67,9 +67,9 @@ set( Hdrs
 
 if(USE_DEFORM)
 	set(Hdrs ${Hdrs} DeformGlyphRenderable.h LensRenderable.h DeformGLWidget.h 	
-		ModelGridRenderable.h GridRenderable.h)
+		ModelGridRenderable.h)
 	set(Srcs ${Srcs} DeformGlyphRenderable.cpp LensRenderable.cpp DeformGLWidget.cpp 
-		ModelGridRenderable.cpp GridRenderable.cpp )
+		ModelGridRenderable.cpp)
 	include_directories(
 		 ${CUDA_TOOLKIT_INCLUDE} 
 	#${CUDA_SDK_ROOT_DIR}/common/inc

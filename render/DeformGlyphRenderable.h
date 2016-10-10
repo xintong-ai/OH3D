@@ -2,11 +2,11 @@
 #define DeformGlyph_RENDERABLE_H
 
 #include "GlyphRenderable.h"
-class DeformInterface;
+
 class LineSplitModelGrid;
 class Lens;
 class ModelGrid;
-
+class Displace;
 class DeformGlyphRenderable: public GlyphRenderable
 {
 	/****timing****/
@@ -15,7 +15,6 @@ class DeformGlyphRenderable: public GlyphRenderable
 	int fpsLimit = 128;        // FPS limit for sampling
 	void StartDeformTimer();
 	void StopDeformTimer();
-	bool displaceEnabled = true;
 	
 public:
 	std::vector<Lens*> *lenses = 0; // a reference of the lenses, which is stored in LensRenderable now
@@ -23,15 +22,13 @@ public:
 	DeformGlyphRenderable(std::shared_ptr<Particle> _particle);
 
 	~DeformGlyphRenderable();
-	void RecomputeTarget();
 	void ComputeDisplace(float _mv[16], float pj[16]);
 	void SetModelGrid(LineSplitModelGrid* _modelGrid){ modelGrid = _modelGrid; }
-	void SetModelGrid(ModelGrid* _modelGrid){ ; }
+	void SetScreenLensDisplaceComputer(std::shared_ptr<Displace> _screenLensDisplaceProcessor){ screenLensDisplaceProcessor = _screenLensDisplaceProcessor; }
 
 	void DisplacePoints(std::vector<float2>& pts);
 
-	void SetDisplace(bool v){ displaceEnabled = v; }
-	std::shared_ptr<DeformInterface> deformInterface;
+	std::shared_ptr<Displace> screenLensDisplaceProcessor = 0;
 	LineSplitModelGrid* modelGrid;
 	float3 findClosetGlyph(float3 aim);
 	void mousePress(int x, int y, int modifier) override;

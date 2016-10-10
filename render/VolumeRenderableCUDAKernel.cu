@@ -415,7 +415,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 
 
-__global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float* dev_pts)
+__global__ void d_render_preint_withLensBlending(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float* dev_pts)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -603,7 +603,7 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 	//checkCudaErrors(cudaUnbindTexture(volumeTexGradient));
 }
 
-void VolumeRender_render2(uint *d_output, uint imageW, uint imageH,
+void VolumeRender_render_withLensBlending(uint *d_output, uint imageW, uint imageH,
 	float density, float brightness,
 	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, std::vector<float3> lensPoints)
 {
@@ -614,7 +614,7 @@ void VolumeRender_render2(uint *d_output, uint imageW, uint imageH,
 	cudaMalloc((void**)&dev_pts, sizeof(float3)* 8);
 	cudaMemcpy(dev_pts, &(lensPoints[0]), sizeof(float3)* 8, cudaMemcpyHostToDevice);
 
-	d_render_preint2 << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInWorld, volumeSize, maxSteps, tstep, useColor, dev_pts);
+	d_render_preint_withLensBlending << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInWorld, volumeSize, maxSteps, tstep, useColor, dev_pts);
 
 	cudaFree(dev_pts);
 }

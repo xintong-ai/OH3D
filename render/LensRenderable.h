@@ -79,8 +79,6 @@ public:
 
 public slots:
 	//for keyboard
-	void SlotFocusSizeChanged(int v);
-	void SlotSideSizeChanged(int v);
 	void SlotDelLens();
 	void adjustOffset();
 	void RefineLensBoundary();

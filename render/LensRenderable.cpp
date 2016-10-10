@@ -1756,28 +1756,7 @@ void LensRenderable::RefineLensBoundary(){
 
 };
 
-void LensRenderable::SlotFocusSizeChanged(int v)
-{
-	if (lenses.size() > 0){
-		lenses.back()->SetFocusRatio((49 - v) * 0.02 * 0.8 + 0.2);
-		Lens *l = lenses.back();
-		//if (l->GetType() == LENS_TYPE::TYPE_CURVE)
-		//{
-		//	((CurveLens *)l)->UpdateTransferredData();
-		//}
-		l->justChanged = true;
-	}
-	actor->UpdateGL();
-}
 
-void LensRenderable::SlotSideSizeChanged(int v)// { displace - (10 - v) * 0.1; }
-{
-	//if (lenses.size() > 0){
-	//	lenses.back()->SetSideSize(v * 0.1);
-	//}
-	//((GlyphRenderable*)actor->GetRenderable("glyph"))->RecomputeTarget();
-	//actor->UpdateGL();
-}
 
 void LensRenderable::SlotDelLens()
 {

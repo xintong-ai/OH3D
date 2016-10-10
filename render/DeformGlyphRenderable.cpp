@@ -1,4 +1,4 @@
-#include <DeformInterface.h>
+#include <Displace.h>
 #include <DeformGlyphRenderable.h>
 #include <LineSplitModelGrid.h>
 #include <helper_timer.h>
@@ -17,10 +17,9 @@
 DeformGlyphRenderable::DeformGlyphRenderable(std::shared_ptr<Particle> _particle)
 :GlyphRenderable(_particle)
 {
-	deformInterface = std::make_shared<DeformInterface>();
-	deformInterface->LoadOrig(&pos[0], particle->numParticles);
 	sdkCreateTimer(&deformTimer);
 }
+
 
 DeformGlyphRenderable::~DeformGlyphRenderable()
 {
@@ -31,23 +30,8 @@ DeformGlyphRenderable::~DeformGlyphRenderable()
 void DeformGlyphRenderable::DisplacePoints(std::vector<float2>& pts)
 {
 	int2 winSize = actor->GetWindowSize();
-	//deformInterface->DisplacePoints(pts,
-	//	((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y);
 }
 
-
-void DeformGlyphRenderable::RecomputeTarget()
-{
-	if (!visible)
-		return;
-
-	switch (((DeformGLWidget*)actor)->GetDeformModel())
-	{
-	case DEFORM_MODEL::SCREEN_SPACE:
-		deformInterface->RecomputeTarget();
-		break;
-	}
-}
 
 void DeformGlyphRenderable::StartDeformTimer()
 {
@@ -73,14 +57,11 @@ void DeformGlyphRenderable::StopDeformTimer()
 
 void DeformGlyphRenderable::init()
 {
-	//modelGrid->InitGridDensity(&pos[0], particle->numParticles);
 }
 
 
 void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 {
-	if (!displaceEnabled) return;
-
 
 	if (lenses == 0 || lenses->size() <1 || modelGrid == 0)
 		return;
@@ -95,7 +76,7 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 		{
 		case DEFORM_MODEL::SCREEN_SPACE:
 		{
-			deformInterface->RecomputeTarget();
+			screenLensDisplaceProcessor->RecomputeTarget();
 			break;
 		}
 		case DEFORM_MODEL::OBJECT_SPACE:
@@ -118,8 +99,7 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 	{
 		case DEFORM_MODEL::SCREEN_SPACE:
 		{
-			deformInterface->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y,
-				((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses(), &pos[0], &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
+			screenLensDisplaceProcessor->Compute(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winSize.x, winSize.y, *lenses, &pos[0], &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
 			break;
 		}
 		case DEFORM_MODEL::OBJECT_SPACE:
@@ -157,9 +137,6 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 				q_modelview = q_modelview.transposed();
 				QVector4D cameraObj = q_modelview.inverted() * QVector4D(0, 0, 0, 1);// make_float4(0, 0, 0, 1);
 				cameraObj = cameraObj / cameraObj.w();
-				//float3 lensCen = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensCenter();
-				//float focusRatio = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensFocusRatio();
-				//float radius = ((LensRenderable*)actor->GetRenderable("lenses"))->GetBackLensObjectRadius();
 				float3 lensCen = l->c;
 				float focusRatio = l->focusRatio;
 				float radius = ((CircleLens*)l)->objectRadius;
@@ -202,7 +179,9 @@ void DeformGlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 void DeformGlyphRenderable::resize(int width, int height)
 {
 	if (INTERACT_MODE::TRANSFORMATION == actor->GetInteractMode()) {
-		RecomputeTarget();
+		if (screenLensDisplaceProcessor != 0){
+			screenLensDisplaceProcessor->RecomputeTarget();
+		}
 	}
 	GlyphRenderable::resize(width, height);
 }
@@ -210,7 +189,7 @@ void DeformGlyphRenderable::resize(int width, int height)
 
 float3 DeformGlyphRenderable::findClosetGlyph(float3 aim)
 {
-	return deformInterface->findClosetGlyph(aim, snappedGlyphId);
+	return screenLensDisplaceProcessor->findClosetGlyph(aim, snappedGlyphId);
 
 }
 
@@ -236,11 +215,11 @@ void DeformGlyphRenderable::mousePress(int x, int y, int modifier)
 		if (pickedGlyphId != -1){
 			std::cout << "pickedGlyph feature " << (int)(particle->feature[pickedGlyphId]) << std::endl;
 			snappedGlyphId = pickedGlyphId;
-			//std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
-			//for (int i = 0; i < lenses.size(); i++) {
-			//	Lens* l = lenses[i];
-			//	l->SetCenter(make_float3(particle->posOrig[snappedGlyphId]));
-			//}
+			
+			for (int i = 0; i < lenses->size(); i++) {
+				Lens* l = (*lenses)[i];
+				l->SetCenter(make_float3(particle->posOrig[snappedGlyphId]));
+			}
 		}
 
 		isPickingGlyph = false;
@@ -265,9 +244,8 @@ void DeformGlyphRenderable::mousePress(int x, int y, int modifier)
 
 		if (pickedGlyphId > 0){
 			snappedFeatureId = pickedGlyphId;
-			std::vector<Lens*> lenses = ((LensRenderable*)actor->GetRenderable("lenses"))->GetLenses();
-			for (int i = 0; i < lenses.size(); i++) {
-				Lens* l = lenses[i];
+			for (int i = 0; i < lenses->size(); i++) {
+				Lens* l = (*lenses)[i];
 				l->SetCenter(featureCenter[snappedFeatureId - 1]);
 			}
 		}

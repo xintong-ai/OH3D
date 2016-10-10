@@ -2,7 +2,6 @@
 #include "DeformGLWidget.h"
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
-#include "GridRenderable.h"
 #include "ArrowNoDeformRenderable.h"
 #include <iostream>
 #include <algorithm>    // std::min_element, std::max_element
@@ -22,6 +21,8 @@
 #include <Particle.h>
 #include <helper_math.h>
 
+#include <Displace.h>
+
 #include <ModelGrid.h>
 
 #ifdef USE_LEAP
@@ -39,15 +40,8 @@
 #include "VRGlyphRenderable.h"
 #endif
 
-QSlider* CreateSlider()
-{
-	QSlider* slider = new QSlider(Qt::Horizontal);
-	slider->setRange(0, 50);
-	slider->setValue(25);
-	return slider;
-}
 
-class GLTextureCube;
+
 Window::Window()
 {
     setWindowTitle(tr("Interactive Glyph Visualization"));
@@ -116,7 +110,6 @@ Window::Window()
 	//std::shared_ptr<ModelGrid> mgs = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
 
 
-	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
 	modelGrid->initThrustVectors(inputParticle);
@@ -124,6 +117,12 @@ Window::Window()
 	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
 	
 	glyphRenderable->SetModelGrid(modelGrid.get());
+
+
+	screenLensDisplaceProcessor = std::make_shared<Displace>();
+	screenLensDisplaceProcessor->LoadOrig(&(inputParticle->pos[0]), inputParticle->numParticles);
+
+	glyphRenderable->SetScreenLensDisplaceComputer(screenLensDisplaceProcessor);
 	//openGL->AddRenderable("bbox", bbox);
 
 	//glyphRenderable->SetVisibility(false);
@@ -131,7 +130,6 @@ Window::Window()
 
 	openGL->AddRenderable("2glyph", glyphRenderable.get());
 	openGL->AddRenderable("3lenses", lensRenderable.get());
-	//openGL->AddRenderable("grid", gridRenderable.get());
 	openGL->AddRenderable("4model", modelGridRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add old lens");
@@ -153,8 +151,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
 	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
 
-	QLabel* transSizeLabel = new QLabel("Transition region size:");
-	QSlider* transSizeSlider = CreateSlider();
 #ifdef USE_LEAP
 	listener = new LeapListener();
 	controller = new Leap::Controller();
@@ -191,47 +187,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
 	
 	lensRenderable2 = std::make_shared<LensRenderable>();;
-//	glyphRenderable->lenses = lensRenderable->GetLensesAddr();
 	
 	vrWidget->AddRenderable("6glyph", vrGlyphRenderable.get());
 	vrWidget->AddRenderable("7lens", lensRenderable.get());
 
-
-	//vrWidget->AddRenderable("7lens", lensRenderable2.get());
-
-
-	//vrGlyphRenderable2 = std::make_shared<VRGlyphRenderable>(arrowNoDeformRenderable.get());
-	//vrWidget->AddRenderable("9arrow", vrGlyphRenderable2.get());
-
-
-	//std::shared_ptr<DeformGlyphRenderable> glyphRenderable3 = std::make_shared<SphereRenderable>(inputParticle);
-	//glyphRenderable3->lenses = lensRenderable->GetLensesAddr();
-	//std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable3 = std::make_shared<VRGlyphRenderable>(glyphRenderable3.get());
-	//vrWidget->AddRenderable("8wrweglyph", vrGlyphRenderable3.get());
-
-
-
-
 	openGL->SetVRWidget(vrWidget.get());
 
-
-
-	//vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
-	//vrWidget->setWindowFlags(Qt::Window);
-	//std::shared_ptr<DeformGlyphRenderable> glyphRenderable2;
-	//if (std::string(dataPath).find(".vtu") != std::string::npos){
-	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
-	//	glyphRenderable2->setColorMap(COLOR_MAP::RDYIGN, true);
-	//}
-	//else{
-	//	glyphRenderable2 = std::make_shared<SphereRenderable>(inputParticle);
-	//	glyphRenderable2->colorByFeature = true;
-	//	glyphRenderable2->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
-	//}
-	//glyphRenderable2->SetDisplace(false);
-	//vrWidget->AddRenderable("glyph", glyphRenderable2.get());
-	//vrWidget->AddRenderable("lens", lensRenderable.get());
-	//openGL->SetVRWidget(vrWidget.get());
 #endif
 
 
@@ -240,7 +201,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
 	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
 	radioDeformObject->setChecked(true);
-	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
+	//openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
 	deformModeLayout->addWidget(radioDeformScreen.get());
 	deformModeLayout->addWidget(radioDeformObject.get());
 	groupBox->setLayout(deformModeLayout);
@@ -278,8 +240,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(loadStateBtn.get());
 	//controlLayout->addWidget(groupBox);
 	
-	//controlLayout->addWidget(transSizeLabel);
-	//controlLayout->addWidget(transSizeSlider);
 	//controlLayout->addWidget(usingGlyphSnappingCheck);
 	controlLayout->addWidget(usingGlyphPickingCheck);
 	//controlLayout->addWidget(freezingFeatureCheck);
@@ -348,7 +308,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(udbeCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUdbe(bool)));
 	connect(cbChangeLensWhenRotateData, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbChangeLensWhenRotateData(bool)));
 	connect(cbDrawInsicionOnCenterFace, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbDrawInsicionOnCenterFace(bool)));
-	//connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
+
 #ifdef USE_LEAP
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
@@ -434,7 +394,7 @@ void Window::SlotTogglePickingGlyph(bool b)
 void Window::SlotToggleFreezingFeature(bool b)
 {
 	glyphRenderable->isFreezingFeature = b;
-	glyphRenderable->RecomputeTarget();
+	screenLensDisplaceProcessor->RecomputeTarget();
 }
 
 void Window::SlotToggleUsingFeatureSnapping(bool b)
@@ -442,7 +402,7 @@ void Window::SlotToggleUsingFeatureSnapping(bool b)
 	lensRenderable->isSnapToFeature = b;
 	if (!b){
 		glyphRenderable->SetSnappedFeatureId(-1);
-		glyphRenderable->RecomputeTarget();
+		screenLensDisplaceProcessor->RecomputeTarget();
 	}
 	else{
 		usingGlyphSnappingCheck->setChecked(false);

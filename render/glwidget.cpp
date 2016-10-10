@@ -364,6 +364,8 @@ QPoint GLWidget::pixelPosToGLPos(const QPointF& p)
 	return QPoint(p.x(), height - 1 - p.y());
 }
 
+
+//very bad function. need to be deleted!! 
 Renderable* GLWidget::GetRenderable(const char* name)
 {
 	if (renderers.find(name) == renderers.end()) {

@@ -2,7 +2,6 @@
 #include "DeformGLWidget.h"
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
-#include "GridRenderable.h"
 #include <iostream>
 
 #include "SphereRenderable.h"
@@ -35,15 +34,7 @@
 #include "VRVolumeRenderableCUDA.h"
 #endif
 
-QSlider* CreateSlider()
-{
-	QSlider* slider = new QSlider(Qt::Horizontal);
-	slider->setRange(0, 50);
-	slider->setValue(25);
-	return slider;
-}
 
-class GLTextureCube;
 Window::Window()
 {
     setWindowTitle(tr("Interactive Glyph Visualization"));
@@ -135,7 +126,6 @@ Window::Window()
 
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
-	gridRenderable = std::make_shared<GridRenderable>(64);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
@@ -222,8 +212,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 
-	QLabel* transSizeLabel = new QLabel("Transition region size:");
-	QSlider* transSizeSlider = CreateSlider();
 #ifdef USE_LEAP
 	listener = new LeapListener();
 	controller = new Leap::Controller();
@@ -255,13 +243,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 	//controlLayout->addWidget(groupBox);
-	//controlLayout->addWidget(transSizeLabel);
-	//controlLayout->addWidget(transSizeSlider);
-	//controlLayout->addWidget(usingGlyphSnappingCheck);
-	//controlLayout->addWidget(usingGlyphPickingCheck);
 	controlLayout->addWidget(gridCheck);
 	controlLayout->addWidget(cbBackFace);
-	//controlLayout->addWidget(udbeCheck);
 	controlLayout->addWidget(cbChangeLensWhenRotateData);
 	controlLayout->addWidget(cbDrawInsicionOnCenterFace); 
 	controlLayout->addLayout(meshResLayout);
@@ -393,7 +376,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
 	connect(cbBackFace, SIGNAL(clicked(bool)), this, SLOT(SlotToggleBackFace(bool)));
-	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 	connect(cbDrawInsicionOnCenterFace, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbDrawInsicionOnCenterFace(bool)));
 
 #ifdef USE_LEAP
@@ -404,11 +386,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
 		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
 #endif
-	//connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
-	//connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
-	//connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
-	//connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
-	
+
 
 	connect(rbUniform, SIGNAL(clicked(bool)), this, SLOT(SlotRbUniformChanged(bool)));
 	connect(rbDensity, SIGNAL(clicked(bool)), this, SLOT(SlotRbDensityChanged(bool))); 

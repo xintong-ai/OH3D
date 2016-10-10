@@ -17,7 +17,6 @@ class QLabel;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
-class GridRenderable;
 class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
@@ -70,7 +69,6 @@ private:
 	
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
-	std::shared_ptr<GridRenderable> gridRenderable;
 	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;

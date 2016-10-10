@@ -108,27 +108,8 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	}
 
 	//compute the dvr
+	VolumeRender_render(d_output, winWidth, winHeight, density, brightness, eyeInWorld, volume->size, maxSteps, tstep, useColor);
 	
-	/*if (lenses != 0 && lenses->size() > 0 && !(lenses->back()->isConstructing) && modelVolumeDeformer != 0){
-		LineLens3D *l = (LineLens3D *)(lenses->back());
-		std::vector<float3> PointsForContourOuterCenter = ((LineLens3D*)l)->GetOuterContourCenterFace();
-		std::vector<float3> PointsForContourOuterFront = ((LineLens3D*)l)->GetOuterContourFrontFace();
-		std::vector<float3> pts;
-		pts.push_back(PointsForContourOuterCenter[0]);
-		pts.push_back(PointsForContourOuterCenter[1]);
-		pts.push_back(PointsForContourOuterCenter[2]);
-		pts.push_back(PointsForContourOuterCenter[3]);
-		pts.push_back(PointsForContourOuterFront[0]);
-		pts.push_back(PointsForContourOuterFront[1]);
-		pts.push_back(PointsForContourOuterFront[2]);
-		pts.push_back(PointsForContourOuterFront[3]);
-
-
-		VolumeRender_render2(d_output, winWidth, winHeight, density, brightness, eyeInWorld, volume->size, maxSteps, tstep, useColor, pts);
-	}
-	else{*/
-		VolumeRender_render(d_output, winWidth, winHeight, density, brightness, eyeInWorld, volume->size, maxSteps, tstep, useColor);
-	//}
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
 

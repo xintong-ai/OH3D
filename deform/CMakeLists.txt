@@ -24,7 +24,7 @@ set(SRCS
 	#ModelGrid.cu
 	LineSplitModelGrid.cu
 	ModelVolumeDeformer.cu
-	DeformInterface.cpp)
+	)
 
 set(HDRS	defines.h
 			Displace.h
@@ -33,8 +33,7 @@ set(HDRS	defines.h
 			#ModelGrid.h
 			LineSplitModelGrid.h
 			TransformFunc.h
-			ModelVolumeDeformer.h
-			DeformInterface.h)
+			ModelVolumeDeformer.h)
 
 cuda_add_library(deform STATIC ${HDRS} ${SRCS})
 

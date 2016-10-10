@@ -19,12 +19,12 @@ class DeformGlyphRenderable;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
-class GridRenderable;
 class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
 class LineSplitModelGrid;
 class Particle;
+class Displace;
 
 //#define USE_NEW_LEAP
 
@@ -80,12 +80,12 @@ private:
 
 	std::shared_ptr<DeformGlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
-	std::shared_ptr<GridRenderable> gridRenderable;
 	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveBLensBtn;
 	std::shared_ptr<LineSplitModelGrid> modelGrid;
+	std::shared_ptr<Displace> screenLensDisplaceProcessor;
 	std::shared_ptr<Particle> inputParticle;
 
 	QLabel *deformForceLabel;

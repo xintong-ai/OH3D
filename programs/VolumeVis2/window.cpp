@@ -35,13 +35,6 @@
 #include "VRVolumeRenderableCUDA.h"
 #endif
 
-QSlider* CreateSlider()
-{
-	QSlider* slider = new QSlider(Qt::Horizontal);
-	slider->setRange(0, 50);
-	slider->setValue(25);
-	return slider;
-}
 
 class GLTextureCube;
 Window::Window()
