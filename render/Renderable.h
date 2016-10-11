@@ -36,10 +36,6 @@ inline void GetNormalMatrix(float modelview[16], float NormalMatrix[9])
 
 class Renderable: public QObject
 {
-	/****timing****/
-	StopWatchInterface *timer = 0;
-	int fpsCount = 0;        // FPS count for averaging
-	int fpsLimit = 128;        // FPS limit for sampling
 
 
 public:
@@ -124,6 +120,13 @@ protected:
 
 	//bool drawScreenSpace = false;
 
+
+	/****timing****/
+	StopWatchInterface *timer = 0;
+	int fpsCount = 0;        // FPS count for averaging
+	int fpsLimit = 128;        // FPS limit for sampling
+	void StartRenderableTimer();
+	void StopRenderableTimer();
 
 private:
     void AllocOutImage();

@@ -2,7 +2,6 @@
 #define MODEL_GRID_RENDERABLE_H
 #include "Renderable.h"
 #include <memory>
-class ModelGrid;
 class LineSplitModelGrid;
 class Lens;
 
@@ -15,7 +14,6 @@ class ModelGridRenderable : public Renderable{
 	std::vector<Lens*> *lenses = 0;
 
 public:
-	ModelGridRenderable(ModelGrid* _modelGrid);// float dmin[3], float dmax[3], int nPart);
 	ModelGridRenderable(LineSplitModelGrid* _modelGrid);// float dmin[3], float dmax[3], int nPart);
 	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 

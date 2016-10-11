@@ -15,7 +15,7 @@ class QSlider;
 class Renderable;
 class QCheckBox;
 class QLabel;
-class DeformGlyphRenderable;
+class GlyphRenderable;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
@@ -24,7 +24,7 @@ class GLMatrixManager;
 class ModelGridRenderable;
 class LineSplitModelGrid;
 class Particle;
-class Displace;
+class ScreenLensDisplaceProcessor;
 
 //#define USE_NEW_LEAP
 
@@ -37,7 +37,7 @@ namespace Leap{
 
 #ifdef USE_NEW_LEAP
 class LeapListener;
-class ArrowNoDeformRenderable; //used to draw leap finger indicators
+class ArrowRenderable; //used to draw leap finger indicators
 namespace Leap{
 	class Controller;
 }
@@ -78,14 +78,14 @@ private:
 	QCheckBox* usingFeatureSnappingCheck;
 	QCheckBox* usingFeaturePickingCheck;
 
-	std::shared_ptr<DeformGlyphRenderable> glyphRenderable;
+	std::shared_ptr<GlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
 	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveBLensBtn;
 	std::shared_ptr<LineSplitModelGrid> modelGrid;
-	std::shared_ptr<Displace> screenLensDisplaceProcessor;
+	std::shared_ptr<ScreenLensDisplaceProcessor> screenLensDisplaceProcessor;
 	std::shared_ptr<Particle> inputParticle;
 
 	QLabel *deformForceLabel;
@@ -110,7 +110,7 @@ private:
 #ifdef USE_NEW_LEAP
 	LeapListener* listener;
 	Leap::Controller* controller; 
-	std::shared_ptr<ArrowNoDeformRenderable> arrowNoDeformRenderable;
+	std::shared_ptr<ArrowRenderable> arrowRenderable;
 	std::shared_ptr<Particle> leapFingerIndicators;
 	std::vector<float3> leapFingerIndicatorVecs;
 #endif

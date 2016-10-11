@@ -30,16 +30,10 @@
 
 
 SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
-#ifdef USE_DEFORM
-:DeformGlyphRenderable(_particle)
-#else
-: GlyphRenderable(particle)
-#endif
+: GlyphRenderable(_particle)
 {
 	sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
 	setColorMap(COLOR_MAP::RDYIGN);
-
-	//glyphSizeAdjust = 5;
 }
 
 void SphereRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
@@ -67,9 +61,6 @@ void SphereRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
 void SphereRenderable::init()
 {
 	GlyphRenderable::init();
-#ifdef USE_DEFORM
-	DeformGlyphRenderable::init(); 
-#endif
 
     m_vao = std::make_shared<QOpenGLVertexArrayObject>();
     m_vao->create();
@@ -193,7 +184,7 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 	for (int i = 0; i < particle->numParticles; i++) {
 		glPushMatrix();
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 		//float scale = pow(sphereSize[i], 0.333) * 0.01;
 
 		//std::cout << sphereSize[i] << " ";
@@ -239,12 +230,11 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 		updated = true;
 	}
 
-
 	RecordMatrix(modelview, projection);
 
-#ifdef USE_DEFORM
-	ComputeDisplace(modelview, projection);
-#endif
+	if (modelGrid != 0 || screenLensDisplaceProcessor != 0){
+		ComputeDisplace(modelview, projection);
+	}
 
 	if (!visible)
 		return;
@@ -342,7 +332,7 @@ void SphereRenderable::drawPicking(float modelview[16], float projection[16], bo
 		b = ((i + 1) & 0x00FF0000) >> 16;
 
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 

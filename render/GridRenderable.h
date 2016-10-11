@@ -4,6 +4,9 @@
 #include <vector>
 #include <vector_types.h>
 
+//used to draw the images of the deformed grid, used in Xin's PacificVis streamline paper
+//not designed in the same way with other renderables, and not mainteined currently
+
 class GridRenderable : public Renderable
 {
 public:

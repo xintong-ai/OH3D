@@ -10,30 +10,35 @@ class StopWatchInterface;
 #include <ColorGradient.h>
 #include <Particle.h>
 
+class LineSplitModelGrid;
+class ScreenLensDisplaceProcessor;
+class Lens;
+
 class GlyphRenderable: public Renderable
 {
 	Q_OBJECT
-	bool frameBufferObjectInitialized = false;
 
 public:
 	~GlyphRenderable();
-	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
-	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
-	//void SetDispalceOn(bool b) { displaceOn = b; }
+
+	//used for deformation
+	void SetScreenLensDisplaceComputer(std::shared_ptr<ScreenLensDisplaceProcessor> _screenLensDisplaceProcessor){ screenLensDisplaceProcessor = _screenLensDisplaceProcessor; }
+	void SetModelGrid(std::shared_ptr<LineSplitModelGrid> _modelGrid){ modelGrid = _modelGrid; }
+
+	void mouseMove(int x, int y, int modifier) override;
+	void resize(int width, int height) override;
+	void mousePress(int x, int y, int modifier) override;
+
+	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) = 0;
+	bool colorByFeature = false;//when the particle has multi attributes or features, choose which attribute or color is used for color. currently a simple solution using bool
+	void resetBrightness(){
+		glyphBright.assign(particle->numParticles, 1.0);
+	};
 	void SetGlyphSizeAdjust(float v){ glyphSizeAdjust = v; }
 
-	int GetNumOfGlyphs(){ return particle->numParticles; }
 
-	//when the particle has multi attributes or features, choose which attribute or color is used for color
-	//currently a simple solution using bool
-	bool colorByFeature = false;
-
-	//used for feature freezing rendering
+	//used for feature freezing / snapping
 	bool isFreezingFeature = false;
-	std::vector<char> feature;
-	std::vector<float3> featureCenter;
-
-	//used for feature snapping
 	bool isPickingFeature = false;
 	int GetSnappedFeatureId(){ return snappedFeatureId; }
 	void SetSnappedFeatureId(int s){ snappedFeatureId = s; }
@@ -44,24 +49,20 @@ public:
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 
-	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) = 0;
-	
-	std::vector<float> glyphBright;
-
 protected:
+	GlyphRenderable(std::shared_ptr<Particle> _particle);
+
 	std::shared_ptr<Particle> particle;
 
-	float4* pos;
-	//std::vector<float4> pos;
-	
+	std::vector<float> glyphBright;
+	//both are used for adjust size
 	std::vector<float> glyphSizeScale;
 	float glyphSizeAdjust = 1.0f;
+	
+	//used for drawing
 	ShaderProgram* glProg = nullptr;
-	//bool displaceOn = true;
-	void mouseMove(int x, int y, int modifier) override;
-	void resize(int width, int height) override;
-
-	GlyphRenderable(std::shared_ptr<Particle> _particle);
+	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
+	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
 
 	//used for picking and snapping
 	unsigned int vbo_vert_picking, vbo_indices_picking;
@@ -72,8 +73,13 @@ protected:
 	int snappedGlyphId = -1;
 	int snappedFeatureId = -1;
 
-public slots:
-	void SlotGlyphSizeAdjustChanged(int v);
+	//used for deformation
+	void ComputeDisplace(float _mv[16], float pj[16]);
+	std::shared_ptr<ScreenLensDisplaceProcessor> screenLensDisplaceProcessor = 0;
+	std::shared_ptr<LineSplitModelGrid> modelGrid = 0;
+
+private:
+	bool frameBufferObjectInitialized = false;
 
 signals:
 	void glyphPickingFinished();

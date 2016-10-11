@@ -20,11 +20,7 @@
 using namespace std;
 
 ArrowRenderable::ArrowRenderable(vector<float4> _pos, vector<float3> _vec, vector<float> _val, std::shared_ptr<Particle> _particle) :
-#ifdef USE_DEFORM
-DeformGlyphRenderable(_particle)
-#else
 GlyphRenderable(_particle)
-#endif
 {
 	vecs = _vec;
 	//val = &_val; //consider about the color later
@@ -178,9 +174,7 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 void ArrowRenderable::init()
 {
 	GlyphRenderable::init();
-#ifdef USE_DEFORM
-	DeformGlyphRenderable::init();
-#endif
+
 	glProg = new ShaderProgram;
 	LoadShaders(glProg);
 
@@ -232,7 +226,7 @@ void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 
 	for (int i = 0; i < particle->numParticles; i++) {
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -278,9 +272,11 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 		return;
 
 	RecordMatrix(modelview, projection);
-#ifdef USE_DEFORM
-	ComputeDisplace(modelview, projection);
-#endif
+	
+	if (modelGrid != 0 || screenLensDisplaceProcessor != 0){
+		ComputeDisplace(modelview, projection);
+	}
+
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
@@ -374,13 +370,13 @@ void ArrowRenderable::drawPicking(float modelview[16], float projection[16], boo
 			b = ((i + 1) & 0x00FF0000) >> 16;
 		}
 		else{
-			char c = feature[i];
+			char c = particle->feature[i];
 			r = ((c)& 0x000000FF) >> 0;
 			g = ((c)& 0x0000FF00) >> 8;
 			b = ((c)& 0x00FF0000) >> 16;
 		}
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 

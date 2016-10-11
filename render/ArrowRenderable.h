@@ -2,21 +2,17 @@
 #define ARROW_RENDERABLE_H
 
 #include <CMakeConfig.h>
-#ifdef USE_DEFORM
-#include "DeformGlyphRenderable.h"
-#else
+
 #include "GlyphRenderable.h"
-#endif
+
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLArrow;
 class QOpenGLContext;
 
-#ifdef USE_DEFORM
-class ArrowRenderable :public DeformGlyphRenderable
-#else
+
 class ArrowRenderable :public GlyphRenderable
-#endif
+
 {
 	std::vector<float3> vecs;
 	//std::vector<float> val; //used for coloring particles

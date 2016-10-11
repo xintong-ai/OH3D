@@ -1,4 +1,4 @@
-#include <Displace.h>
+#include <ScreenLensDisplaceProcessor.h>
 #include <TransformFunc.h>
 #include <vector_functions.h>
 #include <helper_math.h>
@@ -431,11 +431,11 @@ struct functor_Unproject
 		inv_mv(_inv_mv), inv_pj(_inv_pj), w(_w), h(_h){}
 };
 
-Displace::Displace()
+ScreenLensDisplaceProcessor::ScreenLensDisplaceProcessor()
 {
 }
 
-void Displace::LoadOrig(float4* v, int num)
+void ScreenLensDisplaceProcessor::LoadOrig(float4* v, int num)
 {
 	posOrig.assign(v, v + num);// , posOrig.begin());
 	d_vec_posTarget.assign(num, make_float4(0, 0, 0, 1));
@@ -449,7 +449,7 @@ void Displace::LoadOrig(float4* v, int num)
 	thrust::sequence(d_vec_id.begin(), d_vec_id.end());	
 }
 
-void Displace::LoadFeature(char* f, int num)
+void ScreenLensDisplaceProcessor::LoadFeature(char* f, int num)
 {
 	if (f == 0 || f==nullptr || f== NULL){
 		feature.assign(num, 0);
@@ -459,8 +459,11 @@ void Displace::LoadFeature(char* f, int num)
 	}
 }
 
-void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses
-	, float* modelview, float* projection, int winW, int winH)
+
+
+
+
+void ScreenLensDisplaceProcessor::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lenses, float* modelview, float* projection, int winW, int winH)
 {
 	for (int i = 0; i < lenses.size(); i++) {
 		CircleLens* l = (CircleLens*)lenses[i];
@@ -472,15 +475,29 @@ void Displace::DisplacePoints(std::vector<float2>& pts, std::vector<Lens*> lense
 	}
 }
 
+bool ScreenLensDisplaceProcessor::ProcessDeformation(float* modelview, float* projection, int winW, int winH, float4* ret, float* glyphSizeScale, float* glyphBright , bool isFreezingFeature , int snappedGlyphId, int snappedFeatureId)
+{
+	if (lenses == 0 || lenses->size() < 1)
+		return false;
+	
+	Lens *l = (*lenses)[lenses->size() - 1];
 
-void Displace::Compute(float* modelview, float* projection, int winW, int winH,
-	std::vector<Lens*> lenses, float4* ret, float* glyphSizeScale, float* glyphBright, bool isFreezingFeature, int snappedGlyphId, int snappedFeatureId)
+	if (l->justChanged){
+		setRecomputeNeeded();
+	}
+
+	Compute(modelview, projection, winW, winH, ret, glyphSizeScale, glyphBright, isFreezingFeature, snappedGlyphId, snappedFeatureId);
+
+	return true;
+}
+
+void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, int winW, int winH, float4* ret, float* glyphSizeScale, float* glyphBright, bool isFreezingFeature, int snappedGlyphId, int snappedFeatureId)
 {
 	int size = posOrig.size();
 	matrix4x4 mv(modelview);
 	matrix4x4 pj(projection);
 
-	if (recomputeTarget) {
+	if (isRecomputeTargetNeeded) {
 		thrust::device_vector<float4> d_vec_posClip(size);
 		thrust::device_vector<float2> d_vec_posScreen(size);
 
@@ -492,17 +509,17 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 
 		//use this for the case that there is no lens, 
 		//and the glyphs go back to the original positions
-		if (lenses.size() < 1){
+		if (lenses->size() < 1){
 			d_vec_posTarget = posOrig;
 			thrust::fill(d_vec_glyphBrightTarget.begin(), d_vec_glyphBrightTarget.end(), 1.0f);
 		}
 		else {
-			for (int i = 0; i < lenses.size(); i++) {
-				float2 lensScreenCenter = lenses[i]->GetCenterScreenPos(modelview, projection, winW, winH);
-				switch (lenses[i]->GetType()) {
+			for (int i = 0; i < lenses->size(); i++) {
+				float2 lensScreenCenter = (*lenses)[i]->GetCenterScreenPos(modelview, projection, winW, winH);
+				switch ((*lenses)[i]->GetType()) {
 					case LENS_TYPE::TYPE_CIRCLE:
 					{
-						CircleLens* l = (CircleLens*)lenses[i];
+						CircleLens* l = (CircleLens*)((*lenses)[i]);
 						thrust::for_each(
 							thrust::make_zip_iterator(
 							thrust::make_tuple(
@@ -528,7 +545,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 					}
 					case LENS_TYPE::TYPE_LINE:
 					{
-							LineLens* l = (LineLens*)lenses[i];
+							LineLens* l = (LineLens*)((*lenses)[i]);
 							//if (l->isConstructing){
 							//	thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 							//		d_vec_posClip.begin(), d_vec_posScreen.begin(),
@@ -563,7 +580,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 					}
 					case LENS_TYPE::TYPE_CURVEB:
 					{
-						CurveBLens* l = (CurveBLens*)lenses[i];
+						CurveBLens* l = (CurveBLens*)((*lenses)[i]);
 						if (l->isConstructing){
 							thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 								d_vec_posClip.begin(), d_vec_posScreen.begin(),
@@ -603,7 +620,7 @@ void Displace::Compute(float* modelview, float* projection, int winW, int winH,
 			thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(), d_vec_posScreen.begin(), d_vec_posTarget.begin(),
 				functor_Unproject(invMV, invPJ, winW, winH));
 		}
-		recomputeTarget = false;
+		isRecomputeTargetNeeded = false;
 	}
 
 	thrust::device_vector<float4> d_vec_posCur(size);
@@ -652,7 +669,7 @@ struct disToAim_functor
 };
 
 
-float3 Displace::findClosetGlyph(float3 aim, int & snappedGlyphId)
+float3 ScreenLensDisplaceProcessor::findClosetGlyph(float3 aim, int & snappedGlyphId)
 {
 	thrust::transform(posOrig.begin(), posOrig.end(), d_vec_disToAim.begin(), d_vec_disToAim.begin(), disToAim_functor(aim));
 	snappedGlyphId = thrust::min_element(d_vec_disToAim.begin(), d_vec_disToAim.end()) - d_vec_disToAim.begin();

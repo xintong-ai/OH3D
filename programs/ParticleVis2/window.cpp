@@ -2,7 +2,7 @@
 #include "DeformGLWidget.h"
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
-#include "ArrowNoDeformRenderable.h"
+#include "ArrowRenderable.h"
 #include <iostream>
 #include <algorithm>    // std::min_element, std::max_element
 
@@ -21,9 +21,7 @@
 #include <Particle.h>
 #include <helper_math.h>
 
-#include <Displace.h>
-
-#include <ModelGrid.h>
+#include <ScreenLensDisplaceProcessor.h>
 
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>
@@ -97,7 +95,6 @@ Window::Window()
 #endif
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	lensRenderable = std::make_shared<LensRenderable>();
-	glyphRenderable->lenses = lensRenderable->GetLensesAddr();
 
 	//lensRenderable->SetDrawScreenSpace(false);
 
@@ -107,20 +104,22 @@ Window::Window()
 	format.setVersion(2, 0);
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
-	//std::shared_ptr<ModelGrid> mgs = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
 
 
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
 	modelGrid->initThrustVectors(inputParticle);
+	modelGrid->SetLenses(lensRenderable->GetLensesAddr());
+	
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
 	
-	glyphRenderable->SetModelGrid(modelGrid.get());
+	glyphRenderable->SetModelGrid(modelGrid);
 
 
-	screenLensDisplaceProcessor = std::make_shared<Displace>();
+	screenLensDisplaceProcessor = std::make_shared<ScreenLensDisplaceProcessor>();
 	screenLensDisplaceProcessor->LoadOrig(&(inputParticle->pos[0]), inputParticle->numParticles);
+	screenLensDisplaceProcessor->SetLenses(lensRenderable->GetLensesAddr());
 
 	glyphRenderable->SetScreenLensDisplaceComputer(screenLensDisplaceProcessor);
 	//openGL->AddRenderable("bbox", bbox);
@@ -173,12 +172,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	leapFingerIndicatorVecs.push_back(make_float3(1, 0, 0));
 	leapFingerIndicatorVecs.push_back(make_float3(1, 0, 0));  //actaully only the length of these two vectors have an effect
 
-	arrowNoDeformRenderable = std::make_shared<ArrowNoDeformRenderable>(leapFingerIndicatorVecs,leapFingerIndicators);
-	//arrowNoDeformRenderable->SetVisibility(false);
+	arrowRenderable = std::make_shared<ArrowRenderable>(leapFingerIndicatorVecs,leapFingerIndicators);
+	//arrowRenderable->SetVisibility(false);
 	leapFingerIndicators->numParticles = 0; //use numParticles to control how many indicators are drawn on screen
 	
 	
-	//openGL->AddRenderable("1LeapArrow", arrowNoDeformRenderable.get()); //must be drawn first than glyphs
+	//openGL->AddRenderable("1LeapArrow", arrowRenderable.get()); //must be drawn first than glyphs
 #endif
 
 #ifdef USE_OSVR 
@@ -196,16 +195,19 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 #endif
 
 
-	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
+	QGroupBox *deformModeGroupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
 	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
-	radioDeformObject->setChecked(true);
+	
+	radioDeformScreen->setChecked(true);
 	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
 	//openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+	//radioDeformObject->setChecked(true);
+
 	deformModeLayout->addWidget(radioDeformScreen.get());
 	deformModeLayout->addWidget(radioDeformObject.get());
-	groupBox->setLayout(deformModeLayout);
+	deformModeGroupBox->setLayout(deformModeLayout);
 
 	usingGlyphSnappingCheck = new QCheckBox("Snapping Glyph");
 	usingGlyphPickingCheck = new QCheckBox("Picking Glyph");
@@ -238,7 +240,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
-	//controlLayout->addWidget(groupBox);
+	controlLayout->addWidget(deformModeGroupBox);
 	
 	//controlLayout->addWidget(usingGlyphSnappingCheck);
 	controlLayout->addWidget(usingGlyphPickingCheck);
@@ -361,7 +363,7 @@ void Window::SlotDelLens()
 {
 	lensRenderable->SlotDelLens();
 	inputParticle->pos = inputParticle->posOrig;
-	glyphRenderable->glyphBright.assign(inputParticle->numParticles, 1.0);
+	glyphRenderable->resetBrightness();
 	openGL->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 }
 
@@ -394,7 +396,7 @@ void Window::SlotTogglePickingGlyph(bool b)
 void Window::SlotToggleFreezingFeature(bool b)
 {
 	glyphRenderable->isFreezingFeature = b;
-	screenLensDisplaceProcessor->RecomputeTarget();
+	screenLensDisplaceProcessor->setRecomputeNeeded();
 }
 
 void Window::SlotToggleUsingFeatureSnapping(bool b)
@@ -402,7 +404,7 @@ void Window::SlotToggleUsingFeatureSnapping(bool b)
 	lensRenderable->isSnapToFeature = b;
 	if (!b){
 		glyphRenderable->SetSnappedFeatureId(-1);
-		screenLensDisplaceProcessor->RecomputeTarget();
+		screenLensDisplaceProcessor->setRecomputeNeeded();
 	}
 	else{
 		usingGlyphSnappingCheck->setChecked(false);
@@ -632,7 +634,6 @@ void Window::deformForceSliderValueChanged(int v)
 	float newForce = deformForceConstant*v;
 	deformForceLabel->setText(QString::number(newForce));
 	modelGrid->setDeformForce(newForce);
-	openGL->startTime = clock();
 
 }
 

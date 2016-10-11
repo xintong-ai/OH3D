@@ -2,11 +2,9 @@
 #define COSMO_RENDERABLE_H
 
 #include <CMakeConfig.h>
-#ifdef USE_DEFORM
-#include "DeformGlyphRenderable.h"
-#else
+
 #include "GlyphRenderable.h"
-#endif
+
 
 #include <QObject>
 #include <memory>
@@ -15,11 +13,9 @@ class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
 enum COLOR_MAP;
-#ifdef USE_DEFORM
-class CosmoRenderable :public DeformGlyphRenderable
-#else
+
 class CosmoRenderable :public GlyphRenderable
-#endif
+
 {
 public:
 	void init() override;

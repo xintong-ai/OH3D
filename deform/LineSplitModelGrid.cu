@@ -332,7 +332,7 @@ void LineSplitModelGrid::InitPointTetId_UniformMesh(float4* v, int n)
 }
 
 
-void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle * p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId)
+void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(std::shared_ptr<Particle> p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId)
 {
 	if (isFreezingFeature)
 	{
@@ -373,8 +373,12 @@ void LineSplitModelGrid::UpdatePointCoordsAndBright_LineMeshLens_Thrust(Particle
 
 }
 
-void LineSplitModelGrid::UpdatePointCoordsUniformMesh(float4* v, int n)
+void LineSplitModelGrid::UpdatePointCoordsAndBright_UniformMesh(std::shared_ptr<Particle> particle, float* brightness, float* _mv)
 {
+
+	int n = particle->numParticles;
+	float4* v = &(particle->pos[0]);
+
 	int* tet = GetTet();
 	float* X = GetX();
 	for (int i = 0; i < n; i++){
@@ -392,7 +396,36 @@ void LineSplitModelGrid::UpdatePointCoordsUniformMesh(float4* v, int n)
 			v[i] = make_float4(vb.x * vv[0] + vb.y * vv[1] + vb.z * vv[2] + vb.w * vv[3], 1);
 		}
 	}
+
+
+	Lens* l = lenses->back();
+	float3 lensCen = l->c;
+	float focusRatio = l->focusRatio;
+	float radius = ((CircleLens*)l)->objectRadius;
+	float _invmv[16];
+	invertMatrix(_mv, _invmv);
+	float3 cameraObj = make_float3(Camera2Object(make_float4(0, 0, 0, 1), _invmv));
+	float3 lensDir = normalize(cameraObj - lensCen);
+
+	const float dark = 0.1;
+	const float transRad = radius / focusRatio;
+	for (int i = 0; i < particle->numParticles; i++) {
+		float3 vert = make_float3(v[i]);
+		//float3 lensCenFront = lensCen + lensDir * radius;
+		float3 lensCenBack = lensCen - lensDir * radius;
+		float3 lensCenFront2Vert = vert - lensCenBack;
+		float lensCenFront2VertProj = dot(lensCenFront2Vert, lensDir);
+		float3 moveVec = lensCenFront2Vert - lensCenFront2VertProj * lensDir;
+		brightness[i] = 1.0;
+		if (lensCenFront2VertProj < 0){
+			float dist2Ray = length(moveVec);
+			if (dist2Ray < radius / focusRatio){
+				brightness[i] = std::max(dark, 1.0f / (0.5f * (-lensCenFront2VertProj) + 1.0f));;
+			}
+		}
+	}
 }
+
 
 void LineSplitModelGrid::InitializeUniformGrid(std::shared_ptr<Particle> p)
 {
@@ -533,8 +566,74 @@ void LineSplitModelGrid::ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr
 }
 
 
+bool LineSplitModelGrid::ProcessVolumeDeformation(float* modelview, float* projection, int winWidth, int winHeight, std::shared_ptr<Volume> volume)
+{
+	if (lenses == NULL || lenses->size() == 0)
+		return false;
+	Lens *l = lenses->back();
 
+	if (l->type != TYPE_LINE || l->isConstructing)
+		return false;
 
+	if (l->justChanged){
+		setReinitiationNeed();
+
+		float3 dmin, dmax;
+		volume->GetPosRange(dmin, dmax);
+
+		((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, modelview, projection, dmin, dmax); //need to be placed to a better place!
+		l->justChanged = false;
+	}
+
+	//besides the lens change, the mesh may also need to reinitiate from other commands
+	ReinitiateMeshForVolume((LineLens3D*)l, volume);
+
+	UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
+
+	return true;
+};
+
+bool LineSplitModelGrid::ProcessParticleDeformation(float* modelview, float* projection, int winWidth, int winHeight, std::shared_ptr<Particle> particle, float* glyphSizeScale, float* glyphBright, bool isFreezingFeature, int snappedGlyphId, int snappedFeatureId)
+{
+	if (lenses == NULL || lenses->size() == 0)
+		return false;
+	Lens *l = lenses->back();
+
+	if (l->type == TYPE_LINE){
+		if (l->isConstructing){
+			return false;
+		}
+
+		if (l->justChanged){
+			startTime = clock();
+			setReinitiationNeed();
+
+			((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, modelview, projection, particle->posMin, particle->posMax); //need to be placed to a better place!
+			l->justChanged = false;
+		}
+		
+		ReinitiateMeshForParticle((LineLens3D*)l, particle);
+
+		//if (l->justMoved) 
+		//{
+		//	////the related work needs more time to finish. To keep the lens facing the camera, the lens nodes needs to be rotated. Also the lens region may need to change to guarantee to cover the whole region
+		//	//modelGrid->MoveMesh(l->moveVec);
+		//	l->justMoved = false;
+		//}
+
+		double secondsPassed = (clock() - startTime) / CLOCKS_PER_SEC;
+		//if (secondsPassed > 15)
+			//return true;
+
+		UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
+
+		UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle, &glyphBright[0], (LineLens3D*)l, isFreezingFeature, snappedFeatureId);
+	}
+	else if (l->type == TYPE_CIRCLE){
+		UpdateUniformMesh(modelview);
+		UpdatePointCoordsAndBright_UniformMesh(particle, &glyphBright[0], modelview);
+	}
+}
 
 void computeDensityForVolumeCPU(cudaExtent volumeSize, float3 spacing, float step, int3 nStep, const float* invMeshTransMat, const int* tet, const float* X, float* density, int* count, int densityTransferMode, Volume *v)
 {
@@ -724,9 +823,19 @@ void LineSplitModelGrid::UpdateMesh(float3 lensCenter, float3 lenDir, float lSem
 	return;
 }
 
-void LineSplitModelGrid::UpdateUniformMesh(float lensCenter[3], float lenDir[3], float focusRatio, float radius)
+void LineSplitModelGrid::UpdateUniformMesh(float* _mv)
 {
-	gridMesh->Update(time_step, 64, lensCenter, lenDir, focusRatio, radius);
+	Lens* l = lenses->back();
+	float3 lensCen = l->c;
+	float focusRatio = l->focusRatio;
+	float radius = ((CircleLens*)l)->objectRadius;
+	float _invmv[16];
+	invertMatrix(_mv, _invmv);
+	float3 cameraObj = make_float3(Camera2Object(make_float4(0, 0, 0, 1), _invmv));
+	float3 lensDir = normalize(cameraObj - lensCen);
+
+	gridMesh->Update(time_step, 64, lensCen, lensDir, focusRatio, radius);
+
 }
 
 void LineSplitModelGrid::MoveMesh(float3 moveDir)
@@ -893,6 +1002,28 @@ int LineSplitModelGrid::GetTetNumber()
 	else
 		return NULL;
 }
+
+
+float3 LineSplitModelGrid::GetZDiretion()
+{
+	Lens *l = lenses->back();
+	 if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		 return ((LineLens3D*)l)->lensDir;
+	 else{
+		 return  make_float3(0, 0, 0);
+	 }
+}
+
+float3 LineSplitModelGrid::GetXDiretion()
+{
+	Lens *l = lenses->back();
+	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
+		return ((LineLens3D*)l)->majorAxisGlobal;
+	else{
+		return  make_float3(0, 0, 0);
+	}
+}
+
 
 float3 LineSplitModelGrid::GetLensSpaceOrigin()
 {

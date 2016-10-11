@@ -30,11 +30,7 @@
 
 
 CosmoRenderable::CosmoRenderable(std::shared_ptr<Particle> _particle)
-#ifdef USE_DEFORM
-:DeformGlyphRenderable(_particle)
-#else
-: GlyphRenderable(particle)
-#endif
+: GlyphRenderable(_particle)
 {
 	sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
 	float vMax = particle->valMax;
@@ -66,9 +62,7 @@ void CosmoRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
 void CosmoRenderable::init()
 {
 	GlyphRenderable::init();
-#ifdef USE_DEFORM
-	DeformGlyphRenderable::init();
-#endif
+
 
 	m_vao = std::make_shared<QOpenGLVertexArrayObject>();
 	m_vao->create();
@@ -192,7 +186,7 @@ void CosmoRenderable::DrawWithoutProgramold(float modelview[16], float projectio
 	for (int i = 0; i < particle->numParticles; i++) {
 		glPushMatrix();
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 		float3 cen = actor->DataCenter();
@@ -278,7 +272,7 @@ void CosmoRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 			float size = baseDotSize*pow(2, numDotLayers - j - 1);
 			glPointSize(size);
 			glBegin(GL_POINTS);
-			glVertex3f(pos[i].x , pos[i].y , pos[i].z );
+			glVertex3f(particle->pos[i].x, particle->pos[i].y, particle->pos[i].z);
 			glEnd();
 
 			if (j < numDotLayers - 1){
@@ -308,9 +302,9 @@ void CosmoRenderable::draw(float modelview[16], float projection[16])
 
 	RecordMatrix(modelview, projection);
 
-#ifdef USE_DEFORM
-	ComputeDisplace(modelview, projection);
-#endif
+	if (modelGrid != 0 || screenLensDisplaceProcessor != 0){
+		ComputeDisplace(modelview, projection);
+	}
 
 	if (!visible)
 		return;
@@ -409,7 +403,7 @@ void CosmoRenderable::drawPicking(float modelview[16], float projection[16], boo
 		b = ((i + 1) & 0x00FF0000) >> 16;
 
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 

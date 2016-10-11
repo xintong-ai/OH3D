@@ -230,14 +230,11 @@ __device__ inline bool PointAtXYBoundaryOrZBottom(const int x, const int y, cons
 	else
 		return false;
 }
-__global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, const float radius)
+__global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number, const float3 lensCen, const float3 lensDir,	const float focusRatio, const float radius)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+	
 	//float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 vertOrig = make_float3(X_Orig[i * 3], X_Orig[i * 3 + 1], X_Orig[i * 3 + 2]);
 	//we have to use the original position here, otherwise the points will vibrate.
@@ -293,10 +290,7 @@ __global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Basic update kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z
-	, const float focusRatio, const float radius)
+__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number, const float3 lensCen, const float3 lensDir, const float focusRatio, const float radius)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
@@ -311,8 +305,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	V[i*3+2]*=damping;
 	//Apply force
 	float3 lensForce = make_float3(0, 0, 0);
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 lensCenFront = lensCen + lensDir * radius;
 	//float3 lensCenBack = lensCen - lensDir * radius;
@@ -1038,7 +1031,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////
 	
 	//for circle lens
-	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], TYPE focusRatio, TYPE radius)
+	void Update(TYPE t, int iterations, float3 lensCen, float3 lenDir, TYPE focusRatio, TYPE radius)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -1049,13 +1042,13 @@ public:
 		// Step 0 by Xin
 		Set_Fixed_By_Lens << <blocksPerGrid, threadsPerBlock >> >(
 			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, radius);
+			, lensCen
+			, lenDir, focusRatio, radius);
 
 		// Step 1: Basic update
 		Update_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, radius);
+			, lensCen
+			, lenDir, focusRatio, radius);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1/t, number);

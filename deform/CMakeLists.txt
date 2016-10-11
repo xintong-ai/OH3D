@@ -20,17 +20,15 @@ include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE}
 
 
 set(SRCS 
-	Displace.cu 
-	#ModelGrid.cu
+	ScreenLensDisplaceProcessor.cu 
 	LineSplitModelGrid.cu
 	ModelVolumeDeformer.cu
 	)
 
 set(HDRS	defines.h
-			Displace.h
+			ScreenLensDisplaceProcessor.h
 			GridMesh.h
 			LineSplitGridMesh.h
-			#ModelGrid.h
 			LineSplitModelGrid.h
 			TransformFunc.h
 			ModelVolumeDeformer.h)

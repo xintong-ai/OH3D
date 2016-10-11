@@ -21,7 +21,6 @@ enum DEFORM_METHOD{
 	PROJECTIVE_DYNAMIC
 };
 enum VIS_METHOD{
-	UNTOUCHED,
 	CUTAWAY,
 	DEFORM
 };
@@ -32,24 +31,24 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 	Q_OBJECT
 	
 	//interfaces for deformation computing and deformed data
-	std::vector<Lens*> *lenses = 0;
-	LineSplitModelGrid *modelGrid = 0;
+	std::shared_ptr<LineSplitModelGrid> modelGrid = 0;
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer = 0;
 
-public:
 	//default volume to render when not using deformation
+	//when using deformation, a deformed volume is computed in modelVolumeDeformer, and will be rendered here
 	std::shared_ptr<Volume> volume = 0;
 
+	VIS_METHOD vis_method = VIS_METHOD::DEFORM;
+	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
 
-	void SetModelGrid(LineSplitModelGrid* _modelGrid){ modelGrid = _modelGrid; }
+
+public:
+
+	void SetModelGrid(std::shared_ptr<LineSplitModelGrid> _modelGrid){ modelGrid = _modelGrid; }
 	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
-	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
 	~VolumeRenderableCUDA();
-
-	VIS_METHOD vis_method = VIS_METHOD::UNTOUCHED;
-	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
 
 	//cutaway or deform paramteres
 	bool isFixed = false;
@@ -101,7 +100,7 @@ private:
 	void initTextureAndCudaArrayOfScreen();
 	void deinitTextureAndCudaArrayOfScreen();
 
-	void ComputeDisplace(float _mv[16], float _pj[16]);
+	void ComputeDisplace(float _mv[16], float _pj[16], int winWidth, int winHeight);
 
 	//texture and array for 2D screen
 	GLuint pbo = 0;           // OpenGL pixel buffer object

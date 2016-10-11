@@ -20,8 +20,6 @@
 
 #include "VolumeRenderableCUDAKernel.h"
 #include "modelVolumeDeformer.h"
-#include "Lens.h"
-#include "ModelGrid.h"
 #include <TransformFunc.h>
 
 
@@ -29,25 +27,19 @@
 VolumeRenderableCUDA::VolumeRenderableCUDA(std::shared_ptr<Volume> _volume)
 {
 	volume = _volume;
-
 	volumeCUDAGradient.VolumeCUDA_init(_volume->size, 0, 1, 4);
-
 }
 
 VolumeRenderableCUDA::~VolumeRenderableCUDA()
 {
-	
 	VolumeRender_deinit();
-
 	deinitTextureAndCudaArrayOfScreen();
-
 	//cudaDeviceReset();
 };
 
 void VolumeRenderableCUDA::init()
 {
 	VolumeRender_init();
-
 	initTextureAndCudaArrayOfScreen();
 }
 
@@ -77,8 +69,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	q_mvp.copyDataTo(MVPMatrix);
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
-	bool isCutaway = vis_method == VIS_METHOD::CUTAWAY;
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &isCutaway, &transFuncP1, &transFuncP2, &la, &ld, &ls, &(volume->spacing));
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &transFuncP1, &transFuncP2, &la, &ld, &ls, &(volume->spacing));
 	if (!isFixed){
 		recordFixInfo(q_mvp, q_modelview);
 	}
@@ -91,8 +82,8 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
 
-	if (lenses != 0 && lenses->size() > 0 && !(lenses->back()->isConstructing) && modelVolumeDeformer != 0){
-		ComputeDisplace(modelview, projection);
+	if (modelGrid != 0 && modelVolumeDeformer != 0){
+		ComputeDisplace(modelview, projection, winWidth, winHeight);
 		VolumeRender_computeGradient(&(modelVolumeDeformer->volumeCUDADeformed), &volumeCUDAGradient);
 		VolumeRender_setGradient(&volumeCUDAGradient);
 		VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
@@ -153,43 +144,14 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	glEnable(GL_DEPTH_TEST);
 }
 
-//a better code design should place this part into the modelGrid?
-void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16])
+void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16], int winWidth, int winHeight)
 {
-	if (lenses!=0 && lenses->size() > 0){
-		Lens *l = lenses->back();
-
-		if (l->justChanged){
-			switch (((DeformGLWidget*)actor)->GetDeformModel())
-			{
-			case DEFORM_MODEL::OBJECT_SPACE:
-			{
-				if (l->type == TYPE_LINE)
-					modelGrid->setReinitiationNeed();
-				break;
-			}
-			}
-		}
-
-		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE && l->type == TYPE_LINE && l->isConstructing == false){
-
-			if (l->justChanged){
-				int winWidth, winHeight;
-				actor->GetWindowSize(winWidth, winHeight); 
-				float3 dmin, dmax;
-				volume->GetPosRange(dmin, dmax);
-				((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, _mv, _pj, dmin, dmax);
-				l->justChanged = false;
-			}
-
-			if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION){
-				modelGrid->ReinitiateMeshForVolume((LineLens3D*)l, volume);
-				modelGrid->UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);			
-				modelVolumeDeformer->deformByModelGrid(modelGrid->GetLensSpaceOrigin(), ((LineLens3D*)l)->majorAxisGlobal, ((LineLens3D*)l)->lensDir, modelGrid->GetNumSteps(), modelGrid->GetStep());
-			}
+	if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+		if (modelGrid->ProcessVolumeDeformation(_mv, _pj, winWidth, winHeight, volume))
+		{
+			modelVolumeDeformer->deformByModelGrid();
 		}
 	}
-
 }
 
 

@@ -40,12 +40,13 @@ set( Srcs
 	GlyphRenderable.cpp 
 	GLArrow.cpp
 	ArrowRenderable.cpp
-	ArrowNoDeformRenderable.cpp
     GLMatrixManager.cpp
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
 	CosmoRenderable.cpp
+	GridRenderable.cpp
+
 	)
 set( Hdrs  
 	glwidget.h 
@@ -53,10 +54,10 @@ set( Hdrs
 	BoxRenderable.h 
 	ShaderProgram.h 
 	GlyphRenderable.h 
+	GridRenderable.h
 	ColorGradient.h 
 	GLArrow.h
 	ArrowRenderable.h 
-	ArrowNoDeformRenderable.h
 	GLMatrixManager.h
 	#OPENGL_DRIVER.h
 	GLSphere.h
@@ -66,9 +67,9 @@ set( Hdrs
 	)
 
 if(USE_DEFORM)
-	set(Hdrs ${Hdrs} DeformGlyphRenderable.h LensRenderable.h DeformGLWidget.h 	
+	set(Hdrs ${Hdrs}  LensRenderable.h DeformGLWidget.h 	
 		ModelGridRenderable.h)
-	set(Srcs ${Srcs} DeformGlyphRenderable.cpp LensRenderable.cpp DeformGLWidget.cpp 
+	set(Srcs ${Srcs}  LensRenderable.cpp DeformGLWidget.cpp 
 		ModelGridRenderable.cpp)
 	include_directories(
 		 ${CUDA_TOOLKIT_INCLUDE} 

@@ -43,7 +43,6 @@ __constant__ float4x4 c_MVPMatrix;
 __constant__ float4x4 c_invMVMatrix;
 __constant__ float4x4 c_invMVPMatrix;
 __constant__ float3x3 c_NormalMatrix;
-__constant__ bool useCutaway;
 __constant__ float transFuncP1;
 __constant__ float transFuncP2;
 __constant__ float la;
@@ -139,7 +138,7 @@ void VolumeRender_setVolume(const VolumeCUDA *vol)
 
 
 
-void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, bool *doCutaway, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing)
+void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing)
 {
 	size_t sizeof4x4Matrix = sizeof(float4)* 4;
 	checkCudaErrors(cudaMemcpyToSymbol(c_MVMatrix, MVMatrix, sizeof4x4Matrix));
@@ -148,7 +147,6 @@ void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMa
 	checkCudaErrors(cudaMemcpyToSymbol(c_invMVPMatrix, invMVPMatrix, sizeof4x4Matrix));
 	checkCudaErrors(cudaMemcpyToSymbol(c_NormalMatrix, NormalMatrix, sizeof(float3)* 3));
 
-	checkCudaErrors(cudaMemcpyToSymbol(useCutaway, doCutaway, sizeof(bool)));
 	checkCudaErrors(cudaMemcpyToSymbol(transFuncP1, _transFuncP1, sizeof(float)));
 	checkCudaErrors(cudaMemcpyToSymbol(transFuncP2, _transFuncP2, sizeof(float)));
 	checkCudaErrors(cudaMemcpyToSymbol(la, _la, sizeof(float)));

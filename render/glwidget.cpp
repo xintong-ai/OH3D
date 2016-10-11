@@ -6,7 +6,6 @@
 #include <fstream>
 #include <helper_timer.h>
 #include <Renderable.h>
-#include <GlyphRenderable.h>
 #include <VRWidget.h>
 #include <GLMatrixManager.h>
 
@@ -74,17 +73,13 @@ void GLWidget::computeFPS()
 
 void GLWidget::TimerStart()
 {
-#if ENABLE_TIMER
     sdkStartTimer(&timer);
-#endif
 }
 
 void GLWidget::TimerEnd()
 {
-#if ENABLE_TIMER
 	sdkStopTimer(&timer);
 	computeFPS();
-#endif
 }
 
 
@@ -362,17 +357,6 @@ QPoint GLWidget::pixelPosToGLPos(const QPoint& p)
 QPoint GLWidget::pixelPosToGLPos(const QPointF& p)
 {
 	return QPoint(p.x(), height - 1 - p.y());
-}
-
-
-//very bad function. need to be deleted!! 
-Renderable* GLWidget::GetRenderable(const char* name)
-{
-	if (renderers.find(name) == renderers.end()) {
-		std::cout << "No renderer named : " << name << std::endl;
-		exit(1);
-	}
-	return renderers[name];
 }
 
 

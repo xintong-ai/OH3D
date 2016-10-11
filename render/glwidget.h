@@ -11,11 +11,8 @@
 #include <vector_functions.h>
 #include <memory>
 #include <CMakeConfig.h>
-#include <ctime>
 
 enum INTERACT_MODE{
-	//	DRAG_LENS_EDGE,
-	//	DRAG_LENS_TWO_ENDS,
 	MOVE_LENS,
 	MODIFY_LENS_FOCUS_SIZE,
 	MODIFY_LENS_TRANSITION_SIZE,
@@ -25,11 +22,6 @@ enum INTERACT_MODE{
 	ADDING_LENS,
 
 	CHANGING_FORCE //currently only used for Leap
-	//CUT_LINE,
-//	NO_TRANSFORMATION,
-	//ADD_NODE,
-	//MODIFY_LENS,
-	//DRAW_ELLIPSE,
 };
 
 enum DEFORM_MODEL{
@@ -66,8 +58,6 @@ public:
 
 	void AddRenderable(const char* name, void* r);
 
-	Renderable* GetRenderable(const char* name);
-
     void GetWindowSize(int &w, int &h) {w = width; h = height;}
 
 	int2 GetWindowSize() { return make_int2(width, height); }
@@ -91,7 +81,6 @@ public:
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 #endif
 
-	clock_t startTime;
 protected:
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;

@@ -1,9 +1,10 @@
 #include "LensRenderable.h"
-#include "DeformGlyphRenderable.h"
 #include "Lens.h"
 #include "DeformGLWidget.h"
 #include "GLSphere.h"
 #include "PolyRenderable.h"
+
+#include <fstream>
 
 // this class is used to draw the lens center
 class SolidSphere
@@ -616,8 +617,8 @@ void LensRenderable::AddLineLens3D()
 		//l = new LineLens3D(lastLensCenter, 0.193742);
 	}
 	else{
-		l = new LineLens3D(lastLensCenter, 0.3);
-		//l = new LineLens3D(actor->DataCenter(), 0.5);
+		l = new LineLens3D(actor->DataCenter(), 0.3);
+		//l = new LineLens3D(actor->DataCenter(), 0.5); //for VR
 		//l = new LineLens3D(actor->DataCenter(), 0.193742);
 	}
 	lenses.push_back(l);
@@ -938,8 +939,6 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 
 bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 {
-	actor->startTime = clock();
-
 	int2 winSize = actor->GetWindowSize();
 	GLfloat modelview[16];
 	GLfloat projection[16];

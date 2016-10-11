@@ -128,15 +128,15 @@ Window::Window()
 	inputVolume->GetPosRange(posMin, posMax);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
+	modelGrid->SetLenses(lensRenderable->GetLensesAddr());
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
 
 	modelVolumeDeformer = std::make_shared<ModelVolumeDeformer>();
-	modelVolumeDeformer->SetModelGrid(modelGrid.get());
+	modelVolumeDeformer->SetModelGrid(modelGrid);
 	modelVolumeDeformer->Init(inputVolume.get());
 	volumeRenderable->SetModelVolumeDeformer(modelVolumeDeformer);
-	volumeRenderable->SetLenses(lensRenderable->GetLensesAddr());
-	volumeRenderable->SetModelGrid(modelGrid.get());
+	volumeRenderable->SetModelGrid(modelGrid);
 
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
