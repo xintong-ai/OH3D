@@ -149,6 +149,10 @@ private:
 	float3 dataMax = make_float3(10, 10, 10);
 
 	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
+
+
+signals:
+	void SignalPaintGL();
 };
 
 #endif //GL_WIDGET_H
