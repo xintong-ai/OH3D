@@ -11,13 +11,8 @@ else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR})
 
-set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h )
-set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp )
-
-if(USE_DEFORM)
-	set(HDRS ${HDRS} Lens.h)
-	set(SRCS ${SRCS} Lens.cpp)
-endif()
+set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h Lens.h)
+set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp Lens.cpp)
 
 option(USE_LEAP "Enable Leap Motion motion camera" OFF)
 if(USE_LEAP)

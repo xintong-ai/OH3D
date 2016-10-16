@@ -16,6 +16,7 @@
 #include "helper_math.h"
 #include "GLArrow.h"
 #include "ColorGradient.h"
+#include "Particle.h"
 
 using namespace std;
 

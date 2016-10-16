@@ -6,13 +6,10 @@
 class ShaderProgram;
 class QOpenGLContext;
 class StopWatchInterface;
-//enum struct COLOR_MAP;
-#include <ColorGradient.h>
-#include <Particle.h>
-
 class LineSplitModelGrid;
 class ScreenLensDisplaceProcessor;
-class Lens;
+class Particle;
+enum COLOR_MAP;
 
 class GlyphRenderable: public Renderable
 {
@@ -31,11 +28,8 @@ public:
 
 	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) = 0;
 	bool colorByFeature = false;//when the particle has multi attributes or features, choose which attribute or color is used for color. currently a simple solution using bool
-	void resetBrightness(){
-		glyphBright.assign(particle->numParticles, 1.0);
-	};
 	void SetGlyphSizeAdjust(float v){ glyphSizeAdjust = v; }
-
+	void resetBrightness();
 
 	//used for feature freezing / snapping
 	bool isFreezingFeature = false;

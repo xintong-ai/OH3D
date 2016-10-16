@@ -1,13 +1,13 @@
-#include "GlyphRenderable.h"
 #include <vector_types.h>
 #include <vector_functions.h>
-#include <glwidget.h>
 #include <helper_math.h>
 
-#include <DeformGLWidget.h>
-
-#include <LineSplitModelGrid.h>
-#include <ScreenLensDisplaceProcessor.h>
+#include "GlyphRenderable.h"
+#include "glwidget.h"
+#include "DeformGLWidget.h"
+#include "Particle.h""
+#include "LineSplitModelGrid.h"
+#include "screenLensDisplaceProcessor.h"
 
 #ifdef WIN32
 #include "windows.h"
@@ -56,6 +56,10 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 	}
 	}
 }
+
+void GlyphRenderable::resetBrightness(){
+	glyphBright.assign(particle->numParticles, 1.0);
+};
 
 void GlyphRenderable::mouseMove(int x, int y, int modifier)
 {

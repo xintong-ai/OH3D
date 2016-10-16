@@ -95,8 +95,7 @@ void GLWidget::paintGL() {
 	matrixMgr->GetModelView(modelview);
 	matrixMgr->GetProjection(projection, width, height);
 
-
-
+#ifdef USE_NEW_LEAP
 	if (blendOthers){ //only used for USE_NEW_LEAP
 		for (auto renderer : renderers)
 		{
@@ -128,7 +127,16 @@ void GLWidget::paintGL() {
 			renderer.second->DrawEnd(renderer.first.c_str());
 		}
 	}
-	
+#else		
+	for (auto renderer : renderers)
+	{
+		renderer.second->DrawBegin();
+		renderer.second->draw(modelview, projection);
+		renderer.second->DrawEnd(renderer.first.c_str());
+	}
+#endif
+
+
     TimerEnd();
 #ifdef USE_OSVR
 	if (nullptr != vrWidget){

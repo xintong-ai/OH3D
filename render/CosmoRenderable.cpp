@@ -21,6 +21,7 @@
 #include "GLSphere.h"
 #include <helper_math.h>
 #include <ColorGradient.h>
+#include "Particle.h"
 
 //for linux
 #include <float.h>

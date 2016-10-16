@@ -1,8 +1,6 @@
 #ifndef ARROW_RENDERABLE_H
 #define ARROW_RENDERABLE_H
 
-#include <CMakeConfig.h>
-
 #include "GlyphRenderable.h"
 
 class ShaderProgram;
@@ -10,12 +8,9 @@ class QOpenGLVertexArrayObject;
 class GLArrow;
 class QOpenGLContext;
 
-
 class ArrowRenderable :public GlyphRenderable
-
 {
 	std::vector<float3> vecs;
-	//std::vector<float> val; //used for coloring particles
 	std::vector<float3> cols;//used for coloring particles
 
 

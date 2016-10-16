@@ -1,21 +1,14 @@
 #ifndef SPHERE_RENDERABLE_H
 #define SPHERE_RENDERABLE_H
 
-#include <CMakeConfig.h>
-
 #include "GlyphRenderable.h"
-
-
-#include <QObject>
-#include <memory>
 
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
-enum COLOR_MAP;
+
 
 class SphereRenderable :public GlyphRenderable
-
 {
 public:
 	void init() override;

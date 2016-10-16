@@ -1,6 +1,5 @@
 #include "window.h"
 #include "DeformGLWidget.h"
-#include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include "ArrowRenderable.h"
 #include <iostream>
@@ -17,11 +16,11 @@
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
-#include <ColorGradient.h>
-#include <Particle.h>
+#include "ColorGradient.h"
+#include "Particle.h"
 #include <helper_math.h>
 
-#include <ScreenLensDisplaceProcessor.h>
+#include "ScreenLensDisplaceProcessor.h"
 
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>

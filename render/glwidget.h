@@ -48,7 +48,6 @@ public:
     explicit GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr,
 		QWidget *parent = 0);
 
-
     explicit GLWidget(QWidget *parent = 0);
 
 	~GLWidget();
@@ -68,14 +67,15 @@ public:
 
 	void UpdateGL();
 
-	void SetInteractMode(INTERACT_MODE v);// { interactMode = v; std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; }
-
 	void GetModelview(float* m);// { for (int i = 0; i < 16; i++) m[i] = modelview[i]; }
 	void GetProjection(float* m);// { for (int i = 0; i < 16; i++) m[i] = projection[i]; }
 	
 	INTERACT_MODE GetInteractMode(){ return interactMode; }
-
-	float blendOthers = false;
+	void SetInteractMode(INTERACT_MODE v);// { interactMode = v; std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; }
+	
+#ifdef USE_NEW_LEAP
+	float blendOthers = false; //when draw the hand cursor in 3D, blend the particles when necessary
+#endif
 
 #ifdef USE_OSVR
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
@@ -111,19 +111,9 @@ private:
 	VRWidget* vrWidget = nullptr;
 #endif
 
-    void computeFPS();
-
-    void TimerStart();
-
-    void TimerEnd();
-
-
     QPointF pixelPosToViewPos(const QPointF& p);
 
-
-
 	bool gestureEvent(QGestureEvent *event);
-
 	bool TouchEndEvent(QTouchEvent *event); 
 
 		/*****view*****/
@@ -137,6 +127,9 @@ private:
     int fpsCount = 0;        // FPS count for averaging
     int fpsLimit = 64;        // FPS limit for sampling
     unsigned int frameCount = 0;
+	void computeFPS();
+	void TimerStart();
+	void TimerEnd();
 
 
     bool initialized = false;
@@ -156,7 +149,6 @@ private:
 	float3 dataMax = make_float3(10, 10, 10);
 
 	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
-
 };
 
 #endif //GL_WIDGET_H

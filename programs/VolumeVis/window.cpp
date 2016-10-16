@@ -1,20 +1,15 @@
 #include "window.h"
 #include "DeformGLWidget.h"
-#include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include <iostream>
 
-#include "SphereRenderable.h"
-#include "SolutionParticleReader.h"
 #include "RawVolumeReader.h"
 #include "Volume.h"
 
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
-#include <LineSplitModelGrid.h>
+#include "LineSplitModelGrid.h"
 #include "GLMatrixManager.h"
-#include "PolyRenderable.h"
-#include "MeshReader.h"
 #include "VecReader.h"
 #include "VolumeRenderableCUDA.h"
 #include "ModelVolumeDeformer.h"

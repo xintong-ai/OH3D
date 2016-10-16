@@ -1,21 +1,13 @@
 #ifndef COSMO_RENDERABLE_H
 #define COSMO_RENDERABLE_H
 
-#include <CMakeConfig.h>
-
 #include "GlyphRenderable.h"
-
-
-#include <QObject>
-#include <memory>
 
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
-enum COLOR_MAP;
 
 class CosmoRenderable :public GlyphRenderable
-
 {
 public:
 	void init() override;
