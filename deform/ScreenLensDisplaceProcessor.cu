@@ -218,7 +218,7 @@ struct functor_Displace_NotFinish //no deformation when the lens construction is
 struct functor_Displace_CurveB
 {
 	int x, y;
-	CurveBLensInfo curveBLensInfo;
+	CurveLensInfo curveBLensInfo;
 	float lensD;
 	//CurveLensCtrlPoints curveLensCtrlPoints;
 	const float thickDisp = 0.003;
@@ -392,7 +392,7 @@ struct functor_Displace_CurveB
 		thrust::get<0>(t) = ret;
 		thrust::get<3>(t) = brightness;
 	}
-	functor_Displace_CurveB(int _x, int _y, CurveBLensInfo _curveBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
+	functor_Displace_CurveB(int _x, int _y, CurveLensInfo _curveBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
 		x(_x), y(_y), curveBLensInfo(_curveBLensInfo), lensD(_d), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
 };
 
@@ -516,7 +516,7 @@ void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, i
 		else {
 			for (int i = 0; i < lenses->size(); i++) {
 				float2 lensScreenCenter = (*lenses)[i]->GetCenterScreenPos(modelview, projection, winW, winH);
-				switch ((*lenses)[i]->GetType()) {
+				switch ((*lenses)[i]->type) {
 					case LENS_TYPE::TYPE_CIRCLE:
 					{
 						CircleLens* l = (CircleLens*)((*lenses)[i]);
@@ -578,9 +578,9 @@ void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, i
 							}
 							break;
 					}
-					case LENS_TYPE::TYPE_CURVEB:
+					case LENS_TYPE::TYPE_CURVE:
 					{
-						CurveBLens* l = (CurveBLens*)((*lenses)[i]);
+						CurveLens* l = (CurveLens*)((*lenses)[i]);
 						if (l->isConstructing){
 							thrust::transform(d_vec_posScreen.begin(), d_vec_posScreen.end(),
 								d_vec_posClip.begin(), d_vec_posScreen.begin(),

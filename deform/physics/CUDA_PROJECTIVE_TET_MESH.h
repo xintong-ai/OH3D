@@ -642,6 +642,7 @@ public:
 
   //template <class TYPE>
 	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH<TYPE>(maxNum)
+		//only used for GridMesh
 	{
 		cost_ptr= 0;
 
@@ -740,9 +741,9 @@ public:
 
 	}
 	//template <class TYPE>
-	void initLocalMem_CUDA_PROJECTIVE_TET_MESH(int maxNum)
+	void initLocalMem_CUDA_PROJECTIVE_TET_MESH()
 	{
-		initLocalMem_TET_MESH(maxNum);
+		initLocalMem_TET_MESH();
 
 		cost_ptr = 0;
 

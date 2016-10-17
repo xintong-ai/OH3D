@@ -158,9 +158,6 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 #endif
 
 
-
-
-
 	if (highlightingCenter){
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
@@ -407,7 +404,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 
 				}
 			}
-			else if (l->type == LENS_TYPE::TYPE_CIRCLE){ //same with screen space
+			else if (l->type == LENS_TYPE::TYPE_CIRCLE){ //temperarily same with screen space
 				glMatrixMode(GL_PROJECTION);
 				glPushMatrix();
 				glLoadIdentity();
@@ -420,7 +417,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				glPushAttrib(GL_LINE_BIT | GL_CURRENT_BIT);
 				glLineWidth(4);
 
-				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
+				std::vector<float2> lensContour = l->GetInnerContour(modelview, projection, winSize.x, winSize.y);
 				glColor3f(0.39f, 0.89f, 0.26f);
 				glBegin(GL_LINE_LOOP);
 				for (auto v : lensContour)
@@ -459,7 +456,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
 
-			std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
+			std::vector<float2> lensContour = l->GetInnerContour(modelview, projection, winSize.x, winSize.y);
 			glColor3f(0.39f, 0.89f, 0.26f);
 			glBegin(GL_LINE_LOOP);
 			for (auto v : lensContour)
@@ -472,10 +469,10 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 			for (auto v : lensOuterContour)
 				glVertex2f(v.x, v.y);
 			glEnd();
-			if (l->type == LENS_TYPE::TYPE_CURVEB) {
+			if (l->type == LENS_TYPE::TYPE_CURVE) {
 				glLineWidth(2);
 				glColor3f(0.9f, 0.9f, 0.2f);
-				std::vector<float2> lensExtraRendering2 = ((CurveBLens *)l)->GetCenterLineForRendering(modelview, projection, winSize.x, winSize.y);
+				std::vector<float2> lensExtraRendering2 = ((CurveLens *)l)->GetCenterLineForRendering(modelview, projection, winSize.x, winSize.y);
 				//glBegin(GL_POINTS);
 				glBegin(GL_LINE_STRIP);
 				for (auto v : lensExtraRendering2)
@@ -483,7 +480,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				glEnd();
 
 				glColor3f(0.39f, 0.89f, 0.26f);
-				std::vector<float2> lensContour = l->GetContour(modelview, projection, winSize.x, winSize.y);
+				std::vector<float2> lensContour = l->GetInnerContour(modelview, projection, winSize.x, winSize.y);
 				glBegin(GL_LINE_LOOP);
 				for (auto v : lensContour)
 					glVertex2f(v.x, v.y);
@@ -496,15 +493,15 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				glEnd();
 
 
-				std::vector<float2> pp = ((CurveBLens *)l)->posOffsetCtrlPoints;
-				std::vector<float2> nn = ((CurveBLens *)l)->negOffsetCtrlPoints;
+				std::vector<float2> pp = ((CurveLens *)l)->posOffsetCtrlPoints;
+				std::vector<float2> nn = ((CurveLens *)l)->negOffsetCtrlPoints;
 				//
-				//vector<float2> pb = ((CurveBLens *)l)->posOffsetBezierPoints;
-				//vector<float2> nb = ((CurveBLens *)l)->negOffsetBezierPoints;
-				std::vector<float2> subp = ((CurveBLens *)l)->subCtrlPointsPos;
-				//vector<float2> subn = ((CurveBLens *)l)->subCtrlPointsNeg;
+				//vector<float2> pb = ((CurveLens *)l)->posOffsetBezierPoints;
+				//vector<float2> nb = ((CurveLens *)l)->negOffsetBezierPoints;
+				std::vector<float2> subp = ((CurveLens *)l)->subCtrlPointsPos;
+				//vector<float2> subn = ((CurveLens *)l)->subCtrlPointsNeg;
 
-				float2 center = ((CurveBLens *)l)->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
+				float2 center = ((CurveLens *)l)->GetCenterScreenPos(modelview, projection, winSize.x, winSize.y);
 				for (int ii = 0; ii < pp.size(); ii++){
 					pp[ii] = pp[ii] + center;
 					//pb[ii] = pb[ii] + center;
@@ -553,7 +550,7 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				//glEnd();
 				////draw the control points of the center
 				//glColor3f(0.2f, 1.0f, 0.2f);
-				//std::vector<float2> lensExtraRendering = ((CurveBLens *)l)->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);	
+				//std::vector<float2> lensExtraRendering = ((CurveLens *)l)->GetCtrlPointsForRendering(modelview, projection, winSize.x, winSize.y);	
 				//glBegin(GL_POINTS);
 				//glColor3f(0.0, 0.0f, 1.0);
 				//for (int i = 0; i < lensExtraRendering.size(); i++){
@@ -627,39 +624,17 @@ void LensRenderable::AddLineLens3D()
 	actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
 }
 
-void LensRenderable::AddCurveBLens()
+void LensRenderable::AddCurveLens()
 {
 	int2 winSize = actor->GetWindowSize();
-	Lens* l = new CurveBLens(winSize.y * 0.1, actor->DataCenter());
+	Lens* l = new CurveLens(winSize.y * 0.1, actor->DataCenter());
 	lenses.push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
 	actor->UpdateGL();
 	actor->SetInteractMode(INTERACT_MODE::ADDING_LENS);
 }
 
-float3 LensRenderable::GetBackLensCenter()
-{
-	float3 ret = make_float3(0,0,5);
-	if (lenses.size() > 0)
-		ret = lenses.back()->c;
-	return ret;
-}
 
-float LensRenderable::GetBackLensFocusRatio()
-{
-	float ret = 1;
-	if (lenses.size() > 0)
-		ret = lenses.back()->focusRatio;
-	return ret;
-}
-
-float LensRenderable::GetBackLensObjectRadius()
-{
-	float ret = 0;
-	if (lenses.size() > 0 && lenses.back()->type==LENS_TYPE::TYPE_CIRCLE)
-		ret = ((CircleLens*)lenses.back())->objectRadius;
-	return ret;
-}
 
 
 void LensRenderable::mousePress(int x, int y, int modifier)
@@ -675,8 +650,8 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 	{
 		for (int i = 0; i < lenses.size(); i++) {
 			Lens* l = lenses[i];
-			if (l->type == LENS_TYPE::TYPE_CURVEB) {
-				((CurveBLens *)l)->AddCtrlPoint(x, y);
+			if (l->type == LENS_TYPE::TYPE_CURVE) {
+				((CurveLens *)l)->AddCtrlPoint(x, y);
 			}
 			else if (l->type == LENS_TYPE::TYPE_LINE) {
 				((LineLens *)l)->ctrlPoint1Abs = make_float2(x, y);
@@ -701,6 +676,7 @@ void LensRenderable::mousePress(int x, int y, int modifier)
 			}
 			else if (l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 				actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
+				std::cout << "hehaherha" << std::endl;
 				pickedLens = i;
 				break;
 			}
@@ -780,8 +756,8 @@ void LensRenderable::mouseRelease(int x, int y, int modifier)
 				actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 			}
 		}
-		else if (l->type == LENS_TYPE::TYPE_CURVEB) {
-			((CurveBLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
+		else if (l->type == LENS_TYPE::TYPE_CURVE) {
+			((CurveLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 			l->justChanged = true;
 			actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
 		}
@@ -855,8 +831,8 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 	case INTERACT_MODE::ADDING_LENS:
 	{
 		Lens* l = lenses[lenses.size() - 1];
-		if (l->type == LENS_TYPE::TYPE_CURVEB){
-			((CurveBLens *)l)->AddCtrlPoint(x, y);
+		if (l->type == LENS_TYPE::TYPE_CURVE){
+			((CurveLens *)l)->AddCtrlPoint(x, y);
 		}
 		else if (l->type == LENS_TYPE::TYPE_LINE){
 			((LineLens *)l)->ctrlPoint2Abs = make_float2(x, y);
@@ -919,9 +895,12 @@ void LensRenderable::mouseMove(int x, int y, int modifier)
 			lenses[pickedLens]->ChangeLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
 		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
 			lenses[pickedLens]->ChangeObjectLensSize(x, y, lastPt.x, lastPt.y, modelview, projection, winSize.x, winSize.y);
-			float3 pmin, pmax;
-			actor->GetPosRange(pmin, pmax);
-			((LineLens3D*)(lenses[pickedLens]))->UpdateLineLensGlobalInfoFromScreenInfo(winSize.x, winSize.y, modelview, projection, pmin, pmax);
+
+			if (lenses[pickedLens]->type == TYPE_LINE){
+				float3 pmin, pmax;
+				actor->GetPosRange(pmin, pmax);
+				((LineLens3D*)(lenses[pickedLens]))->UpdateLineLensGlobalInfoFromScreenInfo(winSize.x, winSize.y, modelview, projection, pmin, pmax);
+			}
 		}
 		break;
 	}
@@ -947,12 +926,12 @@ bool LensRenderable::MouseWheel(int x, int y, int modifier, int delta)
 	bool insideAnyLens = false;
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+		if (l->PointInsideInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 			insideAnyLens = true;
 			//std::cout << delta << std::endl;
 			l->ChangeClipDepth(delta, &matrix_mv.v[0].x, &matrix_pj.v[0].x);
 		}
-		if (l->GetType() == LENS_TYPE::TYPE_LINE && DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
+		if (l->type == LENS_TYPE::TYPE_LINE && DEFORM_MODEL::OBJECT_SPACE == ((DeformGLWidget*)actor)->GetDeformModel()){
 			((LineLens3D*)l)->UpdateCtrlPoints(modelview, projection, winSize.x, winSize.y);
 		}
 
@@ -1736,8 +1715,8 @@ void LensRenderable::adjustOffset(){
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
 
-		if (l->type == LENS_TYPE::TYPE_CURVEB) {
-			((CurveBLens*)l)->adjustOffset();
+		if (l->type == LENS_TYPE::TYPE_CURVE) {
+			((CurveLens*)l)->adjustOffset();
 
 		}
 	}
@@ -1747,8 +1726,8 @@ void LensRenderable::RefineLensBoundary(){
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
 
-		if (l->type == LENS_TYPE::TYPE_CURVEB) {
-			((CurveBLens*)l)->RefineLensBoundary();
+		if (l->type == LENS_TYPE::TYPE_CURVE) {
+			((CurveLens*)l)->RefineLensBoundary();
 
 		}
 	}
@@ -1782,7 +1761,7 @@ void LensRenderable::PinchScaleFactorChanged(float x, float y, float totalScaleF
 	//pickedLens = -1;
 	//for (int i = 0; i < lenses.size(); i++) {
 	//	Lens* l = lenses[i];
-	//	if (l->PointInsideLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+	//	if (l->PointInsideInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 	//		pickedLens = i;
 	//		break;
 	//	}
@@ -1824,7 +1803,7 @@ bool LensRenderable::InsideALens(int x, int y)
 	bool ret = false;
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (l->PointInsideFullLens(x, y, modelview, projection, winSize.x, winSize.y)) {
+		if (l->PointInsideOuterBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 			ret = true;
 			break;
 		}
@@ -1856,8 +1835,8 @@ bool LensRenderable::TwoPointsInsideALens(int2 p1, int2 p2)
 	bool ret = false;
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (l->PointInsideLens(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
-			&& l->PointInsideLens(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+		if (l->PointInsideInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+			&& l->PointInsideInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
 			ret = true;
 			break;
 		}
@@ -1875,19 +1854,24 @@ bool LensRenderable::OnLensInnerBoundary(int2 p1, int2 p2)
 	bool ret = false;
 	for (int i = 0; i < lenses.size(); i++) {
 		Lens* l = lenses[i];
-		if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
-			if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
-				&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
-				ret = true;
-				break;
-			}
-		}
-		else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
-			if (l->PointOnObjectInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
-				&& l->PointOnObjectInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
-				ret = true;
-				break;
-			}
+		//if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		//	if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+		//		&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+		//		ret = true;
+		//		break;
+		//	}
+		//}
+		//else if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+		//	if (l->PointOnObjectInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+		//		&& l->PointOnObjectInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+		//		ret = true;
+		//		break;
+		//	}
+		//}
+		if (l->PointOnInnerBoundary(p1.x, p1.y, modelview, projection, winSize.x, winSize.y)
+			&& l->PointOnInnerBoundary(p2.x, p2.y, modelview, projection, winSize.x, winSize.y)) {
+			ret = true;
+			break;
 		}
 	}
 	return ret;

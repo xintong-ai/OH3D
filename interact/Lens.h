@@ -19,7 +19,7 @@
 enum LENS_TYPE{
 	TYPE_CIRCLE,
 	TYPE_LINE, 
-	TYPE_CURVEB,
+	TYPE_CURVE,
 };
 
 struct LineLensInfo
@@ -29,7 +29,7 @@ struct LineLensInfo
 	float focusRatio;
 };
 
-struct CurveBLensInfo
+struct CurveLensInfo
 {
 	int numBezierPoints;
 	float2 BezierPoints[25];
@@ -48,13 +48,16 @@ struct CurveBLensInfo
 
 struct Lens
 {
-	Lens(float3 _c, float _focusRatio = 0.6)//, float _sideSize = 0.5) //int _x, int _y, 
+	Lens(float3 _c, float _focusRatio = 0.6) //int _x, int _y, 
 	{
-		c = _c; focusRatio = _focusRatio; //sideSize = _sideSize;//x = _x; y = _y; 
+		c = _c; focusRatio = _focusRatio; 
 	}
 
 	bool justChanged = false;
 	void setJustChanged(){ justChanged = true; }
+
+	bool isConstructing;
+	bool isConstructedFromLeap = false; //actually a boolean for 2D or 3D lens. isConstructedFromLeap means 3D lens 
 
 	bool justMoved = false;
 	float3 moveVec; //not normalized
@@ -69,46 +72,47 @@ struct Lens
 	float3 c; //center
 	//int x, y; //screen location
 	float focusRatio;
-	//float sideSize;
+
 	float4 GetCenter();// { return make_float4(c.x, c.y, c.z, 1.0f); }
 	void SetCenter(float3 _c){ c = _c; }
 	void SetFocusRatio(float _v){ focusRatio = _v; }
-	//void SetSideSize(float _v){ sideSize = _v; }
 	float GetClipDepth(float* mv, float* pj);
 	float2 GetCenterScreenPos(float* mv, float* pj, int winW, int winH);
 	virtual float3 UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
 	float3 Compute3DPosByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);	
 
-	virtual bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) = 0;
-	virtual bool PointInsideFullLens(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
+	//screen lens test functions and update functions
+	virtual bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) = 0;
+	virtual bool PointInsideOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
 	virtual bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
-	virtual bool PointInsideObjectLens(int x, int y, float* mv, float* pj, int winW, int winH) { return false; }
-
-	virtual bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
-	virtual bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
-
-	virtual void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH){}
-	virtual void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
-	virtual void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
-	virtual void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}	
-	virtual void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
-
-	virtual std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) = 0;
-	virtual std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
-	virtual std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
-	virtual void ChangeClipDepth(int v, float* mv, float* pj);
-	void SetClipDepth(float d, float* mv, float* pj);
-	LENS_TYPE GetType(){ return type; }
-
-	bool isConstructing;
-	bool isConstructedFromLeap = false;
-
 	virtual bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < eps_pixel;
 	}
+	virtual void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH){}
+	virtual void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+	virtual void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+
+	//object lens test functions and update functions
+	//there are 2 strategies for test functions and update functions of an object lens:
+	//1. use screen projection for 2D point; or 2. use object shape of the lens for 3D point
+	//for strategy 1, most screen lens functions can work. if not, redeclare here with name+Object
+	//for strategy 2, redeclare here with name+Object+3D
+	//for both strategies, do not define the function body inside an inherited 2D lens class. instead, inherite this 2D lens to get a 3D lens class and define the functions
+	virtual void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}	
+	virtual void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+
+	//functions for rendering
+	virtual std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH) = 0;
+	virtual std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
+	virtual std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
+	
+	virtual void ChangeClipDepth(int v, float* mv, float* pj);
+	//ChangeClipDepth() used for 2D input for lens position, like mouse and touch screen
+	void SetClipDepth(float d, float* mv, float* pj);
+	//SetClipDepth() used for 3D input for lens position, like leap motion
 };
 
 struct CircleLens :public Lens
@@ -125,13 +129,13 @@ struct CircleLens :public Lens
 	};
 	
 
-	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) {
+	bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) {
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < radius;
 	}
 
-	bool PointInsideFullLens(int _x, int _y, float* mv, float* pj, int winW, int winH)
+	bool PointInsideOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
@@ -153,10 +157,6 @@ struct CircleLens :public Lens
 		return std::abs(dis - radius / focusRatio) < eps_pixel;
 	}
 	
-	bool PointInsideObjectLens(int x, int y, float* mv, float* pj, int winW, int winH) override;
-	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-
 	void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH) override
 	{
 		float dis = length(make_float2(p1) - make_float2(p2));
@@ -198,7 +198,7 @@ struct CircleLens :public Lens
 		return ret;
 	}
 
-	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) {
+	std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH) {
 		return GetContourTemplate(radius, mv, pj, winW, winH);
 	}
 
@@ -210,8 +210,6 @@ struct CircleLens :public Lens
 		std::vector<float2> res(0);
 		return res;
 	}
-
-
 };
 
 
@@ -244,11 +242,11 @@ struct LineLens :public Lens
 	void FinishConstructing(float* mv, float* pj, int winW, int winH);
 	void UpdateInfoFromCtrlPoints(float* mv, float* pj, int winW, int winH);
 
-	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH);
+	bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
 
-	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH);
 
 	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
 
@@ -260,6 +258,7 @@ struct LineLens :public Lens
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void UpdateLineLensInfo();
+
 };	
 
 
@@ -270,7 +269,7 @@ struct LineLens3D :public LineLens
 	};
 
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) override;
-	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH) override;
+	std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH) override;
 
 	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal; //note that for LineLens3D, lSemiMinorAxisGlobal/focusRatio will give the width. lSemiMinorAxisGlobal along only provides a lower limit for the width
 	float3 majorAxisGlobal, lensDir, minorAxisGlobal;
@@ -278,10 +277,8 @@ struct LineLens3D :public LineLens
 
 
 	void UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
-
 	void UpdateLineLensGlobalInfoFromScreenInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
 
-	
 	void FinishConstructing(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax);
 
 
@@ -296,15 +293,13 @@ struct LineLens3D :public LineLens
 	std::vector<float3> GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH);
 
 
-	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override; //for LineLens3D, the inner boundary is usually hidden. so compare to LineLens, this function deals with a different situation, which means points on the two sides at the major direction
 
 
-	bool PointOnObjectInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-	bool PointOnObjectOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
 
@@ -325,19 +320,10 @@ struct LineLens3D :public LineLens
 	bool PointOnOuterBoundaryWallMajorSide3D(float3 pos, float* mv, float* pj, int winW, int winH);
 	bool PointOnOuterBoundaryWallMinorSide3D(float3 pos, float* mv, float* pj, int winW, int winH);
 	//void ChangeLensSize3D(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH);
-
-	//requested by Xin
-	std::vector<float3> GetTwoEndpointsOfBackBase()
-	{
-		std::vector<float3> res;
-		res.push_back(c + lSemiMajorAxisGlobal*majorAxisGlobal);
-		res.push_back(c - lSemiMajorAxisGlobal*majorAxisGlobal);
-		return res;
-	}
 };
 
 
-class CurveBLens :public Lens
+class CurveLens :public Lens
 {
 	static const int numCtrlPointsLimit = 25;
 	static const int distanceThr = 5;
@@ -364,9 +350,9 @@ public:
 	std::vector<float2> posOffsetBezierPoints;
 	std::vector<float2> negOffsetBezierPoints;
 
-	CurveBLensInfo curveBLensInfo;
+	CurveLensInfo curveBLensInfo;
 
-	CurveBLens(int _w, float3 _c) : Lens(_c){
+	CurveLens(int _w, float3 _c) : Lens(_c){
 
 		isConstructing = true;
 
@@ -374,7 +360,7 @@ public:
 		focusRatio = 0.5;
 		outerWidth = width / focusRatio;
 		numCtrlPoints = 0;
-		type = LENS_TYPE::TYPE_CURVEB;
+		type = LENS_TYPE::TYPE_CURVE;
 	};
 
 	void AddCtrlPoint(int _x, int _y){
@@ -397,10 +383,10 @@ public:
 
 	
 
-	bool PointInsideLens(int _x, int _y, float* mv, float* pj, int winW, int winH);
+	bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
 	void FinishConstructing(float* mv, float* pj, int winW, int winH);
-	std::vector<float2> GetContour(float* mv, float* pj, int winW, int winH);
+	std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH);
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
 	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
 	std::vector<float2> GetCenterLineForRendering(float* mv, float* pj, int winW, int winH);

@@ -6,7 +6,7 @@
 #include "glwidget.h"
 #include "DeformGLWidget.h"
 #include "Particle.h""
-#include "LineSplitModelGrid.h"
+#include "MeshDeformProcessor.h"
 #include "screenLensDisplaceProcessor.h"
 
 #ifdef WIN32

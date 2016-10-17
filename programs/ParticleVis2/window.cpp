@@ -12,7 +12,7 @@
 #include "BinaryParticleReader.h"
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
-#include <LineSplitModelGrid.h>
+#include <MeshDeformProcessor.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
@@ -74,7 +74,7 @@ Window::Window()
 
 		deformForceConstant = 2;
 
-		inputParticle->featureReshuffle();
+		//inputParticle->featureReshuffle();
 		
 		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
@@ -106,7 +106,7 @@ Window::Window()
 
 
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
+	modelGrid = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
 	modelGrid->initThrustVectors(inputParticle);
 	modelGrid->SetLenses(lensRenderable->GetLensesAddr());
 	
@@ -133,7 +133,7 @@ Window::Window()
 	addLensBtn = new QPushButton("Add old lens");
 	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
 	delLensBtn = std::make_shared<QPushButton>("Delete the Virtual Retractor");
-	addCurveBLensBtn = new QPushButton("Add curved band lens");
+	addCurveLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
@@ -235,7 +235,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
-	//controlLayout->addWidget(addCurveBLensBtn);
+	//controlLayout->addWidget(addCurveLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
@@ -296,7 +296,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
-	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
+	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 	connect(delLensBtn.get(), SIGNAL(clicked()), this, SLOT(SlotDelLens()));
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
@@ -348,14 +348,20 @@ void Window::AddLens()
 
 void Window::AddLineLens()
 {
-	modelGrid->gridType = GRID_TYPE::LINESPLIT_UNIFORM_GRID;
-	lensRenderable->AddLineLens3D();
+	if (openGL->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+		modelGrid->gridType = GRID_TYPE::LINESPLIT_UNIFORM_GRID;
+		lensRenderable->AddLineLens3D();
+	}
+	else if (openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		lensRenderable->AddLineLens();
+	}
+
 }
 
 
-void Window::AddCurveBLens()
+void Window::AddCurveLens()
 {
-	lensRenderable->AddCurveBLens();
+	lensRenderable->AddCurveLens();
 }
 
 void Window::SlotDelLens()

@@ -50,13 +50,11 @@ public:
 	void draw(float modelview[16], float projection[16]) override;
 	LensRenderable();
 	std::vector<Lens*> GetLenses() { return lenses; }
-	float3 GetBackLensCenter();
-	float GetBackLensFocusRatio();
-	float GetBackLensObjectRadius();
+
 	void AddCircleLens();
 	void AddLineLens();
 	void AddLineLens3D();
-	void AddCurveBLens();
+	void AddCurveLens();
 
 	void mousePress(int x, int y, int modifier) override;
 	void mouseRelease(int x, int y, int modifier) override;

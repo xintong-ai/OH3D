@@ -13,7 +13,7 @@ class QOpenGLVertexArrayObject;
 class Fiber;
 class ModelVolumeDeformer;
 class Lens;
-class LineSplitModelGrid;
+class MeshDeformProcessor;
 
 enum DEFORM_METHOD{
 	PRINCIPLE_DIRECTION,
@@ -31,7 +31,7 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 	Q_OBJECT
 	
 	//interfaces for deformation computing and deformed data
-	std::shared_ptr<LineSplitModelGrid> modelGrid = 0;
+	std::shared_ptr<MeshDeformProcessor> modelGrid = 0;
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer = 0;
 
 	//default volume to render when not using deformation
@@ -44,7 +44,7 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 
 public:
 
-	void SetModelGrid(std::shared_ptr<LineSplitModelGrid> _modelGrid){ modelGrid = _modelGrid; }
+	void SetModelGrid(std::shared_ptr<MeshDeformProcessor> _modelGrid){ modelGrid = _modelGrid; }
 	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
 
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);

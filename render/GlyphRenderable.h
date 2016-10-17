@@ -6,7 +6,7 @@
 class ShaderProgram;
 class QOpenGLContext;
 class StopWatchInterface;
-class LineSplitModelGrid;
+class MeshDeformProcessor;
 class ScreenLensDisplaceProcessor;
 class Particle;
 enum COLOR_MAP;
@@ -20,7 +20,7 @@ public:
 
 	//used for deformation
 	void SetScreenLensDisplaceComputer(std::shared_ptr<ScreenLensDisplaceProcessor> _screenLensDisplaceProcessor){ screenLensDisplaceProcessor = _screenLensDisplaceProcessor; }
-	void SetModelGrid(std::shared_ptr<LineSplitModelGrid> _modelGrid){ modelGrid = _modelGrid; }
+	void SetModelGrid(std::shared_ptr<MeshDeformProcessor> _modelGrid){ modelGrid = _modelGrid; }
 
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
@@ -70,7 +70,7 @@ protected:
 	//used for deformation
 	void ComputeDisplace(float _mv[16], float pj[16]);
 	std::shared_ptr<ScreenLensDisplaceProcessor> screenLensDisplaceProcessor = 0;
-	std::shared_ptr<LineSplitModelGrid> modelGrid = 0;
+	std::shared_ptr<MeshDeformProcessor> modelGrid = 0;
 
 private:
 	bool frameBufferObjectInitialized = false;

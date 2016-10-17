@@ -114,6 +114,7 @@ bool DeformGLWidget::TouchUpdateEvent(QTouchEvent *event)
 	return true;
 }
 
+//!!! this function should not be placed here
 void DeformGLWidget::pinchTriggered(QPinchGesture *gesture)
 {
 	GLWidget::pinchTriggered(gesture);
@@ -121,7 +122,7 @@ void DeformGLWidget::pinchTriggered(QPinchGesture *gesture)
 	{
 		case INTERACT_MODE::MODIFY_LENS_DEPTH:
 		{
-			((LensRenderable*)renderers["lenses"])->ChangeLensDepth(gesture->totalScaleFactor() > 1 ? 26 : -26);
+			//((LensRenderable*)renderers["lenses"])->ChangeLensDepth(gesture->totalScaleFactor() > 1 ? 26 : -26);
 			break;
 		}
 	}

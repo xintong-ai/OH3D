@@ -22,7 +22,7 @@ class LensRenderable;
 class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
-class LineSplitModelGrid;
+class MeshDeformProcessor;
 class Particle;
 class ScreenLensDisplaceProcessor;
 
@@ -83,8 +83,8 @@ private:
 	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
-	QPushButton *addCurveBLensBtn;
-	std::shared_ptr<LineSplitModelGrid> modelGrid;
+	QPushButton *addCurveLensBtn;
+	std::shared_ptr<MeshDeformProcessor> modelGrid;
 	std::shared_ptr<ScreenLensDisplaceProcessor> screenLensDisplaceProcessor;
 	std::shared_ptr<Particle> inputParticle;
 
@@ -118,7 +118,7 @@ private:
 private slots:
 	void AddLens();
 	void AddLineLens();
-	void AddCurveBLens(); 
+	void AddCurveLens(); 
 	void SlotDelLens();
 	void SlotToggleGrid(bool b); 
 	void SlotToggleBackFace(bool b);

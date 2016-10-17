@@ -93,9 +93,9 @@ public:
 		TN = 0;
 		L = 0;
 	}
-	void initLocalMem_TET_MESH(int maxNum)
+	void initLocalMem_TET_MESH()
 	{
-		max_number = maxNum;
+		//max_number = maxNum;
 		X = new TYPE[number * 3];
 		Tet = new int[tet_number * 4];
 		Dm = new TYPE[tet_number * 9];

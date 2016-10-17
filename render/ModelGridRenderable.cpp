@@ -1,5 +1,5 @@
 #include <ModelGridRenderable.h>
-#include <LineSplitModelGrid.h>
+#include <MeshDeformProcessor.h>
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <helper_math.h>
@@ -17,7 +17,7 @@
 
 
 
-ModelGridRenderable::ModelGridRenderable(LineSplitModelGrid* _modelGrid)//ModelGridRenderable(float dmin[3], float dmax[3], int nPart)
+ModelGridRenderable::ModelGridRenderable(MeshDeformProcessor* _modelGrid)//ModelGridRenderable(float dmin[3], float dmax[3], int nPart)
 {
 	modelGrid = _modelGrid;
 	visible = false;

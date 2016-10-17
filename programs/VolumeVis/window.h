@@ -20,7 +20,7 @@ class LensRenderable;
 class DataMgr;
 class GLMatrixManager;
 class ModelGridRenderable;
-class LineSplitModelGrid;
+class MeshDeformProcessor;
 class Volume;
 class ModelVolumeDeformer;
 class VolumeRenderableCUDA;
@@ -72,8 +72,8 @@ private:
 	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
-	QPushButton *addCurveBLensBtn;
-	std::shared_ptr<LineSplitModelGrid> modelGrid;
+	QPushButton *addCurveLensBtn;
+	std::shared_ptr<MeshDeformProcessor> modelGrid;
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
 
@@ -100,7 +100,7 @@ private:
 private slots:
 	void AddLens();
 	void AddLineLens();
-	void AddCurveBLens(); 
+	void AddCurveLens(); 
 	void SlotToggleGrid(bool b);
 	void SlotToggleBackFace(bool b);
 	void SlotDeformModeChanged(bool clicked);

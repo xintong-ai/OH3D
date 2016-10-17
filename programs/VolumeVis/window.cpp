@@ -8,7 +8,7 @@
 
 #include "DataMgr.h"
 #include "ModelGridRenderable.h"
-#include "LineSplitModelGrid.h"
+#include "MeshDeformProcessor.h"
 #include "GLMatrixManager.h"
 #include "VecReader.h"
 #include "VolumeRenderableCUDA.h"
@@ -122,7 +122,7 @@ Window::Window()
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<LineSplitModelGrid>(&posMin.x, &posMax.x, meshResolution);
+	modelGrid = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
 	modelGrid->SetLenses(lensRenderable->GetLensesAddr());
 	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
@@ -141,7 +141,7 @@ Window::Window()
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
 	delLensBtn = std::make_shared<QPushButton>("Delete the Virtual Retractor");
-	//addCurveBLensBtn = new QPushButton("Add curved band lens");
+	//addCurveLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
@@ -233,7 +233,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
-	//controlLayout->addWidget(addCurveBLensBtn);
+	//controlLayout->addWidget(addCurveLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
@@ -362,7 +362,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
-	//connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
+	//connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 	connect(delLensBtn.get(), SIGNAL(clicked()), this, SLOT(SlotDelLens()));
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
@@ -405,9 +405,9 @@ void Window::AddLineLens()
 }
 
 
-void Window::AddCurveBLens()
+void Window::AddCurveLens()
 {
-	lensRenderable->AddCurveBLens();
+	lensRenderable->AddCurveLens();
 }
 
 

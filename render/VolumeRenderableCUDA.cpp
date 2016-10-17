@@ -15,7 +15,7 @@
 #include <memory>
 #include "DeformGLWidget.h"
 #include "helper_math.h"
-#include <LineSplitModelGrid.h>
+#include <MeshDeformProcessor.h>
 #include <cuda_gl_interop.h>
 
 #include "VolumeRenderableCUDAKernel.h"

@@ -122,14 +122,14 @@ public:
 	~LineSplitGridMesh(){};
 
 
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>()
+	LineSplitGridMesh(float ztop, float zbottom, int meshRes, float3 lensCenter, float lSemiMajorAxis, float lSemiWidth, float3 majorAxis, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>()
 	{
 		//computeShapeInfo and computeInitCoord define a mesh that covers the lens region and nearby region
-		computeShapeInfo(dataMin, dataMax, n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir);
+		computeShapeInfo(ztop, zbottom, meshRes, lensCenter, lSemiMajorAxis, lSemiWidth, majorAxis, lensDir);
 
-		initLocalMem_CUDA_PROJECTIVE_TET_MESH(((n + 1) * (n + 1) * (n + 1) + (n + 1)*(n - 1)) * 5);
+		initLocalMem_CUDA_PROJECTIVE_TET_MESH();
 
-		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
+		computeInitCoord(majorAxis, lensDir, meshTransMat);
 
 		BuildTet();
 		Build_Boundary_Lines();
@@ -346,60 +346,19 @@ public:
 
 
 
-	void computeShapeInfo(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir)
+	void computeShapeInfo(float ztop, float zbottom, int meshRes, float3 lensCenter, float lSemiMajorAxis, float lSemiWidth, float3 majorAxis, float3 lensDir)
 	{
-		float volumeCornerx[2], volumeCornery[2], volumeCornerz[2];
-		volumeCornerx[0] = dataMin[0];
-		volumeCornery[0] = dataMin[1];
-		volumeCornerz[0] = dataMin[2];
-		volumeCornerx[1] = dataMax[0];
-		volumeCornery[1] = dataMax[1];
-		volumeCornerz[1] = dataMax[2];
-
-		float rx1, rx2, ry1, ry2;
-		float rz1, rz2;//at the direction lensDir shooting from lensCenter, the range to cover the whole region
-		rx1 = FLT_MAX, rx2 = -FLT_MAX;
-		ry1 = FLT_MAX, ry2 = -FLT_MAX;
-		rz1 = FLT_MAX, rz2 = -FLT_MAX;
-
 		float3 minorAxis = cross(lensDir, majorAxis);
-
-		//currently computing r1 and r2 aggressively. cam be more improved later
-		for (int k = 0; k < 2; k++){
-			for (int j = 0; j < 2; j++){
-				for (int i = 0; i < 2; i++){
-					float3 dir = make_float3(volumeCornerx[i], volumeCornery[j], volumeCornerz[k]) - lensCenter;
-					//float curx = dot(dir, majorAxis);
-					//if (curx < rx1)
-					//	rx1 = curx;
-					//if (curx > rx2)
-					//	rx2 = curx;
-
-					//float cury = dot(dir, minorAxis);
-					//if (cury < ry1)
-					//	ry1 = cury;
-					//if (cury > ry2)
-					//	ry2 = cury;
-
-					float curz = dot(dir, lensDir);
-					if (curz < rz1)
-						rz1 = curz;
-					if (curz > rz2)
-						rz2 = curz;
-				}
-			}
-		}
-		float zdifori = rz2 - rz1;
-		rz2 = rz2 + zdifori*0.01;
-		rz1 = rz1 - zdifori*0.01;  //to avoid numerical error
-
-		float3 rangeDiff = make_float3(2.1* lSemiMajorAxis, 2* lSemiMinorAxis / focusRatio, rz2 - rz1);
+		float3 rangeDiff = make_float3(2.1* lSemiMajorAxis, 2 * lSemiWidth, ztop - zbottom);
 		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
 
+		//the following will make the mesh satisfy two conditions:
+		//1, mimNumStepEachDim is satisfied
+		//2, at least one dimension achieves the required resolution meshRes
 		const int mimNumStepEachDim = 7;
 		bool ismeshillegal = true;
 		while (ismeshillegal){
-			step = (maxDiff / n);
+			step = (maxDiff / meshRes);
 			nStep[0] = floor(rangeDiff.x / step) + 1;
 			nStep[1] = floor(rangeDiff.y / step) + 1;
 			nStep[2] = floor(rangeDiff.z / step) + 1;
@@ -414,21 +373,19 @@ public:
 			}
 			else
 			{
-				n++;
+				meshRes++;
 			}
 		}
+
 		std::cout << "final mesh size " << nStep[0] << " " << nStep[1] << " " << nStep[2] << ", with step length " << step << std::endl;
 		
 		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
 		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
-
 		cutY = nStep[1] / 2;
-
-		//lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis - rangeDiff.z / 2.0 * lensDir;
-		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis + rz1 * lensDir;
+		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis + zbottom * lensDir;
 	}
 
-	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat)
+	void computeInitCoord(float3 majorAxis, float3 lensDir, glm::mat4 &meshTransMat)
 	{
 
 		float3 minorAxis = cross(lensDir, majorAxis);
@@ -489,8 +446,6 @@ public:
 				}
 			}
 		}
-
-
 	}
 
 

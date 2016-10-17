@@ -3,7 +3,7 @@
 
 
 #include <Volume.h>
-#include <LineSplitModelGrid.h>
+#include <MeshDeformProcessor.h>
 
 class ModelVolumeDeformer
 {
@@ -14,14 +14,14 @@ public:
 
 	Volume *originalVolume;
 
-	std::shared_ptr<LineSplitModelGrid> modelGrid;
+	std::shared_ptr<MeshDeformProcessor> modelGrid;
 	ModelVolumeDeformer(){};
 	~ModelVolumeDeformer(){
 		volumeCUDADeformed.VolumeCUDA_deinit();
 	};
 
 	void Init(Volume *ori);
-	void SetModelGrid(std::shared_ptr<LineSplitModelGrid> _modelGrid){ modelGrid = _modelGrid; }
+	void SetModelGrid(std::shared_ptr<MeshDeformProcessor> _modelGrid){ modelGrid = _modelGrid; }
 
 	void deformByModelGrid(float3 lensSpaceOrigin, float3 majorAxis, float3 lensDir, int3 nSteps, float step);
 
