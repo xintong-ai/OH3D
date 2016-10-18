@@ -1,17 +1,15 @@
-#include <ModelGridRenderable.h>
-#include <MeshDeformProcessor.h>
+#include "ModelGridRenderable.h"
+#include "MeshDeformProcessor.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <helper_math.h>
 #include <helper_cuda.h>
-#include "Lens.h"
 
 #ifdef WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 #include <QOpenGLFunctions>
-#include <LensRenderable.h>
 #include <glwidget.h>
 //using namespace std;
 
@@ -27,12 +25,6 @@ ModelGridRenderable::ModelGridRenderable(MeshDeformProcessor* _modelGrid)//Model
 
 void ModelGridRenderable::init()
 {
-	//Create VBO
-	//qgl->glGenBuffers(1, &vertex_handle);
-	//qgl->glGenBuffers(1, &triangle_handle);
-
-	//qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangle_handle);
-	//qgl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int)*modelGrid->GetTNumber() * 3, modelGrid->GetT(), GL_STATIC_DRAW);
 }
 
 void ModelGridRenderable::draw(float modelview[16], float projection[16])
@@ -74,9 +66,6 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 		float minElas = modelGrid->minElas;
 		float maxElas = modelGrid->maxElasEstimate;
-		LineLens3D* len = (LineLens3D*)((*lenses)[0]);
-		float3 lensCen = len->c;
-		float3 lensDir = len->lensDir;
 
 		for (int i = 0; i < modelGrid->GetLNumber(); i++){
 
@@ -88,10 +77,8 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 			float *pp1 = lx + 3 * l[i * 2], *pp2 = lx + 3 * l[i * 2 + 1];
 			float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
 			float3 v2 = make_float3(pp2[0], pp2[1], pp2[2]);
-			//if (dot(v1 - lensCen, lensDir)>0 || dot(v2 - lensCen, lensDir) > 0){
 				glVertex3fv(pp1);
 				glVertex3fv(pp2);
-			//}
 		}
 		glEnd();
 		glDisable(GL_BLEND);
@@ -108,9 +95,7 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 
 				float *pp1 = lx + 3 * idx;
 				float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
-				if (dot(v1 - lensCen, lensDir)>0){
 					glVertex3fv(lx + 3 * idx);
-				}
 			}
 		}
 		glEnd();
@@ -122,9 +107,7 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 			int idx = nStep.x * nStep.y * nStep.z + i;
 			float *pp1 = lx + 3 * idx;
 			float3 v1 = make_float3(pp1[0], pp1[1], pp1[2]);
-			if (dot(v1 - lensCen, lensDir)>0){
 				glVertex3fv(lx + 3 * idx);
-			}
 
 		}
 		glEnd();

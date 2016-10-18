@@ -2,7 +2,7 @@
 #include <TransformFunc.h>
 #include <vector_functions.h>
 #include <helper_math.h>
-#include <Lens.h>
+#include "Lens.h"
 #include <math_constants.h>
 #include <thrust/extrema.h>
 #include <thrust/sequence.h>
@@ -215,10 +215,10 @@ struct functor_Displace_NotFinish //no deformation when the lens construction is
 	functor_Displace_NotFinish(){}
 };
 
-struct functor_Displace_CurveB
+struct functor_Displace_Curve
 {
 	int x, y;
-	CurveLensInfo curveBLensInfo;
+	CurveLensInfo curveLensInfo;
 	float lensD;
 	//CurveLensCtrlPoints curveLensCtrlPoints;
 	const float thickDisp = 0.003;
@@ -243,19 +243,19 @@ struct functor_Displace_CurveB
 			float4 clipPos = thrust::get<1>(t);
 
 			//we may be able to use BezierPoints for in lens detection, for a better speed
-			int numBezierPoints = curveBLensInfo.numBezierPoints;
-			float2* BezierPoints = curveBLensInfo.BezierPoints;
+			int numBezierPoints = curveLensInfo.numBezierPoints;
+			float2* BezierPoints = curveLensInfo.BezierPoints;
 
-			int numPosPoints = curveBLensInfo.numPosPoints;
-			float2* subCtrlPointsPos = curveBLensInfo.subCtrlPointsPos;
-			float2* posOffsetCtrlPoints = curveBLensInfo.posOffsetCtrlPoints;
+			int numPosPoints = curveLensInfo.numPosPoints;
+			float2* subCtrlPointsPos = curveLensInfo.subCtrlPointsPos;
+			float2* posOffsetCtrlPoints = curveLensInfo.posOffsetCtrlPoints;
 
-			int numNegPoints = curveBLensInfo.numNegPoints;
-			float2* subCtrlPointsNeg = curveBLensInfo.subCtrlPointsNeg;
-			float2* negOffsetCtrlPoints = curveBLensInfo.negOffsetCtrlPoints;
+			int numNegPoints = curveLensInfo.numNegPoints;
+			float2* subCtrlPointsNeg = curveLensInfo.subCtrlPointsNeg;
+			float2* negOffsetCtrlPoints = curveLensInfo.negOffsetCtrlPoints;
 
-			float width = curveBLensInfo.width;
-			float ratio = curveBLensInfo.focusRatio;
+			float width = curveLensInfo.width;
+			float ratio = curveLensInfo.focusRatio;
 			float rOut = width / ratio;
 
 			//possible difference of the numPosPoints and numNegPoints makes the positive half and the negative half region do npt cover the whole lens region, according to current method
@@ -392,8 +392,8 @@ struct functor_Displace_CurveB
 		thrust::get<0>(t) = ret;
 		thrust::get<3>(t) = brightness;
 	}
-	functor_Displace_CurveB(int _x, int _y, CurveLensInfo _curveBLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
-		x(_x), y(_y), curveBLensInfo(_curveBLensInfo), lensD(_d), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
+	functor_Displace_Curve(int _x, int _y, CurveLensInfo _curveLensInfo, float _d, bool _isUsingFeature, int _snappedGlyphId, int _snappedFeatureId) :
+		x(_x), y(_y), curveLensInfo(_curveLensInfo), lensD(_d), isFreezingFeature(_isUsingFeature), snappedGlyphId(_snappedGlyphId), snappedFeatureId(_snappedFeatureId){}
 };
 
 
@@ -606,7 +606,7 @@ void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, i
 								feature.end(),
 								d_vec_id.end()
 								)),
-								functor_Displace_CurveB(lensScreenCenter.x, lensScreenCenter.y, l->curveBLensInfo, l->GetClipDepth(modelview, projection), isFreezingFeature, snappedGlyphId, snappedFeatureId));
+								functor_Displace_Curve(lensScreenCenter.x, lensScreenCenter.y, l->curveLensInfo, l->GetClipDepth(modelview, projection), isFreezingFeature, snappedGlyphId, snappedFeatureId));
 
 						}
 						break;

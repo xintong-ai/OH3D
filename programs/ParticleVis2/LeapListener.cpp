@@ -69,7 +69,7 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 			GetFingers(leftMostHand, thumbTipLeft, indexTipLeft, indexDir);
 			GetFingers(rightMostHand, thumbTipRight, indexTipRight, indexDir);
 			//emit UpdateTwoHands(Leap2QVector(thumbTip), Leap2QVector(indexTipLeft), Leap2QVector(indexDir));
-			emit UpdateHands(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), Leap2QVector(thumbTipLeft), Leap2QVector(indexTipLeft), 2);
+			//emit UpdateHands(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), Leap2QVector(thumbTipLeft), Leap2QVector(indexTipLeft), 2);
 		}
 		//	else{
 		//		//emit UpdateRightHand(Leap2QVector(thumbTip), Leap2QVector(indexTipRight), Leap2QVector(indexDir));

@@ -52,6 +52,7 @@ public:
 	std::vector<Lens*> GetLenses() { return lenses; }
 
 	void AddCircleLens();
+	void AddCircleLens3D();
 	void AddLineLens();
 	void AddLineLens3D();
 	void AddCurveLens();
@@ -84,10 +85,7 @@ public slots:
 //public slots: //those function are called by slot functions but are not slots themselves
 public:
 	void SlotOneHandChanged(float3 p);
-	bool SlotOneHandChanged_lc(float3 thumpLeap, float3 indexLeap, float4 &markerPos, float &valRight);
-	bool LensRenderable::SlotOneHandChangedNew_lc(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap, float4 &markerPos, float &valRight, float &f);
+	bool SlotOneHandChangedNew_lc(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap, float4 &markerPos, float &valRight, float &f);
 	void SlotTwoHandChanged(float3 l, float3 r);
-	bool SlotTwoHandChanged_lc(float3 rightThumpLeap, float3 rightIndexLeap, float3 leftThumpLeap, float3 leftIndexLeap, float4 &markerPosRight, float4 &markerPosLeft, float &valRight, float &valLeft, float &f);
-
 };
 #endif

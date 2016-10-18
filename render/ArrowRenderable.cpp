@@ -6,21 +6,21 @@
 
 //removing the following lines will cause runtime error
 #ifdef WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 #include "ShaderProgram.h"
 
 #include <memory>
 #include "glwidget.h"
-#include "helper_math.h"
+#include <helper_math.h>
 #include "GLArrow.h"
 #include "ColorGradient.h"
 #include "Particle.h"
 
 using namespace std;
 
-ArrowRenderable::ArrowRenderable(vector<float4> _pos, vector<float3> _vec, vector<float> _val, std::shared_ptr<Particle> _particle) :
+ArrowRenderable::ArrowRenderable(vector<float3> _vec, std::shared_ptr<Particle> _particle) :
 GlyphRenderable(_particle)
 {
 	vecs = _vec;

@@ -10,7 +10,7 @@
 #include "screenLensDisplaceProcessor.h"
 
 #ifdef WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 //using namespace std;

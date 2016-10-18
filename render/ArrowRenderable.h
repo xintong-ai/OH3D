@@ -10,6 +10,20 @@ class QOpenGLContext;
 
 class ArrowRenderable :public GlyphRenderable
 {
+public:
+	void init() override;
+	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override; 
+	void draw(float modelview[16], float projection[16]) override;
+	ArrowRenderable(std::vector<float3> _vec, std::shared_ptr<Particle> _particle);
+
+protected:
+
+	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
+
+	void initPickingDrawingObjects();
+	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
+
+private:
 	std::vector<float3> vecs;
 	std::vector<float3> cols;//used for coloring particles
 
@@ -29,18 +43,6 @@ class ArrowRenderable :public GlyphRenderable
 	//std::shared_ptr<QOpenGLVertexArrayObject> m_vao;
 	std::shared_ptr<GLArrow> glyphMesh;
 
-
-public:
-	ArrowRenderable(std::vector<float4> _pos, std::vector<float3> _vec, std::vector < float > _val, std::shared_ptr<Particle> _particle);
-	void init() override;
-	void draw(float modelview[16], float projection[16]) override;
-
-protected:
-	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
-	virtual void LoadShaders(ShaderProgram*& shaderProg) override;
-
-	void initPickingDrawingObjects();
-	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
 };
 
 #endif //ARROW_RENDERABLE_H

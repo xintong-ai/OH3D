@@ -8,19 +8,19 @@
 #include <QOpenGLFunctions_4_3_Core>
 // removing the following lines will cause runtime error
 #ifdef WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 
 #include <memory>
 #include "DeformGLWidget.h"
-#include "helper_math.h"
-#include <MeshDeformProcessor.h>
+#include <helper_math.h>
+#include "MeshDeformProcessor.h"
 #include <cuda_gl_interop.h>
 
 #include "VolumeRenderableCUDAKernel.h"
 #include "modelVolumeDeformer.h"
-#include <TransformFunc.h>
+#include "TransformFunc.h"
 
 
 

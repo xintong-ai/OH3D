@@ -28,7 +28,7 @@
 #endif
 
 #ifdef USE_NEW_LEAP
-#include <leap/LeapListener.h>
+#include <LeapListener.h>
 #include <Leap.h>
 #endif
 
@@ -53,7 +53,7 @@ Window::Window()
 
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 130);
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 230);
 		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 
@@ -199,10 +199,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
 	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
 	
-	radioDeformScreen->setChecked(true);
 	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
-	//openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
-	//radioDeformObject->setChecked(true);
+	radioDeformObject->setChecked(openGL->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE);
+	radioDeformScreen->setChecked(openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE);
 
 	deformModeLayout->addWidget(radioDeformScreen.get());
 	deformModeLayout->addWidget(radioDeformObject.get());
@@ -341,9 +340,14 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 void Window::AddLens()
 {
-	modelGrid->gridType = GRID_TYPE::UNIFORM_GRID;
-	modelGrid->InitializeUniformGrid(inputParticle); //call this function must set gridType = GRID_TYPE::UNIFORM_GRID first
-	lensRenderable->AddCircleLens();
+	if (openGL->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+		modelGrid->gridType = GRID_TYPE::UNIFORM_GRID;
+		modelGrid->InitializeUniformGrid(inputParticle); //call this function must set gridType = GRID_TYPE::UNIFORM_GRID first
+		lensRenderable->AddCircleLens3D();
+	}
+	else if (openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		lensRenderable->AddCircleLens();
+	}
 }
 
 void Window::AddLineLens()
@@ -355,7 +359,6 @@ void Window::AddLineLens()
 	else if (openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
 		lensRenderable->AddLineLens();
 	}
-
 }
 
 
@@ -500,56 +503,6 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 #endif
 
 #ifdef USE_NEW_LEAP
-void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, int numHands)
-{
-	if (1 == numHands){
-		float4 markerPos;
-		if (lensRenderable->SlotOneHandChanged_lc(make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()), make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), markerPos, leapFingerIndicators->val[0])){
-
-			openGL->blendOthers = true;
-		}
-		else{
-			openGL->blendOthers = false;
-		}
-		leapFingerIndicators->numParticles = 1;
-		leapFingerIndicators->pos[0] = markerPos;
-
-		lensRenderable->activedCursors = 1;
-		lensRenderable->cursorPos[0] = make_float3(markerPos);
-		lensRenderable->cursorColor[0] = leapFingerIndicators->val[0];
-	}
-	else if (2 == numHands){
-		
-		float4 markerPosRight, markerPosLeft;
-		float f = modelGrid->getDeformForce();
-		if (lensRenderable->SlotTwoHandChanged_lc(
-			make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()),
-			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), 
-			make_float3(leftThumbTip.x(), leftThumbTip.y(), leftThumbTip.z()),
-			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
-			markerPosRight, markerPosLeft, leapFingerIndicators->val[0], leapFingerIndicators->val[1], f)){
-			openGL->blendOthers = true;
-			//deformForceSliderValueChanged(f / deformForceConstant);
-			deformForceSlider->setValue(f / deformForceConstant);
-		}
-		else{
-			openGL->blendOthers = false;
-		}
-		leapFingerIndicators->numParticles = 2;
-
-		leapFingerIndicators->pos[0] = markerPosRight;
-		leapFingerIndicators->pos[1] = markerPosLeft;
-
-		lensRenderable->activedCursors = 2;
-		lensRenderable->cursorPos[0] = make_float3(markerPosRight);
-		lensRenderable->cursorPos[1] = make_float3(markerPosLeft);
-		lensRenderable->cursorColor[0] = leapFingerIndicators->val[0];
-		lensRenderable->cursorColor[1] = leapFingerIndicators->val[1];
-	}
-}
-
-
-
 void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, QVector3D rightMiddleTip, QVector3D rightRingTip, int numHands)
 {
 	if (1 == numHands){

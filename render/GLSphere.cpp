@@ -5,7 +5,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 //using namespace std;
-#include "helper_math.h"
+#include <helper_math.h>
 
 GLSphere::GLSphere(float r, int n)
 {

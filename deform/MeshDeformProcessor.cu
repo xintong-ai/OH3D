@@ -5,7 +5,7 @@
 #include <defines.h>
 #include <Volume.h>
 #include <Particle.h>
-#include <Lens.h>
+#include "Lens.h"
 #include <thrust/execution_policy.h>
 #include <thrust/uninitialized_copy.h>
 
@@ -401,7 +401,7 @@ void MeshDeformProcessor::UpdatePointCoordsAndBright_UniformMesh(std::shared_ptr
 	Lens* l = lenses->back();
 	float3 lensCen = l->c;
 	float focusRatio = l->focusRatio;
-	float radius = ((CircleLens*)l)->objectRadius;
+	float radius = ((CircleLens3D*)l)->objectRadius;
 	float _invmv[16];
 	invertMatrix(_mv, _invmv);
 	float3 cameraObj = make_float3(Camera2Object(make_float4(0, 0, 0, 1), _invmv));
@@ -581,7 +581,7 @@ bool MeshDeformProcessor::ProcessVolumeDeformation(float* modelview, float* proj
 		float3 dmin, dmax;
 		volume->GetPosRange(dmin, dmax);
 
-		((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, modelview, projection, dmin, dmax); //need to be placed to a better place!
+		((LineLens3D*)l)->UpdateObjectLineLens(winWidth, winHeight, modelview, projection, dmin, dmax); //need to be placed to a better place!
 		l->justChanged = false;
 	}
 
@@ -607,8 +607,6 @@ bool MeshDeformProcessor::ProcessParticleDeformation(float* modelview, float* pr
 		if (l->justChanged){
 			startTime = clock();
 			setReinitiationNeed();
-
-			((LineLens3D*)l)->UpdateLineLensGlobalInfo(winWidth, winHeight, modelview, projection, particle->posMin, particle->posMax); //need to be placed to a better place!
 			l->justChanged = false;
 		}
 		
@@ -828,14 +826,13 @@ void MeshDeformProcessor::UpdateUniformMesh(float* _mv)
 	Lens* l = lenses->back();
 	float3 lensCen = l->c;
 	float focusRatio = l->focusRatio;
-	float radius = ((CircleLens*)l)->objectRadius;
+	float radius = ((CircleLens3D*)l)->objectRadius;
 	float _invmv[16];
 	invertMatrix(_mv, _invmv);
 	float3 cameraObj = make_float3(Camera2Object(make_float4(0, 0, 0, 1), _invmv));
 	float3 lensDir = normalize(cameraObj - lensCen);
 
 	gridMesh->Update(time_step, 64, lensCen, lensDir, focusRatio, radius);
-
 }
 
 void MeshDeformProcessor::MoveMesh(float3 moveDir)

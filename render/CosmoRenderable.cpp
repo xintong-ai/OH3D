@@ -10,7 +10,7 @@
 
 //removing the following lines will cause runtime error
 #ifdef WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 //using namespace std;

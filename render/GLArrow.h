@@ -9,7 +9,7 @@
 //using namespace std;
 
 #include <math.h>
-#include "helper_math.h"
+#include <helper_math.h>
 
 #include "vector_types.h"
 #include <vector>

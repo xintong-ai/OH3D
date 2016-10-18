@@ -30,7 +30,9 @@ public:
 		//timer = new QTimer(this);
 		timer = new QElapsedTimer();
 		timer->start();
-	}
+	};
+
+	~LeapListener(){};
 
 	virtual void onFrame(const Leap::Controller & ctl);
 

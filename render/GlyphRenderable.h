@@ -26,7 +26,7 @@ public:
 	void resize(int width, int height) override;
 	void mousePress(int x, int y, int modifier) override;
 
-	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) = 0;
+	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) {};
 	bool colorByFeature = false;//when the particle has multi attributes or features, choose which attribute or color is used for color. currently a simple solution using bool
 	void SetGlyphSizeAdjust(float v){ glyphSizeAdjust = v; }
 	void resetBrightness();

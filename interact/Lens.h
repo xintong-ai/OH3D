@@ -57,15 +57,7 @@ struct Lens
 	void setJustChanged(){ justChanged = true; }
 
 	bool isConstructing;
-	bool isConstructedFromLeap = false; //actually a boolean for 2D or 3D lens. isConstructedFromLeap means 3D lens 
-
-	bool justMoved = false;
-	float3 moveVec; //not normalized
-	void setJustMoved(float3 v)
-	{
-		moveVec = v;
-		justMoved = true; 
-	}
+	bool isConstructedFromLeap = false; //actually a boolean for whether the lens is constructed and managed by 2D or 3D inputs. isConstructedFromLeap means 3D inputs 
 
 	const int eps_pixel = 32;
 	LENS_TYPE type;
@@ -75,12 +67,10 @@ struct Lens
 
 	float4 GetCenter();// { return make_float4(c.x, c.y, c.z, 1.0f); }
 	void SetCenter(float3 _c){ c = _c; }
-	void SetFocusRatio(float _v){ focusRatio = _v; }
 	float GetClipDepth(float* mv, float* pj);
 	float2 GetCenterScreenPos(float* mv, float* pj, int winW, int winH);
-	virtual float3 UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);//update c by new screen position (sx,sy)
+	void UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);
 	float3 Compute3DPosByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH);	
-
 	//screen lens test functions and update functions
 	virtual bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) = 0;
 	virtual bool PointInsideOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) { return false; }
@@ -93,12 +83,14 @@ struct Lens
 	}
 	virtual void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH){}
 	virtual void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
-	virtual void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+	virtual void ChangeFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
+	virtual float3 MoveLens(int sx, int sy, float* mv, float* pj, int winW, int winH);
 
 	//object lens test functions and update functions
 	//there are 2 strategies for test functions and update functions of an object lens:
-	//1. use screen projection for 2D point; or 2. use object shape of the lens for 3D point
-	//for strategy 1, most screen lens functions can work. if not, redeclare here with name+Object
+	//strategy 1. use screen projection for 2D point; or strategy 2. use object shape of the lens for 3D point
+	//for strategy 1, most screen test functions can work, if the inter-mode error is acceptable. Reuse screen functions if possible. If not, redeclare here with the same name
+	//for strategy 1, most update functions needs more update computations than screen update functions. Reuse screen functions if possible. If not, redeclare here with name+Object.
 	//for strategy 2, redeclare here with name+Object+3D
 	//for both strategies, do not define the function body inside an inherited 2D lens class. instead, inherite this 2D lens to get a 3D lens class and define the functions
 	virtual void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}	
@@ -109,21 +101,17 @@ struct Lens
 	virtual std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) = 0;
 	virtual std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH) = 0; //cannot directly use the ctrlPoints array, since need to haddle constructing process
 	
-	virtual void ChangeClipDepth(int v, float* mv, float* pj);
-	//ChangeClipDepth() used for 2D input for lens position, like mouse and touch screen
-	void SetClipDepth(float d, float* mv, float* pj);
-	//SetClipDepth() used for 3D input for lens position, like leap motion
+	virtual void ChangeClipDepth(float v, float* mv, float* pj); //change the clip depth by incrementation. used for 2D input for lens position, like mouse and touch screen
+	void SetClipDepth(float d, float* mv, float* pj); //directly set the new clip depth. used for 3D input for lens position, like leap motion
 };
 
 struct CircleLens :public Lens
 {
 	float radius;
-	float objectRadius;
 
 	CircleLens(int _r, float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio)
 	{ 
 		radius = _r;
-		objectRadius = 1.3;
 		type = LENS_TYPE::TYPE_CIRCLE;
 		isConstructing = false;
 	};
@@ -134,22 +122,18 @@ struct CircleLens :public Lens
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < radius;
 	}
-
 	bool PointInsideOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH)
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < (radius / focusRatio);
 	}
-
-	
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return std::abs(dis - radius) < eps_pixel;
 	}
-
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override
 	{ 
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
@@ -164,24 +148,19 @@ struct CircleLens :public Lens
 		float2 center = (make_float2(p1) + make_float2(p2)) * 0.5;
 		UpdateCenterByScreenPos(center.x, center.y, mv, pj, winW, winH);
 	}
-
-	
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		radius = dis;
 	}
-
-	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
+	void ChangeFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		if (dis > radius + eps_pixel + 1)
 			focusRatio = radius / dis; 
 	}
-	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
-	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
 
 	std::vector<float2> GetContourTemplate(int rr, float* mv, float* pj, int winW, int winH) {
 		std::vector<float2> ret;
@@ -197,11 +176,9 @@ struct CircleLens :public Lens
 		}
 		return ret;
 	}
-
 	std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH) {
 		return GetContourTemplate(radius, mv, pj, winW, winH);
 	}
-
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) {
 		return GetContourTemplate(radius / focusRatio, mv, pj, winW, winH);
 	}
@@ -212,6 +189,22 @@ struct CircleLens :public Lens
 	}
 };
 
+struct CircleLens3D :public CircleLens
+{
+	float objectRadius;
+
+	CircleLens3D(float* mv, float* pj, int winW, int winH, int _r, float3 _c, float _focusRatio = 0.5) : CircleLens(_r, _c, _focusRatio)
+	{
+		float2 center = GetCenterScreenPos(mv, pj, winW, winH);
+		float2 temp = center + make_float2(radius, 0);
+		float3 temp3d = Compute3DPosByScreenPos(temp.x, temp.y, mv, pj, winW, winH);
+		objectRadius = length(temp3d-c);
+	};
+
+	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	std::vector<std::vector<float3>> CircleLens3D::Get3DContour(float *mv);
+};
 
 struct LineLens :public Lens
 {
@@ -223,7 +216,7 @@ struct LineLens :public Lens
 	
 	LineLensInfo lineLensInfo; //for coding easiness, but actually duplicate the related storage
 
-	float2 ctrlPoint1Abs, ctrlPoint2Abs; //only used during construction/transfornation. afterwards the center, direction, lSemiMajorAxis, and lSemiMinorAxis will be computed and recorded
+	float2 ctrlPointScreen1, ctrlPointScreen2; //only used during construction/transfornation. afterwards the center, direction, lSemiMajorAxis, and lSemiMinorAxis will be computed and recorded, and these two may not be well managed?
 
 	LineLens(float3 _c, float _focusRatio = 0.5) : Lens(_c, _focusRatio){
 		lSemiMajorAxis = 0;
@@ -231,8 +224,8 @@ struct LineLens :public Lens
 		direction = make_float2(1.0, 0.0);
 		
 		isConstructing = true;
-		ctrlPoint1Abs = make_float2(0, 0);
-		ctrlPoint2Abs = make_float2(0, 0);
+		ctrlPointScreen1 = make_float2(0, 0);
+		ctrlPointScreen2 = make_float2(0, 0);
 
 		type = LENS_TYPE::TYPE_LINE;
 
@@ -245,81 +238,58 @@ struct LineLens :public Lens
 	bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH);
 
 	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH);
-
 	std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH);
-
 	std::vector<float2> GetCtrlPointsForRendering(float* mv, float* pj, int winW, int winH);
 
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
 
-	float3 UpdateCenterByScreenPos(int sx, int sy, float* mv, float* pj, int winW, int winH) override;//update c by new screen position (sx,sy)
-
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
-	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
-	void UpdateLineLensInfo();
+	void ChangeFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	float3 MoveLens(int sx, int sy, float* mv, float* pj, int winW, int winH) override;
 
+	void UpdateLineLensInfo();
 };	
 
 
 struct LineLens3D :public LineLens
 {
 	LineLens3D(float3 _c, float _focusRatio = 0.5) : LineLens( _c,  _focusRatio) {
-		//height = 0;
 	};
-
-	std::vector<float2> GetOuterContour(float* mv, float* pj, int winW, int winH) override;
-	std::vector<float2> GetInnerContour(float* mv, float* pj, int winW, int winH) override;
 
 	float lSemiMajorAxisGlobal, lSemiMinorAxisGlobal; //note that for LineLens3D, lSemiMinorAxisGlobal/focusRatio will give the width. lSemiMinorAxisGlobal along only provides a lower limit for the width
 	float3 majorAxisGlobal, lensDir, minorAxisGlobal;
 	float3 frontBaseCenter, estMeshBottomCenter;
 
-
-	void UpdateLineLensGlobalInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
-	void UpdateLineLensGlobalInfoFromScreenInfo(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
-
 	void FinishConstructing(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax);
 
+	void UpdateObjectLineLens(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
+	void UpdateObjectLineLensByCtrlPointScreen(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax);
 
 	std::vector<float3> GetOuterContourCenterFace();
 	std::vector<float3> GetOuterContourFrontFace();
 	std::vector<float3> GetOuterContourBackFace();
-
 	std::vector<float3> GetIncisionFront();
 	std::vector<float3> GetIncisionCenter();
-	std::vector<float3> Get3DCoordOfCtrlPoints(float* mv, float* pj, int winW, int winH);
-	void UpdateCtrlPoints(float* mv, float* pj, int winW, int winH); //used after mouse wheel
-	std::vector<float3> GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH);
 
 
-	bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
+	bool PointInsideInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override; //for LineLens3D, this function is actually PointInsideOuterBoundary, since it is used for adjust center depth
 	bool PointOnOuterBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
-	void ChangefocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
 	bool PointOnInnerBoundary(int _x, int _y, float* mv, float* pj, int winW, int winH) override; //for LineLens3D, the inner boundary is usually hidden. so compare to LineLens, this function deals with a different situation, which means points on the two sides at the major direction
 
-
 	void ChangeObjectLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
-	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH)override;
+	void ChangeObjectFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override;
+	void ChangeClipDepth(float v, float* mv, float* pj) override; //for object lens, the change will alway follow lensDir. When view dependency is turned off, the behavior is different from screen lens, or else the same
 
-
-	bool PointOnLensCenter(int _x, int _y, float* mv, float* pj, int winW, int winH) override;
-
-	void ChangeClipDepth(int v, float* mv, float* pj) override;
-
-
-
-	//used for lens created by Leap
+	//used for lens created by Leap, or other 3D input coordinates
 	float3 ctrlPoint3D1, ctrlPoint3D2;
-	void UpdateLineLensGlobalInfoFrom3DSegment(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax); 
-	void FinishConstructing3D(float* mv, float* pj, int winW, int winH, float3 dataMin, float3 dataMax);
-	
+	void UpdateObjectLineLensByCtrlPoint3D(int winWidth, int winHeight, float _mv[16], float _pj[16], float3 dataMin, float3 dataMax); 
+	void FinishConstructing3D(float* mv, float* pj, int winW, int winH, float3 dataMin, float3 dataMax);	
 	bool PointOnLensCenter3D(float3 pos, float* mv, float* pj, int winW, int winH);
 	bool PointInCuboidRegion3D(float3 pos, float* mv, float* pj, int winW, int winH);
 	bool PointOnOuterBoundaryWallMajorSide3D(float3 pos, float* mv, float* pj, int winW, int winH);
 	bool PointOnOuterBoundaryWallMinorSide3D(float3 pos, float* mv, float* pj, int winW, int winH);
-	//void ChangeLensSize3D(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH);
+	std::vector<float3> GetCtrlPoints3DForRendering(float* mv, float* pj, int winW, int winH);
 };
 
 
@@ -350,7 +320,7 @@ public:
 	std::vector<float2> posOffsetBezierPoints;
 	std::vector<float2> negOffsetBezierPoints;
 
-	CurveLensInfo curveBLensInfo;
+	CurveLensInfo curveLensInfo;
 
 	CurveLens(int _w, float3 _c) : Lens(_c){
 

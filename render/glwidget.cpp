@@ -1,7 +1,7 @@
 #include "glwidget.h"
 #include "vector_types.h"
 #include "vector_functions.h"
-#include "helper_math.h"
+#include <helper_math.h>
 #include <iostream>
 #include <fstream>
 #include <helper_timer.h>

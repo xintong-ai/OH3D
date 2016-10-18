@@ -29,15 +29,6 @@ set( Hdrs
 
     )
 
-if(USE_NEW_LEAP)
-	find_package(Leap)
-	include_directories(${Leap_ROOT_DIR}/include)
-	set( Srcs ${Srcs} ../ParticleVis2/LeapListener.cpp)
-	set( Hdrs ${Hdrs} ../ParticleVis2/LeapInteraction.h
-	../ParticleVis2/LeapListener.h)
-endif()
-
-
 configure_file(config.txt config.txt COPYONLY)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -59,9 +50,6 @@ if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
 endif()
 
-if(USE_NEW_LEAP)
-	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
-endif()
 
 #set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 list(APPEND CUDA_NVCC_FLAGS_DEBUG -G -g)
