@@ -22,8 +22,6 @@ struct Ray
 	float3 d;    // direction
 };
 
-
-
 // texture
 
 texture<float, 3, cudaReadModeElementType>  volumeTexValueForRC;
@@ -31,12 +29,6 @@ texture<float, 3, cudaReadModeElementType>  volumeTexValueForRC;
 texture<float4, 3, cudaReadModeElementType>  volumeTexGradient;
 
 surface<void, cudaSurfaceType3D> volumeSurfaceOut;
-
-int iDivUp(int a, int b)
-{
-	return (a % b != 0) ? (a / b + 1) : (a / b);
-}
-
 
 __constant__ float4x4 c_MVMatrix;
 __constant__ float4x4 c_MVPMatrix;

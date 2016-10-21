@@ -2,9 +2,13 @@
 #define DISPLACE_H
 #include <thrust/device_vector.h>
 class Lens;
+class Particle;
+
 class ScreenLensDisplaceProcessor
 {
-	thrust::device_vector < float4 > posOrig;
+	std::shared_ptr<Particle> particle;
+
+	thrust::device_vector<float4> d_vec_posOrig;
 	thrust::device_vector<float4> d_vec_posTarget;
 	thrust::device_vector<float> d_vec_glyphSizeTarget;
 	thrust::device_vector<float> d_vec_glyphBrightTarget;
@@ -16,19 +20,22 @@ class ScreenLensDisplaceProcessor
 
 	thrust::device_vector<float> d_vec_disToAim; //used for snapping
 	std::vector<Lens*> *lenses;
+	void InitFromParticle(std::shared_ptr<Particle> inputParticle);
 
 public:
-	ScreenLensDisplaceProcessor();
+	ScreenLensDisplaceProcessor(std::vector<Lens*> *_lenses, std::shared_ptr<Particle> inputParticle)
+	{
+		lenses = _lenses;
+		InitFromParticle(inputParticle);
+	};
 	
-	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
-	void Compute(float* modelview, float* projection, int winW, int winH,
-		 float4* ret, float* glyphSizeScale = 0, float* glyphBright = 0, bool isFreezingFeature = false, int snappedGlyphId = -1, int snappedFeatureId = -1);
+	void reset();
+
+	void Compute(float* modelview, float* projection, int winW, int winH);
 
 
-	bool ProcessDeformation(float* modelview, float* projection, int winW, int winH,
-		float4* ret, float* glyphSizeScale = 0, float* glyphBright = 0, bool isFreezingFeature = false, int snappedGlyphId = -1, int snappedFeatureId = -1);
+	bool ProcessDeformation(float* modelview, float* projection, int winW, int winH);
 
-	void LoadOrig(float4* v, int num);
 	void LoadFeature(char* f, int num);
 	void setRecomputeNeeded(){ isRecomputeTargetNeeded = true; }
 

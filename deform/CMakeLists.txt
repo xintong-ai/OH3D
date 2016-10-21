@@ -22,7 +22,8 @@ include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE}
 set(SRCS 
 	ScreenLensDisplaceProcessor.cu 
 	MeshDeformProcessor.cu
-	ModelVolumeDeformer.cu
+	PhysicalVolumeDeformProcessor.cu
+	PhysicalParticleDeformProcessor.cu
 	)
 
 set(HDRS	defines.h
@@ -31,7 +32,8 @@ set(HDRS	defines.h
 			LineSplitGridMesh.h
 			MeshDeformProcessor.h
 			TransformFunc.h
-			ModelVolumeDeformer.h)
+			PhysicalVolumeDeformProcessor.h
+			PhysicalParticleDeformProcessor.h)
 
 cuda_add_library(deform STATIC ${HDRS} ${SRCS})
 

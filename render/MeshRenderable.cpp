@@ -1,4 +1,4 @@
-#include "ModelGridRenderable.h"
+#include "MeshRenderable.h"
 #include "MeshDeformProcessor.h"
 #include <vector_types.h>
 #include <vector_functions.h>
@@ -15,19 +15,19 @@
 
 
 
-ModelGridRenderable::ModelGridRenderable(MeshDeformProcessor* _modelGrid)//ModelGridRenderable(float dmin[3], float dmax[3], int nPart)
+MeshRenderable::MeshRenderable(MeshDeformProcessor* _modelGrid)//MeshRenderable(float dmin[3], float dmax[3], int nPart)
 {
-	modelGrid = _modelGrid;
+	meshDeformer = _modelGrid;
 	visible = false;
 }
 
 
 
-void ModelGridRenderable::init()
+void MeshRenderable::init()
 {
 }
 
-void ModelGridRenderable::draw(float modelview[16], float projection[16])
+void MeshRenderable::draw(float modelview[16], float projection[16])
 {
 
 	qgl->glUseProgram(0);
@@ -51,23 +51,23 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	glLoadIdentity();
 	glLoadMatrixf(projection);
 
-	if (modelGrid->gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID){
-		int3 nStep = modelGrid->GetNumSteps();
+	if (meshDeformer->gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID){
+		int3 nStep = meshDeformer->GetNumSteps();
 		int cutY = nStep.y / 2;
 
-		float* lx = modelGrid->GetX();
-		unsigned int* l = modelGrid->GetL();
-		float* e = modelGrid->GetE();
+		float* lx = meshDeformer->GetX();
+		unsigned int* l = meshDeformer->GetL();
+		float* e = meshDeformer->GetE();
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		glLineWidth(2);
 		glBegin(GL_LINES);
 
-		float minElas = modelGrid->minElas;
-		float maxElas = modelGrid->maxElasEstimate;
+		float minElas = meshDeformer->minElas;
+		float maxElas = meshDeformer->maxElasEstimate;
 
-		for (int i = 0; i < modelGrid->GetLNumber(); i++){
+		for (int i = 0; i < meshDeformer->GetLNumber(); i++){
 
 			//float cc = (e[i / 6] - minElas) / (maxElas - minElas);
 			//glColor4f(cc, 1.0f-cc, 0, 0.5);
@@ -112,16 +112,16 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 		}
 		glEnd();
 	}
-	else if (modelGrid->gridType == GRID_TYPE::UNIFORM_GRID){
-		float* lx = modelGrid->GetX();
-		unsigned int* l = modelGrid->GetL();
-		float* e = modelGrid->GetE();
+	else if (meshDeformer->gridType == GRID_TYPE::UNIFORM_GRID){
+		float* lx = meshDeformer->GetX();
+		unsigned int* l = meshDeformer->GetL();
+		float* e = meshDeformer->GetE();
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glLineWidth(4);
 
 		glBegin(GL_LINES);
-		for (int i = 0; i < modelGrid->GetLNumber(); i++){
+		for (int i = 0; i < meshDeformer->GetLNumber(); i++){
 			//float cc = e[i / 6] / 10000;
 			//glColor4f(cc, 1.0f - cc, 0, 0.5);
 			glColor4f(0.02f, 0.8f, 0.0f, 0.5f);
@@ -138,7 +138,7 @@ void ModelGridRenderable::draw(float modelview[16], float projection[16])
 	glPopMatrix();
 }
 
-void ModelGridRenderable::mouseRelease(int x, int y, int modifier)
+void MeshRenderable::mouseRelease(int x, int y, int modifier)
 {
-	//modelGrid->setReinitiationNeed();
+	//meshDeformer->setReinitiationNeed();
 }

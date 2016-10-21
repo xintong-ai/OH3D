@@ -19,15 +19,11 @@ class QTimer;
 class LensRenderable;
 class DataMgr;
 class GLMatrixManager;
-class ModelGridRenderable;
+class MeshRenderable;
 class MeshDeformProcessor;
 class Volume;
-class ModelVolumeDeformer;
+class PhysicalVolumeDeformProcessor;
 class VolumeRenderableCUDA;
-
-
-
-
 
 
 #ifdef USE_OSVR
@@ -59,13 +55,13 @@ private:
 	
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
-	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
+	std::shared_ptr<MeshRenderable> meshRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveLensBtn;
-	std::shared_ptr<MeshDeformProcessor> modelGrid;
+	std::shared_ptr<MeshDeformProcessor> meshDeformer;
 	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
+	std::shared_ptr<PhysicalVolumeDeformProcessor> modelVolumeDeformer;
 
 	QLabel *laLabel, *ldLabel, *lsLabel;
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;

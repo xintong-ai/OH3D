@@ -81,10 +81,6 @@ public:
 
 	virtual bool MouseWheel(int x, int y, int modifier, int delta){ return false; };// {cameraChanged = true; }
 
-	void SetAllRenderable(std::map<std::string, Renderable*>* _allrenderer) {
-		allrenderer = _allrenderer;
-	}
-
 	void SetActor(GLWidget* _actor) {
 		actor = _actor;
 	}
@@ -111,8 +107,6 @@ protected:
 	matrix4x4 matrix_pj;
 
     bool cameraChanged = false;
-
-	std::map<std::string, Renderable*>* allrenderer;
 
 	GLWidget* actor;
 

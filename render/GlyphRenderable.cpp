@@ -8,6 +8,7 @@
 #include "Particle.h""
 #include "MeshDeformProcessor.h"
 #include "screenLensDisplaceProcessor.h"
+#include "PhysicalParticleDeformProcessor.h"
 
 #ifdef WIN32
 #include <windows.h>
@@ -21,9 +22,7 @@
 GlyphRenderable::GlyphRenderable(std::shared_ptr<Particle> _particle)
 {
 	particle = _particle;
-
-	glyphSizeScale.assign(particle->numParticles, 1.0f);
-	glyphBright.assign(particle->numParticles, 1.0f);
+	particle->initForRendering();
 }
 
 GlyphRenderable::~GlyphRenderable()
@@ -43,23 +42,20 @@ void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
 	case DEFORM_MODEL::SCREEN_SPACE:
 	{
 		if (screenLensDisplaceProcessor != 0){
-			screenLensDisplaceProcessor->ProcessDeformation(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight, &(particle->pos[0]), &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
+			screenLensDisplaceProcessor->ProcessDeformation(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight);
 		}
 		break;
 	}
 	case DEFORM_MODEL::OBJECT_SPACE:
 	{
-		if (modelGrid != 0){
-			modelGrid->ProcessParticleDeformation(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight, particle, &glyphSizeScale[0], &glyphBright[0], isFreezingFeature, snappedGlyphId, snappedFeatureId);
+		if (meshDeformer != 0){
+			if(meshDeformer->ProcessParticleDeformation(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight, particle))
+				physicalParticleDeformProcessor->UpdatePointCoordsAndBright(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight);
 		}
 		break;
 	}
 	}
 }
-
-void GlyphRenderable::resetBrightness(){
-	glyphBright.assign(particle->numParticles, 1.0);
-};
 
 void GlyphRenderable::mouseMove(int x, int y, int modifier)
 {
@@ -91,41 +87,12 @@ void GlyphRenderable::resize(int width, int height)
 		if (screenLensDisplaceProcessor != 0){
 			screenLensDisplaceProcessor->setRecomputeNeeded();
 		}
-		if (modelGrid != 0){
-			modelGrid->setReinitiationNeed();
+		if (meshDeformer != 0){
+			meshDeformer->setReinitiationNeed();
 		}
 	}
 }
 
-
-// !!! NOTE: result is not meaningful when no feature is loaded. Need to deal with this situation when calling this function. when no feature is loaded, return false 
-bool GlyphRenderable::findClosetFeature(float3 aim, float3 & result, int & resid)
-{
-	/*
-	///DO NOT DELETE!! WILL PROCESS LATER
-	int n = featureCenter.size();
-	if (n < 1){
-		return false;
-	}
-
-	resid = -1;
-	float resDistance = 9999999999;
-	result = make_float3(0, 0, 0);
-	for (int i=0; i < n; i++){
-		float curRes = length(aim - featureCenter[i]);
-		if (curRes < resDistance){
-			resid = i;
-			resDistance = curRes;
-			result = featureCenter[i];
-		}
-	}
-
-	snappedFeatureId = resid + 1;
-	resid = snappedFeatureId;
-	return true;
-	*/
-	return false;
-}
 
 
 

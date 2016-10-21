@@ -184,6 +184,13 @@ void CosmoRenderable::GenVertexBuffer(int nv, float* vertex)
 void CosmoRenderable::DrawWithoutProgramold(float modelview[16], float projection[16], ShaderProgram* sp)
 {
 	m_vao->bind();
+
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
 	for (int i = 0; i < particle->numParticles; i++) {
 		glPushMatrix();
 
@@ -195,11 +202,11 @@ void CosmoRenderable::DrawWithoutProgramold(float modelview[16], float projectio
 
 		if (snappedGlyphId != i){
 			qgl->glUniform3fv(glProg->uniform("Ka"), 1, &sphereColor[i].x);
-			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i]);
 		}
 		else{
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.95f, 0.95f, 0.95f);
-			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust * 2);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * 2);
 		}
 
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
@@ -242,6 +249,13 @@ void CosmoRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 	glDisable(GL_BLEND);
 	const int numDotLayers = 3; //should be larger than 1, or the variable curColor needs redefine
 	const float baseDotSize = 1.0;
+
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
 	for (int i = 0; i < particle->numParticles; i++) {
 	//	for (int i = 0; i < 10; i++) {
 
@@ -303,7 +317,7 @@ void CosmoRenderable::draw(float modelview[16], float projection[16])
 
 	RecordMatrix(modelview, projection);
 
-	if (modelGrid != 0 || screenLensDisplaceProcessor != 0){
+	if (meshDeformer != 0 || screenLensDisplaceProcessor != 0){
 		ComputeDisplace(modelview, projection);
 	}
 
@@ -384,6 +398,12 @@ void CosmoRenderable::drawPicking(float modelview[16], float projection[16], boo
 	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
 	for (int i = 0; i < particle->numParticles; i++) {
 		//glPushMatrix();
 
@@ -408,7 +428,7 @@ void CosmoRenderable::drawPicking(float modelview[16], float projection[16], boo
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 
-		qgl->glUniform1f(glPickingProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);
+		qgl->glUniform1f(glPickingProg->uniform("Scale"), glyphSizeScale[i]);
 		qgl->glUniform3fv(glPickingProg->uniform("Transform"), 1, &shift.x);
 		qgl->glUniformMatrix4fv(glPickingProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(glPickingProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);

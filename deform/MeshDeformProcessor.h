@@ -12,6 +12,11 @@ enum GRID_TYPE{
 	LINESPLIT_UNIFORM_GRID
 };
 
+enum DATA_TYPE{
+	USE_VOLUME,
+	USE_PARTICLE
+};
+
 template <class TYPE>
 class GridMesh;
 template <class TYPE>
@@ -30,8 +35,7 @@ class MeshDeformProcessor
 	bool bMeshNeedReinitiation = false;
 	glm::mat4 meshTransMat;
 
-	std::vector<float4> vBaryCoord;
-	std::vector<int> vIdx;
+
 	
 	const float	time_step = 1 / 30.0;
 	float deformForce = 30;// 30;
@@ -56,6 +60,11 @@ class MeshDeformProcessor
 	void InitPointTetId_UniformMesh(float4* v, int n);
 
 
+
+
+
+public:
+
 	//only needed for particle
 	thrust::device_vector<float4> d_vec_vOri;
 	thrust::device_vector<int> d_vec_vIdx;
@@ -65,7 +74,9 @@ class MeshDeformProcessor
 	thrust::device_vector<char> d_vec_feature;
 
 
-public:
+	std::vector<float4> vBaryCoord;
+	std::vector<int> vIdx;
+
 	GRID_TYPE gridType = LINESPLIT_UNIFORM_GRID;
 	
 	int meshResolution;
@@ -82,7 +93,7 @@ public:
 
 	//for both mesh
 	MeshDeformProcessor(float dmin[3], float dmax[3], int n);
-	bool ProcessParticleDeformation(float* modelview, float* projection, int winWidth, int winHeight, std::shared_ptr<Particle> particle, float* glyphSizeScale, float* glyphBright = 0, bool isFreezingFeature = false, int snappedGlyphId = -1, int snappedFeatureId = -1);
+	bool ProcessParticleDeformation(float* modelview, float* projection, int winWidth, int winHeight, std::shared_ptr<Particle> particle);
 
 
 	void initThrustVectors(std::shared_ptr<Particle>); //only needed for particle
@@ -91,14 +102,13 @@ public:
 	void InitializeUniformGrid(std::shared_ptr<Particle> p); //the info of gridMesh only need to be initialized once, so use a different initail stretagy with lsgridMesh
 
 	void UpdateUniformMesh(float* _mv);
-	void UpdatePointCoordsAndBright_UniformMesh(std::shared_ptr<Particle> p, float* brightness,  float* _mv);
 
 	//for line mesh only
 	void setReinitiationNeed(){ bMeshNeedReinitiation = true; }
 	void ReinitiateMeshForParticle(LineLens3D* l, std::shared_ptr<Particle> p);
 	void ReinitiateMeshForVolume(LineLens3D * l, std::shared_ptr<Volume> v);	
 	void UpdateMesh(float3 lensCenter, float3 lensDir, float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal);
-	void UpdatePointCoordsAndBright_LineMeshLens_Thrust(std::shared_ptr<Particle> p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId);
+	
 	void MoveMesh(float3 moveDir);
 	bool ProcessVolumeDeformation(float* modelview, float* projection, int winWidth, int winHeight, std::shared_ptr<Volume> volume);
 

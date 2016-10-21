@@ -36,12 +36,31 @@ public:
 	~Particle()
 	{
 	};
-
-	void clear(){
-		;
-	}
-
+	
+	void clear(){};
+	
 	void featureReshuffle();
+	void reset();
+
+	//variables for rendering. are not needed if not used for a glyphRenderable
+	//generally rendering
+	bool hasInitedForRendering = false;
+	void initForRendering();
+	std::vector<float> glyphBright;
+	std::vector<float> glyphSizeScale;
+	//used for feature freezing / snapping
+	bool isFreezingFeature = false;
+	bool isPickingFeature = false;
+	int snappedGlyphId = -1;
+	int snappedFeatureId = -1;
+	int GetSnappedFeatureId(){ return snappedFeatureId; }
+	void SetSnappedFeatureId(int s){ snappedFeatureId = s; }
+	bool findClosetFeature(float3 aim, float3 & result, int & resid);
+	//used for picking and snapping
+	bool isPickingGlyph = false;
+	int GetSnappedGlyphId(){ return snappedGlyphId; }
+	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
+
 private:
 
 };

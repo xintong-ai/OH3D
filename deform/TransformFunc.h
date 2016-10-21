@@ -13,6 +13,10 @@
 //}
 #include <defines.h>
 
+inline int iDivUp(int a, int b)
+{
+	return (a % b != 0) ? (a / b + 1) : (a / b);
+}
 
 template <typename T>
 __device__ __host__

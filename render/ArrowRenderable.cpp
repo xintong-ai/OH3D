@@ -225,6 +225,13 @@ void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 	qgl->glEnableVertexAttribArray(sp->attribute("VertexColor"));
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
+
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
 	for (int i = 0; i < particle->numParticles; i++) {
 
 		float4 shift = particle->pos[i];
@@ -274,7 +281,7 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 
 	RecordMatrix(modelview, projection);
 	
-	if (modelGrid != 0 || screenLensDisplaceProcessor != 0){
+	if (meshDeformer != 0 || screenLensDisplaceProcessor != 0){
 		ComputeDisplace(modelview, projection);
 	}
 

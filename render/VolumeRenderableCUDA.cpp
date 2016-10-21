@@ -19,7 +19,7 @@
 #include <cuda_gl_interop.h>
 
 #include "VolumeRenderableCUDAKernel.h"
-#include "modelVolumeDeformer.h"
+#include "PhysicalVolumeDeformProcessor.h"
 #include "TransformFunc.h"
 
 
@@ -82,7 +82,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
 
-	if (modelGrid != 0 && modelVolumeDeformer != 0){
+	if (meshDeformer != 0 && modelVolumeDeformer != 0){
 		ComputeDisplace(modelview, projection, winWidth, winHeight);
 		VolumeRender_computeGradient(&(modelVolumeDeformer->volumeCUDADeformed), &volumeCUDAGradient);
 		VolumeRender_setGradient(&volumeCUDAGradient);
@@ -147,9 +147,9 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16], int winWidth, int winHeight)
 {
 	if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
-		if (modelGrid->ProcessVolumeDeformation(_mv, _pj, winWidth, winHeight, volume))
+		if (meshDeformer->ProcessVolumeDeformation(_mv, _pj, winWidth, winHeight, volume))
 		{
-			modelVolumeDeformer->deformByModelGrid();
+			modelVolumeDeformer->deformByMesh();
 		}
 	}
 }

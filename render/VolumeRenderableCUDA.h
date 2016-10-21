@@ -11,7 +11,7 @@
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class Fiber;
-class ModelVolumeDeformer;
+class PhysicalVolumeDeformProcessor;
 class Lens;
 class MeshDeformProcessor;
 
@@ -31,8 +31,8 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 	Q_OBJECT
 	
 	//interfaces for deformation computing and deformed data
-	std::shared_ptr<MeshDeformProcessor> modelGrid = 0;
-	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer = 0;
+	std::shared_ptr<MeshDeformProcessor> meshDeformer = 0;
+	std::shared_ptr<PhysicalVolumeDeformProcessor> modelVolumeDeformer = 0;
 
 	//default volume to render when not using deformation
 	//when using deformation, a deformed volume is computed in modelVolumeDeformer, and will be rendered here
@@ -44,8 +44,8 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 
 public:
 
-	void SetModelGrid(std::shared_ptr<MeshDeformProcessor> _modelGrid){ modelGrid = _modelGrid; }
-	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
+	void SetModelGrid(std::shared_ptr<MeshDeformProcessor> _modelGrid){ meshDeformer = _modelGrid; }
+	void SetModelVolumeDeformer(std::shared_ptr<PhysicalVolumeDeformProcessor> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
 
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
 	~VolumeRenderableCUDA();

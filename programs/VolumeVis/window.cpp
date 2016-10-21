@@ -7,12 +7,12 @@
 #include "Volume.h"
 
 #include "DataMgr.h"
-#include "ModelGridRenderable.h"
+#include "MeshRenderable.h"
 #include "MeshDeformProcessor.h"
 #include "GLMatrixManager.h"
 #include "VecReader.h"
 #include "VolumeRenderableCUDA.h"
-#include "ModelVolumeDeformer.h"
+#include "PhysicalVolumeDeformProcessor.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -112,21 +112,19 @@ Window::Window()
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
-	modelGrid->SetLenses(lensRenderable->GetLensesAddr());
-	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
-	modelGridRenderable->SetLenses(lensRenderable->GetLensesAddr());
+	meshDeformer = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
+	meshDeformer->SetLenses(lensRenderable->GetLensesAddr());
+	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
+	meshRenderable->SetLenses(lensRenderable->GetLensesAddr());
 
-	modelVolumeDeformer = std::make_shared<ModelVolumeDeformer>();
-	modelVolumeDeformer->SetModelGrid(modelGrid);
-	modelVolumeDeformer->Init(inputVolume.get());
+	modelVolumeDeformer = std::make_shared<PhysicalVolumeDeformProcessor>(meshDeformer, inputVolume);
 	volumeRenderable->SetModelVolumeDeformer(modelVolumeDeformer);
-	volumeRenderable->SetModelGrid(modelGrid);
+	volumeRenderable->SetModelGrid(meshDeformer);
 
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 
-	openGL->AddRenderable("model", modelGridRenderable.get());
+	openGL->AddRenderable("model", meshRenderable.get());
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
@@ -144,14 +142,14 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
 	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
 
-	modelGrid->setDeformForce(2000);
+	meshDeformer->setDeformForce(2000);
 	QLabel *deformForceLabelLit = new QLabel("Deform Force:");
 	//controlLayout->addWidget(deformForceLabelLit);
 	QSlider *deformForceSlider = new QSlider(Qt::Horizontal);
 	deformForceSlider->setRange(0, 50);
-	deformForceSlider->setValue(modelGrid->getDeformForce() / deformForceConstant);
+	deformForceSlider->setValue(meshDeformer->getDeformForce() / deformForceConstant);
 	connect(deformForceSlider, SIGNAL(valueChanged(int)), this, SLOT(deformForceSliderValueChanged(int)));
-	deformForceLabel = new QLabel(QString::number(modelGrid->getDeformForce()));
+	deformForceLabel = new QLabel(QString::number(meshDeformer->getDeformForce()));
 	QHBoxLayout *deformForceLayout = new QHBoxLayout;
 	deformForceLayout->addWidget(deformForceSlider);
 	deformForceLayout->addWidget(deformForceLabel);
@@ -163,16 +161,16 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QRadioButton* rbDensity = new QRadioButton(tr("&Density Based Stiffness"));
 	QRadioButton* rbTransfer = new QRadioButton(tr("&Transfer Density Based Stiffness"));
 	QRadioButton* rbGradient = new QRadioButton(tr("&Gradient Based Stiffness"));
-	if (modelGrid->elasticityMode == 0){
+	if (meshDeformer->elasticityMode == 0){
 		rbUniform->setChecked(true);
 	}
-	else if (modelGrid->elasticityMode == 1){
+	else if (meshDeformer->elasticityMode == 1){
 		rbDensity->setChecked(true);
 	}
-	else if (modelGrid->elasticityMode == 2){
+	else if (meshDeformer->elasticityMode == 2){
 		rbTransfer->setChecked(true);
 	}
-	else if (modelGrid->elasticityMode == 3){
+	else if (meshDeformer->elasticityMode == 3){
 		rbGradient->setChecked(true);
 	}
 
@@ -188,7 +186,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	addMeshResPushButton->setFixedSize(24, 24);
 	QPushButton* minusMeshResPushButton = new QPushButton(tr("&-"));
 	minusMeshResPushButton->setFixedSize(24, 24);
-	meshResLabel = new QLabel(QString::number(modelGrid->meshResolution));
+	meshResLabel = new QLabel(QString::number(meshDeformer->meshResolution));
 	meshResLayout->addWidget(meshResLitLabel);
 	meshResLayout->addWidget(minusMeshResPushButton);
 	meshResLayout->addWidget(addMeshResPushButton);
@@ -382,7 +380,7 @@ void Window::AddCurveLens()
 
 void Window::SlotToggleGrid(bool b)
 {
-	modelGridRenderable->SetVisibility(b);
+	meshRenderable->SetVisibility(b);
 }
 
 void Window::SlotToggleBackFace(bool b)
@@ -408,7 +406,7 @@ void Window::SlotSaveState()
 	std::ofstream myfile;
 	myfile.open("system.state");
 
-	myfile << modelGrid->getDeformForce() << std::endl;
+	myfile << meshDeformer->getDeformForce() << std::endl;
 	myfile << meshResolution << std::endl;
 	myfile.close();
 
@@ -428,8 +426,8 @@ void Window::SlotLoadState()
 
 		deformForceSliderValueChanged(f / deformForceConstant);
 		meshResolution = res;
-		modelGrid->meshResolution = meshResolution;
-		modelGrid->setReinitiationNeed();
+		meshDeformer->meshResolution = meshResolution;
+		meshDeformer->setReinitiationNeed();
 		meshResLabel->setText(QString::number(meshResolution));
 	}
 }
@@ -448,7 +446,7 @@ void Window::deformForceSliderValueChanged(int v)
 {
 	float newForce = deformForceConstant*v;
 	deformForceLabel->setText(QString::number(newForce));
-	modelGrid->setDeformForce(newForce);
+	meshDeformer->setDeformForce(newForce);
 }
 
 
@@ -495,29 +493,29 @@ void Window::lsSliderValueChanged(int v)
 void Window::SlotRbUniformChanged(bool b)
 {
 	if (b){
-		modelGrid->elasticityMode = 0;
-		modelGrid->setReinitiationNeed();
+		meshDeformer->elasticityMode = 0;
+		meshDeformer->setReinitiationNeed();
 	}
 }
 void Window::SlotRbDensityChanged(bool b)
 {
 	if (b){
-		modelGrid->elasticityMode = 1;
-		modelGrid->setReinitiationNeed();
+		meshDeformer->elasticityMode = 1;
+		meshDeformer->setReinitiationNeed();
 	}
 }
 void Window::SlotRbTransferChanged(bool b)
 {
 	if (b){
-		modelGrid->elasticityMode = 2;
-		modelGrid->setReinitiationNeed();
+		meshDeformer->elasticityMode = 2;
+		meshDeformer->setReinitiationNeed();
 	}
 }
 void Window::SlotRbGradientChanged(bool b)
 {
 	if (b){
-		modelGrid->elasticityMode = 3;
-		modelGrid->setReinitiationNeed();
+		meshDeformer->elasticityMode = 3;
+		meshDeformer->setReinitiationNeed();
 	}
 }
 
@@ -529,15 +527,15 @@ void Window::SlotDelLens()
 void Window::SlotAddMeshRes()
 {
 	meshResolution++;
-	modelGrid->meshResolution = meshResolution;
-	modelGrid->setReinitiationNeed();
+	meshDeformer->meshResolution = meshResolution;
+	meshDeformer->setReinitiationNeed();
 	meshResLabel->setText(QString::number(meshResolution));
 }
 void Window::SlotMinusMeshRes()
 {
 	meshResolution--;
-	modelGrid->meshResolution = meshResolution;
-	modelGrid->setReinitiationNeed();
+	meshDeformer->meshResolution = meshResolution;
+	meshDeformer->setReinitiationNeed();
 	meshResLabel->setText(QString::number(meshResolution));
 }
 

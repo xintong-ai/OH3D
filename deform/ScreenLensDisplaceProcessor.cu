@@ -6,7 +6,7 @@
 #include <math_constants.h>
 #include <thrust/extrema.h>
 #include <thrust/sequence.h>
-
+#include "Particle.h"
 
 //when using thrust::device_vector instead of thrust::device_vector,
 //the performance does not reduce much.
@@ -431,14 +431,13 @@ struct functor_Unproject
 		inv_mv(_inv_mv), inv_pj(_inv_pj), w(_w), h(_h){}
 };
 
-ScreenLensDisplaceProcessor::ScreenLensDisplaceProcessor()
-{
-}
 
-void ScreenLensDisplaceProcessor::LoadOrig(float4* v, int num)
+void ScreenLensDisplaceProcessor::InitFromParticle(std::shared_ptr<Particle> inputParticle)
 {
-	posOrig.assign(v, v + num);// , posOrig.begin());
-	d_vec_posTarget.assign(num, make_float4(0, 0, 0, 1));
+	particle = inputParticle; 
+	int num = particle->numParticles;
+	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + num);
+	d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + num);
 	d_vec_glyphSizeTarget.assign(num, 1);
 	d_vec_glyphBrightTarget.assign(num, 1.0f);
 	d_vec_disToAim.assign(num, 0);
@@ -446,7 +445,18 @@ void ScreenLensDisplaceProcessor::LoadOrig(float4* v, int num)
 	feature.assign(num, 0);
 
 	d_vec_id.resize(num);
-	thrust::sequence(d_vec_id.begin(), d_vec_id.end());	
+	thrust::sequence(d_vec_id.begin(), d_vec_id.end());
+}
+
+void ScreenLensDisplaceProcessor::reset()
+{
+	int num = particle->numParticles;
+
+	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + num);
+	d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + num);
+	d_vec_glyphSizeTarget.assign(num, 1);
+	d_vec_glyphBrightTarget.assign(num, 1.0f);
+	d_vec_disToAim.assign(num, 0);
 }
 
 void ScreenLensDisplaceProcessor::LoadFeature(char* f, int num)
@@ -475,7 +485,7 @@ void ScreenLensDisplaceProcessor::DisplacePoints(std::vector<float2>& pts, std::
 	}
 }
 
-bool ScreenLensDisplaceProcessor::ProcessDeformation(float* modelview, float* projection, int winW, int winH, float4* ret, float* glyphSizeScale, float* glyphBright , bool isFreezingFeature , int snappedGlyphId, int snappedFeatureId)
+bool ScreenLensDisplaceProcessor::ProcessDeformation(float* modelview, float* projection, int winW, int winH)
 {
 	if (lenses == 0 || lenses->size() < 1)
 		return false;
@@ -486,14 +496,20 @@ bool ScreenLensDisplaceProcessor::ProcessDeformation(float* modelview, float* pr
 		setRecomputeNeeded();
 	}
 
-	Compute(modelview, projection, winW, winH, ret, glyphSizeScale, glyphBright, isFreezingFeature, snappedGlyphId, snappedFeatureId);
+	Compute(modelview, projection, winW, winH);
 
 	return true;
 }
 
-void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, int winW, int winH, float4* ret, float* glyphSizeScale, float* glyphBright, bool isFreezingFeature, int snappedGlyphId, int snappedFeatureId)
+void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, int winW, int winH)
 {
-	int size = posOrig.size();
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
+	int size = d_vec_posOrig.size();
 	matrix4x4 mv(modelview);
 	matrix4x4 pj(projection);
 
@@ -501,7 +517,7 @@ void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, i
 		thrust::device_vector<float4> d_vec_posClip(size);
 		thrust::device_vector<float2> d_vec_posScreen(size);
 
-		thrust::transform(posOrig.begin(), posOrig.end(), d_vec_posClip.begin(), functor_Object2Clip(mv, pj));
+		thrust::transform(d_vec_posOrig.begin(), d_vec_posOrig.end(), d_vec_posClip.begin(), functor_Object2Clip(mv, pj));
 		thrust::transform(d_vec_posClip.begin(), d_vec_posClip.end(),
 			d_vec_posScreen.begin(), functor_Clip2Screen(winW, winH));
 		//reset to 1
@@ -510,7 +526,7 @@ void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, i
 		//use this for the case that there is no lens, 
 		//and the glyphs go back to the original positions
 		if (lenses->size() < 1){
-			d_vec_posTarget = posOrig;
+			d_vec_posTarget = d_vec_posOrig;
 			thrust::fill(d_vec_glyphBrightTarget.begin(), d_vec_glyphBrightTarget.end(), 1.0f);
 		}
 		else {
@@ -624,7 +640,7 @@ void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, i
 	}
 
 	thrust::device_vector<float4> d_vec_posCur(size);
-	thrust::copy(ret, ret + size, d_vec_posCur.begin());
+	thrust::copy(&(particle->pos[0]), &(particle->pos[0]) + size, d_vec_posCur.begin());
 	thrust::device_vector<float> d_vec_glyphSizeScale(size);
 	thrust::copy(glyphSizeScale, glyphSizeScale + size, d_vec_glyphSizeScale.begin());
 	thrust::device_vector<float> d_vec_glyphBright(size);
@@ -650,7 +666,7 @@ void ScreenLensDisplaceProcessor::Compute(float* modelview, float* projection, i
 		d_vec_glyphBrightTarget.end()
 		)),
 		functor_ApproachTarget());
-	thrust::copy(d_vec_posCur.begin(), d_vec_posCur.end(), ret);
+	thrust::copy(d_vec_posCur.begin(), d_vec_posCur.end(), &(particle->pos[0]));
 	thrust::copy(d_vec_glyphSizeScale.begin(), d_vec_glyphSizeScale.end(), glyphSizeScale);
 	thrust::copy(d_vec_glyphBright.begin(), d_vec_glyphBright.end(), glyphBright);
 }
@@ -671,7 +687,7 @@ struct disToAim_functor
 
 float3 ScreenLensDisplaceProcessor::findClosetGlyph(float3 aim, int & snappedGlyphId)
 {
-	thrust::transform(posOrig.begin(), posOrig.end(), d_vec_disToAim.begin(), d_vec_disToAim.begin(), disToAim_functor(aim));
+	thrust::transform(d_vec_posOrig.begin(), d_vec_posOrig.end(), d_vec_disToAim.begin(), d_vec_disToAim.begin(), disToAim_functor(aim));
 	snappedGlyphId = thrust::min_element(d_vec_disToAim.begin(), d_vec_disToAim.end()) - d_vec_disToAim.begin();
-	return make_float3(posOrig[snappedGlyphId]);
+	return make_float3(d_vec_posOrig[snappedGlyphId]);
 }

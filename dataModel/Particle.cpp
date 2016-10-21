@@ -65,6 +65,13 @@ void Particle::setFeature(std::vector<char> _f)
 	}
 }
 
+void Particle::initForRendering()
+{
+	hasInitedForRendering = true;
+	glyphSizeScale.assign(numParticles, 1.0f);
+	glyphBright.assign(numParticles, 1.0f);
+}
+
 
 void Particle::featureReshuffle()
 {
@@ -118,3 +125,42 @@ void Particle::featureReshuffle()
 	//	}
 	//}
 }
+
+
+void Particle::reset()
+{
+	pos = posOrig;
+	if (hasInitedForRendering){
+		glyphSizeScale.assign(numParticles, 1.0f);
+		glyphBright.assign(numParticles, 1.0f);
+	}
+}
+// !!! NOTE: result is not meaningful when no feature is loaded. Need to deal with this situation when calling this function. when no feature is loaded, return false 
+bool Particle::findClosetFeature(float3 aim, float3 & result, int & resid)
+{
+	/*
+	///DO NOT DELETE!! WILL PROCESS LATER
+	int n = featureCenter.size();
+	if (n < 1){
+	return false;
+	}
+
+	resid = -1;
+	float resDistance = 9999999999;
+	result = make_float3(0, 0, 0);
+	for (int i=0; i < n; i++){
+	float curRes = length(aim - featureCenter[i]);
+	if (curRes < resDistance){
+	resid = i;
+	resDistance = curRes;
+	result = featureCenter[i];
+	}
+	}
+
+	snappedFeatureId = resid + 1;
+	resid = snappedFeatureId;
+	return true;
+	*/
+	return false;
+}
+
