@@ -51,8 +51,11 @@ public:
 	float3 dataOrigin = make_float3(0, 0, 0);
 	void GetPosRange(float3& posMin, float3& posMax);
 
-	VolumeCUDA volumeCuda;
+	VolumeCUDA volumeCudaOri;
+	VolumeCUDA volumeCuda; //using two copies, since the volumeCuda might be deformed
 
-	void initVolumeCuda(int allowStore);
+	void initVolumeCuda();
+	void reset();
+
 };
 #endif

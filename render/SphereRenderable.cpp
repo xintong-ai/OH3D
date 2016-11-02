@@ -237,10 +237,6 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 	RecordMatrix(modelview, projection);
 
-	if (meshDeformer != 0 || screenLensDisplaceProcessor != 0){
-		ComputeDisplace(modelview, projection);
-	}
-
 	if (!visible)
 		return;
 

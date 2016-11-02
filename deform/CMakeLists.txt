@@ -19,14 +19,15 @@ include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE}
 	${CUDA_SDK_ROOT_DIR}/common/inc)
 
 
-set(SRCS 
+set(SRCS Lens.cpp
 	ScreenLensDisplaceProcessor.cu 
 	MeshDeformProcessor.cu
 	PhysicalVolumeDeformProcessor.cu
 	PhysicalParticleDeformProcessor.cu
 	)
 
-set(HDRS	defines.h
+set(HDRS	Lens.h
+			defines.h
 			ScreenLensDisplaceProcessor.h
 			GridMesh.h
 			LineSplitGridMesh.h

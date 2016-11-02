@@ -1,11 +1,14 @@
 #ifndef	PHYSICAL_PARTICLE_DEFORM_PROCESSOR_H
 #define PHYSICAL_PARTICLE_DEFORM_PROCESSOR_H
+#include <memory>
+#include <vector>
+#include "Processor.h"
 
-#include <MeshDeformProcessor.h>
 class Lens;
 class LineLens3D;
-
-class PhysicalParticleDeformProcessor
+class MeshDeformProcessor;
+class Particle;
+class PhysicalParticleDeformProcessor :public Processor
 {
 public:
 	std::vector<Lens*> *lenses = 0;
@@ -23,7 +26,7 @@ public:
 
 	void UpdatePointCoordsAndBright_LineMeshLens_Thrust(std::shared_ptr<Particle> p, float* brightness, LineLens3D * l, bool isFreezingFeature, int snappedFeatureId);
 	void UpdatePointCoordsAndBright_UniformMesh(std::shared_ptr<Particle> p, float* brightness, float* _mv);
-	void UpdatePointCoordsAndBright(float* modelview, float* projection, int winWidth, int winHeight);
+	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
 private:
 

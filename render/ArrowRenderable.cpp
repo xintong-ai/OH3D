@@ -281,10 +281,6 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 
 	RecordMatrix(modelview, projection);
 	
-	if (meshDeformer != 0 || screenLensDisplaceProcessor != 0){
-		ComputeDisplace(modelview, projection);
-	}
-
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();

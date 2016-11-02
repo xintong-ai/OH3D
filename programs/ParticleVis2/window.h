@@ -26,6 +26,7 @@ class MeshDeformProcessor;
 class Particle;
 class ScreenLensDisplaceProcessor;
 class PhysicalParticleDeformProcessor;
+class Lens;
 
 //#define USE_NEW_LEAP
 
@@ -89,6 +90,7 @@ private:
 	std::shared_ptr<ScreenLensDisplaceProcessor> screenLensDisplaceProcessor;
 	std::shared_ptr<PhysicalParticleDeformProcessor> physicalParticleDeformer;
 	std::shared_ptr<Particle> inputParticle;
+	std::vector<Lens*> lenses; //can change Lens* to shared pointer, to avoid manually deleting
 
 	QLabel *deformForceLabel;
 	QLabel *meshResLabel;

@@ -38,8 +38,8 @@ void MeshRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 	
-	if ((*lenses).size() < 1)
-		return;
+	//if ((*lenses).size() < 1)
+	//	return;
 	
 	
 	glMatrixMode(GL_MODELVIEW);

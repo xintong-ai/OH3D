@@ -6,9 +6,7 @@
 #include "glwidget.h"
 #include "DeformGLWidget.h"
 #include "Particle.h""
-#include "MeshDeformProcessor.h"
-#include "screenLensDisplaceProcessor.h"
-#include "PhysicalParticleDeformProcessor.h"
+
 
 #ifdef WIN32
 #include <windows.h>
@@ -30,30 +28,6 @@ GlyphRenderable::~GlyphRenderable()
 	if (nullptr != glProg){
 		delete glProg;
 		glProg = nullptr;
-	}
-}
-
-void GlyphRenderable::ComputeDisplace(float _mv[16], float _pj[16])
-{
-	int winWidth, winHeight;
-	actor->GetWindowSize(winWidth, winHeight);
-	switch (((DeformGLWidget*)actor)->GetDeformModel())
-	{
-	case DEFORM_MODEL::SCREEN_SPACE:
-	{
-		if (screenLensDisplaceProcessor != 0){
-			screenLensDisplaceProcessor->ProcessDeformation(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight);
-		}
-		break;
-	}
-	case DEFORM_MODEL::OBJECT_SPACE:
-	{
-		if (meshDeformer != 0){
-			if(meshDeformer->ProcessParticleDeformation(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight, particle))
-				physicalParticleDeformProcessor->UpdatePointCoordsAndBright(&matrix_mv.v[0].x, &matrix_pj.v[0].x, winWidth, winHeight);
-		}
-		break;
-	}
 	}
 }
 
@@ -82,15 +56,6 @@ void GlyphRenderable::resize(int width, int height)
 	qgl->glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 		GL_RENDERBUFFER, renderbuffer[1]);
 	qgl->glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-	if (INTERACT_MODE::TRANSFORMATION == actor->GetInteractMode()) {
-		if (screenLensDisplaceProcessor != 0){
-			screenLensDisplaceProcessor->setRecomputeNeeded();
-		}
-		if (meshDeformer != 0){
-			meshDeformer->setReinitiationNeed();
-		}
-	}
 }
 
 

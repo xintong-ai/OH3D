@@ -11,8 +11,8 @@ else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR})
 
-set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h Lens.h)
-set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp Lens.cpp)
+set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h)
+set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp)
 
 add_definitions(-DEXPORT_QT)
 

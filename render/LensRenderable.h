@@ -9,7 +9,7 @@ class LensRenderable :public Renderable
 {
 	Q_OBJECT
 
-	std::vector<Lens*> lenses;
+
 	float3 lastLensCenter;
 	bool lastLensCenterRecorded = false;
 
@@ -39,7 +39,7 @@ public:
 
 	bool drawFullRetractor = false;
 
-	std::vector<Lens*>* GetLensesAddr() { return &lenses; }//temperary solution. should put lenses outside of LensRenderable
+	std::vector<Lens*> *lenses;
 
 	float3 snapPos;
 	
@@ -48,8 +48,8 @@ public:
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	LensRenderable();
-	std::vector<Lens*> GetLenses() { return lenses; }
+	LensRenderable(std::vector<Lens*>* _l);
+	~LensRenderable();
 
 	void AddCircleLens();
 	void AddCircleLens3D();

@@ -33,6 +33,7 @@ enum DEFORM_MODEL{
 class StopWatchInterface;
 class Renderable;
 class GLMatrixManager;
+class Processor;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -56,6 +57,7 @@ public:
     QSize sizeHint() const Q_DECL_OVERRIDE;
 
 	void AddRenderable(const char* name, void* r);
+	void AddProcessor(const char* name, void* r); //the processors can be moved to DeformGlWidget in the future. or combine DeformGlWidget with glwidget
 
     void GetWindowSize(int &w, int &h) {w = width; h = height;}
 
@@ -104,6 +106,7 @@ protected:
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::map<std::string, Renderable*> renderers;
+	std::map<std::string, Processor*> processors;
 
 
 private:

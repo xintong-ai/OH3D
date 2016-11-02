@@ -1,4 +1,7 @@
 #include "PhysicalVolumeDeformProcessor.h"
+#include "Lens.h"
+#include "MeshDeformProcessor.h"
+#include "Volume.h"
 #include "TransformFunc.h"
 
 #include <cuda_runtime.h>
@@ -23,9 +26,9 @@ void ModelVolumeDeformer_KernelInit()
 
 void PhysicalVolumeDeformProcessor::InitFromVolume(std::shared_ptr<Volume> _ori)
 {
-	originalVolume = _ori;
+	volume = _ori;
 
-	volumeCUDADeformed.VolumeCUDA_init(_ori->size, _ori->values, 1, 1);
+	//volumeCUDADeformed.VolumeCUDA_init(_ori->size, _ori->values, 1, 1);
 
 	ModelVolumeDeformer_KernelInit();
 }
@@ -214,34 +217,44 @@ d_updateVolumebyModelGrid(cudaExtent volumeSize, const float* X, const float* X_
 
 
 
-void PhysicalVolumeDeformProcessor::deformByMesh()
+bool PhysicalVolumeDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
 {
-	float3 lensSpaceOrigin = meshDeformer->GetLensSpaceOrigin();
-	float3 majorAxis = meshDeformer->GetXDiretion();
-	float3 lensDir = meshDeformer->GetZDiretion();
-	int3 nSteps = meshDeformer->GetNumSteps();
-	float step = meshDeformer->GetStep();
+	if (!isActive)
+		return false;
+
+	if (meshDeformer->meshJustDeformed){
+		float3 lensSpaceOrigin = meshDeformer->GetLensSpaceOrigin();
+		float3 majorAxis = meshDeformer->GetXDiretion();
+		float3 lensDir = meshDeformer->GetZDiretion();
+		int3 nSteps = meshDeformer->GetNumSteps();
+		float step = meshDeformer->GetStep();
 
 
-	cudaExtent size = volumeCUDADeformed.size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
+		cudaExtent size = volume->volumeCuda.size;
+		unsigned int dim = 32;
+		dim3 blockSize(dim, dim, 1);
+		dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
-	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, originalVolume->volumeCuda.content, originalVolume->volumeCuda.channelDesc));
+		checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, volume->volumeCudaOri.channelDesc));
 
-	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCUDADeformed.content));
+		checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
 
-	float3 minorAxis = cross(lensDir, majorAxis);
-	float3 range = make_float3(nSteps.x - 1, nSteps.y - 1, nSteps.z - 1)*step;
-	d_updateVolumebyModelGrid_init << <gridSize, blockSize >> >(size, lensSpaceOrigin, majorAxis, minorAxis, lensDir, range, originalVolume->spacing);
+		float3 minorAxis = cross(lensDir, majorAxis);
+		float3 range = make_float3(nSteps.x - 1, nSteps.y - 1, nSteps.z - 1)*step;
+		d_updateVolumebyModelGrid_init << <gridSize, blockSize >> >(size, lensSpaceOrigin, majorAxis, minorAxis, lensDir, range, volume->spacing);
 
 
-	dim3 blockSize2(8, 8, 8);
-	dim3 gridSize2(meshDeformer->GetTetNumber(), 1, 1);
-	d_updateVolumebyModelGrid << <gridSize2, blockSize2 >> >(size, meshDeformer->GetXDev(), meshDeformer->GetXDevOri(), meshDeformer->GetTetDev(), meshDeformer->GetTetNumber(), originalVolume->spacing);
+		dim3 blockSize2(8, 8, 8);
+		dim3 gridSize2(meshDeformer->GetTetNumber(), 1, 1);
+		d_updateVolumebyModelGrid << <gridSize2, blockSize2 >> >(size, meshDeformer->GetXDev(), meshDeformer->GetXDevOri(), meshDeformer->GetTetDev(), meshDeformer->GetTetNumber(), volume->spacing);
 
-	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+		checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+		meshDeformer->meshJustDeformed = false;
+		return true;
+	}
+	else{
+		return false;
+	}
 }
 
 

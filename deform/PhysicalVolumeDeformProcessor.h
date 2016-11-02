@@ -1,15 +1,18 @@
 #ifndef	PHYSICAL_VOLUME_DEFORM_PROCESSOR_H
 #define PHYSICAL_VOLUME_DEFORM_PROCESSOR_H
-#include "Volume.h"
-#include "MeshDeformProcessor.h"
+#include <memory>
+#include <vector>
+#include "Processor.h"
 
-class VolumeCUDA;
+class Lens;
+class LineLens3D;
+class MeshDeformProcessor;
+class Volume;
 
-class PhysicalVolumeDeformProcessor
+class PhysicalVolumeDeformProcessor :public Processor
 {
 public:
-	VolumeCUDA volumeCUDADeformed;
-	std::shared_ptr<Volume> originalVolume;
+	std::shared_ptr<Volume> volume;
 	std::shared_ptr<MeshDeformProcessor> meshDeformer;
 
 	PhysicalVolumeDeformProcessor(std::shared_ptr<MeshDeformProcessor> _modelGrid, std::shared_ptr<Volume> ori)
@@ -18,10 +21,9 @@ public:
 		InitFromVolume(ori);
 	};	
 	~PhysicalVolumeDeformProcessor(){
-		volumeCUDADeformed.VolumeCUDA_deinit();
 	};
 
-	void deformByMesh();
+	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
 private:
 	void InitFromVolume(std::shared_ptr<Volume> ori);

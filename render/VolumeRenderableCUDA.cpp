@@ -1,5 +1,4 @@
 #include <time.h>
-#include "VolumeRenderableCUDA.h"
 
 #include <vector>
 
@@ -13,13 +12,12 @@
 #define qgl	QOpenGLContext::currentContext()->functions()
 
 #include <memory>
-#include "DeformGLWidget.h"
 #include <helper_math.h>
-#include "MeshDeformProcessor.h"
 #include <cuda_gl_interop.h>
 
+#include "DeformGLWidget.h"
+#include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableCUDAKernel.h"
-#include "PhysicalVolumeDeformProcessor.h"
 #include "TransformFunc.h"
 
 
@@ -81,14 +79,8 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	checkCudaErrors(cudaGraphicsResourceGetMappedPointer((void **)&d_output, &num_bytes,
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
-
-	if (meshDeformer != 0 && modelVolumeDeformer != 0){
-		ComputeDisplace(modelview, projection, winWidth, winHeight);
-		VolumeRender_computeGradient(&(modelVolumeDeformer->volumeCUDADeformed), &volumeCUDAGradient);
-		VolumeRender_setGradient(&volumeCUDAGradient);
-		VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
-	}
-	else if(volume!=0){
+ 
+	if(volume!=0){
 		VolumeRender_computeGradient(&(volume->volumeCuda), &volumeCUDAGradient);
 		VolumeRender_setGradient(&volumeCUDAGradient);
 		VolumeRender_setVolume(&(volume->volumeCuda));
@@ -144,17 +136,6 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	glEnable(GL_DEPTH_TEST);
 }
 
-void VolumeRenderableCUDA::ComputeDisplace(float _mv[16], float _pj[16], int winWidth, int winHeight)
-{
-	if (((DeformGLWidget*)actor)->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
-		if (meshDeformer->ProcessVolumeDeformation(_mv, _pj, winWidth, winHeight, volume))
-		{
-			modelVolumeDeformer->deformByMesh();
-		}
-	}
-}
-
-
 void VolumeRenderableCUDA::mousePress(int x, int y, int modifier)
 {
 	lastPt = make_int2(x, y);
@@ -172,7 +153,6 @@ void VolumeRenderableCUDA::mouseMove(int x, int y, int modifier)
 
 bool VolumeRenderableCUDA::MouseWheel(int x, int y, int modifier, int delta)
 {
-
 	return false;
 }
 

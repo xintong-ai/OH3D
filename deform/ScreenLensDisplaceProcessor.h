@@ -1,10 +1,12 @@
 #ifndef DISPLACE_H
 #define DISPLACE_H
 #include <thrust/device_vector.h>
+#include "Processor.h"
+
 class Lens;
 class Particle;
 
-class ScreenLensDisplaceProcessor
+class ScreenLensDisplaceProcessor:public Processor
 {
 	std::shared_ptr<Particle> particle;
 
@@ -34,7 +36,7 @@ public:
 	void Compute(float* modelview, float* projection, int winW, int winH);
 
 
-	bool ProcessDeformation(float* modelview, float* projection, int winW, int winH);
+	bool process(float* modelview, float* projection, int winW, int winH) override;
 
 	void LoadFeature(char* f, int num);
 	void setRecomputeNeeded(){ isRecomputeTargetNeeded = true; }

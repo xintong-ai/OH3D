@@ -75,14 +75,7 @@ Window::Window()
 		reader2.reset();
 	}
 	inputVolume->spacing = spacing;
-	inputVolume->initVolumeCuda(0);
-
-	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
-
-	if (std::string(dataPath).find("nek") != std::string::npos){
-		volumeRenderable->useColor = true;
-	}
-	
+	inputVolume->initVolumeCuda();
 	
 	/********GL widget******/
 #ifdef USE_OSVR
@@ -91,8 +84,8 @@ Window::Window()
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
-	lensRenderable = std::make_shared<LensRenderable>();
-	//lensRenderable->SetDrawScreenSpace(false);
+	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+
 #ifdef USE_OSVR
 		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
@@ -112,19 +105,29 @@ Window::Window()
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
 	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
+	
 	meshDeformer = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
-	meshDeformer->SetLenses(lensRenderable->GetLensesAddr());
-	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
-	meshRenderable->SetLenses(lensRenderable->GetLensesAddr());
-
+	meshDeformer->data_type = DATA_TYPE::USE_VOLUME;
+	meshDeformer->setVolumeData(inputVolume);
+	meshDeformer->SetLenses(&lenses);
 	modelVolumeDeformer = std::make_shared<PhysicalVolumeDeformProcessor>(meshDeformer, inputVolume);
-	volumeRenderable->SetModelVolumeDeformer(modelVolumeDeformer);
-	volumeRenderable->SetModelGrid(meshDeformer);
+	
+	//order matters!
+	openGL->AddProcessor("2meshdeform", meshDeformer.get());
+	openGL->AddProcessor("3physicalParticleDeform", modelVolumeDeformer.get());
+	
+	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
+	if (std::string(dataPath).find("nek") != std::string::npos){
+		volumeRenderable->useColor = true;
+	}
+	lensRenderable = std::make_shared<LensRenderable>(&lenses);
+	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
+
 
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
-
 	openGL->AddRenderable("model", meshRenderable.get());
+
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
@@ -200,7 +203,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
 	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
 	radioDeformObject->setChecked(true);
-	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
 	deformModeLayout->addWidget(radioDeformScreen.get());
 	deformModeLayout->addWidget(radioDeformObject.get());
 	groupBox->setLayout(deformModeLayout);
@@ -523,6 +525,7 @@ void Window::SlotRbGradientChanged(bool b)
 void Window::SlotDelLens()
 {
 	lensRenderable->SlotDelLens();
+	inputVolume->reset();
 }
 void Window::SlotAddMeshRes()
 {

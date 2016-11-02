@@ -135,22 +135,26 @@ MeshDeformProcessor::MeshDeformProcessor(float dmin[3], float dmax[3], int n)
 	gridMesh = new GridMesh<float>(dmin, dmax, n);
 }
 
-
-void MeshDeformProcessor::initThrustVectors(std::shared_ptr<Particle> p)
+void MeshDeformProcessor::setParticleData(std::shared_ptr<Particle> _p)
 {
-	int n = p->numParticles;
+	particle = _p;
+	int n = particle->numParticles;
 	d_vec_vOri.resize(n);
-	thrust::copy(p->posOrig.begin(), p->posOrig.end(), d_vec_vOri.begin());
+	thrust::copy(particle->posOrig.begin(), particle->posOrig.end(), d_vec_vOri.begin());
 	d_vec_vIdx.resize(n);
 	d_vec_vBaryCoord.resize(n);
 	d_vec_v.resize(n);
 	d_vec_brightness.resize(n);
 	d_vec_feature.resize(n);
-	if (p->hasFeature){
-		thrust::copy(p->feature.begin(), p->feature.end(), d_vec_feature.begin());
+	if (particle->hasFeature){
+		thrust::copy(particle->feature.begin(), particle->feature.end(), d_vec_feature.begin());
 	}
 }
 
+void MeshDeformProcessor::setVolumeData(std::shared_ptr<Volume> _v)
+{
+	volume = _v;
+}
 
 void MeshDeformProcessor::InitPointTetId_LineSplitMesh(float4* v, int n)
 {
@@ -409,7 +413,7 @@ bool MeshDeformProcessor::ProcessVolumeDeformation(float* modelview, float* proj
 	//besides the lens change, the mesh may also need to reinitiate from other commands
 	ReinitiateMeshForVolume((LineLens3D*)l, volume);
 
-	UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
+	UpdateLineSplitMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 
 	return true;
 };
@@ -439,21 +443,27 @@ bool MeshDeformProcessor::ProcessParticleDeformation(float* modelview, float* pr
 		
 		ReinitiateMeshForParticle((LineLens3D*)l, particle);
 
-		//if (l->justMoved) 
-		//{
-		//	////the related work needs more time to finish. To keep the lens facing the camera, the lens nodes needs to be rotated. Also the lens region may need to change to guarantee to cover the whole region
-		//	//meshDeformer->MoveMesh(l->moveVec);
-		//	l->justMoved = false;
-		//}
-
 		double secondsPassed = (clock() - startTime) / CLOCKS_PER_SEC;
 		//if (secondsPassed > 15)
 			//return true;
 
-		UpdateMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
+		UpdateLineSplitMesh(((LineLens3D*)l)->c, ((LineLens3D*)l)->lensDir, ((LineLens3D*)l)->lSemiMajorAxisGlobal, ((LineLens3D*)l)->lSemiMinorAxisGlobal, ((LineLens3D*)l)->focusRatio, ((LineLens3D*)l)->majorAxisGlobal);
 	}
 	else if (l->type == TYPE_CIRCLE){
 		UpdateUniformMesh(modelview);
+	}
+}
+
+bool MeshDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
+{
+	if (!isActive)
+		return false;
+
+	if (data_type == USE_PARTICLE){
+		return ProcessParticleDeformation(modelview, projection, winWidth, winHeight, particle);
+	}
+	else if (data_type == USE_VOLUME){
+		return ProcessVolumeDeformation(modelview, projection, winWidth, winHeight, volume);
 	}
 }
 
@@ -638,10 +648,10 @@ void MeshDeformProcessor::UpdateMeshDevElasticity()
 	lsgridMesh->UpdateMeshDevElasticity();
 }
 
-void MeshDeformProcessor::UpdateMesh(float3 lensCenter, float3 lenDir, float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
+void MeshDeformProcessor::UpdateLineSplitMesh(float3 lensCenter, float3 lenDir, float lSemiMajorAxis, float lSemiMinorAxis, float focusRatio, float3 majorAxisGlobal)
 {
-	if (gridType == GRID_TYPE::LINESPLIT_UNIFORM_GRID)
-		lsgridMesh->UpdateLineMesh(time_step, 4, lensCenter, lenDir, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
+	lsgridMesh->UpdateLineMesh(time_step, 4, lensCenter, lenDir, lsgridMesh->cutY, lsgridMesh->nStep, lSemiMajorAxis, lSemiMinorAxis, focusRatio, majorAxisGlobal, deformForce);
+	meshJustDeformed = true;
 	return;
 }
 
@@ -657,11 +667,7 @@ void MeshDeformProcessor::UpdateUniformMesh(float* _mv)
 	float3 lensDir = normalize(cameraObj - lensCen);
 
 	gridMesh->Update(time_step, 64, lensCen, lensDir, focusRatio, radius);
-}
-
-void MeshDeformProcessor::MoveMesh(float3 moveDir)
-{
-	lsgridMesh->MoveMesh(moveDir);
+	meshJustDeformed = true;
 }
 
 /////////////////////////////////////// attributes getters /////////////////////

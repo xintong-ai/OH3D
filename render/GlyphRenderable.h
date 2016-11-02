@@ -6,9 +6,6 @@
 class ShaderProgram;
 class QOpenGLContext;
 class StopWatchInterface;
-class MeshDeformProcessor;
-class ScreenLensDisplaceProcessor;
-class PhysicalParticleDeformProcessor;
 
 class Particle;
 enum COLOR_MAP;
@@ -19,11 +16,6 @@ class GlyphRenderable: public Renderable
 
 public:
 	~GlyphRenderable();
-	std::shared_ptr<PhysicalParticleDeformProcessor> physicalParticleDeformProcessor = 0;
-
-	//used for deformation
-	void SetScreenLensDisplaceComputer(std::shared_ptr<ScreenLensDisplaceProcessor> _screenLensDisplaceProcessor){ screenLensDisplaceProcessor = _screenLensDisplaceProcessor; }
-	void SetModelGrid(std::shared_ptr<MeshDeformProcessor> _modelGrid){ meshDeformer = _modelGrid; }
 
 	void mouseMove(int x, int y, int modifier) override;
 	void resize(int width, int height) override;
@@ -48,12 +40,6 @@ protected:
 	unsigned int framebuffer, renderbuffer[2];
 	virtual void initPickingDrawingObjects() = 0;
 	virtual void drawPicking(float modelview[16], float projection[16], bool isForGlyph) = 0; //if isForGlyph=false, then it is for feature
-
-
-	//used for deformation
-	void ComputeDisplace(float _mv[16], float pj[16]);
-	std::shared_ptr<ScreenLensDisplaceProcessor> screenLensDisplaceProcessor = 0;
-	std::shared_ptr<MeshDeformProcessor> meshDeformer = 0;
 
 private:
 	bool frameBufferObjectInitialized = false;

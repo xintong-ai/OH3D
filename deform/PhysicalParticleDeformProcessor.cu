@@ -1,6 +1,7 @@
 #include "PhysicalParticleDeformProcessor.h"
-#include "Particle.h"
 #include "Lens.h"
+#include "MeshDeformProcessor.h"
+#include "Particle.h"
 
 
 struct functor_UpdatePointCoordsAndBrightByLineLensMesh
@@ -176,20 +177,32 @@ void PhysicalParticleDeformProcessor::UpdatePointCoordsAndBright_UniformMesh(std
 }
 
 
-void PhysicalParticleDeformProcessor::UpdatePointCoordsAndBright(float* modelview, float* projection, int winWidth, int winHeight)
+bool PhysicalParticleDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
 {
-	if (lenses->size() < 0){
-		//dop processing only by mesh, without computing the brightness but not 
+	if (!isActive)
+		return false;
+
+	if (meshDeformer->meshJustDeformed){
+
+		if (lenses->size() < 0){
+			meshDeformer->meshJustDeformed = false;
+			return false;
+			//TODO: do processing only by mesh, without computing the brightness but not 
+		}
+		else{
+			Lens *l = lenses->back();
+
+			if (l->type == TYPE_LINE){
+				UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle, &(particle->glyphBright[0]), (LineLens3D*)l, particle->isFreezingFeature, particle->snappedFeatureId);
+			}
+			else if (l->type == TYPE_CIRCLE){
+				UpdatePointCoordsAndBright_UniformMesh(particle, &(particle->glyphBright[0]), modelview);
+			}
+			meshDeformer->meshJustDeformed = false;
+			return true;
+		}
 	}
 	else{
-		Lens *l = lenses->back();
-
-		if (l->type == TYPE_LINE){
-			UpdatePointCoordsAndBright_LineMeshLens_Thrust(particle, &(particle->glyphBright[0]), (LineLens3D*)l, particle->isFreezingFeature, particle->snappedFeatureId);
-		}
-		else if (l->type == TYPE_CIRCLE){
-			UpdatePointCoordsAndBright_UniformMesh(particle, &(particle->glyphBright[0]), modelview);
-		}
+		return false;
 	}
-	return;
 }

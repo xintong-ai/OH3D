@@ -11,11 +11,11 @@ class MeshRenderable : public Renderable{
 	unsigned int vertex_handle = 0;
 	unsigned int triangle_handle = 0;
 
-	std::vector<Lens*> *lenses = 0;
+	//std::vector<Lens*> *lenses = 0;
 
 public:
 	MeshRenderable(MeshDeformProcessor* _modelGrid);// float dmin[3], float dmax[3], int nPart);
-	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
+	//void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 
 protected:
 	void init() override;

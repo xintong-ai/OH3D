@@ -1,13 +1,15 @@
 #include "glwidget.h"
-#include "vector_types.h"
-#include "vector_functions.h"
+#include <vector_types.h>
+#include <vector_functions.h>
 #include <helper_math.h>
 #include <iostream>
 #include <fstream>
 #include <helper_timer.h>
-#include <Renderable.h>
-#include <VRWidget.h>
-#include <GLMatrixManager.h>
+
+#include "Renderable.h"
+#include "VRWidget.h"
+#include "GLMatrixManager.h"
+#include "Processor.h"
 
 GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 : QOpenGLWidget(parent)
@@ -27,6 +29,12 @@ void GLWidget::AddRenderable(const char* name, void* r)
 {
 	renderers[name] = (Renderable*)r;
 	((Renderable*)r)->SetActor(this);
+}
+
+void GLWidget::AddProcessor(const char* name, void* r)
+{
+	processors[name] = (Processor*)r;
+	//((Processor*)r)->SetActor(this); //not sure if needed. better not rely on actor
 }
 
 GLWidget::~GLWidget()
@@ -93,6 +101,13 @@ void GLWidget::paintGL() {
 	matrixMgr->GetModelView(modelview);
 	matrixMgr->GetProjection(projection, width, height);
 
+
+	for (auto processor : processors)
+	{
+		processor.second->process(modelview, projection, width, height);
+	}
+
+
 #ifdef USE_NEW_LEAP
 	if (blendOthers){ //only used for USE_NEW_LEAP
 		for (auto renderer : renderers)
@@ -145,6 +160,8 @@ void GLWidget::paintGL() {
 #ifdef USE_CONTROLLER
 	emit SignalPaintGL();
 #endif
+	
+	UpdateGL();
 }
 
 
@@ -154,6 +171,10 @@ void GLWidget::resizeGL(int w, int h)
     width = w;
     height = h;
 	std::cout << "OpenGL window size:" << w << "x" << h << std::endl;
+
+	for (auto processor : processors)
+		processor.second->resize(w, h);
+
 	for (auto renderer : renderers)
 		renderer.second->resize(w, h);
 

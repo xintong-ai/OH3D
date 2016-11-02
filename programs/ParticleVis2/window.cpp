@@ -4,6 +4,7 @@
 #include "ArrowRenderable.h"
 #include <iostream>
 #include <algorithm>    // std::min_element, std::max_element
+#include <helper_math.h>
 
 #include "SphereRenderable.h"
 #include "CosmoRenderable.h"
@@ -12,13 +13,12 @@
 #include "BinaryParticleReader.h"
 #include "DataMgr.h"
 #include "MeshRenderable.h"
-#include <MeshDeformProcessor.h>
+#include "MeshDeformProcessor.h"
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
 #include "ColorGradient.h"
 #include "Particle.h"
-#include <helper_math.h>
 
 #include "ScreenLensDisplaceProcessor.h"
 #include "PhysicalParticleDeformProcessor.h"
@@ -48,41 +48,24 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 	
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-
 	float3 posMin, posMax;
 	inputParticle = std::make_shared<Particle>();
-
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(), 230);
-		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),130);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
-
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
-
-		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-		glyphRenderable->setColorMap(COLOR_MAP::RDYIGN, true);
 	}
 	else{
 		std::shared_ptr<BinaryParticleReader> reader;
 		reader = std::make_shared<BinaryParticleReader>(dataPath.c_str());
-
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
-
 		deformForceConstant = 2;
-
 		//inputParticle->featureReshuffle();
-		
-		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
-		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
-		//glyphRenderable->setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
-		
-		glyphRenderable->colorByFeature = true;
-		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
 	}
 
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
@@ -93,11 +76,11 @@ Window::Window()
 #else
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
+	matrixMgr->SetVol(posMin, posMax);
+
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
-	lensRenderable = std::make_shared<LensRenderable>();
-
-	//lensRenderable->SetDrawScreenSpace(false);
-
+	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
+	
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
@@ -105,31 +88,50 @@ Window::Window()
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
-
-	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
+	screenLensDisplaceProcessor = std::make_shared<ScreenLensDisplaceProcessor>(&lenses, inputParticle);
 	meshDeformer = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
-	meshDeformer->initThrustVectors(inputParticle);
-	meshDeformer->SetLenses(lensRenderable->GetLensesAddr());
+	meshDeformer->data_type = DATA_TYPE::USE_PARTICLE;
+	meshDeformer->setParticleData(inputParticle);
+	meshDeformer->SetLenses(&lenses);
 	physicalParticleDeformer = std::make_shared<PhysicalParticleDeformProcessor>(meshDeformer, inputParticle);
-	physicalParticleDeformer->lenses = lensRenderable->GetLensesAddr();
-	screenLensDisplaceProcessor = std::make_shared<ScreenLensDisplaceProcessor>(lensRenderable->GetLensesAddr(), inputParticle);
+	physicalParticleDeformer->lenses = &lenses;
+	if (openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		screenLensDisplaceProcessor->isActive = true;
+		meshDeformer->isActive = false;
+		physicalParticleDeformer->isActive = false;
+	}
+	else{
+		screenLensDisplaceProcessor->isActive = false;
+		meshDeformer->isActive = true;
+		physicalParticleDeformer->isActive = true;
+	}
 
-	
+	//order matters!
+	openGL->AddProcessor("1screen", screenLensDisplaceProcessor.get());
+	openGL->AddProcessor("2meshdeform", meshDeformer.get());
+	openGL->AddProcessor("3physicalParticleDeform", physicalParticleDeformer.get());
+
+	if (std::string(dataPath).find(".vtu") != std::string::npos){
+		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
+		glyphRenderable->setColorMap(COLOR_MAP::RDYIGN, true);
+	}
+	else{
+		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
+		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
+		//glyphRenderable->setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
+		glyphRenderable->colorByFeature = true;
+		glyphRenderable->setColorMap(COLOR_MAP::RAINBOW_COSMOLOGY);
+	}
 	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
-	meshRenderable->SetLenses(lensRenderable->GetLensesAddr());
-	
-	glyphRenderable->SetModelGrid(meshDeformer);
-	glyphRenderable->SetScreenLensDisplaceComputer(screenLensDisplaceProcessor);
-	glyphRenderable->physicalParticleDeformProcessor = physicalParticleDeformer;
-
-	//openGL->AddRenderable("bbox", bbox);
-
+	lensRenderable = std::make_shared<LensRenderable>(&lenses);
 	//glyphRenderable->SetVisibility(false);
 	//lensRenderable->SetVisibility(false);
 
 	openGL->AddRenderable("2glyph", glyphRenderable.get());
 	openGL->AddRenderable("3lenses", lensRenderable.get());
 	openGL->AddRenderable("4model", meshRenderable.get());
+
+
 	///********controls******/
 	addLensBtn = new QPushButton("Add old lens");
 	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
@@ -199,8 +201,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
 	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
 	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
-	
-	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
 	radioDeformObject->setChecked(openGL->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE);
 	radioDeformScreen->setChecked(openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE);
 
@@ -235,7 +235,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
-	//controlLayout->addWidget(addCurveLensBtn);
+	controlLayout->addWidget(addCurveLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
@@ -582,9 +582,17 @@ void Window::SlotDeformModeChanged(bool clicked)
 {
 	if (radioDeformScreen->isChecked()){
 		openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
+		
+		screenLensDisplaceProcessor->isActive = true;
+		meshDeformer->isActive = false;
+		physicalParticleDeformer->isActive = false;
 	}
 	else if (radioDeformObject->isChecked()){
 		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+
+		screenLensDisplaceProcessor->isActive = false;
+		meshDeformer->isActive = true;
+		physicalParticleDeformer->isActive = true;
 	}
 }
 

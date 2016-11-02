@@ -24,7 +24,7 @@ class MeshDeformProcessor;
 class Volume;
 class PhysicalVolumeDeformProcessor;
 class VolumeRenderableCUDA;
-
+class Lens;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -62,6 +62,7 @@ private:
 	std::shared_ptr<MeshDeformProcessor> meshDeformer;
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<PhysicalVolumeDeformProcessor> modelVolumeDeformer;
+	std::vector<Lens*> lenses; //can change Lens* to shared pointer, to avoid manually deleting
 
 	QLabel *laLabel, *ldLabel, *lsLabel;
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;

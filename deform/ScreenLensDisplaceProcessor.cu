@@ -485,8 +485,11 @@ void ScreenLensDisplaceProcessor::DisplacePoints(std::vector<float2>& pts, std::
 	}
 }
 
-bool ScreenLensDisplaceProcessor::ProcessDeformation(float* modelview, float* projection, int winW, int winH)
+bool ScreenLensDisplaceProcessor::process(float* modelview, float* projection, int winW, int winH)
 {
+	if (!isActive)
+		return false;
+
 	if (lenses == 0 || lenses->size() < 1)
 		return false;
 	
