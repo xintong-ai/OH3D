@@ -9,14 +9,13 @@ class LensRenderable :public Renderable
 {
 	Q_OBJECT
 
+	std::vector<Lens*> *lenses;
 
 	float3 lastLensCenter;
 	bool lastLensCenterRecorded = false;
 
-	int pickedLens = -1;
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
-
 
 	bool highlightingCenter = false;
 	bool highlightingMajorSide = false;
@@ -32,18 +31,17 @@ class LensRenderable :public Renderable
 	bool highlightingCuboidFrame = false;
 
 public:
+
+	//for leap
 	int activedCursors = 0;
 	int cursorColor[2];
 	float3 cursorPos[2];
 
-
 	bool drawFullRetractor = false;
-
-	std::vector<Lens*> *lenses;
 
 	float3 snapPos;
 	
-	bool changeLensWhenRotateData = true;
+	bool changeLensWhenRotateData = true; //view dependant or not
 	bool drawInsicionOnCenterFace = false;
 
 	void init() override;
