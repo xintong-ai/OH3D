@@ -5,22 +5,24 @@ PROJECT (ParticleVis)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
+
 # option(USE_OSVR "Enable features that require OSVR" OFF)
 # if(USE_OSVR)
 	# find_package(osvr REQUIRED)
 # endif()
 
-# option(USE_LEAP "Enable features that require LEAP MOTION" OFF)
 if(USE_LEAP)
 	include_directories(${LEAP_INCLUDE_DIR})
 endif()
 
+
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
+	# ${Leap_INCLUDE_DIR}
 	${PROJECT_BINARY_DIR}
-	${CUDA_TOOLKIT_INCLUDE} 
 	${CMAKE_BINARY_DIR}
+	${CUDA_TOOLKIT_INCLUDE} 
 	required)
 
 set( Srcs 
@@ -30,6 +32,13 @@ set( Srcs
 set( Hdrs  
 	window.h 
     )
+
+if(USE_NEW_LEAP)
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
+	set( Srcs ${Srcs} LeapListener.cpp)
+	set( Hdrs ${Hdrs} LeapInteraction.h LeapListener.h)
+endif()
 
 configure_file(config.txt config.txt COPYONLY)
 
@@ -45,6 +54,7 @@ target_link_libraries(${PROJECT_NAME}
 	io
 	interact
 	render
+	dataModel
 	)
 
 if(USE_OSVR)
@@ -52,5 +62,9 @@ if(USE_OSVR)
 endif()
 
 if(USE_LEAP)
+	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
+endif()
+
+if(USE_NEW_LEAP)
 	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
 endif()

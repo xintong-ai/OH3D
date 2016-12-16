@@ -1,5 +1,5 @@
 #include <ScreenLensDisplaceProcessor.h>
-#include <TransformFunc.h>
+#include "TransformFunc.h"
 #include <vector_functions.h>
 #include <helper_math.h>
 #include "Lens.h"

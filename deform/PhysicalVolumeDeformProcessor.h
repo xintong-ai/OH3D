@@ -20,6 +20,7 @@ public:
 		meshDeformer = _modelGrid;
 		InitFromVolume(ori);
 	};	
+
 	~PhysicalVolumeDeformProcessor(){
 	};
 

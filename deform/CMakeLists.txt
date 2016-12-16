@@ -27,7 +27,6 @@ set(SRCS Lens.cpp
 	)
 
 set(HDRS	Lens.h
-			defines.h
 			ScreenLensDisplaceProcessor.h
 			GridMesh.h
 			LineSplitGridMesh.h

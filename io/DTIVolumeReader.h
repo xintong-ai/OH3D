@@ -1,10 +1,10 @@
 #ifndef DTI_VOLUME_READER_H
 #define DTI_VOLUME_READER_H
 
-#include "VolumeReader.h"
+#include "TeemVolumeReader.h"
 #include <vector>
 
-class DTIVolumeReader :public VolumeReader
+class DTIVolumeReader :public TeemVolumeReader
 {
 public:
 	DTIVolumeReader(const char* filename);

@@ -1,7 +1,6 @@
 #ifndef VOLUME_READER_H
 #define VOLUME_READER_H
 #include "vector_types.h"
-#include "Reader.h"
 #include <assert.h>
 
 #include <algorithm>
@@ -23,13 +22,13 @@ inline float3 operator*(matrix3x3 a, float3 b)
 	return ret;
 }
 
-class VolumeReader:public Reader
+class TeemVolumeReader
 {
 public:
 	void LoadNRRD(const char* filename);
-	void Load() override;
+	void Load();
 
-	VolumeReader(const char* filename);
+	TeemVolumeReader(const char* filename);
 	
 	int GetNumFields() { return numFields; }
 	
@@ -62,7 +61,7 @@ public:
 
 	//void GetValRange(float& vMin, float& vMax) override;
 
-	void GetPosRange(float3& posMin, float3& posMax) override;
+	void GetPosRange(float3& posMin, float3& posMax);
 
 	int GetDataSize(int i) { assert(i < 3); return *(&dataSizes.x + i); }
 
@@ -78,7 +77,7 @@ public:
 
 	float3 GetDataPos(int3 p);
 
-	~VolumeReader();
+	~TeemVolumeReader();
 
 	//related to feature input
 	bool useFeature;
@@ -103,7 +102,7 @@ protected:
 
 	//related to feature input
 	char *feature = nullptr;
-
+	std::string datafilename;
 };
 
 #endif

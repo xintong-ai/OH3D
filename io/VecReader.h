@@ -1,6 +1,5 @@
 #ifndef VEC_READER_H
 #define VEC_READER_H
-#include <Reader.h>
 //#include <fstream>
 //#include <iostream>
 //#define _USE_MATH_DEFINES
@@ -11,13 +10,8 @@
 #include <memory>
 #include <Volume.h>
 
-class timestep;
-//struct Particle{
-//	float3 pos;
-//	float val;
-//	Particle(float x, float y, float z, float v) { pos = make_float3(x, y, z); val = v; }
-//};
-class VecReader :public Reader
+
+class VecReader 
 {
 	int num;
 	int size[3];
@@ -28,7 +22,7 @@ class VecReader :public Reader
 
 	std::vector<float> val;
 public:
-	VecReader(const char* filename) :Reader(filename){ Load(); }
+	VecReader(const char* filename) { Load(filename); }
 	//float4* GetPos();
 
 	int GetNum(){
@@ -44,7 +38,7 @@ public:
 		vMin = valMin, vMax = valMax;
 	};
 	
-	void GetPosRange(float3& posMin, float3& posMax) override;
+	void GetPosRange(float3& posMin, float3& posMax) ;
 	void GetSamples(std::vector<float4>& _pos, std::vector<float3>& _vec, std::vector<float>& _val);
 
 	void OutputToVolumeByNormalizedVecMag(std::shared_ptr<Volume> v);
@@ -53,7 +47,7 @@ public:
 	void OutputToVolumeByNormalizedVecMagWithPadding(std::shared_ptr<Volume> v, int nn);
 
 protected:
-	void Load() override;
+	void Load(const char* filename);
 };
 
 

@@ -1,4 +1,4 @@
-#include "VolumeReader.h"
+#include "TeemVolumeReader.h"
 #include "string.h"
 
 #include "NRRD/nrrd_image.hxx"
@@ -10,19 +10,19 @@
 //using namespace std;
 #include <float.h>
 
-VolumeReader::VolumeReader(const char* filename):
-Reader(filename)
+TeemVolumeReader::TeemVolumeReader(const char* filename)
 {
+	datafilename.assign(filename);
 	Load();
 }
 
-void VolumeReader::Load()
+void TeemVolumeReader::Load()
 {
 	LoadNRRD(datafilename.c_str());
 }
 
 
-void VolumeReader::GetSlice(int sliceDirIdx, int sliceNum, int fieldIdx, float*& out, int& size1, int& size2)
+void TeemVolumeReader::GetSlice(int sliceDirIdx, int sliceNum, int fieldIdx, float*& out, int& size1, int& size2)
 {
 	int size0 = *(&dataSizes.x + sliceDirIdx);
 	size1 = *(&dataSizes.x + (sliceDirIdx + 1) % 3);
@@ -59,7 +59,7 @@ void VolumeReader::GetSlice(int sliceDirIdx, int sliceNum, int fieldIdx, float*&
 	}
 
 }
-float3 VolumeReader::GetDataPos(int3 p)
+float3 TeemVolumeReader::GetDataPos(int3 p)
 {
 	matrix3x3 spaceDirMat; 
 	spaceDirMat.v[0] = dataSpaceDir[0];
@@ -69,7 +69,7 @@ float3 VolumeReader::GetDataPos(int3 p)
 }
 
 
-void VolumeReader::LoadNRRD(const char* filename)
+void TeemVolumeReader::LoadNRRD(const char* filename)
 {
 	std::string file = filename;
 	NRRD::Image<float> img(file);
@@ -132,14 +132,14 @@ void VolumeReader::LoadNRRD(const char* filename)
 	//img.pixel(0, 0, 0) = 1.0;
 }
 
-void VolumeReader::GetPosRange(float3& posMin, float3& posMax)
+void TeemVolumeReader::GetPosRange(float3& posMin, float3& posMax)
 {
 	posMin = dataMin;
 	posMax = dataMax;
 }
 
 
-VolumeReader::~VolumeReader()
+TeemVolumeReader::~TeemVolumeReader()
 {
 	if (nullptr != data) {
 		delete[] data;
@@ -147,7 +147,7 @@ VolumeReader::~VolumeReader()
 }
 
 
-bool VolumeReader::LoadFeature(const char* filename)
+bool TeemVolumeReader::LoadFeature(const char* filename)
 {
 	int num = dataSizes.x*dataSizes.y*dataSizes.z;
 	feature = new char[num];
@@ -194,7 +194,7 @@ bool VolumeReader::LoadFeature(const char* filename)
 	return true;
 }
 
-bool VolumeReader::LoadFeatureNew(const char* filename)
+bool TeemVolumeReader::LoadFeatureNew(const char* filename)
 {
 	int num = dataSizes.x*dataSizes.y*dataSizes.z;
 	feature = new char[num];
@@ -245,7 +245,7 @@ bool VolumeReader::LoadFeatureNew(const char* filename)
 	return true;
 }
 
-bool VolumeReader::LoadFeature2(std::vector<std::string> featureFiles)
+bool TeemVolumeReader::LoadFeature2(std::vector<std::string> featureFiles)
 {
 	int featureAmount = featureFiles.size();
 	int num = dataSizes.x*dataSizes.y*dataSizes.z;

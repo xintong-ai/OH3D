@@ -7,10 +7,10 @@
 #include <helper_math.h>
 #include <cmath>
 
-void VecReader::Load()
+void VecReader::Load(const char* filename)
 {
 	FILE *pFile;
-	pFile = fopen(datafilename.c_str(), "rb");
+	pFile = fopen(filename, "rb");
 	if (pFile == NULL) { fputs("File error", stderr); exit(1); }
 	fread(size, sizeof(int), 3, pFile);
 	num = size[0] * size[1] * size[2];

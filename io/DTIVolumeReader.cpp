@@ -7,7 +7,7 @@
 #define EPS 1e-6
 
 DTIVolumeReader::DTIVolumeReader(const char* filename) 
-	:VolumeReader(filename)
+	:TeemVolumeReader(filename)
 {
 }
 

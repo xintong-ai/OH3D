@@ -2,7 +2,7 @@
 #include <GridMesh.h>
 #include <LineSplitGridMesh.h>
 
-#include <defines.h>
+#include "myMat.h"
 #include <Volume.h>
 #include <Particle.h>
 #include "Lens.h"
@@ -22,7 +22,7 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 #include <helper_math.h>
-#include <TransformFunc.h>
+#include "TransformFunc.h"
 #include <helper_timer.h>
 
 texture<float, 3, cudaReadModeElementType>  volumeTex;

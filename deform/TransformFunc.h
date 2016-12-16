@@ -11,7 +11,7 @@
 //{
 //	return VECTOR2(pos[0], pos[1]);
 //}
-#include <defines.h>
+#include "myMat.h"
 
 inline int iDivUp(int a, int b)
 {

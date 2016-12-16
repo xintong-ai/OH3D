@@ -5,7 +5,7 @@
 
 #include <vector_functions.h>
 
-#include <defines.h>
+#include "myMat.h"
 
 class GLWidget;
 #define USE_PBO 0

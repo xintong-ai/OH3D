@@ -59,20 +59,20 @@ Window::Window()
 	inputVolume = std::make_shared<Volume>();
 
 	if (std::string(dataPath).find(".vec") != std::string::npos){
-		std::shared_ptr<VecReader> reader2;
-		reader2 = std::make_shared<VecReader>(dataPath.c_str());
-		reader2->OutputToVolumeByNormalizedVecMag(inputVolume);
-		//reader2->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
-		//reader2->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader2->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
+		std::shared_ptr<VecReader> reader;
+		reader = std::make_shared<VecReader>(dataPath.c_str());
+		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
+		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
+		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
+		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
 		
-		reader2.reset();
+		reader.reset();
 	}
 	else{
-		std::shared_ptr<RawVolumeReader> reader2;
-		reader2 = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
-		reader2->OutputToVolumeByNormalizedValue(inputVolume);
-		reader2.reset();
+		std::shared_ptr<RawVolumeReader> reader;
+		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
+		reader->OutputToVolumeByNormalizedValue(inputVolume);
+		reader.reset();
 	}
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();

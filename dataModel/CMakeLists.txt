@@ -13,7 +13,7 @@ include_directories(${SHARED_LIB_INCLUDE_DIR})
 
 set(SRCS Volume.cpp Particle.cpp)
 
-set(HDRS Volume.h Particle.h Processor.h)
+set(HDRS Volume.h Particle.h Processor.h myMat.h)
 
 add_library(dataModel STATIC ${HDRS} ${SRCS})
 

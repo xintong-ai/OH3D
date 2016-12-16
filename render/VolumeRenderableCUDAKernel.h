@@ -5,12 +5,6 @@
 #include "Volume.h"
 #include <vector>
 
-
-#define VOLUMERENDER_TFS              2
-#define VOLUMERENDER_TF_PREINTSIZE    1024
-#define VOLUMERENDER_TF_PREINTSTEPS   1024
-#define VOLUMERENDER_TF_PREINTRAY     4
-
 typedef unsigned int  uint;
 
 

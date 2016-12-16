@@ -1,7 +1,7 @@
 #include "VolumeRenderableCUDAKernel.h"
 #include <helper_math.h>
 #include <iostream>
-#include <TransformFunc.h>
+#include "TransformFunc.h"
 
 #include <stdlib.h>
 

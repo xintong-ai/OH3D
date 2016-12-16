@@ -4,8 +4,7 @@ PROJECT(programs)
 
 
 
-	#add_subdirectory(ParticleVis)
-	add_subdirectory(ParticleVis2)
+	add_subdirectory(ParticleVis)
 	#add_subdirectory(UniverseVis)
 	
 	if(USE_SUPERQUADRIC)
