@@ -15,13 +15,13 @@ target_link_libraries(
 	dataModel
 	)
 
-set(SRCS DataMgr.cpp MeshReader.cpp ParticleReader.cpp Reader.cpp 
-	VecReader.cpp VolumeReader.cpp DTIVolumeReader.cpp 
+set(SRCS DataMgr.cpp MeshReader.cpp ParticleReader.cpp
+	VecReader.cpp ChangeFocusRatio.cpp DTIVolumeReader.cpp 
 	FlightReader.cpp UniverseParticleReader.cpp SolutionParticleReader.cpp BinaryParticleReader.cpp
 	RawVolumeReader.cpp)
 
-set(HDRS DataMgr.h MeshReader.h ParticleReader.h Reader.h 
-	VecReader.h VolumeReader.h DTIVolumeReader.h 
+set(HDRS DataMgr.h MeshReader.h ParticleReader.h
+	VecReader.h ChangeFocusRatio.h DTIVolumeReader.h 
 	FlightReader.h UniverseParticleReader.h SolutionParticleReader.h BinaryParticleReader.h
 	RawVolumeReader.h)
 
