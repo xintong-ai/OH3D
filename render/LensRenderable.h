@@ -12,6 +12,7 @@ class LensRenderable :public Renderable
 	std::vector<Lens*> *lenses;
 
 	float3 lastLensCenter;
+	float lastLensRatio;
 	bool lastLensCenterRecorded = false;
 
 	int2 lastPt = make_int2(0, 0);

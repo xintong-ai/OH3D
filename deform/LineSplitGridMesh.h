@@ -359,9 +359,9 @@ public:
 		bool ismeshillegal = true;
 		while (ismeshillegal){
 			step = (maxDiff / meshRes);
-			nStep[0] = floor(rangeDiff.x / step) + 1;
-			nStep[1] = floor(rangeDiff.y / step) + 1;
-			nStep[2] = floor(rangeDiff.z / step) + 1;
+			nStep[0] = floor(rangeDiff.x / step) + 1; nStep[0] = nStep[0] > meshRes ? meshRes : nStep[0];
+			nStep[1] = floor(rangeDiff.y / step) + 1; nStep[1] = nStep[1] > meshRes ? meshRes : nStep[1];
+			nStep[2] = floor(rangeDiff.z / step) + 1; nStep[2] = nStep[2] > meshRes ? meshRes : nStep[2];
 			if (nStep[0] >= mimNumStepEachDim && nStep[1] >= mimNumStepEachDim && nStep[2] >= mimNumStepEachDim){
 				ismeshillegal = false;
 				if (nStep[1] % 2 != 1){

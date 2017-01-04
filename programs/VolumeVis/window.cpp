@@ -19,6 +19,8 @@
 #include "VRVolumeRenderableCUDA.h"
 #endif
 
+#include"Lens.h"
+
 
 Window::Window()
 {
@@ -61,10 +63,10 @@ Window::Window()
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
-		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
+		//reader->OutputToVolumeByNormalizedVecMag(inputVolume);
 		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
 		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
+		reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
 		
 		reader.reset();
 	}
@@ -113,8 +115,8 @@ Window::Window()
 	modelVolumeDeformer = std::make_shared<PhysicalVolumeDeformProcessor>(meshDeformer, inputVolume);
 	
 	//order matters!
-	openGL->AddProcessor("2meshdeform", meshDeformer.get());
-	openGL->AddProcessor("3physicalParticleDeform", modelVolumeDeformer.get());
+	openGL->AddProcessor("1meshdeform", meshDeformer.get());
+	openGL->AddProcessor("2physicalVolumeDeform", modelVolumeDeformer.get());
 	
 	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	if (std::string(dataPath).find("nek") != std::string::npos){
@@ -497,6 +499,7 @@ void Window::SlotRbUniformChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 0;
 		meshDeformer->setReinitiationNeed();
+		inputVolume->reset();
 	}
 }
 void Window::SlotRbDensityChanged(bool b)
@@ -504,6 +507,7 @@ void Window::SlotRbDensityChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 1;
 		meshDeformer->setReinitiationNeed();
+		inputVolume->reset();
 	}
 }
 void Window::SlotRbTransferChanged(bool b)
@@ -511,6 +515,7 @@ void Window::SlotRbTransferChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 2;
 		meshDeformer->setReinitiationNeed();
+		inputVolume->reset();
 	}
 }
 void Window::SlotRbGradientChanged(bool b)
@@ -518,6 +523,7 @@ void Window::SlotRbGradientChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 3;
 		meshDeformer->setReinitiationNeed();
+		inputVolume->reset();
 	}
 }
 

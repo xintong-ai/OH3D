@@ -405,6 +405,8 @@ void LensRenderable::draw(float modelview[16], float projection[16])
 				glPopMatrix();
 				glMatrixMode(GL_MODELVIEW);
 				glPopMatrix();
+				
+
 			}
 		}
 	}
@@ -567,10 +569,10 @@ void LensRenderable::AddCircleLens3D()
 	actor->GetProjection(projection);
 
 	if (lastLensCenterRecorded){
-		l = new CircleLens3D(modelview, projection, winSize.x, winSize.y, winSize.y * 0.1, lastLensCenter);
+		l = new CircleLens3D(modelview, projection, winSize.x, winSize.y, winSize.y * 0.15, lastLensCenter);
 	}
 	else{
-		l = new CircleLens3D(modelview, projection, winSize.x, winSize.y, winSize.y * 0.1, actor->DataCenter());
+		l = new CircleLens3D(modelview, projection, winSize.x, winSize.y, winSize.y * 0.15, actor->DataCenter());
 	}
 	lenses->push_back(l);
 	l->justChanged = true;
@@ -582,7 +584,7 @@ void LensRenderable::AddLineLens()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l;
 	if (lastLensCenterRecorded){
-		l = new LineLens(lastLensCenter, 0.3);
+		l = new LineLens(lastLensCenter, lastLensRatio);
 	}
 	else{
 		l = new LineLens(actor->DataCenter(), 0.3);
@@ -598,14 +600,14 @@ void LensRenderable::AddLineLens3D()
 	int2 winSize = actor->GetWindowSize();
 	Lens* l;
 	if (lastLensCenterRecorded){
-		l = new LineLens3D(lastLensCenter, 0.3);
+		//l = new LineLens3D(lastLensCenter, 0.222048);// 0.3);
 		//l = new LineLens3D(lastLensCenter, 0.5); //for VR
-		//l = new LineLens3D(lastLensCenter, 0.193742);
+		l = new LineLens3D(lastLensCenter, lastLensRatio);
 	}
 	else{
-		l = new LineLens3D(actor->DataCenter(), 0.3);
+		//l = new LineLens3D(actor->DataCenter(), 0.222048);// 0.3);
 		//l = new LineLens3D(actor->DataCenter(), 0.5); //for VR
-		//l = new LineLens3D(actor->DataCenter(), 0.193742);
+		l = new LineLens3D(actor->DataCenter(), 0.193742);
 	}
 	lenses->push_back(l);
 	//l->justChanged = true; //constructing first, then set justChanged
@@ -1298,6 +1300,10 @@ void LensRenderable::SlotDelLens()
 	activedCursors = 0;
 	if (lenses->size() > 0){
 		lastLensCenter = make_float3(lenses->back()->GetCenter());
+		if (lenses->back()->type == LENS_TYPE::TYPE_LINE){
+			lastLensRatio = ((lenses->back()))->focusRatio;
+		}
+
 		lastLensCenterRecorded = true;
 		lenses->pop_back();
 	}
@@ -1453,6 +1459,7 @@ void LensRenderable::LoadState(const char* filename)
 		ifs >> l->ctrlPointScreen2.y;
 
 		ifs >> l->focusRatio;
+		//l->axisRatio = l->focusRatio / 3.0;
 
 		ifs.close();
 		l->justChanged = true;

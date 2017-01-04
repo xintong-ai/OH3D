@@ -16,12 +16,12 @@ target_link_libraries(
 	)
 
 set(SRCS DataMgr.cpp MeshReader.cpp ParticleReader.cpp
-	VecReader.cpp ChangeFocusRatio.cpp DTIVolumeReader.cpp 
+	VecReader.cpp TeemVolumeReader.cpp DTIVolumeReader.cpp 
 	FlightReader.cpp UniverseParticleReader.cpp SolutionParticleReader.cpp BinaryParticleReader.cpp
 	RawVolumeReader.cpp)
 
 set(HDRS DataMgr.h MeshReader.h ParticleReader.h
-	VecReader.h ChangeFocusRatio.h DTIVolumeReader.h 
+	VecReader.h TeemVolumeReader.h DTIVolumeReader.h 
 	FlightReader.h UniverseParticleReader.h SolutionParticleReader.h BinaryParticleReader.h
 	RawVolumeReader.h)
 

@@ -52,7 +52,7 @@ Window::Window()
 	inputParticle = std::make_shared<Particle>();
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),130);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),70);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
@@ -625,6 +625,7 @@ void Window::SlotRbUniformChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 0;
 		meshDeformer->setReinitiationNeed();
+		inputParticle->reset();
 	}
 }
 void Window::SlotRbDensityChanged(bool b)
@@ -632,6 +633,7 @@ void Window::SlotRbDensityChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 1;
 		meshDeformer->setReinitiationNeed();
+		inputParticle->reset();
 	}
 }
 void Window::SlotRbTransferChanged(bool b)
@@ -639,6 +641,7 @@ void Window::SlotRbTransferChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 2;
 		meshDeformer->setReinitiationNeed();
+		inputParticle->reset();
 	}
 }
 void Window::SlotRbGradientChanged(bool b)
@@ -646,5 +649,6 @@ void Window::SlotRbGradientChanged(bool b)
 	if (b){
 		meshDeformer->elasticityMode = 3;
 		meshDeformer->setReinitiationNeed();
+		inputParticle->reset();
 	}
 }
