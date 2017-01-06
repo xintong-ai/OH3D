@@ -26,6 +26,7 @@ GLMatrixManager::GLMatrixManager(bool _vrMode) :vrMode(_vrMode)
 	}
 	else{
 		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+		//transVec = QVector3D(0.0f, 0.0f, 0.0f);//move it towards the front of the camera
 		transScale = 1;
 	}
 
@@ -112,12 +113,6 @@ void GLMatrixManager::GetModelView(float mv[16])
 	GetModelView(mv, viewMat.data());
 }
 
-
-void GLMatrixManager::SetVol(int3 dim)
-{
-	dataMin = make_float3(0, 0, 0);
-	dataMax = make_float3(dim.x - 1, dim.y - 1, dim.z - 1);
-}
 
 void GLMatrixManager::SetVol(float3 posMin, float3 posMax)
 {

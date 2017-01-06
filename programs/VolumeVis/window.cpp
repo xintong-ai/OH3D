@@ -28,8 +28,6 @@ Window::Window()
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
 	dataMgr = std::make_shared<DataMgr>();
-	
-
 	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
 	int3 dims;
@@ -63,10 +61,10 @@ Window::Window()
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
-		//reader->OutputToVolumeByNormalizedVecMag(inputVolume);
+		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
 		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
 		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
+		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
 		
 		reader.reset();
 	}
@@ -85,6 +83,12 @@ Window::Window()
 #else
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
+
+	//bool isImmersive = true;
+	//if (isImmersive){
+	//	matrixMgr->SetTransVec(0, 0, 0);
+	//}
+
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
 

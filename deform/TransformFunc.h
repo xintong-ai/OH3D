@@ -293,6 +293,50 @@ inline float4 mat4mulvec4(T *a, float4 b)
 	return c;
 }
 
+// transform vector by matrix with translation
+__device__
+inline float4 mul(const float4x4 &M, const float4 &v)
+{
+	float4 r;
+	r.w = dot(v, M.m[3]);
+	r.x = dot(v, M.m[0]);
+	r.y = dot(v, M.m[1]);
+	r.z = dot(v, M.m[2]);
+
+	return r;
+}
+
+__device__
+inline float3 mul(const float4x4 &M, const float3 &v)
+{
+	float4 v4 = make_float4(v, 1.0);
+	float3 r;
+	r.x = dot(v4, M.m[0]);
+	r.y = dot(v4, M.m[1]);
+	r.z = dot(v4, M.m[2]);
+	return r;
+}
+
+__device__
+inline float3 mul(const float3x3 &M, const float3 &v)
+{
+	float3 r;
+	r.x = dot(v, M.m[0]);
+	r.y = dot(v, M.m[1]);
+	r.z = dot(v, M.m[2]);
+	return r;
+}
+
+
+
+__device__
+inline float4 divW(float4 v)
+{
+	float invW = 1 / v.w;
+	return(make_float4(v.x * invW, v.y * invW, v.z * invW, 1.0f));
+}
+
+
 inline __device__ __host__ float2 GetXY(float4 pos)
 {
 	return make_float2(pos.x, pos.y);

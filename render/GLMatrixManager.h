@@ -10,7 +10,7 @@ class GLMatrixManager{
 	Trackball *trackball;
 	Rotation *rot;
 	//transformation states
-	QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+	QVector3D transVec;
 	QMatrix4x4 transRot;
 	QMatrix4x4 viewMat;
 	float transScale = 1;
@@ -31,9 +31,10 @@ public:
 	void GetModelMatrix(float ret[16]);
 	void GetProjection(float ret[16], float width, float height);
 
-	void SetVol(int3 dim);
 	void SetVol(float3 posMin, float3 posMax);
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
+	void SetTransVec(float x, float y, float z){ transVec[0] = x; transVec[1] = y; transVec[2] = z; }
+	void SetScale(float v){ transScale = v; }
 	void SetCurrentScale(float v){ currentTransScale = v; }
 	void FinishedScale();
 	float3 DataCenter();

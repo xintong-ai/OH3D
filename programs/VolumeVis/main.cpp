@@ -16,7 +16,7 @@ int main(int argc, char **argv)
 	win.init();
 
 
-	win.setFixedSize(1095, 822);
+	//win.setFixedSize(1095, 822);
 
 	return app.exec();
 }
