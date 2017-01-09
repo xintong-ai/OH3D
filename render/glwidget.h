@@ -34,6 +34,7 @@ class StopWatchInterface;
 class Renderable;
 class GLMatrixManager;
 class Processor;
+class Interactor;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -54,6 +55,7 @@ public:
 
 	void AddRenderable(const char* name, void* r);
 	void AddProcessor(const char* name, void* r); //the processors can be moved to DeformGlWidget in the future. or combine DeformGlWidget with glwidget
+	void AddInteractor(const char* name, void* r);
 
 	QSize minimumSizeHint() const Q_DECL_OVERRIDE;
 	QSize sizeHint() const Q_DECL_OVERRIDE;
@@ -86,6 +88,7 @@ protected:
 
 	std::map<std::string, Renderable*> renderers;
 	std::map<std::string, Processor*> processors;
+	std::map<std::string, Interactor*> interactors;
 
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;

@@ -13,6 +13,7 @@
 #include "VecReader.h"
 #include "VolumeRenderableCUDA.h"
 #include "PhysicalVolumeDeformProcessor.h"
+#include "mouse/TestInteractor.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -76,7 +77,8 @@ Window::Window()
 	}
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
-	
+			
+
 	/********GL widget******/
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
@@ -133,6 +135,11 @@ Window::Window()
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 	openGL->AddRenderable("model", meshRenderable.get());
+
+
+	tint = std::make_shared<TestInteractor>();
+	//openGL->AddInteractor("model", tint.get());
+
 
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");

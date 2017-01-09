@@ -338,7 +338,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 
 
-
+//used for immersive observation
 __global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
@@ -368,37 +368,28 @@ __global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float
 	float tnear, tfar;
 	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
 
-	if (!hit)
+	if (tnear < 0.0f) tnear = 0.0f;     // clamp to near plane
+
+	if (tfar<tnear)
+//	if (!hit)
 	{
 		//float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
 		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 		d_output[y*imageW + x] = rgbaFloatToInt(sum);
 		return;
 	}
+	//else{
+	//	float4 sum = make_float4(0.0f, 0.0f, tfar/300.0, 1.0f);
+	//	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+	//	return;
+	//}
 
+
+
+	tnear = (tfar - tnear) / 80 + tnear;
 	maxSteps = maxSteps / 2;
 	float temp = (tfar - tnear) / maxSteps;
 	tstep = fmax(tstep, temp);
-	/*
-	if (tfar < 0.0f)
-	{
-	float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f); //for warning
-	d_output[y*imageW + x] = rgbaFloatToInt(sum);
-	return;
-	}
-
-
-	if (tnear < 0.0f)
-	{
-	float4 sum = make_float4(0.9f, 0.9f, 0.2f, 1.0f); //for warning
-	d_output[y*imageW + x] = rgbaFloatToInt(sum);
-	return;
-	}
-
-	if (tnear < 0.0f) tnear = 0.0f;     // clamp to near plane
-
-	*/
-
 
 	// march along ray from front to back, accumulating color
 	float4 sum = make_float4(0.0f);

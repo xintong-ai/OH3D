@@ -11,7 +11,8 @@ class GLMatrixManager{
 	Rotation *rot;
 	//transformation states
 	QVector3D transVec;
-	QMatrix4x4 transRot;
+	QVector3D eyeVecInWorld;
+	QMatrix4x4 rotMat;
 	QMatrix4x4 viewMat;
 	float transScale = 1;
 	float currentTransScale = 1;
@@ -20,6 +21,7 @@ class GLMatrixManager{
 	float3 dataMax = make_float3(10, 10, 10);
 
 	bool vrMode = false;
+	bool immersiveMode = true;
 
 public:
 	GLMatrixManager(bool _vrMode = false);

@@ -18,15 +18,25 @@ GLMatrixManager::GLMatrixManager(bool _vrMode) :vrMode(_vrMode)
 {
 	trackball = new Trackball();
 	rot = new Rotation();
-	transRot.setToIdentity();
+	rotMat.setToIdentity();
 
 	if (vrMode) {
 		transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
 		transScale = 2;
 	}
+	else if (immersiveMode)
+	{
+		transVec = QVector3D(0.0f, 0.0f, 0.0f);//not using this in immersiveMode
+
+		eyeVecInWorld = QVector3D(0.0f, 0.0f, 1.5f);
+		viewMat.lookAt(eyeVecInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 1.0f, 0.0f));// always use (0,0,0) as the world coordinate of the view focus
+
+		rotMat.rotate(90, QVector3D(-1.0f, 0.0f, 0.0f));
+
+		transScale = 2;
+	}
 	else{
 		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
-		//transVec = QVector3D(0.0f, 0.0f, 0.0f);//move it towards the front of the camera
 		transScale = 1;
 	}
 
@@ -39,7 +49,7 @@ void GLMatrixManager::Rotate(float fromX, float fromY, float toX, float toY)
 	float m[16];
 	rot->matrix(m);
 	QMatrix4x4 qm = QMatrix4x4(m).transposed();
-	transRot = qm * transRot;
+	rotMat = qm * rotMat;
 }
 
 void GLMatrixManager::Translate(float x, float y)
@@ -52,9 +62,9 @@ void GLMatrixManager::GetProjection(float ret[16], float width, float height)
 {
 	QMatrix4x4 m;
 	if (vrMode)
-		m.perspective(96.73, (float)width / height, (float)0.1, (float)100);// for VR
+		m.perspective(96.73, (float)width / height, (float)0.01, (float)100);// for VR
 	else
-		m.perspective(30, (float)width / height, (float)0.1, (float)100);// for VR
+		m.perspective(55 / ((float)width / height), (float)width / height, (float)0.01, (float)100);// for VR
 	m = m.transposed();
 	m.copyDataTo(ret); //this copy is row major, so we need to transpose it first
 }
@@ -80,14 +90,18 @@ void GLMatrixManager::GetModelMatrix(float ret[16])
 	QMatrix4x4 m;
 	m.setToIdentity();	
 	m.translate(transVec);
-	m = m * transRot;
+	m = m * rotMat;
 	m.scale(scale * transScale * currentTransScale);
-	m.translate(-dataCenter.x, -dataCenter.y, -dataCenter.z);
+
+	float3 cof = dataCenter;
+	//dataCenter = dataMin + (dataMax-dataMin)* 0.5;
+
+	m.translate(-cof.x, -cof.y, -cof.z);
 	m = m.transposed();
 	m.copyDataTo(ret); //this copy is row major, so we need to transpose it first
 
 	//glTranslatef(transVec[0], transVec[1], transVec[2]);
-	//glMultMatrixf(transRot.data());
+	//glMultMatrixf(rotMat.data());
 	//glScalef(transScale * currentTransScale, transScale* currentTransScale, transScale* currentTransScale);
 
 	//glScalef(scale, scale, scale);
@@ -131,7 +145,7 @@ void GLMatrixManager::SaveState(const char* filename)
 	std::ofstream myfile;
 	myfile.open(filename);
 	for (int i = 0; i < 16; i++){
-		myfile << transRot.constData()[i] << " ";
+		myfile << rotMat.constData()[i] << " ";
 	}
 	myfile << std::endl;
 
@@ -149,7 +163,7 @@ void GLMatrixManager::LoadState(const char* filename)
 	std::ifstream ifs(filename, std::ifstream::in);
 
 	for (int i = 0; i < 16; i++) {
-		ifs >> transRot.data()[i];
+		ifs >> rotMat.data()[i];
 	}
 
 	ifs >> transVec[0];

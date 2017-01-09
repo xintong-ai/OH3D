@@ -10,6 +10,7 @@
 #include "VRWidget.h"
 #include "GLMatrixManager.h"
 #include "Processor.h"
+#include "mouse/Interactor.h"
 
 GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 : QOpenGLWidget(parent)
@@ -35,6 +36,13 @@ void GLWidget::AddProcessor(const char* name, void* r)
 {
 	processors[name] = (Processor*)r;
 	//((Processor*)r)->SetActor(this); //not sure if needed. better not rely on actor
+}
+
+void GLWidget::AddInteractor(const char* name, void* r)
+{
+	interactors[name] = (Interactor*)r;
+	//((Renderable*)r)->SetActor(this);
+
 }
 
 GLWidget::~GLWidget()
@@ -200,7 +208,15 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 		if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
 			QPointF from = pixelPosToViewPos(prevPos);
 			QPointF to = pixelPosToViewPos(pos);
-			matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
+			
+			if (interactors.size() > 0){
+				for (auto interactor : interactors)
+					interactor.second->Rotate(from.x(), from.y(), to.x(), to.y());
+			}
+			else{
+				matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
+			}
+
 		}
 		else if (event->buttons() & Qt::RightButton) {
 			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
