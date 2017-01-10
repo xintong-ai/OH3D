@@ -86,10 +86,11 @@ Window::Window()
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
 
-	//bool isImmersive = true;
-	//if (isImmersive){
-	//	matrixMgr->SetTransVec(0, 0, 0);
-	//}
+	bool isImmersive =  true;
+	if (isImmersive){
+		matrixMgr->SetImmersiveMode();
+		matrixMgr->SetTransVec(0, 0, 0);
+	}
 
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
@@ -136,10 +137,10 @@ Window::Window()
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 	openGL->AddRenderable("model", meshRenderable.get());
 
-
-	tint = std::make_shared<TestInteractor>();
-	//openGL->AddInteractor("model", tint.get());
-
+	if (isImmersive){
+		tint = std::make_shared<TestInteractor>();
+		openGL->AddInteractor("model", tint.get());
+	}
 
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");

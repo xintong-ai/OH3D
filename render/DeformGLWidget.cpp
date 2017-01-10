@@ -21,7 +21,7 @@ void DeformGLWidget::UpdateDepthRange()
 	matrixMgr->GetVol(dataMin, dataMax);
 	GLfloat modelview[16];
 	GLfloat projection[16];
-	matrixMgr->GetModelView(modelview);
+	matrixMgr->GetModelViewMatrix(modelview);
 	matrixMgr->GetProjection(projection, width, height);
 
 	float4 p[8];

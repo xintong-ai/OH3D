@@ -9,6 +9,6 @@ public:
 	TestInteractor(){};
 	~TestInteractor(){};
 
-	void Rotate(float fromX, float fromY, float toX, float toY) override { return; };
+	void Rotate(float fromX, float fromY, float toX, float toY, std::shared_ptr<GLMatrixManager>) override ;
 };
 #endif

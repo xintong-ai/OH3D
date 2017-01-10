@@ -144,8 +144,6 @@ const Rotation &Trackball::spin(float fromX, float fromY, float toX, float toY)
 //! Assumes error checking is done
 const Rotation &Trackball::rotate_vectors(QuatVector &fromVec, QuatVector &toVec)
 {
-  QuatVector axis;   //!< Axis of rotation
-  float angle;       //!< how much to rotate about axis
   QuatVector diffVec;//!< Difference vector
   float t;           //!< Position along vector
 

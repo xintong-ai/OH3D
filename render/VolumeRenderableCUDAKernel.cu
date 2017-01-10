@@ -368,7 +368,7 @@ __global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float
 	float tnear, tfar;
 	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
 
-	if (tnear < 0.0f) tnear = 0.0f;     // clamp to near plane
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
 
 	if (tfar<tnear)
 //	if (!hit)
@@ -386,7 +386,7 @@ __global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float
 
 
 
-	tnear = (tfar - tnear) / 80 + tnear;
+	//tnear = (tfar - tnear) / 80 + tnear;
 	maxSteps = maxSteps / 2;
 	float temp = (tfar - tnear) / maxSteps;
 	tstep = fmax(tstep, temp);
