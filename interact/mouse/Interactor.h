@@ -1,13 +1,15 @@
 #ifndef INTERACTOR_H
 #define INTERACTOR_H
+#include <memory>
 
+class GLMatrixManager;
 class Interactor
 {
 public:
 	Interactor(){};
 	~Interactor(){};
 	
-	virtual void Rotate(float fromX, float fromY, float toX, float toY){ return; };
+	virtual void Rotate(float fromX, float fromY, float toX, float toY, std::shared_ptr<GLMatrixManager> ){ return; };
 
 	virtual bool process(float modelview[16], float projection[16], int winW, int winH){ return false; };
 

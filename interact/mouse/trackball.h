@@ -44,6 +44,10 @@ class Trackball
   Trackball();
   ~Trackball();
 
+  float getAngleRotated(){ return angle; };
+  //QVector3D 
+  void getRotationAxis(float &x, float &y, float &z){ axis.getValue(x, y, z); };
+
   //! ----------------------- INPUT METHODS ----------------------
   //! Pass the x and y coordinates of the last and current positions of
   //! the mouse, scaled so they are from (-1.0 ... 1.0).
@@ -70,6 +74,9 @@ class Trackball
 
   //! Radius of the trackball.
   static float m_trackball_size;
+
+  float angle;       //!< how much to rotate about axis
+  QuatVector axis;   //!< Axis of rotation
 
 };
 

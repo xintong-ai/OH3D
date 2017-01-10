@@ -11,5 +11,5 @@ c=D:/Data/FPM/smoothinglength_0.44/run15/099.vtu
 d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
 f=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
-qVOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
-VOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
+dVOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec
