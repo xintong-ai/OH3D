@@ -41,6 +41,7 @@ set( Srcs
 	GlyphRenderable.cpp 
 	GLArrow.cpp
 	ArrowRenderable.cpp
+    GLMatrixManager.cpp
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
@@ -61,6 +62,7 @@ set( Hdrs
 	ColorGradient.h 
 	GLArrow.h
 	ArrowRenderable.h 
+	GLMatrixManager.h
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h

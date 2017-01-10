@@ -106,7 +106,7 @@ void GLWidget::paintGL() {
 
 	GLfloat modelview[16];
 	GLfloat projection[16];
-	matrixMgr->GetModelViewMatrix(modelview);
+	matrixMgr->GetModelView(modelview);
 	matrixMgr->GetProjection(projection, width, height);
 
 
@@ -211,7 +211,7 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 			
 			if (interactors.size() > 0){
 				for (auto interactor : interactors)
-					interactor.second->Rotate(from.x(), from.y(), to.x(), to.y(), matrixMgr);
+					interactor.second->Rotate(from.x(), from.y(), to.x(), to.y());
 			}
 			else{
 				matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
@@ -426,7 +426,7 @@ void GLWidget::GetPosRange(float3 &pmin, float3 &pmax)
 
 void GLWidget::GetModelview(float* m)
 {
-	matrixMgr->GetModelViewMatrix(m);
+	matrixMgr->GetModelView(m);
 }
 
 void GLWidget::GetProjection(float* m)
