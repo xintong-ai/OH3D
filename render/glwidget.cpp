@@ -208,19 +208,17 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 		if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
 			QPointF from = pixelPosToViewPos(prevPos);
 			QPointF to = pixelPosToViewPos(pos);
-			
-			if (interactors.size() > 0){
-				for (auto interactor : interactors)
-					interactor.second->Rotate(from.x(), from.y(), to.x(), to.y(), matrixMgr);
-			}
-			else{
-				matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
-			}
 
+			for (auto interactor : interactors)
+				interactor.second->Rotate(from.x(), from.y(), to.x(), to.y(), matrixMgr);
+			//matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
 		}
 		else if (event->buttons() & Qt::RightButton) {
 			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
-			matrixMgr->Translate(diff.x(), diff.y());
+
+			for (auto interactor : interactors)
+				interactor.second->Translate(diff.x(), diff.y(), matrixMgr);
+			//matrixMgr->Translate(diff.x(), diff.y());
 		}
 	}
 	QPoint posGL = pixelPosToGLPos(event->pos());
@@ -270,8 +268,9 @@ void GLWidget::wheelEvent(QWheelEvent * event)
 			doTransform = false;
 	}
 	if (doTransform){
-		matrixMgr->Scale(event->delta());
-		//transScale *= exp(event->delta() * -0.001);
+		for (auto interactor : interactors)
+			interactor.second->wheelEvent(event->delta(), matrixMgr);
+		//matrixMgr->Scale(event->delta());
 	}
 	update();
 }
@@ -372,7 +371,7 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 				- pixelPosToViewPos(gesture->lastCenterPoint());
 			//transVec[0] += diff.x();
 			//transVec[1] += diff.y();
-			matrixMgr->Translate(diff.x(), diff.y());
+			matrixMgr->TranslateInWorldSpace(diff.x(), diff.y());
 			update();
 		}
 

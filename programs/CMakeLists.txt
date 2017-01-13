@@ -11,7 +11,7 @@ PROJECT(programs)
 		add_subdirectory(TensorVis)
 	endif()
 	add_subdirectory(VolumeVis)
-
+	add_subdirectory(ImmersiveVolumeVis)
 
 if(USE_LEAP)
 	find_package(Qt5Widgets REQUIRED)

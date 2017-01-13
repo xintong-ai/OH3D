@@ -83,7 +83,7 @@ class Rotation
   // ------------------- GET METHODS -----------------------
 
   //! Build a rotation matrix based on internal quaternion.
-  void matrix(float m[16]);
+  const void matrix(float m[16]);
   //! Build an inverse matrix based on internal quaternion.
   void invMatrix(float m[16]);
 

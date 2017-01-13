@@ -11,8 +11,9 @@ class GLMatrixManager{
 	Rotation *rot;
 	//transformation states
 	QVector3D transVec;
-	QVector3D eyeVecInWorld;
-	QVector3D cofLocal; //center of focus in local coordinate
+	QVector3D eyeInWorld; 
+	QVector3D upVecInWorld = QVector3D(0.0f, 0.0f, 1.0f);
+	QVector3D cofLocal; //center of focus in local coordinate //always assume the cof in worldcoordinate is (0,0,0)
 	QMatrix4x4 rotMat;
 	QMatrix4x4 viewMat;
 	float volScale = 1;
@@ -28,21 +29,36 @@ class GLMatrixManager{
 public:
 	GLMatrixManager(bool _vrMode = false);
 	void SetImmersiveMode();
+
+
+
 	
-	Trackball * getTrackBall(){ return trackball; };
-	void updateCofByMVMat();
-	QVector3D getEyeVecInWorld(){ return eyeVecInWorld; };
-	QVector3D getCofLocal(){ return cofLocal; };
-	void setCofLocal(QVector3D _cofLocal){ cofLocal = _cofLocal; }
-	void setEyeVecInWorld(QVector3D _eyeVecInWorld){
-		eyeVecInWorld = _eyeVecInWorld; viewMat.setToIdentity();
-		viewMat.lookAt(eyeVecInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 0.0f, 1.0f));// should take more care of the upvector
-	}
-	
-	
-	void Rotate(float fromX, float fromY, float toX, float toY);
-	void Translate(float x, float y);
+	//setting functions
+	void SetTransVec(float x, float y, float z){ transVec[0] = x; transVec[1] = y; transVec[2] = z; }
+	void SetScale(float v){ transScale = v; }
+	void SetCurrentScale(float v){ currentTransScale = v; }
+	void FinishedScale();
 	void Scale(float v);
+	void SetViewMat(QMatrix4x4 _m){ viewMat = _m; }
+	void applyPreRotMat(QMatrix4x4 r){ rotMat = r * rotMat; };
+	void TranslateInWorldSpace(float x, float y){
+		transVec[0] += x;
+		transVec[1] += y;
+	}
+	void Rotate(float fromX, float fromY, float toX, float toY);//historical methods. may deprecate
+	void setCofLocal(QVector3D _cofLocal){ cofLocal = _cofLocal; }
+	void setEyeInWorld(QVector3D _eyeVecInWorld){
+		eyeInWorld = _eyeVecInWorld; viewMat.setToIdentity();
+		viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), upVecInWorld);// should take more care of the upvector !!!!!!
+	}
+
+
+	//getting functions
+	Trackball * getTrackBall(){ return trackball; };
+	QVector3D getEyeVecInWorld(){ return eyeInWorld; };
+	QVector3D getUpVecInWorld(){ return upVecInWorld; };
+	QVector3D getCofLocal(){ return cofLocal; };
+
 	void GetModelViewMatrix(float mv[16]);
 	void GetModelViewMatrix(float mv[16], float _viewMat[16]);
 	void GetModelViewMatrix(QMatrix4x4 &mv);
@@ -50,15 +66,12 @@ public:
 	void GetModelMatrix(QMatrix4x4 &m);
 	void GetProjection(float ret[16], float width, float height);
 
+
+
+	float3 DataCenter();
 	void SetVol(float3 posMin, float3 posMax);
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
-	void SetTransVec(float x, float y, float z){ transVec[0] = x; transVec[1] = y; transVec[2] = z; }
-	void SetScale(float v){ transScale = v; }
-	void SetCurrentScale(float v){ currentTransScale = v; }
-	void FinishedScale();
-	float3 DataCenter();
-	void SetViewMat(QMatrix4x4 _m){ viewMat = _m; }
-
+	
 	void SaveState(const char* filename);
 	void LoadState(const char* filename);
 };

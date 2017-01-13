@@ -22,6 +22,8 @@
 
 #include "ScreenLensDisplaceProcessor.h"
 #include "PhysicalParticleDeformProcessor.h"
+#include "mouse/RegularInteractor.h"
+
 
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>
@@ -130,6 +132,15 @@ Window::Window()
 	openGL->AddRenderable("2glyph", glyphRenderable.get());
 	openGL->AddRenderable("3lenses", lensRenderable.get());
 	openGL->AddRenderable("4model", meshRenderable.get());
+
+
+
+
+	rInteractor = std::make_shared<RegularInteractor>();
+	openGL->AddInteractor("regular", rInteractor.get());
+
+
+
 
 
 	///********controls******/

@@ -30,8 +30,8 @@ GLMatrixManager::GLMatrixManager(bool _vrMode) :vrMode(_vrMode)
 	{
 		transVec = QVector3D(0.0f, 0.0f, 0.0f);//not using this in immersiveMode
 
-		eyeVecInWorld = QVector3D(0.0f, 0.0f, 1.01f);
-		viewMat.lookAt(eyeVecInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 1.0f, 0.0f));// always use (0,0,0) as the world coordinate of the view focus
+		eyeInWorld = QVector3D(0.0f, 0.0f, 1.01f);
+		viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 1.0f, 0.0f));// always use (0,0,0) as the world coordinate of the view focus
 
 		//rotMat.rotate(90, QVector3D(-1.0f, 0.0f, 0.0f));
 		rotMat.rotate(90, QVector3D(0.0f, 1.0f, 0.0f));
@@ -55,9 +55,9 @@ void GLMatrixManager::SetImmersiveMode()
 
 	transVec = QVector3D(0.0f, 0.0f, 0.0f);//not using this in immersiveMode
 
-	eyeVecInWorld = QVector3D(-1.01f, 0.0f, 0.0f);
+	eyeInWorld = QVector3D(-1.01f, 0.0f, 0.0f);
 	viewMat.setToIdentity();
-	viewMat.lookAt(eyeVecInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 0.0f, 1.0f));// always use (0,0,0) as the world coordinate of the view focus
+	viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 0.0f, 1.0f));// always use (0,0,0) as the world coordinate of the view focus
 
 	rotMat.setToIdentity();
 
@@ -77,11 +77,6 @@ void GLMatrixManager::Rotate(float fromX, float fromY, float toX, float toY)
 	rotMat = qm * rotMat;
 }
 
-void GLMatrixManager::Translate(float x, float y)
-{
-	transVec[0] += x;
-	transVec[1] += y;
-}
 
 void GLMatrixManager::GetProjection(float ret[16], float width, float height)
 {
@@ -110,21 +105,6 @@ void GLMatrixManager::FinishedScale()
 	currentTransScale = 1;
 }
 
-void GLMatrixManager::updateCofByMVMat()
-{
-	//QMatrix4x4 m;
-	//m.setToIdentity();
-	//m.translate(transVec);
-	//m = m * rotMat;
-	//m.scale(scale * transScale * currentTransScale);
-
-	//cofLocal = dataCenter;
-	//if (immersiveMode){
-	//	cofLocal = make_float3(70, 70, 128);
-	//}
-
-	//m.translate(-cofLocal.x, -cofLocal.y, -cofLocal.z);
-}
 
 void GLMatrixManager::GetModelMatrix(QMatrix4x4 &m)
 {

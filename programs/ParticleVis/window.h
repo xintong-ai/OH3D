@@ -27,6 +27,7 @@ class Particle;
 class ScreenLensDisplaceProcessor;
 class PhysicalParticleDeformProcessor;
 class Lens;
+class RegularInteractor;
 
 //#define USE_NEW_LEAP
 
@@ -71,6 +72,8 @@ private:
 
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
+
+	std::shared_ptr<RegularInteractor> rInteractor;
 
 	QSlider *deformForceSlider;
 
