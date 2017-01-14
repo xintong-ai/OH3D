@@ -26,6 +26,7 @@ class PhysicalVolumeDeformProcessor;
 class VolumeRenderableCUDA;
 class Lens;
 class RegularInteractor;
+class LensInteractor;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -57,7 +58,10 @@ private:
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
 	std::shared_ptr<MeshRenderable> meshRenderable;
+
 	std::shared_ptr<RegularInteractor> rInteractor;
+	std::shared_ptr<LensInteractor> lensInteractor;
+
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	QPushButton *addCurveLensBtn;

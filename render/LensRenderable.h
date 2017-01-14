@@ -12,7 +12,7 @@ class LensRenderable :public Renderable
 	std::vector<Lens*> *lenses;
 
 	float3 lastLensCenter;
-	float lastLensRatio;
+	float lastLensRatio = 0.3;
 	bool lastLensCenterRecorded = false;
 
 	int2 lastPt = make_int2(0, 0);
@@ -38,11 +38,7 @@ public:
 	int cursorColor[2];
 	float3 cursorPos[2];
 
-	bool drawFullRetractor = false;
-
-	float3 snapPos;
-	
-	bool changeLensWhenRotateData = true; //view dependant or not
+	bool drawFullRetractor = false;	
 	bool drawInsicionOnCenterFace = false;
 
 	void init() override;
@@ -55,16 +51,9 @@ public:
 	void AddLineLens();
 	void AddLineLens3D();
 	void AddCurveLens();
+	void DelLens();
 
-	void mousePress(int x, int y, int modifier) override;
-	void mouseRelease(int x, int y, int modifier) override;
-	void mouseMove(int x, int y, int modifier) override;
-	bool MouseWheel(int x, int y, int modifier, int delta)  override;
-	
-	bool isSnapToGlyph = false;
-	bool isSnapToFeature = false;
-
-	//for touch screen
+		//for touch screen
 	void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) override;
 	void ChangeLensDepth(float v);
 	bool InsideALens(int x, int y);
@@ -77,7 +66,6 @@ public:
 
 public slots:
 	//for keyboard
-	void SlotDelLens();
 	void adjustOffset();
 	void RefineLensBoundary();
 

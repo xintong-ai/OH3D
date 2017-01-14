@@ -139,6 +139,8 @@ Window::Window()
 
 	if (isImmersive){
 		tint = std::make_shared<ImmersiveInteractor>();
+		tint->setMatrixMgr(matrixMgr);
+
 		openGL->AddInteractor("model", tint.get());
 	}
 
@@ -155,7 +157,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QCheckBox* gridCheck = new QCheckBox("Show Back Face and Mesh", this);
 	QCheckBox* cbBackFace = new QCheckBox("Show the Back Face", this);
 	QCheckBox* cbChangeLensWhenRotateData = new QCheckBox("View Dependency", this);
-	cbChangeLensWhenRotateData->setChecked(lensRenderable->changeLensWhenRotateData);
+	//cbChangeLensWhenRotateData->setChecked(lensInteractor->changeLensWhenRotateData);
 	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
 	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
 
@@ -542,7 +544,7 @@ void Window::SlotRbGradientChanged(bool b)
 
 void Window::SlotDelLens()
 {
-	lensRenderable->SlotDelLens();
+	lensRenderable->DelLens();
 	inputVolume->reset();
 }
 void Window::SlotAddMeshRes()

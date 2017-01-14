@@ -41,8 +41,7 @@ void GLWidget::AddProcessor(const char* name, void* r)
 void GLWidget::AddInteractor(const char* name, void* r)
 {
 	interactors[name] = (Interactor*)r;
-	//((Renderable*)r)->SetActor(this);
-
+	((Interactor*)r)->SetActor(this);
 }
 
 GLWidget::~GLWidget()
@@ -210,20 +209,22 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 			QPointF to = pixelPosToViewPos(pos);
 
 			for (auto interactor : interactors)
-				interactor.second->Rotate(from.x(), from.y(), to.x(), to.y(), matrixMgr);
+				interactor.second->Rotate(from.x(), from.y(), to.x(), to.y());
 			//matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
 		}
 		else if (event->buttons() & Qt::RightButton) {
 			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
 
 			for (auto interactor : interactors)
-				interactor.second->Translate(diff.x(), diff.y(), matrixMgr);
+				interactor.second->Translate(diff.x(), diff.y());
 			//matrixMgr->Translate(diff.x(), diff.y());
 		}
 	}
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	for (auto renderer : renderers)
-		renderer.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	//for (auto renderer : renderers)
+		//renderer.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	for (auto interactor : interactors)
+		interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
     prevPos = pos;
     update();
@@ -231,17 +232,19 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
-	//std::cout << "mousePressEvent:" <<  std::endl;
-
 	QPointF pos = event->pos();
 	QPoint posGL = pixelPosToGLPos(event->pos());
 	//lastPt = make_int2(posGL.x(), posGL.y());
 
 	//if (pinching)
 	//	return;
+
 	makeCurrent();
-	for (auto renderer : renderers)
-		renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	//for (auto renderer : renderers)
+		//	renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+
+	for (auto interactor : interactors)
+		interactor.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
     prevPos = pos;
 }
@@ -254,22 +257,28 @@ void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 	pinched = false;
 
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	for (auto renderer : renderers)
-		renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
-
+	//for (auto renderer : renderers)
+	//	renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	for (auto interactor : interactors)
+		interactor.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 }
 
 void GLWidget::wheelEvent(QWheelEvent * event)
 {
 	bool doTransform = true;
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	for (auto renderer : renderers){
+	/*for (auto renderer : renderers){
 		if (renderer.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
+			doTransform = false;
+	}
+	*/
+	for (auto interactor : interactors){
+		if (interactor.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
 			doTransform = false;
 	}
 	if (doTransform){
 		for (auto interactor : interactors)
-			interactor.second->wheelEvent(event->delta(), matrixMgr);
+			interactor.second->wheelEvent(event->delta());
 		//matrixMgr->Scale(event->delta());
 	}
 	update();

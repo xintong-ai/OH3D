@@ -23,7 +23,9 @@
 #include "ScreenLensDisplaceProcessor.h"
 #include "PhysicalParticleDeformProcessor.h"
 #include "mouse/RegularInteractor.h"
+#include "mouse/LensInteractor.h"
 
+#include <CMakeConfig.h>
 
 #ifdef USE_LEAP
 #include <leap/LeapListener.h>
@@ -54,7 +56,7 @@ Window::Window()
 	inputParticle = std::make_shared<Particle>();
 	if (std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
-		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),70);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
+		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),130);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
 		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
@@ -137,7 +139,12 @@ Window::Window()
 
 
 	rInteractor = std::make_shared<RegularInteractor>();
+	rInteractor->setMatrixMgr(matrixMgr);
+	
+	lensInteractor = std::make_shared<LensInteractor>();
+	lensInteractor->SetLenses(&lenses);
 	openGL->AddInteractor("regular", rInteractor.get());
+	openGL->AddInteractor("lens", lensInteractor.get());
 
 
 
@@ -159,7 +166,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	
 	
 	QCheckBox* cbChangeLensWhenRotateData = new QCheckBox("View Dependency", this); 
-	cbChangeLensWhenRotateData->setChecked(lensRenderable->changeLensWhenRotateData);
+	cbChangeLensWhenRotateData->setChecked(lensInteractor->changeLensWhenRotateData);
 	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
 	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
 
@@ -381,7 +388,7 @@ void Window::AddCurveLens()
 
 void Window::SlotDelLens()
 {
-	lensRenderable->SlotDelLens();
+	lensRenderable->DelLens();
 	inputParticle->reset();
 	screenLensDisplaceProcessor->reset();
 	openGL->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
@@ -389,7 +396,7 @@ void Window::SlotDelLens()
 
 void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
-	lensRenderable->isSnapToGlyph = b;
+	lensInteractor->isSnapToGlyph = b;
 	if (!b){
 		inputParticle->SetSnappedGlyphId(-1);
 	}
@@ -421,7 +428,7 @@ void Window::SlotToggleFreezingFeature(bool b)
 
 void Window::SlotToggleUsingFeatureSnapping(bool b)
 {
-	lensRenderable->isSnapToFeature = b;
+	lensInteractor->isSnapToFeature = b;
 	if (!b){
 		inputParticle->SetSnappedFeatureId(-1);
 		screenLensDisplaceProcessor->setRecomputeNeeded();
@@ -475,9 +482,9 @@ void Window::SlotToggleUdbe(bool b)
 void Window::SlotToggleCbChangeLensWhenRotateData(bool b)
 {
 	if (b)
-		lensRenderable->changeLensWhenRotateData = true;
+		lensInteractor->changeLensWhenRotateData = true;
 	else
-		lensRenderable->changeLensWhenRotateData = false;
+		lensInteractor->changeLensWhenRotateData = false;
 }
 
 void Window::SlotToggleCbDrawInsicionOnCenterFace(bool b)

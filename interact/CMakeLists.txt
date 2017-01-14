@@ -11,8 +11,17 @@ else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR})
 
-set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h mouse/Interactor.h mouse/ImmersiveInteractor.h mouse/RegularInteractor.h)
-set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp mouse/ImmersiveInteractor.cpp mouse/RegularInteractor.cpp)
+set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h 
+mouse/Interactor.h mouse/ImmersiveInteractor.h mouse/RegularInteractor.h 
+mouse/MatrixInteractor.h 
+mouse/LensInteractor.h mouse/GlyphInteractor.h
+)
+
+set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp 
+mouse/ImmersiveInteractor.cpp 
+mouse/RegularInteractor.cpp
+mouse/LensInteractor.cpp mouse/GlyphInteractor.cpp
+)
 
 add_definitions(-DEXPORT_QT)
 

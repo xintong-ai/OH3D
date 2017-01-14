@@ -2,7 +2,7 @@
 #include "GLMatrixManager.h"
 #include "mouse/trackball.h"
 
-void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY, std::shared_ptr<GLMatrixManager> matrixMgr)
+void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
 	matrixMgr->getTrackBall()->rotate(fromX, fromY, toX, toY);
 	//the rotation in trackball is not strictly in eye coordinate. but use this as approximation
@@ -35,7 +35,7 @@ void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY,
 };
 
 
-void ImmersiveInteractor::Translate(float x, float y, std::shared_ptr<GLMatrixManager> matrixMgr)
+void ImmersiveInteractor::Translate(float x, float y)
 {
 	QMatrix4x4 m, mv;
 	matrixMgr->GetModelMatrix(m);
@@ -50,7 +50,7 @@ void ImmersiveInteractor::Translate(float x, float y, std::shared_ptr<GLMatrixMa
 	return;
 };
 
-void ImmersiveInteractor::wheelEvent(float v, std::shared_ptr<GLMatrixManager> matrixMgr)
+void ImmersiveInteractor::wheelEvent(float v)
 {
 	QMatrix4x4 m, mv;
 	matrixMgr->GetModelMatrix(m);

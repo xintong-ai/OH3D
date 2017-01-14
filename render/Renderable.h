@@ -49,9 +49,6 @@ public:
     virtual void draw(float modelview[16], float projection[16]);
 
 	virtual void animate() {}
-	virtual void mousePress(int x, int y, int modifier) {}
-	virtual void mouseRelease(int x, int y, int modifier) {}
-	virtual void mouseMove(int x, int y, int modifier) {}
 	virtual void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) {}
 
 	void RecordMatrix(float* modelview, float* projection){
@@ -79,7 +76,6 @@ public:
     //    ProjectionMatrix = ProjectionMatrix.transposed();
     //}
 
-	virtual bool MouseWheel(int x, int y, int modifier, int delta){ return false; };// {cameraChanged = true; }
 
 	void SetActor(GLWidget* _actor) {
 		actor = _actor;

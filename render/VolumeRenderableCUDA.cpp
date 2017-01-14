@@ -136,25 +136,6 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	glEnable(GL_DEPTH_TEST);
 }
 
-void VolumeRenderableCUDA::mousePress(int x, int y, int modifier)
-{
-	lastPt = make_int2(x, y);
-}
-
-void VolumeRenderableCUDA::mouseRelease(int x, int y, int modifier)
-{
-
-}
-
-void VolumeRenderableCUDA::mouseMove(int x, int y, int modifier)
-{
-
-}
-
-bool VolumeRenderableCUDA::MouseWheel(int x, int y, int modifier, int delta)
-{
-	return false;
-}
 
 
 void VolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()

@@ -3,7 +3,7 @@
 #include "mouse/trackball.h"
 #include "Rotation.h"
 
-void RegularInteractor::Rotate(float fromX, float fromY, float toX, float toY, std::shared_ptr<GLMatrixManager> matrixMgr)
+void RegularInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
 	Rotation *rot;
 	rot = new Rotation();
@@ -15,13 +15,13 @@ void RegularInteractor::Rotate(float fromX, float fromY, float toX, float toY, s
 	return;
 };
 
-void RegularInteractor::Translate(float x, float y, std::shared_ptr<GLMatrixManager> matrixMgr)
+void RegularInteractor::Translate(float x, float y)
 {
 	matrixMgr->TranslateInWorldSpace(x, y);
 	return; 
 };
 
-void RegularInteractor::wheelEvent(float v, std::shared_ptr<GLMatrixManager> matrixMgr)
+void RegularInteractor::wheelEvent(float v)
 {
 	matrixMgr->Scale(v);
 	return;

@@ -73,10 +73,6 @@ public:
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	void mousePress(int x, int y, int modifier) override;
-	void mouseRelease(int x, int y, int modifier) override;
-	void mouseMove(int x, int y, int modifier) override;
-	bool MouseWheel(int x, int y, int modifier, int delta)  override;
 	void resize(int width, int height)override;
 
 	bool useColor = false;

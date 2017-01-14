@@ -20,7 +20,6 @@ public:
 protected:
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	void mouseRelease(int x, int y, int modifier) override;
 
 };
 #endif

@@ -138,7 +138,3 @@ void MeshRenderable::draw(float modelview[16], float projection[16])
 	glPopMatrix();
 }
 
-void MeshRenderable::mouseRelease(int x, int y, int modifier)
-{
-	//meshDeformer->setReinitiationNeed();
-}

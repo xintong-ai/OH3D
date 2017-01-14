@@ -10,7 +10,7 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <memory>
-#include <CMakeConfig.h>
+//#include <CMakeConfig.h>
 
 enum INTERACT_MODE{
 	MOVE_LENS,
