@@ -56,7 +56,6 @@ public:
 private:
 	std::shared_ptr<DeformGLWidget> openGL;
 	QTimer *aTimer;
-	const int nScale = 20;
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 

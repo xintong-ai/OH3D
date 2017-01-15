@@ -43,36 +43,25 @@ public:
 private:
 	std::shared_ptr<DeformGLWidget> openGL;
 	QTimer *aTimer;
-	const int nScale = 20;
-	QPushButton* addLensBtn;
-	QPushButton* addLineLensBtn;
+
 
 	std::shared_ptr<QPushButton> delLensBtn;
-	std::shared_ptr<QRadioButton> radioDeformScreen;
-	std::shared_ptr<QRadioButton> radioDeformObject;
+
 
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
 	
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
-	std::shared_ptr<LensRenderable> lensRenderable;
-	std::shared_ptr<MeshRenderable> meshRenderable;
-	std::shared_ptr<ImmersiveInteractor> tint;
+	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
-	QPushButton *addCurveLensBtn;
-	std::shared_ptr<MeshDeformProcessor> meshDeformer;
 	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<PhysicalVolumeDeformProcessor> modelVolumeDeformer;
-	std::vector<Lens*> lenses; //can change Lens* to shared pointer, to avoid manually deleting
 
 	QLabel *laLabel, *ldLabel, *lsLabel;
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
 	QLabel *deformForceLabel;
 	QLabel *meshResLabel;
 
-	float deformForceConstant = 100;
-	int meshResolution = 20;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
@@ -80,16 +69,11 @@ private:
 #endif
 
 private slots:
-	void AddLens();
-	void AddLineLens();
-	void AddCurveLens(); 
-	void SlotToggleGrid(bool b);
-	void SlotToggleBackFace(bool b);
-	void SlotDeformModeChanged(bool clicked);
+	
+
 	void SlotSaveState();
 	void SlotLoadState();
 
-	void deformForceSliderValueChanged(int);
 	void transFuncP1LabelSliderValueChanged(int);
 	void transFuncP2LabelSliderValueChanged(int); 
 	void brSliderValueChanged(int v);
@@ -98,16 +82,6 @@ private slots:
 	void ldSliderValueChanged(int);
 	void lsSliderValueChanged(int);
 
-	void SlotRbUniformChanged(bool);
-	void SlotRbDensityChanged(bool);
-	void SlotRbTransferChanged(bool);
-	void SlotRbGradientChanged(bool);
-	
-	void SlotDelLens();
-
-	void SlotAddMeshRes();
-	void SlotMinusMeshRes();
-	void SlotToggleCbDrawInsicionOnCenterFace(bool b);
 
 };
 
