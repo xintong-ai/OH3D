@@ -30,7 +30,6 @@ VRWidget::VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, GLWidget* _mainG
 void VRWidget::AddRenderable(const char* name, void* r)
 {
 	renderers[name] = (Renderable*)r;
-	((Renderable*)r)->SetAllRenderable(&renderers);
 	((Renderable*)r)->SetVRActor(this);
 }
 
@@ -127,7 +126,7 @@ void VRWidget::paintGL() {
 			QMatrix4x4 mv;// (modelview);
 			//mv = mv.transposed();
 			//mv = viewMat * mv;
-			matrixMgr->GetModelView(mv.data(), viewMat.data());
+			matrixMgr->GetModelViewMatrix(mv.data(), viewMat.data());
 			OSVR_SurfaceCount surfaces = display->getViewer(viewer).getEye(eye).getNumSurfaces();
 			for (OSVR_SurfaceCount surface = 0; surface < surfaces; ++surface) {
 				auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
@@ -150,8 +149,15 @@ void VRWidget::paintGL() {
 				//pj = pj.transposed();
 
 				/// Call out to render our scene.
-				for (auto renderer : renderers)
-					renderer.second->draw(mv.data(), projMat.data());
+				for (auto renderer : renderers){
+					//should use better methods than using renderer names...
+					if (std::string(renderer.first).find("glyph") != std::string::npos || std::string(renderer.first).find("volume") != std::string::npos){
+						renderer.second->drawVR(mv.data(), projMat.data(), eye);
+					}
+					else{
+						renderer.second->draw(mv.data(), projMat.data());
+					}
+				}
 			}
 		}
 	};

@@ -1,6 +1,6 @@
-#include <VRVolumeRenderableCUDA.h>
-#include <VolumeRenderableCUDA.h>
-#include <VRWidget.h>
+#include "VRVolumeRenderableCUDA.h"
+#include "VolumeRenderableCUDA.h"
+#include "VRWidget.h"
 #include "VolumeRenderableCUDAKernel.h"
 
 #include <QOpenGLFunctions>
@@ -27,7 +27,7 @@ void VRVolumeRenderableCUDA::init()
 	initTextureAndCudaArrayOfScreen();
 }
 
-void VRVolumeRenderableCUDA::draw(float modelview[16], float projection[16])
+void VRVolumeRenderableCUDA::drawVR(float modelview[16], float projection[16], int eye)
 {
 	if (!visible)
 		return;
@@ -43,6 +43,10 @@ void VRVolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	
 	int winWidth, winHeight;
 	vractor->GetWindowSize(winWidth, winHeight);
+
+	winWidth = winWidth / 2;
+
+
 	//drawWithGivenWinSize(modelview, projection, winWidth, winHeight);
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview).transposed();
 	QMatrix4x4 q_invMV = q_modelview.inverted();
@@ -59,7 +63,7 @@ void VRVolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
 	bool isCutaway = false;
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &isCutaway, &(volumeRenderable->transFuncP1), &(volumeRenderable->transFuncP2), &(volumeRenderable->la), &(volumeRenderable->ld), &(volumeRenderable->ls), &(volumeRenderable->volume->spacing));
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(volumeRenderable->transFuncP1), &(volumeRenderable->transFuncP2), &(volumeRenderable->la), &(volumeRenderable->ld), &(volumeRenderable->ls), &(volumeRenderable->getVolume()->spacing));
 
 
 	////those should be well set already by volumeRenderable
@@ -68,7 +72,7 @@ void VRVolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	//VolumeRender_setGradient(&(modelVolumeDeformer->volumeCUDAGradient));
 
 	//compute the dvr
-	VolumeRender_render(d_output, winWidth, winHeight, volumeRenderable->density, volumeRenderable->brightness, eyeInWorld, volumeRenderable->volume->size, volumeRenderable->maxSteps, volumeRenderable->tstep, volumeRenderable->useColor);
+	VolumeRender_render(d_output, winWidth, winHeight, volumeRenderable->density, volumeRenderable->brightness, eyeInWorld, volumeRenderable->getVolume()->size, volumeRenderable->maxSteps, volumeRenderable->tstep, volumeRenderable->useColor);
 
 	cudaMemcpy(pixelColor, d_output, winWidth*winHeight * sizeof(uint), cudaMemcpyDeviceToHost);
 	glDrawPixels(winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixelColor);

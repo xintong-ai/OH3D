@@ -13,7 +13,8 @@ int main(int argc, char **argv)
 
 	Window win;
 	win.show();
-	//win.init();
+
+	win.init();
 	//win.setFixedSize(1095, 822);
 
 	return app.exec();

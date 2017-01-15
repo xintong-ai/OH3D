@@ -98,9 +98,9 @@ private:
 	std::shared_ptr<VRWidget> vrWidget;
 	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
 
-	//for test
+#ifdef USE_LEAP
 	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable2;
-	std::shared_ptr<LensRenderable> lensRenderable2;
+#endif
 
 #endif
 

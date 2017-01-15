@@ -21,6 +21,9 @@ public:
 
 	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) {};
 	bool colorByFeature = false;//when the particle has multi attributes or features, choose which attribute or color is used for color. currently a simple solution using bool
+	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
+	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
+
 
 protected:
 	GlyphRenderable(std::shared_ptr<Particle> _particle);
@@ -29,9 +32,7 @@ protected:
 
 	//used for drawing
 	ShaderProgram* glProg = nullptr;
-	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
-	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
-
+	
 	//used for picking and snapping
 	unsigned int vbo_vert_picking, vbo_indices_picking;
 	ShaderProgram *glPickingProg;

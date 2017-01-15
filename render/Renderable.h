@@ -47,6 +47,7 @@ public:
     virtual void resize(int width, int height);
 
     virtual void draw(float modelview[16], float projection[16]);
+	virtual void drawVR(float modelview[16], float projection[16], int eye){};//eye==0 for left, ==1 for right
 
 	virtual void animate() {}
 

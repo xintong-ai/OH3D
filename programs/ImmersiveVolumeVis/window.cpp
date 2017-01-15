@@ -94,14 +94,7 @@ Window::Window()
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
 
-#ifdef USE_OSVR
-		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
-		vrWidget->setWindowFlags(Qt::Window);
-		vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(volumeRenderable.get());
-		vrWidget->AddRenderable("glyph", vrVolumeRenderable.get());
-		vrWidget->AddRenderable("lens", lensRenderable.get());
-		openGL->SetVRWidget(vrWidget.get());
-#endif
+
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);

@@ -77,6 +77,9 @@ public:
 
 	bool useColor = false;
 
+	std::shared_ptr<Volume> getVolume(){
+		return volume;
+	}
 
 private:
 	VolumeCUDA volumeCUDAGradient;

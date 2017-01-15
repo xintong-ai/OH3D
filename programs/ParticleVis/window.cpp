@@ -202,16 +202,19 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 	vrWidget->setWindowFlags(Qt::Window);
 	vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
-	
-	lensRenderable2 = std::make_shared<LensRenderable>();;
-	
+
 	vrWidget->AddRenderable("6glyph", vrGlyphRenderable.get());
 	vrWidget->AddRenderable("7lens", lensRenderable.get());
+
+
+#ifdef USE_LEAP
+	vrGlyphRenderable2 = std::make_shared<VRGlyphRenderable>(arrowRenderable.get());
+	vrWidget->AddRenderable("8glyph", vrGlyphRenderable2.get());
+#endif
 
 	openGL->SetVRWidget(vrWidget.get());
 
 #endif
-
 
 	QGroupBox *deformModeGroupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
