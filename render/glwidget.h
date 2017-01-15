@@ -10,7 +10,7 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <memory>
-//#include <CMakeConfig.h>
+#include <CMakeConfig.h>
 
 enum INTERACT_MODE{
 	MOVE_LENS,
@@ -73,7 +73,7 @@ public:
 	INTERACT_MODE GetInteractMode(){ return interactMode; }
 	void SetInteractMode(INTERACT_MODE v);// { interactMode = v; std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; }
 	
-#ifdef USE_NEW_LEAP
+#ifdef USE_LEAP
 	float blendOthers = false; //when draw the hand cursor in 3D, blend the particles when necessary
 #endif
 

@@ -6,8 +6,13 @@
 #include <QVector3D>
 #include <Leap.h>
 
+
+#include "LeapInteractor.h"
+
 typedef QVector<QVector<QVector3D>> TypeArray2;
 typedef QVector<QVector3D> TypeArray;
+
+class LeapInteractor;
 
 class LeapListener : public QObject, public Leap::Listener {
 	Q_OBJECT
@@ -36,10 +41,12 @@ public:
 
 	virtual void onFrame(const Leap::Controller & ctl);
 
+	void AddLeapInteractor(const char* name, void* r);
+
 private:
 	QElapsedTimer *timer;
-
-
+protected:
+	std::map<std::string, LeapInteractor*> interactors;
 };
 
 #endif	//LEAP_LISTENER_H

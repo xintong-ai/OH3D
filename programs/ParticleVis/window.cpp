@@ -25,16 +25,11 @@
 #include "mouse/RegularInteractor.h"
 #include "mouse/LensInteractor.h"
 
-#include <CMakeConfig.h>
 
 #ifdef USE_LEAP
-#include <leap/LeapListener.h>
 #include <Leap.h>
-#endif
-
-#ifdef USE_NEW_LEAP
-#include <LeapListener.h>
-#include <Leap.h>
+#include "leap/LeapListener.h"
+#include "leap/LensLeapInteractor.h"
 #endif
 
 #ifdef USE_OSVR
@@ -170,13 +165,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QCheckBox* cbDrawInsicionOnCenterFace = new QCheckBox("Draw the Incision at the Center Face", this);
 	cbDrawInsicionOnCenterFace->setChecked(lensRenderable->drawInsicionOnCenterFace);
 
+
 #ifdef USE_LEAP
-	listener = new LeapListener();
-	controller = new Leap::Controller();
-	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
-	controller->addListener(*listener);
-#endif
-#ifdef USE_NEW_LEAP
 	listener = new LeapListener();
 	controller = new Leap::Controller();
 	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
@@ -189,15 +179,23 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	val.push_back(0);
 	val.push_back(0);
 	leapFingerIndicators = std::make_shared<Particle>(pos, val);
-	leapFingerIndicatorVecs.push_back(make_float3(1, 0, 0));
-	leapFingerIndicatorVecs.push_back(make_float3(1, 0, 0));  //actaully only the length of these two vectors have an effect
+	leapFingerIndicatorVecs.push_back(make_float3(1, 0, 1));
+	leapFingerIndicatorVecs.push_back(make_float3(-1, 0, 1));  //actaully only the length of these two vectors have an effect
 
-	arrowRenderable = std::make_shared<ArrowRenderable>(leapFingerIndicatorVecs,leapFingerIndicators);
+	arrowRenderable = std::make_shared<ArrowRenderable>(leapFingerIndicatorVecs, leapFingerIndicators);
 	//arrowRenderable->SetVisibility(false);
+	
+	
 	leapFingerIndicators->numParticles = 0; //use numParticles to control how many indicators are drawn on screen
 	
 	
-	//openGL->AddRenderable("1LeapArrow", arrowRenderable.get()); //must be drawn first than glyphs
+	openGL->AddRenderable("1LeapArrow", arrowRenderable.get()); //must be drawn first than glyphs
+
+	lensLeapInteractor = std::make_shared<LensLeapInteractor>();
+	lensLeapInteractor->SetLenses(&lenses);
+	lensLeapInteractor->SetActor(openGL.get());
+	lensLeapInteractor->SetFingerIndicator(leapFingerIndicators);
+	listener->AddLeapInteractor("lens", (LeapInteractor*)(lensLeapInteractor.get()));
 #endif
 
 #ifdef USE_OSVR 
@@ -328,17 +326,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(cbChangeLensWhenRotateData, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbChangeLensWhenRotateData(bool)));
 	connect(cbDrawInsicionOnCenterFace, SIGNAL(clicked(bool)), this, SLOT(SlotToggleCbDrawInsicionOnCenterFace(bool)));
 
-#ifdef USE_LEAP
-	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
-		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
-#endif
-#ifdef USE_NEW_LEAP
-	//connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)),
-	//	this, SLOT(SlotUpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, int)));
-	connect(listener, SIGNAL(UpdateHandsNew(QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, int)),
-		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, QVector3D, int)));
-
-#endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
 	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
@@ -504,53 +491,6 @@ void Window::init()
 		vrWidget->show();
 #endif
 }
-
-#ifdef USE_LEAP
-void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
-{
-	if (1 == numHands){
-		lensRenderable->SlotOneHandChanged(make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
-	}
-	else if(2 == numHands){
-		//
-		lensRenderable->SlotTwoHandChanged(
-			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
-			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
-		
-	}
-}
-#endif
-
-#ifdef USE_NEW_LEAP
-void Window::SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, QVector3D rightMiddleTip, QVector3D rightRingTip, int numHands)
-{
-	if (1 == numHands){
-		float4 markerPos;
-		float f = meshDeformer->getDeformForce();
-		if (lensRenderable->SlotOneHandChangedNew_lc(
-			make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()), 
-			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()), 
-			make_float3(rightMiddleTip.x(), rightMiddleTip.y(), rightMiddleTip.z()),
-			make_float3(rightRingTip.x(), rightRingTip.y(), rightRingTip.z()),
-			markerPos, leapFingerIndicators->val[0], f)){
-
-			openGL->blendOthers = true;
-			deformForceSlider->setValue(f / deformForceConstant);
-
-		}
-		else{
-			openGL->blendOthers = false;
-		}
-		leapFingerIndicators->numParticles = 1;
-		leapFingerIndicators->pos[0] = markerPos;
-
-		lensRenderable->activedCursors = 1;
-		lensRenderable->cursorPos[0] = make_float3(markerPos);
-		lensRenderable->cursorColor[0] = leapFingerIndicators->val[0];
-	}
-
-}
-#endif
 
 void Window::SlotSaveState()
 {

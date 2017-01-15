@@ -1,5 +1,3 @@
-#include "SphereRenderable.h"
-#include "glwidget.h"
 //TODO:
 //The corrent performance bottle neck is the rendering but not the displacement
 //a more efficient way to draw sphere 
@@ -7,6 +5,10 @@
 //The sample code can be found from
 //http://tubafun.bplaced.net/public/sphere_shader.zip
 //
+
+
+#include "SphereRenderable.h"
+#include "glwidget.h"
 
 //removing the following lines will cause runtime error
 #ifdef WIN32

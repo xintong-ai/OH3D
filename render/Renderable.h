@@ -49,7 +49,6 @@ public:
     virtual void draw(float modelview[16], float projection[16]);
 
 	virtual void animate() {}
-	virtual void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) {}
 
 	void RecordMatrix(float* modelview, float* projection){
 		memcpy(&matrix_mv.v[0].x, modelview, sizeof(float4) * 4);

@@ -4,7 +4,6 @@
 #include <vector_types.h>
 #include <vector_functions.h>
 
-class GLMatrixManager;
 class GLWidget;
 
 class Interactor

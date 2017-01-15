@@ -29,17 +29,10 @@ class PhysicalParticleDeformProcessor;
 class Lens;
 class RegularInteractor;
 class LensInteractor;
+class LensLeapInteractor;
 
-//#define USE_NEW_LEAP
 
 #ifdef USE_LEAP
-class LeapListener;
-namespace Leap{
-	class Controller;
-}
-#endif
-
-#ifdef USE_NEW_LEAP
 class LeapListener;
 class ArrowRenderable; //used to draw leap finger indicators
 namespace Leap{
@@ -111,17 +104,15 @@ private:
 	std::shared_ptr<LensRenderable> lensRenderable2;
 
 #endif
-#ifdef USE_LEAP
-	LeapListener* listener;
-	Leap::Controller* controller;
-#endif
 
-#ifdef USE_NEW_LEAP
+
+#ifdef USE_LEAP
 	LeapListener* listener;
 	Leap::Controller* controller; 
 	std::shared_ptr<ArrowRenderable> arrowRenderable;
 	std::shared_ptr<Particle> leapFingerIndicators;
 	std::vector<float3> leapFingerIndicatorVecs;
+	std::shared_ptr<LensLeapInteractor> lensLeapInteractor;
 #endif
 
 private slots:
@@ -155,12 +146,6 @@ private slots:
 	void SlotAddMeshRes();
 	void SlotMinusMeshRes();
 
-#ifdef USE_LEAP
-	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
-#endif
-#ifdef USE_NEW_LEAP
-	void SlotUpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, QVector3D rightMiddleTip, QVector3D rightRingTip, int numHands);
-#endif
 };
 
 #endif

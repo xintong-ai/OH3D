@@ -15,12 +15,9 @@ if(USE_SUPERQUADRIC)
 	find_package(Teem REQUIRED)
 endif()
 
-if(USE_LEAP)
-	find_package(Leap)
-	include_directories(${Leap_ROOT_DIR}/include)
-endif()
 
-option(USE_NEW_LEAP OFF)
+
+option(USE_LEAP OFF)
 
 option(USE_OSVR "Enable features that require OSVR" OFF)
 if(USE_OSVR)
@@ -28,6 +25,9 @@ if(USE_OSVR)
 	include_directories(${osvr_DIR}/../../../include)
 endif()
 
+option(USE_CONTROLLER "Enable VIVE controller. !! NOT tested yet!!" OFF)
+
+option(USE_TOUCHSCREEN "Enable touch screen interaction. !! NOT tested yet!!" OFF)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 

@@ -1,20 +1,18 @@
 #include "ArrowRenderable.h"
-//#include <teem/ten.h>
-//http://www.sci.utah.edu/~gk/vissym04/index.html
-#include <QOpenGLFunctions>
-#include <QOpenGLVertexArrayObject>
+#include "glwidget.h"
+
 
 //removing the following lines will cause runtime error
 #ifdef WIN32
 #include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
-#include "ShaderProgram.h"
 
-#include <memory>
-#include "glwidget.h"
-#include <helper_math.h>
+#include <QOpenGLFunctions>
+#include <QOpenGLVertexArrayObject>
+#include "ShaderProgram.h"
 #include "GLArrow.h"
+#include <helper_math.h>
 #include "ColorGradient.h"
 #include "Particle.h"
 
@@ -76,7 +74,7 @@ GlyphRenderable(_particle)
 void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
 
-#define GLSL(shader) "#version 150\n" #shader
+#define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 
 
@@ -124,11 +122,9 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		uniform float Shininess;
 		in vec4 eyeCoords;
 		in vec4 fragColor;
-
-		uniform float Bright;
-
 		smooth in vec3 tnorm;
 		layout(location = 0) out vec4 FragColor;
+		uniform float Bright;
 
 		vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
 			vec3 s = normalize(vec3(LightPosition - position));
@@ -150,6 +146,7 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		}
 	);
 
+	shaderProg = new ShaderProgram;
 	shaderProg->initFromStrings(vertexVS, vertexFS);
 
 	shaderProg->addAttribute("VertexPosition");
@@ -176,9 +173,13 @@ void ArrowRenderable::init()
 {
 	GlyphRenderable::init();
 
-	glProg = new ShaderProgram;
-	LoadShaders(glProg);
+	m_vao = std::make_shared<QOpenGLVertexArrayObject>();
+	m_vao->create();
 
+	m_vao->bind();
+	LoadShaders(glProg);
+	
+	//GenVertexBuffer
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
 	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -291,7 +292,7 @@ void ArrowRenderable::initPickingDrawingObjects()
 {
 
 	//init shader
-#define GLSL(shader) "#version 150\n" #shader
+#define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =

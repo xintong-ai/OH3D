@@ -115,13 +115,13 @@ void GLWidget::paintGL() {
 	}
 
 
-#ifdef USE_NEW_LEAP
-	if (blendOthers){ //only used for USE_NEW_LEAP
+#ifdef USE_LEAP
+	if (blendOthers){ //only used for USE_LEAP
 		for (auto renderer : renderers)
 		{
 			renderer.second->DrawBegin();
 
-			if (std::string(renderer.first).find("Leap") != std::string::npos || std::string(renderer.first).find("lenses") != std::string::npos)
+			if (std::string(renderer.first).find("Leap") != std::string::npos || std::string(renderer.first).find("lenses") != std::string::npos) //not a good design to use renderable names...
 			{
 				renderer.second->draw(modelview, projection);
 				renderer.second->DrawEnd(renderer.first.c_str());
