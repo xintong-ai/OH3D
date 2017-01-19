@@ -1,5 +1,5 @@
 #include "RawVolumeReader.h"
-#include "string.h"
+#include <string.h>
 #include <iostream>
 
 //#include "cuda_math.h"

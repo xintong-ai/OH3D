@@ -16,15 +16,9 @@ class QCheckBox;
 class QLabel;
 class QRadioButton;
 class QTimer;
-class LensRenderable;
-class DataMgr;
 class GLMatrixManager;
-class MeshRenderable;
-class MeshDeformProcessor;
 class Volume;
-class PhysicalVolumeDeformProcessor;
 class VolumeRenderableCUDA;
-class Lens;
 class ImmersiveInteractor;
 
 #ifdef USE_OSVR
@@ -36,7 +30,7 @@ class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
 public:
-    Window();
+	Window(std::shared_ptr<Volume> v);
     ~Window();
 	void init();
 
@@ -44,16 +38,10 @@ private:
 	std::shared_ptr<DeformGLWidget> openGL;
 	QTimer *aTimer;
 
-
-	std::shared_ptr<QPushButton> delLensBtn;
-
-
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
 	
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
-	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 	std::shared_ptr<Volume> inputVolume;
 
@@ -61,6 +49,8 @@ private:
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
 	QLabel *deformForceLabel;
 	QLabel *meshResLabel;
+
+	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 
 
 #ifdef USE_OSVR

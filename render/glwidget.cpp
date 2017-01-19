@@ -210,22 +210,19 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 
 			for (auto interactor : interactors)
 				interactor.second->Rotate(from.x(), from.y(), to.x(), to.y());
-			//matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
 		}
 		else if (event->buttons() & Qt::RightButton) {
 			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
 
 			for (auto interactor : interactors)
 				interactor.second->Translate(diff.x(), diff.y());
-			//matrixMgr->Translate(diff.x(), diff.y());
 		}
 	}
-	QPoint posGL = pixelPosToGLPos(event->pos());
-	//for (auto renderer : renderers)
-		//renderer.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
-	for (auto interactor : interactors)
-		interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
-
+	else{
+		QPoint posGL = pixelPosToGLPos(event->pos());
+		for (auto interactor : interactors)
+			interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	}
     prevPos = pos;
     update();
 }
@@ -240,8 +237,6 @@ void GLWidget::mousePressEvent(QMouseEvent *event)
 	//	return;
 
 	makeCurrent();
-	//for (auto renderer : renderers)
-		//	renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
 	for (auto interactor : interactors)
 		interactor.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
@@ -257,30 +252,22 @@ void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 	pinched = false;
 
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	//for (auto renderer : renderers)
-	//	renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 	for (auto interactor : interactors)
 		interactor.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 }
 
 void GLWidget::wheelEvent(QWheelEvent * event)
 {
-	bool doTransform = true;
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	/*for (auto renderer : renderers){
-		if (renderer.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
-			doTransform = false;
-	}
-	*/
+
+	//only the first interactor is executed, because it is tricky to apply INTERACT_MODE to monitor the operated object
+	//so note the order when you add interactors
+
 	for (auto interactor : interactors){
 		if (interactor.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
-			doTransform = false;
+			break;
 	}
-	if (doTransform){
-		for (auto interactor : interactors)
-			interactor.second->wheelEvent(event->delta());
-		//matrixMgr->Scale(event->delta());
-	}
+
 	update();
 }
 

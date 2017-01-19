@@ -58,7 +58,6 @@ set( Hdrs
 	ShaderProgram.h 
 	GlyphRenderable.h 
 	GridRenderable.h
-	ColorGradient.h 
 	GLArrow.h
 	ArrowRenderable.h 
 	GLSphere.h

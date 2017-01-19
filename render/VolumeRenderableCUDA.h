@@ -44,38 +44,13 @@ public:
 	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
 	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
 	
-	//NEK
-	//lighting
-	float la = 1.0, ld = 0.2, ls = 0.1;
-	////MGHT2
-	//transfer function
-	float transFuncP1 = 0.55;
-	float transFuncP2 = 0.13;
-	float density = 1;
-	//ray casting
-	int maxSteps = 768;
-	float tstep = 0.25f;
-	float brightness = 1.0;
-
-
-	////////MGHT2
-	////lighting
-	//float la = 1.0, ld = 0.2, ls = 0.7;
-	////transfer function
-	//float transFuncP1 = 0.44;// 0.55;
-	//float transFuncP2 = 0.29;// 0.13;
-	//float density = 1.25;
-	////ray casting
-	//int maxSteps = 512;
-	//float tstep = 0.25f;
-	//float brightness = 1.3;
+	RayCastingParameters rcp;
 
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void resize(int width, int height)override;
 
-	bool useColor = false;
 
 	std::shared_ptr<Volume> getVolume(){
 		return volume;
@@ -108,6 +83,10 @@ private:
 		q_mvFix = _q_mv;
 
 	};
+
+
+
+	uint *d_output;
 };
 
 #endif

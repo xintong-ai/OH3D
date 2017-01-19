@@ -5,11 +5,6 @@ PROJECT (ImmersiveVolumeVis)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
-# option(USE_OSVR "Enable features that require OSVR" OFF)
-# if(USE_OSVR)
-	# find_package(osvr REQUIRED)
-# endif()
-
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -21,12 +16,11 @@ include_directories(
 		
 set( Srcs 
 	main.cpp 
-	window.cpp 
-	
+	window.cpp
 	)
+
 set( Hdrs  
 	window.h 
-
     )
 
 configure_file(config.txt config.txt COPYONLY)
@@ -39,10 +33,10 @@ qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
-	deform
 	io
 	interact
 	render
+	vpsel
 	dataModel
 )
 
@@ -51,5 +45,5 @@ if(USE_OSVR)
 endif()
 
 
-#set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
+set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 list(APPEND CUDA_NVCC_FLAGS_DEBUG -G -g)

@@ -21,7 +21,7 @@ public:
 	void mousePress(int x, int y, int modifier) override;
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
-	bool MouseWheel(int x, int y, int modifier, int delta)  override;
+	bool MouseWheel(int x, int y, int modifier, float delta)  override;
 
 
 	bool changeLensWhenRotateData = true; //view dependant or not

@@ -4,32 +4,39 @@
 
 void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
+	//suppose the rotation happens in eye coordinate
 	matrixMgr->getTrackBall()->rotate(fromX, fromY, toX, toY);
 	//the rotation in trackball is not strictly in eye coordinate. but use this as approximation
 	QVector3D axis;
 	matrixMgr->getTrackBall()->getRotationAxis(axis[0], axis[1], axis[2]);
 	float a = matrixMgr->getTrackBall()->getAngleRotated();
 
-	QMatrix4x4 m,mv;
+	QMatrix4x4 m,mv, v;
 
 	matrixMgr->GetModelMatrix(m);
 	matrixMgr->GetModelViewMatrix(mv);
-	
+	matrixMgr->GetViewMatrix(v);
+
 	
 	QVector3D eyeInLocal = m.inverted().map(matrixMgr->getEyeVecInWorld());
 	
-
+	QMatrix4x4 r;
+	r.rotate(a / 3.14159*180.0, axis);
 
 	QVector3D cofInEye = mv.map(matrixMgr->getCofLocal());
-	QMatrix4x4 r;
-	r.rotate(a/3.14159*180.0, axis);
 	QVector3D newCofInEye = r.map(cofInEye);
 	QVector3D newCofLocal = (mv.inverted()).map(newCofInEye);
 
+
+	QVector3D UpVecTipInEye = v.map(matrixMgr->getEyeVecInWorld() + matrixMgr->getUpVecInWorld());
+	QVector3D newUpVecTipInEye = r.map(UpVecTipInEye);
+	QVector3D newUpVecTipLocal = (mv.inverted()).map(newUpVecTipInEye);
+	
 	matrixMgr->setCofLocal(newCofLocal);
 
 	matrixMgr->GetModelMatrix(m);
-	matrixMgr->setEyeInWorld(m.map(eyeInLocal));
+	QVector3D newEyeInWorld = m.map(eyeInLocal);
+	matrixMgr->setEyeAndUpInWorld(newEyeInWorld, m.map(newUpVecTipLocal) - newEyeInWorld); 
 
 	return; 
 };
@@ -50,7 +57,7 @@ void ImmersiveInteractor::Translate(float x, float y)
 	return;
 };
 
-void ImmersiveInteractor::wheelEvent(float v)
+bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 {
 	QMatrix4x4 m, mv;
 	matrixMgr->GetModelMatrix(m);
@@ -61,5 +68,5 @@ void ImmersiveInteractor::wheelEvent(float v)
 
 	matrixMgr->setCofLocal(m.inverted().map(newCofInWorld));
 	
-	return;
+	return true;
 }

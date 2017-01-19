@@ -47,9 +47,11 @@ public:
 	}
 	void Rotate(float fromX, float fromY, float toX, float toY);//historical methods. may deprecate
 	void setCofLocal(QVector3D _cofLocal){ cofLocal = _cofLocal; }
-	void setEyeInWorld(QVector3D _eyeVecInWorld){
-		eyeInWorld = _eyeVecInWorld; viewMat.setToIdentity();
-		viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), upVecInWorld);// should take more care of the upvector !!!!!!
+	void setEyeAndUpInWorld(QVector3D _eyeVecInWorld, QVector3D _upVecInWorld){
+		eyeInWorld = _eyeVecInWorld; 
+		upVecInWorld = _upVecInWorld;
+		viewMat.setToIdentity(); 
+		viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), upVecInWorld);
 	}
 
 
@@ -65,6 +67,9 @@ public:
 	void GetModelMatrix(float ret[16]);
 	void GetModelMatrix(QMatrix4x4 &m);
 	void GetProjection(float ret[16], float width, float height);
+	void GetViewMatrix(QMatrix4x4 &v){
+		v = viewMat;
+	};
 
 
 

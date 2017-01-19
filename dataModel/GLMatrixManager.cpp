@@ -28,17 +28,7 @@ GLMatrixManager::GLMatrixManager(bool _vrMode) :vrMode(_vrMode)
 	}
 	else if (immersiveMode)
 	{
-		transVec = QVector3D(0.0f, 0.0f, 0.0f);//not using this in immersiveMode
-
-		eyeInWorld = QVector3D(0.0f, 0.0f, 1.01f);
-		viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 1.0f, 0.0f));// always use (0,0,0) as the world coordinate of the view focus
-
-		//rotMat.rotate(90, QVector3D(-1.0f, 0.0f, 0.0f));
-		rotMat.rotate(90, QVector3D(0.0f, 1.0f, 0.0f));
-
-		transScale = 2;
-		cofLocal = QVector3D(70, 70, 128);
-
+		SetImmersiveMode();
 	}
 	else{
 		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
@@ -57,7 +47,7 @@ void GLMatrixManager::SetImmersiveMode()
 
 	eyeInWorld = QVector3D(-1.01f, 0.0f, 0.0f);
 	viewMat.setToIdentity();
-	viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f, 0.0f, 1.0f));// always use (0,0,0) as the world coordinate of the view focus
+	viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), upVecInWorld);// always use (0,0,0) as the world coordinate of the view focus
 
 	rotMat.setToIdentity();
 

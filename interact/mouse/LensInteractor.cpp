@@ -228,7 +228,7 @@ void LensInteractor::mouseMove(int x, int y, int modifier)
 
 
 
-bool LensInteractor::MouseWheel(int x, int y, int modifier, int delta)
+bool LensInteractor::MouseWheel(int x, int y, int modifier, float delta)
 {
 	if (lenses->size() < 1)
 		return false;

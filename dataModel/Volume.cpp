@@ -39,6 +39,8 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allow
 		copyParams.extent = size;
 		copyParams.kind = cudaMemcpyHostToDevice;
 		checkCudaErrors(cudaMemcpy3D(&copyParams));
+
+		ptr = copyParams.dstPtr;
 	}
 }
 
@@ -72,4 +74,11 @@ void Volume::initVolumeCuda(){
 void Volume::reset(){
 	volumeCuda.VolumeCUDA_deinit();
 	volumeCuda.VolumeCUDA_init(size, values, 1, 1);
+}
+
+void Volume::saveRawToFile(const char *f)
+{
+	FILE * fp = fopen(f, "wb");
+	fwrite(values, sizeof(float), size.x*size.y*size.z, fp);
+	fclose(fp);
 }

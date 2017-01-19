@@ -1,4 +1,4 @@
-#include <ScreenLensDisplaceProcessor.h>
+#include "ScreenLensDisplaceProcessor.h"
 #include "TransformFunc.h"
 #include <vector_functions.h>
 #include <helper_math.h>

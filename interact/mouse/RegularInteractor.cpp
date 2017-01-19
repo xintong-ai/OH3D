@@ -21,8 +21,8 @@ void RegularInteractor::Translate(float x, float y)
 	return; 
 };
 
-void RegularInteractor::wheelEvent(float v)
+bool RegularInteractor::MouseWheel(int x, int y, int modifier, float v)
 {
 	matrixMgr->Scale(v);
-	return;
+	return true;
 }

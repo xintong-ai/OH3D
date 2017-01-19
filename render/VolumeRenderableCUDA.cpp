@@ -67,7 +67,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	q_mvp.copyDataTo(MVPMatrix);
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &transFuncP1, &transFuncP2, &la, &ld, &ls, &(volume->spacing));
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &rcp.transFuncP1, &rcp.transFuncP2, &rcp.la, &rcp.ld, &rcp.ls, &(volume->spacing));
 	if (!isFixed){
 		recordFixInfo(q_mvp, q_modelview);
 	}
@@ -91,7 +91,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	}
 
 	//compute the dvr
-	VolumeRender_render(d_output, winWidth, winHeight, density, brightness, eyeInWorld, volume->size, maxSteps, tstep, useColor);
+	VolumeRender_render(d_output, winWidth, winHeight, rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor);
 	
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));

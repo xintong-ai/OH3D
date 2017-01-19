@@ -24,6 +24,9 @@ struct VolumeCUDA
 	~VolumeCUDA();
 
 	void VolumeCUDA_deinit();
+
+	cudaPitchedPtr ptr;// = { 0 };
+
 };
 
 
@@ -34,10 +37,15 @@ public:
 
 	int3 size;
 	
-	float *values = 0; //used to store the voxel values, normalized to [0,1]
+	float *values = 0; //used to store the voxel values. generally normalized to [0,1] if used for volume rendering
 
-	float fMin;
-	float fMax;
+	void setSize(int3 s){ 
+		size = s;
+		if (values != 0){
+			delete values;
+		}
+		values = new float[size.x*size.y*size.z];
+	};
 
 	Volume(){};
 	
@@ -56,6 +64,8 @@ public:
 
 	void initVolumeCuda();
 	void reset();
+
+	void saveRawToFile(const char *);
 
 };
 #endif

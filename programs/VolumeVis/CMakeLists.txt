@@ -5,11 +5,6 @@ PROJECT (VolumeVis)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
-# option(USE_OSVR "Enable features that require OSVR" OFF)
-# if(USE_OSVR)
-	# find_package(osvr REQUIRED)
-# endif()
-
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}

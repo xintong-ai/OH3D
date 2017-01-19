@@ -1,6 +1,9 @@
 #ifndef PROCESSOR_H
 #define PROCESSOR_H
 
+/*
+this typo of processor is the one which will be called by opengl at each frame refresh
+*/
 class Processor
 {
 public:

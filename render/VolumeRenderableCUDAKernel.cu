@@ -5,14 +5,10 @@
 
 #include <stdlib.h>
 
+#include <thrust/device_vector.h>
 
 
 
-struct Ray
-{
-	float3 o;    // origin
-	float3 d;    // direction
-};
 
 // texture
 
@@ -71,6 +67,27 @@ __constant__ float colorTable[33][4] = {
 	1, 0.705882353, 0.015686275, 0.149019608,
 };
 
+__device__ float3 GetColourDiverge(float v)
+{
+	//if (v > 0.8)v = (v-0.8)/2+0.8;//for NEK image
+	//can be accelerated!!
+	int pos = 0;
+	bool notFound = true;
+	while (pos < numColorTableItems - 1 && notFound) {
+		if (colorTable[pos][0] <= v && colorTable[pos + 1][0] >= v)
+			notFound = false;
+		pos++;
+	}
+	float ratio = (v - colorTable[pos][0]) / (colorTable[pos + 1][0] - colorTable[pos][0]);
+
+
+	float3 c = make_float3(
+		ratio*(colorTable[pos + 1][1] - colorTable[pos][1]) + colorTable[pos][1],
+		ratio*(colorTable[pos + 1][2] - colorTable[pos][2]) + colorTable[pos][2],
+		ratio*(colorTable[pos + 1][3] - colorTable[pos][3]) + colorTable[pos][3]);
+
+	return(c);
+}
 
 
 
@@ -183,27 +200,6 @@ __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
 }
 
 
-__device__ float3 GetColourDiverge(float v)
-{
-	//if (v > 0.8)v = (v-0.8)/2+0.8;//for NEK image
-	//can be accelerated!!
-	int pos = 0;
-	bool notFound = true;
-	while (pos < numColorTableItems - 1 && notFound) {
-		if (colorTable[pos][0] <= v && colorTable[pos + 1][0] >= v)
-			notFound = false;
-		pos++;
-	}
-	float ratio = (v - colorTable[pos][0]) / (colorTable[pos + 1][0] - colorTable[pos][0]);
-
-
-	float3 c = make_float3(
-		ratio*(colorTable[pos + 1][1] - colorTable[pos][1]) + colorTable[pos][1],
-		ratio*(colorTable[pos + 1][2] - colorTable[pos][2]) + colorTable[pos][2],
-		ratio*(colorTable[pos + 1][3] - colorTable[pos][3]) + colorTable[pos][3]);
-
-	return(c);
-}
 
 
 __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
@@ -338,7 +334,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 
 
-//used for immersive observation
+//used for immersive observation. the difference is tstep is adjusted
 __global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
@@ -635,6 +631,8 @@ __global__ void d_render_preint_withLensBlending(uint *d_output, uint imageW, ui
 	d_output[y*imageW + x] = rgbaFloatToInt(sum);
 }
 
+
+
 void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 	float density, float brightness,
 	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor)
@@ -665,7 +663,6 @@ void VolumeRender_render_withLensBlending(uint *d_output, uint imageW, uint imag
 
 	cudaFree(dev_pts);
 }
-
 
 __global__ void
 d_computeGradient(cudaExtent volumeSize)
@@ -719,3 +716,6 @@ void VolumeRender_setGradient(const VolumeCUDA *gradVol)
 {
 	checkCudaErrors(cudaBindTextureToArray(volumeTexGradient, gradVol->content, gradVol->channelDesc));
 }
+
+
+

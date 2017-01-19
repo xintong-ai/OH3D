@@ -15,8 +15,6 @@ if(USE_SUPERQUADRIC)
 	find_package(Teem REQUIRED)
 endif()
 
-
-
 option(USE_LEAP OFF)
 
 option(USE_OSVR "Enable features that require OSVR" OFF)
@@ -36,9 +34,11 @@ set(INTERACT_DIR	"${CMAKE_SOURCE_DIR}/interact")
 set(IO_DIR			"${CMAKE_SOURCE_DIR}/io")
 set(RENDER_DIR		"${CMAKE_SOURCE_DIR}/render")
 set(DATAMODEL_DIR		"${CMAKE_SOURCE_DIR}/dataModel")
+set(VPSEL_DIR		"${CMAKE_SOURCE_DIR}/vpsel")
 
 include_directories(
 	${DEFORM_DIR}
+	${VPSEL_DIR}
 	${INTERACT_DIR}
 	${IO_DIR}
 	${RENDER_DIR}
@@ -47,6 +47,7 @@ include_directories(
 	cuda_types/
 	)
 
+add_subdirectory(vpsel)
 
 add_subdirectory(deform)
 

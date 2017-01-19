@@ -1,6 +1,6 @@
 #ifndef RAWVOLUME_READER_H
 #define RAWVOLUME_READER_H
-#include "vector_types.h"
+#include <vector_types.h>
 #include <assert.h>
 
 #include <algorithm>
@@ -8,7 +8,7 @@
 #include <vector>
 #include <string>
 
-#include <Volume.h>
+#include "Volume.h"
 
 #ifndef _DataType_
 #define _DataType_
