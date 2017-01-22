@@ -20,6 +20,7 @@ class GLMatrixManager;
 class Volume;
 class VolumeRenderableCUDA;
 class ImmersiveInteractor;
+class QLineEdit;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -50,6 +51,11 @@ private:
 	QLabel *deformForceLabel;
 	QLabel *meshResLabel;
 
+	QLineEdit *eyePosxLineEdit;
+	QLineEdit *eyePosyLineEdit;
+	QLineEdit *eyePoszLineEdit;
+	QLineEdit *eyePosLineEdit;
+
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 
 
@@ -63,6 +69,7 @@ private slots:
 
 	void SlotSaveState();
 	void SlotLoadState();
+	void applyEyePos();
 
 	void transFuncP1LabelSliderValueChanged(int);
 	void transFuncP2LabelSliderValueChanged(int); 

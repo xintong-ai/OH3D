@@ -54,6 +54,12 @@ public:
 		viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), upVecInWorld);
 	}
 
+	void moveEyeInLocalTo(QVector3D _eyeInLocal){
+		QMatrix4x4 m;
+		GetModelMatrix(m);
+		QVector3D eyeInLocal = m.inverted().map(eyeInWorld);
+		cofLocal = cofLocal + _eyeInLocal - eyeInLocal;
+	}
 
 	//getting functions
 	Trackball * getTrackBall(){ return trackball; };

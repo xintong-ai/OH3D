@@ -55,7 +55,8 @@ Window::Window(std::shared_ptr<Volume> v)
 	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 
-	volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
+	//volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.21, 1.25, 512, 0.25f, 1.3, false);
+	//volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
 
 
 	if (isImmersive){
@@ -78,6 +79,31 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
+
+	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
+
+	QHBoxLayout *eyePosLayout = new QHBoxLayout;
+	QVBoxLayout *eyePosLayout2 = new QVBoxLayout;
+
+	QLabel *eyePosxLabel = new QLabel("x");
+	QLabel *eyePosyLabel = new QLabel("y");
+	QLabel *eyePoszLabel = new QLabel("z");
+	eyePosxLineEdit = new QLineEdit;
+	eyePosyLineEdit = new QLineEdit;
+	eyePoszLineEdit = new QLineEdit;
+	eyePosLineEdit = new QLineEdit;
+	QPushButton *eyePosBtn = new QPushButton("Apply");
+	eyePosLayout->addWidget(eyePosxLabel);
+	//eyePosLayout->addWidget(eyePosxLineEdit);
+	eyePosLayout->addWidget(eyePosyLabel);
+	//eyePosLayout->addWidget(eyePosyLineEdit);
+	eyePosLayout->addWidget(eyePoszLabel);
+	//eyePosLayout->addWidget(eyePoszLineEdit);
+	eyePosLayout->addWidget(eyePosLineEdit);
+	eyePosLayout2->addLayout(eyePosLayout);
+	eyePosLayout2->addWidget(eyePosBtn);
+	eyePosGroup->setLayout(eyePosLayout2);
+	controlLayout->addWidget(eyePosGroup);
 
 
 
@@ -191,7 +217,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
-	
+	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
+
 
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
@@ -224,6 +251,15 @@ void Window::SlotLoadState()
 
 }
 
+void Window::applyEyePos()
+{
+	//float x = eyePosxLineEdit->text().toFloat();
+	//float y = eyePosyLineEdit->text().toFloat();
+	//float z = eyePoszLineEdit->text().toFloat();
+	QString s = eyePosLineEdit->text();
+	QStringList sl = s.split(QRegExp("\\s"));
+	matrixMgr->moveEyeInLocalTo(QVector3D(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
+}
 
 
 

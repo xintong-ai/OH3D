@@ -112,6 +112,7 @@ RawVolumeReader::~RawVolumeReader()
 
 void RawVolumeReader::OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v)
 {
+	std::cout << "min max:" << minVal << " " << maxVal << std::endl;
 	if (m_DataType == dtUint16){
 		v->~Volume();
 

@@ -5,8 +5,121 @@
 #include "TransformFunc.h"
 #include <thrust/device_vector.h>
 
-
 texture<float, 3, cudaReadModeElementType>  volumeVal;
+
+
+ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<Volume> v)
+{
+	volume = v;
+
+	volumeVal.normalized = false;
+	volumeVal.filterMode = cudaFilterModeLinear;
+	volumeVal.addressMode[0] = cudaAddressModeBorder;
+	volumeVal.addressMode[1] = cudaAddressModeBorder;
+	volumeVal.addressMode[2] = cudaAddressModeBorder;
+
+	GPU_setConstants(&rcp.transFuncP1, &rcp.transFuncP2, &rcp.la, &rcp.ld, &rcp.ls, &(volume->spacing));
+	GPU_setVolume(&(volume->volumeCuda));
+
+	rcp.tstep = 1.0; //generally don't need to sample beyond each voxel
+
+	cudaMalloc(&d_hist, sizeof(float)*nbins);
+}
+
+
+void ViewpointEvaluator::initDownSampledResultVolume(int3 sampleSize)
+{
+	if (resVol != 0)
+		resVol.reset();
+	resVol = std::make_shared<Volume>();
+	resVol->setSize(sampleSize);
+
+}
+
+void ViewpointEvaluator::initBS05()
+{
+	if (BS05Inited)	return;
+
+	if (d_r != 0) cudaFree(d_r);
+	cudaMalloc(&d_r, sizeof(float)*volume->size.x*volume->size.y*volume->size.z);
+	BS05Inited = true;
+	JS06SphereInited = false;
+}
+
+void ViewpointEvaluator::initJS06Sphere()
+{
+	if (JS06SphereInited)	return;
+
+	if (d_r != 0) cudaFree(d_r);
+	setSpherePoints();
+	cudaMalloc(&d_r, sizeof(float)*numSphereSample);
+	JS06SphereInited = true;
+	BS05Inited = false;
+
+}
+
+void ViewpointEvaluator::compute(VPMethod m)
+{
+	int3 sampleSize = resVol->size;
+	if (m == BS05){
+		initBS05();
+		for (int k = 0; k < sampleSize.z; k++){
+			std::cout << "now doing k = " << k << std::endl;
+			for (int j = 0; j < sampleSize.y; j++){
+				for (int i = 0; i < sampleSize.x; i++){
+					float3 eyeInLocal = make_float3(i - 1, j - 1, k - 1)*make_float3(volume->size.x, volume->size.y, volume->size.z) / make_float3(sampleSize - 3)*volume->spacing;
+					resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = computeEntropyJS06Sphere(eyeInLocal);
+				}
+			}
+		}
+	}
+	else if (m == JS06Sphere){
+		initJS06Sphere();
+		for (int k = 0; k < sampleSize.z; k++){
+			std::cout << "now doing k = " << k << std::endl;
+			for (int j = 0; j < sampleSize.y; j++){
+				for (int i = 0; i < sampleSize.x; i++){
+					float3 eyeInLocal = make_float3(i - 1, j - 1, k - 1)*make_float3(volume->size.x, volume->size.y, volume->size.z) / make_float3(sampleSize - 3)*volume->spacing;
+					resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = computeEntropyJS06Sphere(eyeInLocal);
+				}
+			}
+		}
+	}
+}
+void ViewpointEvaluator::saveResultVol(const char*)
+{
+	resVol->saveRawToFile("entro.raw");
+}
+
+void ViewpointEvaluator::setSpherePoints(int n)
+{
+	//source: https://www.openprocessing.org/sketch/41142
+
+	numSphereSample = n;
+	sphereSamples.resize(n);
+
+	float phi = (sqrt(5) + 1) / 2 - 1; // golden ratio
+	float ga = phi * 2 * M_PI;           // golden angle
+
+	for (int i = 1; i <= numSphereSample; ++i) {
+		float lon = ga*i;
+		lon /= 2 * M_PI; lon -= floor(lon); lon *= 2 * M_PI;
+		if (lon > M_PI)  lon -= 2 * M_PI;
+
+		// Convert dome height (which is proportional to surface area) to latitude
+		float lat = asin(-1 + 2 * i / (float)numSphereSample);
+
+		sphereSamples[i - 1] = SpherePoint(lat, lon);
+	}
+	if (d_sphereSamples != 0){
+		cudaFree(d_sphereSamples);
+	}
+	cudaMalloc(&d_sphereSamples, sizeof(float)*numSphereSample * 3);
+	cudaMemcpy(d_sphereSamples, (float*)(&sphereSamples[0]), sizeof(float)*numSphereSample * 3, cudaMemcpyHostToDevice);
+}
+
+
+
 
 
 __constant__ float colorTableDiverge[33][4] = {
@@ -99,25 +212,6 @@ __constant__ float ld;
 __constant__ float ls;
 __constant__ float3 spacing;
 
-ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<Volume> v)
-{
-	volume = v;
-
-	volumeVal.normalized = false;
-	volumeVal.filterMode = cudaFilterModeLinear;
-	volumeVal.addressMode[0] = cudaAddressModeBorder;
-	volumeVal.addressMode[1] = cudaAddressModeBorder;
-	volumeVal.addressMode[2] = cudaAddressModeBorder;
-
-	GPU_setConstants(&rcp.transFuncP1, &rcp.transFuncP2, &rcp.la, &rcp.ld, &rcp.ls, &(volume->spacing));
-	GPU_setVolume(&(volume->volumeCuda));
-
-	rcp.tstep = 1.0; //generally don't need to sample beyond each voxel
-
-	cudaMalloc(&d_hist, sizeof(float)*nbins);
-}
-
-
 void ViewpointEvaluator::GPU_setVolume(const VolumeCUDA *vol)
 {
 	checkCudaErrors(cudaBindTextureToArray(volumeVal, vol->content, vol->channelDesc));
@@ -136,33 +230,6 @@ void ViewpointEvaluator::GPU_setConstants(float* _transFuncP1, float* _transFunc
 	checkCudaErrors(cudaMemcpyToSymbol(spacing, _spacing, sizeof(float3)));
 }
 
-
-void ViewpointEvaluator::setSpherePoints(int n)
-{
-	//source: https://www.openprocessing.org/sketch/41142
-
-	numSphereSample = n;
-	sphereSamples.resize(n);
-
-	float phi = (sqrt(5) + 1) / 2 - 1; // golden ratio
-	float ga = phi * 2 * M_PI;           // golden angle
-
-	for (int i = 1; i <= numSphereSample; ++i) {
-		float lon = ga*i;
-		lon /= 2 * M_PI; lon -= floor(lon); lon *= 2 * M_PI;
-		if (lon > M_PI)  lon -= 2 * M_PI;
-
-		// Convert dome height (which is proportional to surface area) to latitude
-		float lat = asin(-1 + 2 * i / (float)numSphereSample);
-
-		sphereSamples[i - 1] = SpherePoint(lat, lon);
-	}
-	if (d_sphereSamples != 0){
-		cudaFree(d_sphereSamples);
-	}
-	cudaMalloc(&d_sphereSamples, sizeof(float)*numSphereSample*3);
-	cudaMemcpy(d_sphereSamples, (float*)(&sphereSamples[0]), sizeof(float)*numSphereSample * 3, cudaMemcpyHostToDevice);
-}
 
 
 
@@ -197,8 +264,6 @@ __global__ void d_computeVolumeVisibility(float density, float brightness,
 	float t = tnear;
 	float3 pos = eyeRay.o + eyeRay.d*tnear;
 	float3 step = eyeRay.d*tstep;
-	float lightingThr = 0.000001;
-
 
 	for (int i = 0; i<maxSteps; i++)
 	{
@@ -248,7 +313,7 @@ __global__ void d_computeVolumeVisibility(float density, float brightness,
 	if (t > tfar){
 		vj = sum.w;
 	}
-	else{
+	else{ //if the iteration ends early, it means the voxel is not visible, so vj is 0
 		vj = 0.0f;
 	}
 
@@ -274,7 +339,7 @@ struct functor_computeEntropy
 };
 
 
-float ViewpointEvaluator::computeVolumewhiseEntropy(float3 eyeInWorld, float * d_r)
+float ViewpointEvaluator::computeEntropyBS05(float3 eyeInWorld)
 {
 	cudaExtent size = make_cudaExtent(volume->size.x, volume->size.y, volume->size.z);
 	unsigned int dim = 32;
@@ -294,7 +359,7 @@ float ViewpointEvaluator::computeVolumewhiseEntropy(float3 eyeInWorld, float * d
 
 
 __global__ void d_computeSphereUtility(float density, float brightness,
-	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins)
+	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist)
 {
 
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -318,8 +383,6 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 	float t = tnear;
 	float3 pos = eyeRay.o + eyeRay.d*tnear;
 	float3 step = eyeRay.d*tstep;
-	float lightingThr = 0.000001;
-
 
 	for (int i = 0; i<maxSteps; i++)
 	{
@@ -364,33 +427,50 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 
 	sum *= brightness;
 
-	float uv;
-	if (t > tfar){
-		uv = sum.w;
-	}
-	else{
-		uv = 0.0f;
-	}
+	float uv = sum.w;
 
 	r[i] = uv;
 
-	// !!! this is true only when we know uv is in [0,1] !!!
-	int bin = min((int)(uv*nbins), nbins - 1);
-	atomicAdd(hist + bin, 1);
+	if (useHist){
+		// !!! this is true only when we know uv is in [0,1] !!!
+		int bin = min((int)(uv*nbins), nbins - 1);
+		atomicAdd(hist + bin, 1);
+	}
 }
 
-float ViewpointEvaluator::computeSpherewhiseEntropy(float3 eyeInWorld, float * d_r)
+float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInWorld)
 {
 	int threadsPerBlock = 64;
 	int blocksPerGrid = (numSphereSample + threadsPerBlock - 1) / threadsPerBlock;
 
 	cudaMemset(d_hist, 0, sizeof(float)*nbins);
 
-	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins);
+	useHist = true; useTrad = true;
+	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist);
 
-	thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
-	thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
-	float ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+	float ret;
+	if (useHist && useTrad){
+		
+		thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
+		thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
+		float hisRes = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
 
+		thrust::device_vector< float > iVec2(d_r, d_r + numSphereSample);
+		float sum = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
+		thrust::transform(iVec2.begin(), iVec2.end(), iVec2.begin(), functor_computeEntropy(sum));
+		float tradRes = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
+		ret = 0.5 * hisRes / log(nbins) + 0.5 * tradRes / log(numSphereSample);
+	}
+	else if (useHist){
+		thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
+		thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
+		ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+	}
+	else{
+		thrust::device_vector< float > iVec(d_r, d_r + numSphereSample);
+		float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy(sum));
+		ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+	}
 	return ret;
 }

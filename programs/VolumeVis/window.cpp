@@ -54,6 +54,10 @@ Window::Window()
 		dims = make_int3(208, 256, 225);
 		spacing = make_float3(1, 1, 1);
 	}
+	else if (std::string(dataPath).find("brat") != std::string::npos){
+		dims = make_int3(160, 216, 176);
+		spacing = make_float3(1, 1, 1);
+	}
 	else{
 		std::cout << "volume data name not recognized" << std::endl;
 		exit(0);
@@ -72,6 +76,9 @@ Window::Window()
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
+		if (std::string(dataPath).find("brat") != std::string::npos){
+			;
+		}
 		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
 		reader->OutputToVolumeByNormalizedValue(inputVolume);
 		reader.reset();
@@ -245,7 +252,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
-	//controlLayout->addWidget(transFuncP1SliderLabelLit);
 	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP1LabelSlider->setRange(0, 100);
 	transFuncP1LabelSlider->setValue(volumeRenderable->rcp.transFuncP1 * 100);
@@ -254,10 +260,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *transFuncP1Layout = new QHBoxLayout;
 	transFuncP1Layout->addWidget(transFuncP1LabelSlider);
 	transFuncP1Layout->addWidget(transFuncP1Label);
-	//controlLayout->addLayout(transFuncP1Layout);
 
 	QLabel *transFuncP2SliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
-	//controlLayout->addWidget(transFuncP2SliderLabelLit);
 	QSlider *transFuncP2LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP2LabelSlider->setRange(0, 100);
 	transFuncP2LabelSlider->setValue(volumeRenderable->rcp.transFuncP2 * 100);
@@ -266,7 +270,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *transFuncP2Layout = new QHBoxLayout;
 	transFuncP2Layout->addWidget(transFuncP2LabelSlider);
 	transFuncP2Layout->addWidget(transFuncP2Label);
-	//controlLayout->addLayout(transFuncP2Layout);
 
 	QLabel *brLabelLit = new QLabel("Brightness of the volume: ");
 	//controlLayout->addWidget(brLabelLit);
@@ -278,7 +281,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *brLayout = new QHBoxLayout;
 	brLayout->addWidget(brSlider);
 	brLayout->addWidget(brLabel);
-	//controlLayout->addLayout(brLayout);
 
 	QLabel *dsLabelLit = new QLabel("Density of the volume: ");
 	//controlLayout->addWidget(dsLabelLit);
@@ -290,7 +292,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *dsLayout = new QHBoxLayout;
 	dsLayout->addWidget(dsSlider);
 	dsLayout->addWidget(dsLabel);
-	//controlLayout->addLayout(dsLayout);
 
 
 	QLabel *laSliderLabelLit = new QLabel("Coefficient for Ambient Lighting: ");
@@ -303,7 +304,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *laLayout = new QHBoxLayout;
 	laLayout->addWidget(laSlider);
 	laLayout->addWidget(laLabel);
-	//controlLayout->addLayout(laLayout);
 
 	QLabel *ldSliderLabelLit = new QLabel("Coefficient for Diffusial Lighting: ");
 	//controlLayout->addWidget(ldSliderLabelLit);
@@ -315,7 +315,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *ldLayout = new QHBoxLayout;
 	ldLayout->addWidget(ldSlider);
 	ldLayout->addWidget(ldLabel);
-	//controlLayout->addLayout(ldLayout);
 
 	QLabel *lsSliderLabelLit = new QLabel("Coefficient for Specular Lighting: ");
 	//controlLayout->addWidget(lsSliderLabelLit);
@@ -327,7 +326,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QHBoxLayout *lsLayout = new QHBoxLayout;
 	lsLayout->addWidget(lsSlider);
 	lsLayout->addWidget(lsLabel);
-	//controlLayout->addLayout(lsLayout);
 
 
 	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
@@ -348,7 +346,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	rcLayout->addLayout(lsLayout);
 	rcGroupBox->setLayout(rcLayout);
 
-	//controlLayout->addWidget(rcGroupBox);
+	controlLayout->addWidget(rcGroupBox);
 
 
 	controlLayout->addStretch();

@@ -49,6 +49,10 @@ int main(int argc, char **argv)
 		dims = make_int3(208, 256, 225);
 		spacing = make_float3(1, 1, 1);
 	}
+	else if (std::string(dataPath).find("brat") != std::string::npos){
+		dims = make_int3(160, 216, 176);
+		spacing = make_float3(1, 1, 1);
+	}
 	else{
 		std::cout << "volume data name not recognized" << std::endl;
 		exit(0);
@@ -75,76 +79,13 @@ int main(int argc, char **argv)
 	inputVolume->initVolumeCuda();
 
 
-//	ViewpointEvaluator ve(inputVolume);
-//	ve.rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
-//	int3 sampleSize = make_int3(40, 40, 40);
-//	Volume entroVolumeDS;
-//	entroVolumeDS.setSize(sampleSize);
-//	float * d_r;
-//
-//	bool useSpherewise = true;
-//	bool useVolumewise = false;
-//	if (useSpherewise){
-//		int numSphereSample = 200;
-//		ve.setSpherePoints(numSphereSample);
-//
-//		cudaMalloc(&d_r, sizeof(float)*numSphereSample);
-//		for (int k = 0; k < sampleSize.z; k++){
-//			cout << "now doing k = " << k << endl;
-//
-//			for (int j = 0; j < sampleSize.y; j++){
-//				for (int i = 0; i < sampleSize.x; i++){
-//					float3 eyeInLocal = make_float3(
-//						1.0*(i + 1) / (sampleSize.x + 1)*inputVolume->size.x,
-//						1.0*(j + 1) / (sampleSize.y + 1)*inputVolume->size.y,
-//						1.0*(k + 1) / (sampleSize.z + 1)*inputVolume->size.z
-//						);
-//					
-//					eyeInLocal = make_float3(
-//						((1.0*(i + 1) / (sampleSize.x + 1) - 0.5) / 1.1 + 0.5)*inputVolume->size.x,
-//						((1.0*(j + 1) / (sampleSize.y + 1) - 0.5) / 1.5 + 0.5)*inputVolume->size.y,
-//						((1.0*(k + 1) / (sampleSize.z + 1) - 0.5) / 1.5 + 0.5)*inputVolume->size.z
-//						);
-//					//cout << "eye " << eyeInLocal.x << " " << eyeInLocal.y << " " << eyeInLocal.z << endl;
-//					entroVolumeDS.values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = ve.computeSpherewhiseEntropy(eyeInLocal, d_r);
-//					//cout << entroVolumeDS.values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] << endl;
-//				}
-//			}
-//		}
-//	}
-//	if (useVolumewise){
-//		int ll = inputVolume->size.x*inputVolume->size.y*inputVolume->size.z;
-//		cudaMalloc(&d_r, sizeof(float)*ll);
-//		for (int k = 0; k < sampleSize.z; k++){
-//			cout << "now doing k = " << k << endl;
-//			for (int j = 0; j < sampleSize.y; j++){
-//				for (int i = 0; i < sampleSize.x; i++){
-//					float3 eyeInLocal = make_float3(
-//						1.0*(i + 1) / (sampleSize.x + 1)*inputVolume->size.x,
-//						1.0*(j + 1) / (sampleSize.y + 1)*inputVolume->size.y,
-//						1.0*(k + 1) / (sampleSize.z + 1)*inputVolume->size.z
-//						);
-//					cout << "eye " << eyeInLocal.x << " " << eyeInLocal.y << " " << eyeInLocal.z << endl;
-//					entroVolumeDS.values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = ve.computeVolumewhiseEntropy(eyeInLocal, d_r);
-//					cout << entroVolumeDS.values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] << endl;
-//				}
-//			}
-//		}
-//	}
-//	entroVolumeDS.saveRawToFile("entro.raw");
-//#ifdef debugoutput
-//	float * visib = new float[inputVolume->size.x*inputVolume->size.y*inputVolume->size.z];
-//	for (int i = 0; i < inputVolume->size.x*inputVolume->size.y*inputVolume->size.z; i++){
-//		visib[i] = i;
-//	}
-//	checkCudaErrors(cudaMemcpy(visib, d_r, sizeof(float)*inputVolume->size.x*inputVolume->size.y*inputVolume->size.z, cudaMemcpyDeviceToHost));
-//	FILE * fp = fopen("visib.raw", "wb");
-//	fwrite(visib, sizeof(float), ll, fp);
-//	fclose(fp);
-//	delete visib;
-//#endif
-//	cudaFree(d_r);
 
+	std::shared_ptr<ViewpointEvaluator> ve = std::make_shared<ViewpointEvaluator>(inputVolume);
+	//ve->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
+	//ve->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.21, 1.25, 512, 0.25f, 1.3, false);
+	ve->initDownSampledResultVolume(make_int3(40, 40, 40));
+	ve->compute(VPMethod::JS06Sphere);
+	ve->saveResultVol("entro.raw");
 
 
 	//using the following statement, 

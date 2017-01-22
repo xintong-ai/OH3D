@@ -8,6 +8,10 @@
 #include <memory>
 #include <vector>
 
+enum VPMethod{
+	BS05,
+	JS06Sphere
+};
 
 struct SpherePoint {
 	//float info[2];//info[0]:lat, info[1]:lon
@@ -29,28 +33,42 @@ class ViewpointEvaluator
 {
 public:
 	ViewpointEvaluator(std::shared_ptr<Volume> v);
-	~ViewpointEvaluator(){};
+	~ViewpointEvaluator(){
+		if (d_r != 0){
+			cudaFree(d_r); d_r = 0;
+		};
+	};
 
 	std::shared_ptr<Volume> volume;
 	RayCastingParameters rcp;
 
-	float computeVolumewhiseEntropy(float3 eyeInWorld, float * d_r);
-	float computeSpherewhiseEntropy(float3 eyeInWorld, float * d_r);
-
-
-	void setSpherePoints(int n);
-	std::vector<SpherePoint> sphereSamples;
-	int numSphereSample = 0;
-
+	void initDownSampledResultVolume(int3 sampleSize);	
+	void compute(VPMethod m);
+	void saveResultVol(const char*);
 
 private:
 	void GPU_setVolume(const VolumeCUDA *vol);
 	void GPU_setConstants(float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing);
 
-	const int nbins = 20;
-	float* d_hist;
+	void setSpherePoints(int n = 256);
+	std::vector<SpherePoint> sphereSamples;
+	int numSphereSample;
 	float* d_sphereSamples = 0;
 
+	bool useHist, useTrad;
+	const int nbins = 32;
+	float* d_hist;
+
+	std::shared_ptr<Volume> resVol = 0;
+
+	float * d_r = 0;
+
+	void initBS05();
+	void initJS06Sphere();
+	bool BS05Inited = false;
+	bool JS06SphereInited = false;
+	float computeEntropyBS05(float3 eyeInWorld);
+	float computeEntropyJS06Sphere(float3 eyeInWorld);
 };
 
 

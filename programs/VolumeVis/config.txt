@@ -1,4 +1,5 @@
 VOLUME_DATA_PATH=D:/Dropbox/shareXin/MGHT2.raw
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/brat.img
 DATA_PATH_TENSOR=F:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 FEATURE_PATH=F:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
 ventricles=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
@@ -11,5 +12,5 @@ c=D:/Data/FPM/smoothinglength_0.44/run15/099.vtu
 d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
 f=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
-VOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
+sVOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
 dVOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec
