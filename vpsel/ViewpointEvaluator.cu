@@ -4,9 +4,11 @@
 #include "Volume.h"
 #include "TransformFunc.h"
 #include <thrust/device_vector.h>
+#include <thrust/count.h>
+#include <thrust/execution_policy.h>
 
 texture<float, 3, cudaReadModeElementType>  volumeVal;
-
+texture<unsigned short, 3, cudaReadModeElementType>  volumeLabel;
 
 ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<Volume> v)
 {
@@ -35,6 +37,20 @@ void ViewpointEvaluator::initDownSampledResultVolume(int3 sampleSize)
 	resVol->setSize(sampleSize);
 
 }
+
+void ViewpointEvaluator::setLabel(std::shared_ptr<VolumeCUDA> v)
+{
+	volumeLabel.normalized = false;
+	volumeLabel.filterMode = cudaFilterModePoint;
+	volumeLabel.addressMode[0] = cudaAddressModeBorder;
+	volumeLabel.addressMode[1] = cudaAddressModeBorder;
+	volumeLabel.addressMode[2] = cudaAddressModeBorder;
+
+	checkCudaErrors(cudaBindTextureToArray(volumeLabel, v->content, v->channelDesc));
+
+	labelBeenSet = true;
+}
+
 
 void ViewpointEvaluator::initBS05()
 {
@@ -86,6 +102,7 @@ void ViewpointEvaluator::compute(VPMethod m)
 		}
 	}
 }
+
 void ViewpointEvaluator::saveResultVol(const char*)
 {
 	resVol->saveRawToFile("entro.raw");
@@ -117,8 +134,6 @@ void ViewpointEvaluator::setSpherePoints(int n)
 	cudaMalloc(&d_sphereSamples, sizeof(float)*numSphereSample * 3);
 	cudaMemcpy(d_sphereSamples, (float*)(&sphereSamples[0]), sizeof(float)*numSphereSample * 3, cudaMemcpyHostToDevice);
 }
-
-
 
 
 
@@ -359,7 +374,7 @@ float ViewpointEvaluator::computeEntropyBS05(float3 eyeInWorld)
 
 
 __global__ void d_computeSphereUtility(float density, float brightness,
-	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist)
+	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist, bool useLabelCount, bool useDist)
 {
 
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -383,6 +398,8 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 	float t = tnear;
 	float3 pos = eyeRay.o + eyeRay.d*tnear;
 	float3 step = eyeRay.d*tstep;
+
+	unsigned short label = 0;
 
 	for (int i = 0; i<maxSteps; i++)
 	{
@@ -415,6 +432,13 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 		if (sum.w > opacityThreshold){
 			break;
 		}
+		else if (useLabelCount){
+			unsigned short curlabel = tex3D(volumeLabel, coord.x, coord.y, coord.z);
+			if (curlabel > label)
+			{
+				label = curlabel;
+			}
+		}
 
 		t += tstep;
 
@@ -431,12 +455,52 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 
 	r[i] = uv;
 
-	if (useHist){
-		// !!! this is true only when we know uv is in [0,1] !!!
-		int bin = min((int)(uv*nbins), nbins - 1);
-		atomicAdd(hist + bin, 1);
+	if (useLabelCount){
+		r[i] = label;
+		if (useHist){
+			int bin;
+			if (label > 0)
+				bin = 1;
+			else
+				bin = 0;
+			atomicAdd(hist + bin, 1);
+		}
+	}
+	else if(useDist){
+		float dis;
+		if (uv < 0.00001)
+			dis = 0;
+		else
+			dis = t;
+
+		r[i] = uv;
+
+		if (useHist){
+			float maxDist = fmaxf(fmaxf(boxMax.x, boxMax.y), boxMax.z);
+			float minDist = 0;
+			// !!! change the range into [0,1] !!!
+			int bin = min((int)((dis - minDist) / (maxDist - minDist) *nbins), nbins - 1);
+			atomicAdd(hist + bin, 1);		
+		}
+	}
+	else{
+		if (useHist){
+			// !!! this is true only when we know uv is in [0,1] !!!
+			int bin = min((int)(uv*nbins), nbins - 1);
+			atomicAdd(hist + bin, 1);
+		}
 	}
 }
+
+
+struct is_solid
+{
+	__host__ __device__
+	bool operator()(float x)
+	{
+		return x>0.00001;
+	}
+};
 
 float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInWorld)
 {
@@ -446,31 +510,70 @@ float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInWorld)
 	cudaMemset(d_hist, 0, sizeof(float)*nbins);
 
 	useHist = true; useTrad = true;
-	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist);
+	useLabelCount = false; int maxLabel = 1; //!! data dependant
+	useDist = false;
+
+	if (useLabelCount && !labelBeenSet){
+		std::cout << "label not set yet! " << std::endl;
+		exit(0);
+	}
+
+	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist);
 
 	float ret;
-	if (useHist && useTrad){
-		
-		thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
-		thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
-		float hisRes = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
-
-		thrust::device_vector< float > iVec2(d_r, d_r + numSphereSample);
-		float sum = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
-		thrust::transform(iVec2.begin(), iVec2.end(), iVec2.begin(), functor_computeEntropy(sum));
-		float tradRes = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
-		ret = 0.5 * hisRes / log(nbins) + 0.5 * tradRes / log(numSphereSample);
+	if (useLabelCount){
+		if (useHist){
+			thrust::device_vector< float > iVec(d_hist, d_hist + (maxLabel+1));
+			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
+			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		}
+		else{
+			thrust::device_vector< float > iVec(d_r, d_r + numSphereSample);
+			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		}
 	}
-	else if (useHist){
-		thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
-		thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
-		ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+	else if (useDist){
+		if (useHist){
+			thrust::device_vector< float > iHistVec(d_hist, d_hist + nbins);
+			//std::vector<float> D(nbins);
+			//thrust::copy(iVec.begin(), iVec.end(), D.begin());
+			thrust::transform(iHistVec.begin(), iHistVec.end(), iHistVec.begin(), functor_computeEntropy((float)numSphereSample));
+			float hisRes = thrust::reduce(iHistVec.begin(), iHistVec.end(), (float)0, thrust::plus<float>());
+
+			thrust::device_vector< float > iRVec(d_r, d_r + numSphereSample);  
+			int c = thrust::count_if(thrust::device, iRVec.begin(), iRVec.end(), is_solid());
+			ret = hisRes*c / numSphereSample;
+		}
 	}
 	else{
-		thrust::device_vector< float > iVec(d_r, d_r + numSphereSample);
-		float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
-		thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy(sum));
-		ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		if (useHist && useTrad){
+			thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
+			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
+			float hisRes = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+
+			thrust::device_vector< float > iVec2(d_r, d_r + numSphereSample);
+			float sum = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
+			thrust::transform(iVec2.begin(), iVec2.end(), iVec2.begin(), functor_computeEntropy(sum));
+			float tradRes = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
+			//ret = 0.5 * hisRes / log(nbins) + 0.5 * tradRes / log(numSphereSample);
+			ret = min(hisRes / log(nbins), tradRes / log(numSphereSample));
+		}
+		else if (useHist){
+			thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
+			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
+			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		}
+		else if (useTrad){
+			thrust::device_vector< float > iVec(d_r, d_r + numSphereSample);
+			float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy(sum));
+			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		}
+		else{
+			std::cout << "entropy computation not defined! " << std::endl;
+			exit(0);
+		}
 	}
+
 	return ret;
 }

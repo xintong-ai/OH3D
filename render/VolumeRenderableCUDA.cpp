@@ -11,7 +11,6 @@
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 
-#include <memory>
 #include <helper_math.h>
 #include <cuda_gl_interop.h>
 
@@ -21,11 +20,14 @@
 #include "TransformFunc.h"
 
 
-
-VolumeRenderableCUDA::VolumeRenderableCUDA(std::shared_ptr<Volume> _volume)
+VolumeRenderableCUDA::VolumeRenderableCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl)
 {
 	volume = _volume;
-	volumeCUDAGradient.VolumeCUDA_init(_volume->size, 0, 1, 4);
+	volumeCUDAGradient.VolumeCUDA_init(_volume->size, (float*)0, 1, 4);
+	if (_vl != 0){
+		VolumeRender_setLabelVolume(_vl.get());
+	}
+
 }
 
 VolumeRenderableCUDA::~VolumeRenderableCUDA()
@@ -35,12 +37,13 @@ VolumeRenderableCUDA::~VolumeRenderableCUDA()
 	//cudaDeviceReset();
 };
 
+
+
 void VolumeRenderableCUDA::init()
 {
 	VolumeRender_init();
 	initTextureAndCudaArrayOfScreen();
 }
-
 
 
 void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])

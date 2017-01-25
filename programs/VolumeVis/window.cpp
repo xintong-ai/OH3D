@@ -58,6 +58,10 @@ Window::Window()
 		dims = make_int3(160, 216, 176);
 		spacing = make_float3(1, 1, 1);
 	}
+	else if (std::string(dataPath).find("181") != std::string::npos){
+		dims = make_int3(181, 217, 181);
+		spacing = make_float3(1, 1, 1);
+	}
 	else{
 		std::cout << "volume data name not recognized" << std::endl;
 		exit(0);
@@ -76,10 +80,12 @@ Window::Window()
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
-		if (std::string(dataPath).find("brat") != std::string::npos){
-			;
+		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos){
+			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
 		}
-		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
+		else{
+			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
+		}
 		reader->OutputToVolumeByNormalizedValue(inputVolume);
 		reader.reset();
 	}
@@ -124,7 +130,8 @@ Window::Window()
 	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	lensRenderable = std::make_shared<LensRenderable>(&lenses);
 	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
-
+	
+	volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false);
 
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
@@ -286,7 +293,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(dsLabelLit);
 	QSlider* dsSlider = new QSlider(Qt::Horizontal);
 	dsSlider->setRange(0, 40);
-	dsSlider->setValue(volumeRenderable->rcp.density * 20);
+	dsSlider->setValue(volumeRenderable->rcp.density * 5);
 	connect(dsSlider, SIGNAL(valueChanged(int)), this, SLOT(dsSliderValueChanged(int)));
 	dsLabel = new QLabel(QString::number(volumeRenderable->rcp.density));
 	QHBoxLayout *dsLayout = new QHBoxLayout;
@@ -484,7 +491,7 @@ void Window::brSliderValueChanged(int v)
 }
 void Window::dsSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.density = v*1.0 / 20.0;
+	volumeRenderable->rcp.density = v*1.0 / 5.0;
 	dsLabel->setText(QString::number(volumeRenderable->rcp.density));
 }
 

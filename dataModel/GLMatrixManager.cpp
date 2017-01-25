@@ -51,9 +51,9 @@ void GLMatrixManager::SetImmersiveMode()
 
 	rotMat.setToIdentity();
 
-	transScale = 2;
-	cofLocal = QVector3D(70, 70, 128);
-
+	transScale = 20;
+	//cofLocal = QVector3D(70, 70, 128);
+	cofLocal = QVector3D(64, 109, 107);
 }
 
 

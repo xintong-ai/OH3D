@@ -16,6 +16,8 @@ texture<float, 3, cudaReadModeElementType>  volumeTexValueForRC;
 
 texture<float4, 3, cudaReadModeElementType>  volumeTexGradient;
 
+texture<unsigned short, 3, cudaReadModeElementType>  volumeLabelValue;
+
 surface<void, cudaSurfaceType3D> volumeSurfaceOut;
 
 __constant__ float4x4 c_MVMatrix;
@@ -29,6 +31,8 @@ __constant__ float la;
 __constant__ float ld;
 __constant__ float ls;
 __constant__ float3 spacing;
+
+__constant__ bool useLabel = false;
 
 __constant__ int numColorTableItems = 33;
 __constant__ float colorTable[33][4] = {
@@ -97,6 +101,20 @@ void VolumeRender_setVolume(const VolumeCUDA *vol)
 }
 
 
+void VolumeRender_setLabelVolume(const VolumeCUDA *v)
+{
+	volumeLabelValue.normalized = false;
+	volumeLabelValue.filterMode = cudaFilterModePoint;
+	volumeLabelValue.addressMode[0] = cudaAddressModeBorder;
+	volumeLabelValue.addressMode[1] = cudaAddressModeBorder;
+	volumeLabelValue.addressMode[2] = cudaAddressModeBorder;
+
+	checkCudaErrors(cudaBindTextureToArray(volumeLabelValue, v->content, v->channelDesc));
+	bool trueVariable = true;
+
+	checkCudaErrors(cudaMemcpyToSymbol(useLabel, &trueVariable, sizeof(bool)));
+
+}
 
 
 void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing)
@@ -409,11 +427,21 @@ __global__ void d_render_preint2(uint *d_output, uint imageW, uint imageH, float
 		float4 col;
 
 		float3 cc;
-		if (useColor)
-			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
-		else
-			cc = make_float3(funcRes, funcRes, funcRes);
-
+		unsigned short curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
+		
+		if (useLabel && curlabel > 1)
+		{
+			cc = make_float3(1.0f, 0.0f, 0.0f);
+		}
+		else if (useLabel && curlabel > 0){
+			cc = make_float3(1.0f, 1.0f, 0.0f);
+		}
+		else{
+			if (useColor)
+				cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
+			else
+				cc = make_float3(funcRes, funcRes, funcRes);
+		}
 
 		float3 posInWorld = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)

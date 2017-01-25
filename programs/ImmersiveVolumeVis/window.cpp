@@ -16,12 +16,14 @@
 
 
 
-Window::Window(std::shared_ptr<Volume> v)
+Window::Window(std::shared_ptr<Volume> v, std::shared_ptr<VolumeCUDA> vl)
 {
     setWindowTitle(tr("Interactive Glyph Visualization"));
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
 	inputVolume = v;
+
+	labelVol = vl;
 
 	/********GL widget******/
 #ifdef USE_OSVR
@@ -52,12 +54,14 @@ Window::Window(std::shared_ptr<Volume> v)
 	matrixMgr->SetVol(posMin, posMax);
 	
 	
-	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
+	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume, labelVol);
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 
-	//volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.21, 1.25, 512, 0.25f, 1.3, false);
+	
 	//volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
+	//volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
 
+	//volumeRenderable->rcp = RayCastingParameters(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
 
 	if (isImmersive){
 		immersiveInteractor = std::make_shared<ImmersiveInteractor>();
@@ -147,7 +151,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(dsLabelLit);
 	QSlider* dsSlider = new QSlider(Qt::Horizontal);
 	dsSlider->setRange(0, 40);
-	dsSlider->setValue(volumeRenderable->rcp.density * 20);
+	dsSlider->setValue(volumeRenderable->rcp.density * 5);
 	connect(dsSlider, SIGNAL(valueChanged(int)), this, SLOT(dsSliderValueChanged(int)));
 	dsLabel = new QLabel(QString::number(volumeRenderable->rcp.density));
 	QHBoxLayout *dsLayout = new QHBoxLayout;
@@ -257,7 +261,7 @@ void Window::applyEyePos()
 	//float y = eyePosyLineEdit->text().toFloat();
 	//float z = eyePoszLineEdit->text().toFloat();
 	QString s = eyePosLineEdit->text();
-	QStringList sl = s.split(QRegExp("\\s"));
+	QStringList sl = s.split(QRegExp("[\\s,]+"));
 	matrixMgr->moveEyeInLocalTo(QVector3D(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
 }
 
@@ -281,7 +285,7 @@ void Window::brSliderValueChanged(int v)
 }
 void Window::dsSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.density = v*1.0 / 20.0;
+	volumeRenderable->rcp.density = v*1.0 / 5.0;
 	dsLabel->setText(QString::number(volumeRenderable->rcp.density));
 }
 
@@ -300,4 +304,9 @@ void Window::lsSliderValueChanged(int v)
 {
 	volumeRenderable->rcp.ls = 1.0*v / 10;
 	lsLabel->setText(QString::number(1.0*v / 10));
+}
+void Window::setLabel(std::shared_ptr<VolumeCUDA> v)
+{
+	labelVol = v;
+	//volumeRenderable->setLabelVolume(labelVol);
 }

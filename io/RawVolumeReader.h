@@ -26,21 +26,14 @@ struct DataType {
 class RawVolumeReader 
 {
 public:
-
 	///	define 7 common types of data type
 	static const DataType dtFloat32, dtInt8, dtUint8, dtInt16, dtUint16, dtInt32, dtUint32;
 
-	void Load();
-
-	RawVolumeReader(const char* filename, int3 _dim); //need to provide the dimensions at least
-
-
-
+	RawVolumeReader(const char* filename, int3 _dim, DataType _DataType = dtUint16); //need to provide the dimensions at least
+	~RawVolumeReader();
 
 	void OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v);
-
-
-	~RawVolumeReader();
+	void OutputToVolumeCUDAUnsignedShort(std::shared_ptr<VolumeCUDA>);
 
 protected:
 	std::string datafilename;
@@ -59,6 +52,9 @@ protected:
 	void GetMinMaxValue();
 	void Clean();
 	void Allocate();
+
+	void Load();
+
 };
 
 #endif

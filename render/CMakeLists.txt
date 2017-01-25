@@ -1,21 +1,23 @@
 cmake_minimum_required(VERSION 2.6)
 project(render)
+set(SHARED_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(SHARED_LIB_INCLUDE_DIR ${SHARED_LIB_INCLUDE_DIR} PARENT_SCOPE)
+
+
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
-
+if(TARGET render)
+message("render is already defined")
+else()
 
 find_package(CUDA REQUIRED)
-#list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-O2;-DVERBOSE")
 list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 include_directories(
 	${CUDA_TOOLKIT_INCLUDE} 
 	${CUDA_SDK_ROOT_DIR}/common/inc 
 )
-
-
-
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
@@ -89,8 +91,7 @@ set(CMAKE_AUTOMOC ON)
 
 cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
 
-
-#qt5_use_modules(render OpenGL Gui Widgets)
+qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
@@ -111,4 +112,6 @@ endif()
 
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
+endif()
+
 endif()

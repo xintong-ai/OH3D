@@ -39,8 +39,35 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allow
 		copyParams.extent = size;
 		copyParams.kind = cudaMemcpyHostToDevice;
 		checkCudaErrors(cudaMemcpy3D(&copyParams));
+	}
+}
 
-		ptr = copyParams.dstPtr;
+void VolumeCUDA::VolumeCUDA_init(int3 _size, unsigned short *volumeVoxelValues, int allowStore, int numChannels)
+{
+	size = make_cudaExtent(_size.x, _size.y, _size.z);
+	if (numChannels == 4)
+	{
+		channelDesc = cudaCreateChannelDesc(16, 16, 16, 16, cudaChannelFormatKindUnsigned);
+	}
+	else if (numChannels == 1)
+	{
+		channelDesc = cudaCreateChannelDesc(16, 0, 0, 0, cudaChannelFormatKindUnsigned);
+	}
+	else
+	{
+		channelDesc = cudaCreateChannelDesc(16, 16, 0, 0, cudaChannelFormatKindUnsigned);
+	}
+
+	checkCudaErrors(cudaMalloc3DArray(&content, &channelDesc, size, allowStore ? cudaArraySurfaceLoadStore : 0));
+
+	// copy data to 3D array
+	if (volumeVoxelValues){
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcPtr = make_cudaPitchedPtr(volumeVoxelValues, size.width*sizeof(unsigned short)* numChannels, size.width, size.height);
+		copyParams.dstArray = content;
+		copyParams.extent = size;
+		copyParams.kind = cudaMemcpyHostToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
 	}
 }
 

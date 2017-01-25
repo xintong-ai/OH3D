@@ -41,8 +41,8 @@ public:
 
 	std::shared_ptr<Volume> volume;
 	RayCastingParameters rcp;
-
 	void initDownSampledResultVolume(int3 sampleSize);	
+	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 	void compute(VPMethod m);
 	void saveResultVol(const char*);
 
@@ -50,12 +50,13 @@ private:
 	void GPU_setVolume(const VolumeCUDA *vol);
 	void GPU_setConstants(float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing);
 
-	void setSpherePoints(int n = 256);
+	void setSpherePoints(int n = 512);
 	std::vector<SpherePoint> sphereSamples;
 	int numSphereSample;
 	float* d_sphereSamples = 0;
 
 	bool useHist, useTrad;
+	bool useDist, useLabelCount;
 	const int nbins = 32;
 	float* d_hist;
 
@@ -69,6 +70,8 @@ private:
 	bool JS06SphereInited = false;
 	float computeEntropyBS05(float3 eyeInWorld);
 	float computeEntropyJS06Sphere(float3 eyeInWorld);
+
+	bool labelBeenSet = false;
 };
 
 

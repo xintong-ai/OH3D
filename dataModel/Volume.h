@@ -14,19 +14,19 @@
 
 typedef float VolumeType;
 
-struct VolumeCUDA
+class VolumeCUDA
 {
+public:
 	cudaExtent            size;
 	cudaArray            *content = 0;
 	cudaChannelFormatDesc channelDesc;
 	void VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allowStore, int numChannels = 1);
+	
+	void VolumeCUDA_init(int3 _size, unsigned short *volumeVoxelValues, int allowStore, int numChannels = 1);
 
 	~VolumeCUDA();
 
 	void VolumeCUDA_deinit();
-
-	cudaPitchedPtr ptr;// = { 0 };
-
 };
 
 

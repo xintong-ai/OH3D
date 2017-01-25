@@ -1,16 +1,6 @@
 VOLUME_DATA_PATH=D:/Dropbox/shareXin/MGHT2.raw
-VOLUME_DATA_PATH=D:/Dropbox/shareXin/brat.img
-DATA_PATH_TENSOR=F:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
-FEATURE_PATH=F:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
-ventricles=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
-tumor1=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_293_region_1.ply
-tumor2=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_295_region_3.ply
+VOLUME_DATA_PATH=D:/Data/volume/MRI-Phantom-T2_181x217x181_1.raw
 
-b= TYPE_VECTOR,,TYPE_TENSOR,TYPE_SCALAR
-a=D:/onedrive/data/plume/15plume3d421-126x126x512.vec
-c=D:/Data/FPM/smoothinglength_0.44/run15/099.vtu
-d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
-e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
-f=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
+sVOLUME_DATA_PATH=D:/Dropbox/shareXin/brat.img
 sVOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
 dVOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec

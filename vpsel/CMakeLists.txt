@@ -5,7 +5,6 @@ set(SHARED_LIB_INCLUDE_DIR ${SHARED_LIB_INCLUDE_DIR} PARENT_SCOPE)
 
 find_package(CUDA REQUIRED)
 
-#list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-O2;-DVERBOSE")
 list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
@@ -27,6 +26,6 @@ set(HDRS		ViewpointEvaluator.h)
 cuda_add_library(vpsel STATIC ${HDRS} ${SRCS})
 
 set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
-list(APPEND CUDA_NVCC_FLAGS_DEBUG -G -g)
+list(APPEND CUDA_NVCC_FLAGS "-g;-G")
 
 endif()

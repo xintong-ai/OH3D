@@ -18,6 +18,7 @@ class QRadioButton;
 class QTimer;
 class GLMatrixManager;
 class Volume;
+class VolumeCUDA;
 class VolumeRenderableCUDA;
 class ImmersiveInteractor;
 class QLineEdit;
@@ -31,9 +32,10 @@ class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
 public:
-	Window(std::shared_ptr<Volume> v);
+	Window(std::shared_ptr<Volume> v, std::shared_ptr<VolumeCUDA>);
     ~Window();
 	void init();
+	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 
 private:
 	std::shared_ptr<DeformGLWidget> openGL;
@@ -57,7 +59,7 @@ private:
 	QLineEdit *eyePosLineEdit;
 
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
-
+	std::shared_ptr<VolumeCUDA> labelVol;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;

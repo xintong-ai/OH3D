@@ -38,8 +38,8 @@ set(VPSEL_DIR		"${CMAKE_SOURCE_DIR}/vpsel")
 
 include_directories(
 	${DEFORM_DIR}
-	${VPSEL_DIR}
 	${INTERACT_DIR}
+	${VPSEL_DIR}
 	${IO_DIR}
 	${RENDER_DIR}
 	${GLM_INCLUDE_DIR}

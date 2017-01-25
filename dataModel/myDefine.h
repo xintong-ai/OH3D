@@ -37,11 +37,11 @@ struct RayCastingParameters
 {
 	//NEK
 	//lighting
-	float la = 1.0, ld = 0.2, ls = 0.1;
+	float la = 1.0f, ld = 0.2f, ls = 0.1f;
 	////MGHT2
 	//transfer function
-	float transFuncP1 = 0.55;
-	float transFuncP2 = 0.13;
+	float transFuncP1 = 0.55f;
+	float transFuncP2 = 0.13f;
 	float density = 1;
 	//ray casting
 	int maxSteps = 768;

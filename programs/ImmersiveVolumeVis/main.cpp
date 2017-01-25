@@ -53,12 +53,24 @@ int main(int argc, char **argv)
 		dims = make_int3(160, 216, 176);
 		spacing = make_float3(1, 1, 1);
 	}
+	else if (std::string(dataPath).find("engine") != std::string::npos){
+		dims = make_int3(149, 208, 110);
+		spacing = make_float3(1, 1, 1);
+	}
+	else if (std::string(dataPath).find("knee") != std::string::npos){
+		dims = make_int3(379, 229, 305);
+		spacing = make_float3(1, 1, 1);
+	}
+	else if (std::string(dataPath).find("181") != std::string::npos){
+		dims = make_int3(181, 217, 181);
+		spacing = make_float3(1, 1, 1);
+	}
 	else{
 		std::cout << "volume data name not recognized" << std::endl;
 		exit(0);
 	}
-	std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>();
 
+	std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>();
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
@@ -66,12 +78,16 @@ int main(int argc, char **argv)
 		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
 		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
 		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
-
 		reader.reset();
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
-		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
+		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos){
+			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
+		}
+		else{
+			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
+		}
 		reader->OutputToVolumeByNormalizedValue(inputVolume);
 		reader.reset();
 	}
@@ -80,19 +96,35 @@ int main(int argc, char **argv)
 
 
 
-	std::shared_ptr<ViewpointEvaluator> ve = std::make_shared<ViewpointEvaluator>(inputVolume);
-	//ve->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
-	//ve->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.21, 1.25, 512, 0.25f, 1.3, false);
-	ve->initDownSampledResultVolume(make_int3(40, 40, 40));
-	ve->compute(VPMethod::JS06Sphere);
-	ve->saveResultVol("entro.raw");
+	bool useLabel = false;
+	std::shared_ptr<VolumeCUDA> labelVolume = 0;
+	if (useLabel){
+		std::shared_ptr<RawVolumeReader> reader;
+		const std::string labelDataPath = dataMgr->GetConfig("FEATURE_PATH");
+		reader = std::make_shared<RawVolumeReader>(labelDataPath.c_str(), dims);
+		labelVolume = std::make_shared<VolumeCUDA>();
+		reader->OutputToVolumeCUDAUnsignedShort(labelVolume);
+		reader.reset();
+	}
+
+
+	//std::shared_ptr<ViewpointEvaluator> ve = std::make_shared<ViewpointEvaluator>(inputVolume);
+	////ve->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
+	////ve->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false);//for brat
+	////ve->rcp = RayCastingParameters(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
+	//if (useLabel){	
+	//	ve->setLabel(labelVolume);
+	//}
+	//ve->initDownSampledResultVolume(make_int3(40, 40, 40));
+	//ve->compute(VPMethod::JS06Sphere);
+	//ve->saveResultVol("entro.raw");
 
 
 	//using the following statement, 
 	//all the OpenGL contexts in this program are shared.
 	QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 	QApplication app(argc, argv);
-	Window win(inputVolume);
+	Window win(inputVolume, labelVolume);
 	win.show();
 	win.init();
 	//win.setFixedSize(1095, 822);

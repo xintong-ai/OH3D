@@ -18,8 +18,10 @@ const DataType RawVolumeReader::dtUint16 = { false, false, 16 };
 const DataType RawVolumeReader::dtInt32 = { false, true, 32 };
 const DataType RawVolumeReader::dtUint32 = { false, false, 32 };
 
-RawVolumeReader::RawVolumeReader(const char* filename, int3 _dim)
+RawVolumeReader::RawVolumeReader(const char* filename, int3 _dim, DataType _DataType)
 {
+	m_DataType = _DataType;
+
 	datafilename.assign(filename);
 	dataSizes = _dim;
 	
@@ -134,6 +136,42 @@ void RawVolumeReader::OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v)
 				}
 			}
 		}
+	}
+	else if (m_DataType == dtUint8){
+		v->~Volume();
+
+		v->size = dataSizes;
+
+		v->spacing = spacing;
+		v->dataOrigin = dataOrigin;
+
+		v->values = new float[dataSizes.x*dataSizes.y*dataSizes.z];
+
+		for (int k = 0; k < dataSizes.z; k++)
+		{
+			for (int j = 0; j < dataSizes.y; j++)
+			{
+				for (int i = 0; i < dataSizes.x; i++)
+				{
+					int ind = k*dataSizes.y * dataSizes.x + j*dataSizes.x + i;
+					v->values[ind] = (((unsigned char*)m_Data)[ind] - minVal) / (maxVal - minVal);
+				}
+			}
+		}
+	}
+	else{
+		std::cout << "not implement" << std::endl;
+		exit(0);
+	}
+}
+
+void RawVolumeReader::OutputToVolumeCUDAUnsignedShort(std::shared_ptr<VolumeCUDA> v)
+{
+	std::cout << "min max:" << minVal << " " << maxVal << std::endl;
+	v->~VolumeCUDA();
+
+	if (m_DataType == dtUint16){
+		v->VolumeCUDA_init(dataSizes, (unsigned short*)m_Data, 0, 1);
 	}
 	else{
 		std::cout << "not implement" << std::endl;

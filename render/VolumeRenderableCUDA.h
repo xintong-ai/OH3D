@@ -10,8 +10,6 @@
 #include <QOpenGLShaderProgram>
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
-class Fiber;
-class Lens;
 
 enum DEFORM_METHOD{
 	PRINCIPLE_DIRECTION,
@@ -35,7 +33,7 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
 	
 public:
-	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
+	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl = 0);
 	~VolumeRenderableCUDA();
 
 	//cutaway or deform paramteres
@@ -46,11 +44,9 @@ public:
 	
 	RayCastingParameters rcp;
 
-
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void resize(int width, int height)override;
-
 
 	std::shared_ptr<Volume> getVolume(){
 		return volume;
@@ -83,8 +79,6 @@ private:
 		q_mvFix = _q_mv;
 
 	};
-
-
 
 	uint *d_output;
 };
