@@ -69,6 +69,18 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, unsigned short *volumeVoxelValues, 
 		copyParams.kind = cudaMemcpyHostToDevice;
 		checkCudaErrors(cudaMemcpy3D(&copyParams));
 	}
+	else{
+		unsigned short *temp = new unsigned short[size.width*size.height*size.depth];
+		memset(temp, 0, sizeof(unsigned short)*size.width*size.height*size.depth);
+
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcPtr = make_cudaPitchedPtr(temp, size.width*sizeof(unsigned short)* numChannels, size.width, size.height);
+		copyParams.dstArray = content;
+		copyParams.extent = size;
+		copyParams.kind = cudaMemcpyHostToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+		delete[] temp ;
+	}
 }
 
 VolumeCUDA::~VolumeCUDA()

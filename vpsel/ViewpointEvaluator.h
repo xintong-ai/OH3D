@@ -32,7 +32,7 @@ class VolumeCUDA;
 class ViewpointEvaluator
 {
 public:
-	ViewpointEvaluator(std::shared_ptr<Volume> v);
+	ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r, std::shared_ptr<Volume> v);
 	~ViewpointEvaluator(){
 		if (d_r != 0){
 			cudaFree(d_r); d_r = 0;
@@ -40,12 +40,13 @@ public:
 	};
 
 	std::shared_ptr<Volume> volume;
-	RayCastingParameters rcp;
+	std::shared_ptr<RayCastingParameters> rcp;
 	void initDownSampledResultVolume(int3 sampleSize);	
 	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 	void compute(VPMethod m);
 	void saveResultVol(const char*);
 
+	float3 optimalEyeInLocal;
 private:
 	void GPU_setVolume(const VolumeCUDA *vol);
 	void GPU_setConstants(float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing);
@@ -68,10 +69,13 @@ private:
 	void initJS06Sphere();
 	bool BS05Inited = false;
 	bool JS06SphereInited = false;
-	float computeEntropyBS05(float3 eyeInWorld);
-	float computeEntropyJS06Sphere(float3 eyeInWorld);
+	float computeEntropyBS05(float3 eyeInLocal);
+	float computeEntropyJS06Sphere(float3 eyeInLocal);
 
 	bool labelBeenSet = false;
+
+	float3 indToLocal(int i, int j, int k);
+
 };
 
 

@@ -10,8 +10,10 @@
 texture<float, 3, cudaReadModeElementType>  volumeVal;
 texture<unsigned short, 3, cudaReadModeElementType>  volumeLabel;
 
-ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<Volume> v)
+ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r, std::shared_ptr<Volume> v)
 {
+	rcp = _r;
+
 	volume = v;
 
 	volumeVal.normalized = false;
@@ -20,10 +22,10 @@ ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<Volume> v)
 	volumeVal.addressMode[1] = cudaAddressModeBorder;
 	volumeVal.addressMode[2] = cudaAddressModeBorder;
 
-	GPU_setConstants(&rcp.transFuncP1, &rcp.transFuncP2, &rcp.la, &rcp.ld, &rcp.ls, &(volume->spacing));
+	GPU_setConstants(&(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing));
 	GPU_setVolume(&(volume->volumeCuda));
 
-	rcp.tstep = 1.0; //generally don't need to sample beyond each voxel
+	rcp->tstep = 1.0; //generally don't need to sample beyond each voxel
 
 	cudaMalloc(&d_hist, sizeof(float)*nbins);
 }
@@ -36,6 +38,14 @@ void ViewpointEvaluator::initDownSampledResultVolume(int3 sampleSize)
 	resVol = std::make_shared<Volume>();
 	resVol->setSize(sampleSize);
 
+	//note that these two rely on the method to set the viewpoint of the sample. also currently most functions do not consider about the origin
+	resVol->dataOrigin = indToLocal(0, 0, 0);
+	resVol->spacing = indToLocal(1, 1, 1) - resVol->dataOrigin;
+}
+
+float3 ViewpointEvaluator::indToLocal(int i, int j, int k)
+{
+	return make_float3(i - 1, j - 1, k - 1)*make_float3(volume->size.x, volume->size.y, volume->size.z) / make_float3(resVol->size - 3)*volume->spacing;
 }
 
 void ViewpointEvaluator::setLabel(std::shared_ptr<VolumeCUDA> v)
@@ -76,6 +86,7 @@ void ViewpointEvaluator::initJS06Sphere()
 
 void ViewpointEvaluator::compute(VPMethod m)
 {
+	float maxRes = -999;
 	int3 sampleSize = resVol->size;
 	if (m == BS05){
 		initBS05();
@@ -83,7 +94,7 @@ void ViewpointEvaluator::compute(VPMethod m)
 			std::cout << "now doing k = " << k << std::endl;
 			for (int j = 0; j < sampleSize.y; j++){
 				for (int i = 0; i < sampleSize.x; i++){
-					float3 eyeInLocal = make_float3(i - 1, j - 1, k - 1)*make_float3(volume->size.x, volume->size.y, volume->size.z) / make_float3(sampleSize - 3)*volume->spacing;
+					float3 eyeInLocal = indToLocal(i, j, k);
 					resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = computeEntropyJS06Sphere(eyeInLocal);
 				}
 			}
@@ -95,17 +106,22 @@ void ViewpointEvaluator::compute(VPMethod m)
 			std::cout << "now doing k = " << k << std::endl;
 			for (int j = 0; j < sampleSize.y; j++){
 				for (int i = 0; i < sampleSize.x; i++){
-					float3 eyeInLocal = make_float3(i - 1, j - 1, k - 1)*make_float3(volume->size.x, volume->size.y, volume->size.z) / make_float3(sampleSize - 3)*volume->spacing;
-					resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = computeEntropyJS06Sphere(eyeInLocal);
+					float3 eyeInLocal = indToLocal(i, j, k);
+					float entroRes = computeEntropyJS06Sphere(eyeInLocal);
+					resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = entroRes;
+					if (entroRes>maxRes){
+						maxRes = entroRes;
+						optimalEyeInLocal = eyeInLocal;
+					}
 				}
 			}
 		}
 	}
 }
 
-void ViewpointEvaluator::saveResultVol(const char*)
+void ViewpointEvaluator::saveResultVol(const char* fname)
 {
-	resVol->saveRawToFile("entro.raw");
+	resVol->saveRawToFile(fname);
 }
 
 void ViewpointEvaluator::setSpherePoints(int n)
@@ -251,7 +267,7 @@ void ViewpointEvaluator::GPU_setConstants(float* _transFuncP1, float* _transFunc
 
 
 __global__ void d_computeVolumeVisibility(float density, float brightness,
-	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r)
+	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r)
 {
 
 	int x = blockIdx.x*blockDim.x + threadIdx.x;
@@ -266,7 +282,7 @@ __global__ void d_computeVolumeVisibility(float density, float brightness,
 	const float opacityThreshold = 0.95f;
 
 	Ray eyeRay;
-	eyeRay.o = eyeInWorld;
+	eyeRay.o = eyeInLocal;
 	float3 voxelInWorld = make_float3(x, y, z);
 	eyeRay.d = normalize(voxelInWorld - eyeRay.o);
 
@@ -354,14 +370,14 @@ struct functor_computeEntropy
 };
 
 
-float ViewpointEvaluator::computeEntropyBS05(float3 eyeInWorld)
+float ViewpointEvaluator::computeEntropyBS05(float3 eyeInLocal)
 {
 	cudaExtent size = make_cudaExtent(volume->size.x, volume->size.y, volume->size.z);
 	unsigned int dim = 32;
 	dim3 blockSize(dim, dim, 1);
 	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
-	d_computeVolumeVisibility << <gridSize, blockSize >> >(rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, d_r);
+	d_computeVolumeVisibility << <gridSize, blockSize >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r);
 
 	thrust::device_vector< float > iVec(d_r, d_r + volume->size.x*volume->size.y*volume->size.z);
 	float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
@@ -374,7 +390,7 @@ float ViewpointEvaluator::computeEntropyBS05(float3 eyeInWorld)
 
 
 __global__ void d_computeSphereUtility(float density, float brightness,
-	float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist, bool useLabelCount, bool useDist)
+	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist, bool useLabelCount, bool useDist)
 {
 
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -384,7 +400,7 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 
 
 	Ray eyeRay;
-	eyeRay.o = eyeInWorld;
+	eyeRay.o = eyeInLocal;
 	eyeRay.d = make_float3(sphereSamples[3 * i], sphereSamples[3 * i + 1], sphereSamples[3 * i + 2]);
 
 	float tnear, tfar;
@@ -502,15 +518,15 @@ struct is_solid
 	}
 };
 
-float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInWorld)
+float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInLocal)
 {
 	int threadsPerBlock = 64;
 	int blocksPerGrid = (numSphereSample + threadsPerBlock - 1) / threadsPerBlock;
 
 	cudaMemset(d_hist, 0, sizeof(float)*nbins);
 
-	useHist = true; useTrad = true;
-	useLabelCount = false; int maxLabel = 1; //!! data dependant
+	useHist = true; useTrad = false;
+	useLabelCount = true; int maxLabel = 1; //!! data dependant
 	useDist = false;
 
 	if (useLabelCount && !labelBeenSet){
@@ -518,7 +534,7 @@ float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInWorld)
 		exit(0);
 	}
 
-	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist);
+	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist);
 
 	float ret;
 	if (useLabelCount){

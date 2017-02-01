@@ -5,18 +5,19 @@
 
 class ScreenMarker;
 class VolumeCUDA;
+class RayCastingParameters;
 
 class LabelVolumeProcessor :public Processor
 {
 public:
 	LabelVolumeProcessor(std::shared_ptr<VolumeCUDA> _v){
-		v = _v;
+		labelVolume = _v;
 	};
 	~LabelVolumeProcessor(){};
-
+	std::shared_ptr<RayCastingParameters> rcp;
 private:
 	std::shared_ptr<ScreenMarker> sm;
-	std::shared_ptr<VolumeCUDA> v;
+	std::shared_ptr<VolumeCUDA> labelVolume;
 public:
 	void setScreenMarker(std::shared_ptr<ScreenMarker> _sm){ sm = _sm; }
 

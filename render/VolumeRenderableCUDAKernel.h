@@ -13,10 +13,10 @@ extern "C" {
 
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
-		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor);
+		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor);
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
-		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark);
+		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);
@@ -34,7 +34,11 @@ extern "C" {
 	//note to turn off the regular drawing in LensRenderable to see the effect.
 	void VolumeRender_render_withLensBlending(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
-		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, std::vector<float3> lensPoints);
+		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, std::vector<float3> lensPoints);
+
+	void LabelProcessor(uint imageW, uint imageH,
+		float density, float brightness,
+		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark, VolumeCUDA *volumeCUDALabel);
 };
 
 #endif //VOLUMERENDERABLECUDAKERNEL_H

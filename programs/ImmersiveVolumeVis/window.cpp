@@ -9,11 +9,13 @@
 #include "GLMatrixManager.h"
 #include "ScreenMarker.h"
 #include "LabelVolumeProcessor.h"
-
+#include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableImmerCUDA.h"
+#include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
 #include "mouse/ScreenBrushInteractor.h"
 #include "LabelVolumeProcessor.h"
+#include "ViewpointEvaluator.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -31,6 +33,8 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
+	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
+
 	int3 dims;
 	float3 spacing;
 	if (std::string(dataPath).find("MGHT2") != std::string::npos){
@@ -40,7 +44,7 @@ Window::Window()
 	else if (std::string(dataPath).find("MGHT1") != std::string::npos){
 		dims = make_int3(256, 256, 176);
 		spacing = make_float3(1.0, 1.0, 1.0);
-		rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
+		rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
 	}
 	else if (std::string(dataPath).find("nek128") != std::string::npos){
 		dims = make_int3(128, 128, 128);
@@ -57,11 +61,12 @@ Window::Window()
 	else if (std::string(dataPath).find("brat") != std::string::npos){
 		dims = make_int3(160, 216, 176);
 		spacing = make_float3(1, 1, 1);
-		rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
+		rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
 	}
 	else if (std::string(dataPath).find("engine") != std::string::npos){
 		dims = make_int3(149, 208, 110);
 		spacing = make_float3(1, 1, 1);
+		rcp = std::make_shared<RayCastingParameters>(0.8, 0.4, 1.2, 1.0, 0.05, 1.25, 512, 0.25f, 1.0, false);
 	}
 	else if (std::string(dataPath).find("knee") != std::string::npos){
 		dims = make_int3(379, 229, 305);
@@ -70,7 +75,7 @@ Window::Window()
 	else if (std::string(dataPath).find("181") != std::string::npos){
 		dims = make_int3(181, 217, 181);
 		spacing = make_float3(1, 1, 1);
-		rcp = RayCastingParameters(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
+		rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
 	}
 	else{
 		std::cout << "volume data name not recognized" << std::endl;
@@ -101,20 +106,33 @@ Window::Window()
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
 
-	useLabel = false;
+	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
+
+	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
+	ve->initDownSampledResultVolume(make_int3(40, 40, 40));
+
+
+	useLabel = true;
 	labelVol = 0;
 	if (useLabel){
-		std::shared_ptr<RawVolumeReader> reader;
-		const std::string labelDataPath = dataMgr->GetConfig("FEATURE_PATH");
-		reader = std::make_shared<RawVolumeReader>(labelDataPath.c_str(), dims);
+		//std::shared_ptr<RawVolumeReader> reader;
+		//const std::string labelDataPath = dataMgr->GetConfig("FEATURE_PATH");
+		//reader = std::make_shared<RawVolumeReader>(labelDataPath.c_str(), dims);
+		//labelVol = std::make_shared<VolumeCUDA>();
+		//reader->OutputToVolumeCUDAUnsignedShort(labelVol);
+		//reader.reset();
+
 		labelVol = std::make_shared<VolumeCUDA>();
-		reader->OutputToVolumeCUDAUnsignedShort(labelVol);
-		reader.reset();
+		labelVol->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
+
+		lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVol);
+		lvProcessor->setScreenMarker(sm);
+		lvProcessor->rcp = rcp;
+
+		ve->setLabel(labelVol);
 	}
 
-	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
-	lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVol);
-	lvProcessor->setScreenMarker(sm);
+
 
 	/********GL widget******/
 
@@ -124,7 +142,7 @@ Window::Window()
 	matrixMgr = std::make_shared<GLMatrixManager>(false);
 #endif
 
-	bool isImmersive =  true;
+	bool isImmersive = true;
 	if (isImmersive){
 		matrixMgr->SetImmersiveMode();
 	}
@@ -156,12 +174,19 @@ Window::Window()
 		immersiveInteractor->setMatrixMgr(matrixMgr);
 		openGL->AddInteractor("model", immersiveInteractor.get());
 	}
+	else{
+		regularInteractor = std::make_shared<RegularInteractor>();
+		regularInteractor->setMatrixMgr(matrixMgr);
+		openGL->AddInteractor("model", regularInteractor.get());
+	}
 	sbInteractor = std::make_shared<ScreenBrushInteractor>();
 	sbInteractor->setScreenMarker(sm);
 	openGL->AddInteractor("screenMarker", sbInteractor.get());
 
-	openGL->AddProcessor("screenMarker", lvProcessor.get());
 
+	if (useLabel){
+		openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
+	}
 
 
 	///********controls******/
@@ -184,6 +209,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(isBrushingCb);
 	connect(isBrushingCb, SIGNAL(clicked()), this, SLOT(isBrushingClicked()));
 
+	QPushButton *moveToOptimalBtn = new QPushButton("Move to the Optimal Viewpoint");
+	controlLayout->addWidget(moveToOptimalBtn);
+	connect(moveToOptimalBtn, SIGNAL(clicked()), this, SLOT(moveToOptimalBtnClicked()));
 
 	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
 
@@ -210,9 +238,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(transFuncP1SliderLabelLit);
 	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP1LabelSlider->setRange(0, 100);
-	transFuncP1LabelSlider->setValue(volumeRenderable->rcp.transFuncP1 * 100);
+	transFuncP1LabelSlider->setValue(volumeRenderable->rcp->transFuncP1 * 100);
 	connect(transFuncP1LabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP1LabelSliderValueChanged(int)));
-	transFuncP1Label = new QLabel(QString::number(volumeRenderable->rcp.transFuncP1));
+	transFuncP1Label = new QLabel(QString::number(volumeRenderable->rcp->transFuncP1));
 	QHBoxLayout *transFuncP1Layout = new QHBoxLayout;
 	transFuncP1Layout->addWidget(transFuncP1LabelSlider);
 	transFuncP1Layout->addWidget(transFuncP1Label);
@@ -222,9 +250,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(transFuncP2SliderLabelLit);
 	QSlider *transFuncP2LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP2LabelSlider->setRange(0, 100);
-	transFuncP2LabelSlider->setValue(volumeRenderable->rcp.transFuncP2 * 100);
+	transFuncP2LabelSlider->setValue(volumeRenderable->rcp->transFuncP2 * 100);
 	connect(transFuncP2LabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP2LabelSliderValueChanged(int)));
-	transFuncP2Label = new QLabel(QString::number(volumeRenderable->rcp.transFuncP2));
+	transFuncP2Label = new QLabel(QString::number(volumeRenderable->rcp->transFuncP2));
 	QHBoxLayout *transFuncP2Layout = new QHBoxLayout;
 	transFuncP2Layout->addWidget(transFuncP2LabelSlider);
 	transFuncP2Layout->addWidget(transFuncP2Label);
@@ -234,9 +262,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(brLabelLit);
 	QSlider* brSlider = new QSlider(Qt::Horizontal);
 	brSlider->setRange(0, 40);
-	brSlider->setValue(volumeRenderable->rcp.brightness * 20);
+	brSlider->setValue(volumeRenderable->rcp->brightness * 20);
 	connect(brSlider, SIGNAL(valueChanged(int)), this, SLOT(brSliderValueChanged(int)));
-	brLabel = new QLabel(QString::number(volumeRenderable->rcp.brightness));
+	brLabel = new QLabel(QString::number(volumeRenderable->rcp->brightness));
 	QHBoxLayout *brLayout = new QHBoxLayout;
 	brLayout->addWidget(brSlider);
 	brLayout->addWidget(brLabel);
@@ -245,10 +273,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QLabel *dsLabelLit = new QLabel("Density of the volume: ");
 	//controlLayout->addWidget(dsLabelLit);
 	QSlider* dsSlider = new QSlider(Qt::Horizontal);
-	dsSlider->setRange(0, 40);
-	dsSlider->setValue(volumeRenderable->rcp.density * 5);
+	dsSlider->setRange(0, 100);
+	dsSlider->setValue(volumeRenderable->rcp->density * 20);
 	connect(dsSlider, SIGNAL(valueChanged(int)), this, SLOT(dsSliderValueChanged(int)));
-	dsLabel = new QLabel(QString::number(volumeRenderable->rcp.density));
+	dsLabel = new QLabel(QString::number(volumeRenderable->rcp->density));
 	QHBoxLayout *dsLayout = new QHBoxLayout;
 	dsLayout->addWidget(dsSlider);
 	dsLayout->addWidget(dsLabel);
@@ -259,9 +287,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(laSliderLabelLit);
 	QSlider* laSlider = new QSlider(Qt::Horizontal);
 	laSlider->setRange(0, 50);
-	laSlider->setValue(volumeRenderable->rcp.la * 10);
+	laSlider->setValue(volumeRenderable->rcp->la * 10);
 	connect(laSlider, SIGNAL(valueChanged(int)), this, SLOT(laSliderValueChanged(int)));
-	laLabel = new QLabel(QString::number(volumeRenderable->rcp.la));
+	laLabel = new QLabel(QString::number(volumeRenderable->rcp->la));
 	QHBoxLayout *laLayout = new QHBoxLayout;
 	laLayout->addWidget(laSlider);
 	laLayout->addWidget(laLabel);
@@ -271,9 +299,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(ldSliderLabelLit);
 	QSlider* ldSlider = new QSlider(Qt::Horizontal);
 	ldSlider->setRange(0, 50);
-	ldSlider->setValue(volumeRenderable->rcp.ld * 10);
+	ldSlider->setValue(volumeRenderable->rcp->ld * 10);
 	connect(ldSlider, SIGNAL(valueChanged(int)), this, SLOT(ldSliderValueChanged(int)));
-	ldLabel = new QLabel(QString::number(volumeRenderable->rcp.ld));
+	ldLabel = new QLabel(QString::number(volumeRenderable->rcp->ld));
 	QHBoxLayout *ldLayout = new QHBoxLayout;
 	ldLayout->addWidget(ldSlider);
 	ldLayout->addWidget(ldLabel);
@@ -283,9 +311,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(lsSliderLabelLit);
 	QSlider* lsSlider = new QSlider(Qt::Horizontal);
 	lsSlider->setRange(0, 50);
-	lsSlider->setValue(volumeRenderable->rcp.ls * 10);
+	lsSlider->setValue(volumeRenderable->rcp->ls * 10);
 	connect(lsSlider, SIGNAL(valueChanged(int)), this, SLOT(lsSliderValueChanged(int)));
-	lsLabel = new QLabel(QString::number(volumeRenderable->rcp.ls));
+	lsLabel = new QLabel(QString::number(volumeRenderable->rcp->ls));
 	QHBoxLayout *lsLayout = new QHBoxLayout;
 	lsLayout->addWidget(lsSlider);
 	lsLayout->addWidget(lsLabel);
@@ -318,8 +346,29 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
 
+	QVBoxLayout *assistLayout = new QVBoxLayout;
+	QLabel *miniatureLabel = new QLabel("miniature");
+	assistLayout->addWidget(miniatureLabel);
 
-	mainLayout->addWidget(openGL.get(), 3);
+	matrixMgrMini = std::make_shared<GLMatrixManager>(false);
+	matrixMgrMini->SetVol(posMin, posMax);
+	openGLMini = std::make_shared<GLWidget>(matrixMgrMini);
+	openGLMini->setFormat(format);
+	if (isImmersive){
+		volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
+		//volumeRenderableMini->rcp = rcp;
+		volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
+		openGLMini->AddRenderable("1volume", volumeRenderableMini.get()); //make sure the volume is rendered first since it does not use depth test
+		assistLayout->addWidget(openGLMini.get(), 3);
+		regularInteractor = std::make_shared<RegularInteractor>();
+		regularInteractor->setMatrixMgr(matrixMgrMini);
+		openGLMini->AddInteractor("regular", regularInteractor.get());
+	}
+	openGLMini->setFixedSize(200, 200);
+
+	mainLayout->addLayout(assistLayout,1);
+	openGL->setFixedSize(600, 600);
+	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
 }
@@ -361,40 +410,40 @@ void Window::applyEyePos()
 
 void Window::transFuncP1LabelSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.transFuncP1 = 1.0*v / 100;
+	volumeRenderable->rcp->transFuncP1 = 1.0*v / 100;
 	transFuncP1Label->setText(QString::number(1.0*v / 100));
 }
 void Window::transFuncP2LabelSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.transFuncP2 = 1.0*v / 100;
+	volumeRenderable->rcp->transFuncP2 = 1.0*v / 100;
 	transFuncP2Label->setText(QString::number(1.0*v / 100));
 }
 
 void Window::brSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.brightness = v*1.0 / 20.0;
-	brLabel->setText(QString::number(volumeRenderable->rcp.brightness));
+	volumeRenderable->rcp->brightness = v*1.0 / 20.0;
+	brLabel->setText(QString::number(volumeRenderable->rcp->brightness));
 }
 void Window::dsSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.density = v*1.0 / 5.0;
-	dsLabel->setText(QString::number(volumeRenderable->rcp.density));
+	volumeRenderable->rcp->density = v*1.0 / 20.0;
+	dsLabel->setText(QString::number(volumeRenderable->rcp->density));
 }
 
 void Window::laSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.la = 1.0*v / 10;
+	volumeRenderable->rcp->la = 1.0*v / 10;
 	laLabel->setText(QString::number(1.0*v / 10));
 
 }
 void Window::ldSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.ld = 1.0*v / 10;
+	volumeRenderable->rcp->ld = 1.0*v / 10;
 	ldLabel->setText(QString::number(1.0*v / 10));
 }
 void Window::lsSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.ls = 1.0*v / 10;
+	volumeRenderable->rcp->ls = 1.0*v / 10;
 	lsLabel->setText(QString::number(1.0*v / 10));
 }
 void Window::setLabel(std::shared_ptr<VolumeCUDA> v)
@@ -406,4 +455,13 @@ void Window::setLabel(std::shared_ptr<VolumeCUDA> v)
 void Window::isBrushingClicked()
 {
 	sbInteractor->isActive = !sbInteractor->isActive;
+}
+
+void Window::moveToOptimalBtnClicked()
+{
+	ve->compute(VPMethod::JS06Sphere);
+	
+	matrixMgr->moveEyeInLocalTo(QVector3D(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
+
+	ve->saveResultVol("labelEntro.raw");
 }

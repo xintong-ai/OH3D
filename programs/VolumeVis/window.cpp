@@ -131,7 +131,7 @@ Window::Window()
 	lensRenderable = std::make_shared<LensRenderable>(&lenses);
 	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
 	
-	volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false);
+	volumeRenderable->rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false);
 
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
@@ -261,9 +261,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
 	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP1LabelSlider->setRange(0, 100);
-	transFuncP1LabelSlider->setValue(volumeRenderable->rcp.transFuncP1 * 100);
+	transFuncP1LabelSlider->setValue(volumeRenderable->rcp->transFuncP1 * 100);
 	connect(transFuncP1LabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP1LabelSliderValueChanged(int)));
-	transFuncP1Label = new QLabel(QString::number(volumeRenderable->rcp.transFuncP1));
+	transFuncP1Label = new QLabel(QString::number(volumeRenderable->rcp->transFuncP1));
 	QHBoxLayout *transFuncP1Layout = new QHBoxLayout;
 	transFuncP1Layout->addWidget(transFuncP1LabelSlider);
 	transFuncP1Layout->addWidget(transFuncP1Label);
@@ -271,9 +271,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QLabel *transFuncP2SliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
 	QSlider *transFuncP2LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP2LabelSlider->setRange(0, 100);
-	transFuncP2LabelSlider->setValue(volumeRenderable->rcp.transFuncP2 * 100);
+	transFuncP2LabelSlider->setValue(volumeRenderable->rcp->transFuncP2 * 100);
 	connect(transFuncP2LabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP2LabelSliderValueChanged(int)));
-	transFuncP2Label = new QLabel(QString::number(volumeRenderable->rcp.transFuncP2));
+	transFuncP2Label = new QLabel(QString::number(volumeRenderable->rcp->transFuncP2));
 	QHBoxLayout *transFuncP2Layout = new QHBoxLayout;
 	transFuncP2Layout->addWidget(transFuncP2LabelSlider);
 	transFuncP2Layout->addWidget(transFuncP2Label);
@@ -282,9 +282,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(brLabelLit);
 	QSlider* brSlider = new QSlider(Qt::Horizontal);
 	brSlider->setRange(0, 40);
-	brSlider->setValue(volumeRenderable->rcp.brightness * 20);
+	brSlider->setValue(volumeRenderable->rcp->brightness * 20);
 	connect(brSlider, SIGNAL(valueChanged(int)), this, SLOT(brSliderValueChanged(int)));
-	brLabel = new QLabel(QString::number(volumeRenderable->rcp.brightness));
+	brLabel = new QLabel(QString::number(volumeRenderable->rcp->brightness));
 	QHBoxLayout *brLayout = new QHBoxLayout;
 	brLayout->addWidget(brSlider);
 	brLayout->addWidget(brLabel);
@@ -293,9 +293,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(dsLabelLit);
 	QSlider* dsSlider = new QSlider(Qt::Horizontal);
 	dsSlider->setRange(0, 40);
-	dsSlider->setValue(volumeRenderable->rcp.density * 5);
+	dsSlider->setValue(volumeRenderable->rcp->density * 5);
 	connect(dsSlider, SIGNAL(valueChanged(int)), this, SLOT(dsSliderValueChanged(int)));
-	dsLabel = new QLabel(QString::number(volumeRenderable->rcp.density));
+	dsLabel = new QLabel(QString::number(volumeRenderable->rcp->density));
 	QHBoxLayout *dsLayout = new QHBoxLayout;
 	dsLayout->addWidget(dsSlider);
 	dsLayout->addWidget(dsLabel);
@@ -305,9 +305,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(laSliderLabelLit);
 	QSlider* laSlider = new QSlider(Qt::Horizontal);
 	laSlider->setRange(0, 50);
-	laSlider->setValue(volumeRenderable->rcp.la * 10);
+	laSlider->setValue(volumeRenderable->rcp->la * 10);
 	connect(laSlider, SIGNAL(valueChanged(int)), this, SLOT(laSliderValueChanged(int)));
-	laLabel = new QLabel(QString::number(volumeRenderable->rcp.la));
+	laLabel = new QLabel(QString::number(volumeRenderable->rcp->la));
 	QHBoxLayout *laLayout = new QHBoxLayout;
 	laLayout->addWidget(laSlider);
 	laLayout->addWidget(laLabel);
@@ -316,9 +316,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(ldSliderLabelLit);
 	QSlider* ldSlider = new QSlider(Qt::Horizontal);
 	ldSlider->setRange(0, 50);
-	ldSlider->setValue(volumeRenderable->rcp.ld * 10);
+	ldSlider->setValue(volumeRenderable->rcp->ld * 10);
 	connect(ldSlider, SIGNAL(valueChanged(int)), this, SLOT(ldSliderValueChanged(int)));
-	ldLabel = new QLabel(QString::number(volumeRenderable->rcp.ld));
+	ldLabel = new QLabel(QString::number(volumeRenderable->rcp->ld));
 	QHBoxLayout *ldLayout = new QHBoxLayout;
 	ldLayout->addWidget(ldSlider);
 	ldLayout->addWidget(ldLabel);
@@ -327,9 +327,9 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	//controlLayout->addWidget(lsSliderLabelLit);
 	QSlider* lsSlider = new QSlider(Qt::Horizontal);
 	lsSlider->setRange(0, 50);
-	lsSlider->setValue(volumeRenderable->rcp.ls * 10);
+	lsSlider->setValue(volumeRenderable->rcp->ls * 10);
 	connect(lsSlider, SIGNAL(valueChanged(int)), this, SLOT(lsSliderValueChanged(int)));
-	lsLabel = new QLabel(QString::number(volumeRenderable->rcp.ls));
+	lsLabel = new QLabel(QString::number(volumeRenderable->rcp->ls));
 	QHBoxLayout *lsLayout = new QHBoxLayout;
 	lsLayout->addWidget(lsSlider);
 	lsLayout->addWidget(lsLabel);
@@ -475,40 +475,40 @@ void Window::deformForceSliderValueChanged(int v)
 
 void Window::transFuncP1LabelSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.transFuncP1 = 1.0*v / 100;
+	volumeRenderable->rcp->transFuncP1 = 1.0*v / 100;
 	transFuncP1Label->setText(QString::number(1.0*v / 100));
 }
 void Window::transFuncP2LabelSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.transFuncP2 = 1.0*v / 100;
+	volumeRenderable->rcp->transFuncP2 = 1.0*v / 100;
 	transFuncP2Label->setText(QString::number(1.0*v / 100));
 }
 
 void Window::brSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.brightness = v*1.0 / 20.0;
-	brLabel->setText(QString::number(volumeRenderable->rcp.brightness));
+	volumeRenderable->rcp->brightness = v*1.0 / 20.0;
+	brLabel->setText(QString::number(volumeRenderable->rcp->brightness));
 }
 void Window::dsSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.density = v*1.0 / 5.0;
-	dsLabel->setText(QString::number(volumeRenderable->rcp.density));
+	volumeRenderable->rcp->density = v*1.0 / 5.0;
+	dsLabel->setText(QString::number(volumeRenderable->rcp->density));
 }
 
 void Window::laSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.la = 1.0*v / 10;
+	volumeRenderable->rcp->la = 1.0*v / 10;
 	laLabel->setText(QString::number(1.0*v / 10));
 
 }
 void Window::ldSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.ld = 1.0*v / 10;
+	volumeRenderable->rcp->ld = 1.0*v / 10;
 	ldLabel->setText(QString::number(1.0*v / 10));
 }
 void Window::lsSliderValueChanged(int v)
 {
-	volumeRenderable->rcp.ls = 1.0*v / 10;
+	volumeRenderable->rcp->ls = 1.0*v / 10;
 	lsLabel->setText(QString::number(1.0*v / 10));
 }
 

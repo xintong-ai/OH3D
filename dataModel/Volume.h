@@ -17,8 +17,8 @@ typedef float VolumeType;
 class VolumeCUDA
 {
 public:
-	cudaExtent            size;
-	cudaArray            *content = 0;
+	cudaExtent size;
+	cudaArray *content = 0;
 	cudaChannelFormatDesc channelDesc;
 	void VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allowStore, int numChannels = 1);
 	

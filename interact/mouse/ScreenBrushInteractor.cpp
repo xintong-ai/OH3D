@@ -30,17 +30,7 @@ void ScreenBrushInteractor::mousePress(int x, int y, int modifier)
 			}
 		}
 	}
-
-/*	if (isRemovingBrush){
-		char c = 0;
-		sm->isPixelSelected[y*winSize.x + x] = c;
-		cudaMemcpy(&sm->dev_isPixelSelected[y*winSize.x + x], &c, sizeof(char)* 1, cudaMemcpyHostToDevice);
-	}
-	else{
-		char c = 1;
-		sm->isPixelSelected[y*winSize.x + x] = c;
-		cudaMemcpy(&sm->dev_isPixelSelected[y*winSize.x + x], &c, sizeof(char)* 1, cudaMemcpyHostToDevice);
-	}*/
+	sm->justChanged = true;
 };
 
 void ScreenBrushInteractor::mouseMove(int x, int y, int modifier)
@@ -66,6 +56,8 @@ void ScreenBrushInteractor::mouseMove(int x, int y, int modifier)
 			}
 		}
 	}
+	sm->justChanged = true;
+
 };
 
 void ScreenBrushInteractor::mouseRelease(int x, int y, int modifier)

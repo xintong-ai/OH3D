@@ -64,7 +64,7 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview).transposed();
 	QMatrix4x4 q_invMV = q_modelview.inverted();
 	QVector4D q_eye4 = q_invMV.map(QVector4D(0, 0, 0, 1));
-	float3 eyeInWorld = make_float3(q_eye4[0], q_eye4[1], q_eye4[2]);
+	float3 eyeInLocal = make_float3(q_eye4[0], q_eye4[1], q_eye4[2]);
 
 	QMatrix4x4 q_projection = QMatrix4x4(projection).transposed();
 	QMatrix4x4 q_mvp = q_projection*q_modelview;
@@ -75,7 +75,7 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 	q_mvp.copyDataTo(MVPMatrix);
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &rcp.transFuncP1, &rcp.transFuncP2, &rcp.la, &rcp.ld, &rcp.ls, &(volume->spacing));
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing));
 	if (!isFixed){
 		recordFixInfo(q_mvp, q_modelview);
 	}
@@ -99,7 +99,7 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 	}
 
 	//compute the dvr
-	VolumeRender_renderImmer(d_output, winWidth, winHeight, rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, sm->dev_isPixelSelected);
+	VolumeRender_renderImmer(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, sm->dev_isPixelSelected);
 
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));

@@ -21,10 +21,13 @@ class GLMatrixManager;
 class Volume;
 class VolumeCUDA;
 class VolumeRenderableImmerCUDA;
+class VolumeRenderableCUDA;
 class ImmersiveInteractor;
 class QLineEdit;
 class ScreenBrushInteractor;
+class RegularInteractor;
 class LabelVolumeProcessor;
+class ViewpointEvaluator;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -46,6 +49,11 @@ public:
 	bool useLabel;
 
 private:
+	std::shared_ptr<GLWidget> openGLMini;
+	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
+	std::shared_ptr<GLMatrixManager> matrixMgrMini;
+	std::shared_ptr<RegularInteractor> regularInteractor;
+
 	std::shared_ptr<GLWidget> openGL;
 	QTimer *aTimer;
 
@@ -69,7 +77,7 @@ private:
 	QLineEdit *eyePosLineEdit;
 
 	
-
+	std::shared_ptr<ViewpointEvaluator> ve;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
@@ -78,7 +86,6 @@ private:
 
 private slots:
 	
-	void isBrushingClicked();
 	void SlotSaveState();
 	void SlotLoadState();
 	void applyEyePos();
@@ -91,6 +98,8 @@ private slots:
 	void ldSliderValueChanged(int);
 	void lsSliderValueChanged(int);
 
+	void isBrushingClicked();
+	void moveToOptimalBtnClicked();
 
 };
 

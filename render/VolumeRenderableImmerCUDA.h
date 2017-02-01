@@ -29,7 +29,7 @@ public:
 	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
 	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
 
-	RayCastingParameters rcp;
+	std::shared_ptr<RayCastingParameters> rcp;
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;

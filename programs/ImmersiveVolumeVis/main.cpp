@@ -32,8 +32,7 @@ int main(int argc, char **argv)
 
 
 
-	//std::shared_ptr<ViewpointEvaluator> ve = std::make_shared<ViewpointEvaluator>(win.inputVolume);
-	//ve->rcp = win.rcp;
+	//std::shared_ptr<ViewpointEvaluator> ve = std::make_shared<ViewpointEvaluator>(win.rcp, win.inputVolume);
 	//if (win.useLabel){
 	//	ve->setLabel(win.labelVol);
 	//}
