@@ -15,48 +15,7 @@ void DeformGLWidget::animate()
 	update(); 
 }
 
-void DeformGLWidget::UpdateDepthRange()
-{
-	float3 dataMin, dataMax;
-	matrixMgr->GetVol(dataMin, dataMax);
-	GLfloat modelview[16];
-	GLfloat projection[16];
-	matrixMgr->GetModelViewMatrix(modelview);
-	matrixMgr->GetProjection(projection, width, height);
 
-	float4 p[8];
-	p[0] = make_float4(dataMin.x, dataMin.y, dataMin.z, 1.0f);
-	p[1] = make_float4(dataMin.x, dataMin.y, dataMax.z, 1.0f);
-	p[2] = make_float4(dataMin.x, dataMax.y, dataMin.z, 1.0f);
-	p[3] = make_float4(dataMin.x, dataMax.y, dataMax.z, 1.0f);
-	p[4] = make_float4(dataMax.x, dataMin.y, dataMin.z, 1.0f);
-	p[5] = make_float4(dataMax.x, dataMin.y, dataMax.z, 1.0f);
-	p[6] = make_float4(dataMax.x, dataMax.y, dataMin.z, 1.0f);
-	p[7] = make_float4(dataMax.x, dataMax.y, dataMax.z, 1.0f);
-
-	float4 pClip[8];
-	std::vector<float> clipDepths;
-	for (int i = 0; i < 8; i++) {
-		pClip[i] = Object2Clip(p[i], modelview, projection);
-		clipDepths.push_back(pClip[i].z);
-	}
-	depthRange.x = clamp(*std::min_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
-	depthRange.y = clamp(*std::max_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
-	//std::cout << "depthRange: " << depthRange.x << "," << depthRange.y << std::endl;
-}
-
-void DeformGLWidget::mouseReleaseEvent(QMouseEvent *event)
-{
-	GLWidget::mouseReleaseEvent(event);
-
-	UpdateDepthRange();
-}
-
-void DeformGLWidget::wheelEvent(QWheelEvent * event)
-{
-	GLWidget::wheelEvent(event);
-	UpdateDepthRange();
-}
 
 bool DeformGLWidget::TouchBeginEvent(QTouchEvent *event)
 {

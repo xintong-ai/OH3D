@@ -1,13 +1,19 @@
 #include "window.h"
-#include "DeformGLWidget.h"
+#include "GLWidget.h"
 #include <iostream>
 
 #include "Volume.h"
-
+#include "RawVolumeReader.h"
+#include "DataMgr.h"
+#include "VecReader.h"
 #include "GLMatrixManager.h"
+#include "ScreenMarker.h"
+#include "LabelVolumeProcessor.h"
 
-#include "VolumeRenderableCUDA.h"
+#include "VolumeRenderableImmerCUDA.h"
 #include "mouse/ImmersiveInteractor.h"
+#include "mouse/ScreenBrushInteractor.h"
+#include "LabelVolumeProcessor.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -16,16 +22,102 @@
 
 
 
-Window::Window(std::shared_ptr<Volume> v, std::shared_ptr<VolumeCUDA> vl)
+Window::Window()
 {
     setWindowTitle(tr("Interactive Glyph Visualization"));
-	QHBoxLayout *mainLayout = new QHBoxLayout;
 
-	inputVolume = v;
+////////////////data
+	std::shared_ptr<DataMgr> dataMgr;
+	dataMgr = std::make_shared<DataMgr>();
+	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
-	labelVol = vl;
+	int3 dims;
+	float3 spacing;
+	if (std::string(dataPath).find("MGHT2") != std::string::npos){
+		dims = make_int3(320, 320, 256);
+		spacing = make_float3(0.7, 0.7, 0.7);
+	}
+	else if (std::string(dataPath).find("MGHT1") != std::string::npos){
+		dims = make_int3(256, 256, 176);
+		spacing = make_float3(1.0, 1.0, 1.0);
+		rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
+	}
+	else if (std::string(dataPath).find("nek128") != std::string::npos){
+		dims = make_int3(128, 128, 128);
+		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
+	}
+	else if (std::string(dataPath).find("nek256") != std::string::npos){
+		dims = make_int3(256, 256, 256);
+		spacing = make_float3(1, 1, 1);
+	}
+	else if (std::string(dataPath).find("cthead") != std::string::npos){
+		dims = make_int3(208, 256, 225);
+		spacing = make_float3(1, 1, 1);
+	}
+	else if (std::string(dataPath).find("brat") != std::string::npos){
+		dims = make_int3(160, 216, 176);
+		spacing = make_float3(1, 1, 1);
+		rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
+	}
+	else if (std::string(dataPath).find("engine") != std::string::npos){
+		dims = make_int3(149, 208, 110);
+		spacing = make_float3(1, 1, 1);
+	}
+	else if (std::string(dataPath).find("knee") != std::string::npos){
+		dims = make_int3(379, 229, 305);
+		spacing = make_float3(1, 1, 1);
+	}
+	else if (std::string(dataPath).find("181") != std::string::npos){
+		dims = make_int3(181, 217, 181);
+		spacing = make_float3(1, 1, 1);
+		rcp = RayCastingParameters(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
+	}
+	else{
+		std::cout << "volume data name not recognized" << std::endl;
+		exit(0);
+	}
+
+	inputVolume = std::make_shared<Volume>();
+	if (std::string(dataPath).find(".vec") != std::string::npos){
+		std::shared_ptr<VecReader> reader;
+		reader = std::make_shared<VecReader>(dataPath.c_str());
+		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
+		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
+		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
+		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
+		reader.reset();
+	}
+	else{
+		std::shared_ptr<RawVolumeReader> reader;
+		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos){
+			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
+		}
+		else{
+			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
+		}
+		reader->OutputToVolumeByNormalizedValue(inputVolume);
+		reader.reset();
+	}
+	inputVolume->spacing = spacing;
+	inputVolume->initVolumeCuda();
+
+	useLabel = false;
+	labelVol = 0;
+	if (useLabel){
+		std::shared_ptr<RawVolumeReader> reader;
+		const std::string labelDataPath = dataMgr->GetConfig("FEATURE_PATH");
+		reader = std::make_shared<RawVolumeReader>(labelDataPath.c_str(), dims);
+		labelVol = std::make_shared<VolumeCUDA>();
+		reader->OutputToVolumeCUDAUnsignedShort(labelVol);
+		reader.reset();
+	}
+
+	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
+	lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVol);
+	lvProcessor->setScreenMarker(sm);
 
 	/********GL widget******/
+
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
 #else
@@ -37,8 +129,7 @@ Window::Window(std::shared_ptr<Volume> v, std::shared_ptr<VolumeCUDA> vl)
 		matrixMgr->SetImmersiveMode();
 	}
 
-	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
-	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+	openGL = std::make_shared<GLWidget>(matrixMgr);
 
 
 	QSurfaceFormat format;
@@ -54,25 +145,28 @@ Window::Window(std::shared_ptr<Volume> v, std::shared_ptr<VolumeCUDA> vl)
 	matrixMgr->SetVol(posMin, posMax);
 	
 	
-	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume, labelVol);
+	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVol);
+	volumeRenderable->rcp = rcp;
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
+	volumeRenderable->setScreenMarker(sm);
 
-	
-	//volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
-	//volumeRenderable->rcp = RayCastingParameters(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
-
-	//volumeRenderable->rcp = RayCastingParameters(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
 
 	if (isImmersive){
 		immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 		immersiveInteractor->setMatrixMgr(matrixMgr);
 		openGL->AddInteractor("model", immersiveInteractor.get());
 	}
+	sbInteractor = std::make_shared<ScreenBrushInteractor>();
+	sbInteractor->setScreenMarker(sm);
+	openGL->AddInteractor("screenMarker", sbInteractor.get());
 
+	openGL->AddProcessor("screenMarker", lvProcessor.get());
 
 
 
 	///********controls******/
+	QHBoxLayout *mainLayout = new QHBoxLayout;
+
 
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
@@ -84,6 +178,13 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 
+
+	QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
+	isBrushingCb->setChecked(sbInteractor->isActive);
+	controlLayout->addWidget(isBrushingCb);
+	connect(isBrushingCb, SIGNAL(clicked()), this, SLOT(isBrushingClicked()));
+
+
 	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
 
 	QHBoxLayout *eyePosLayout = new QHBoxLayout;
@@ -92,17 +193,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QLabel *eyePosxLabel = new QLabel("x");
 	QLabel *eyePosyLabel = new QLabel("y");
 	QLabel *eyePoszLabel = new QLabel("z");
-	eyePosxLineEdit = new QLineEdit;
-	eyePosyLineEdit = new QLineEdit;
-	eyePoszLineEdit = new QLineEdit;
 	eyePosLineEdit = new QLineEdit;
 	QPushButton *eyePosBtn = new QPushButton("Apply");
 	eyePosLayout->addWidget(eyePosxLabel);
-	//eyePosLayout->addWidget(eyePosxLineEdit);
 	eyePosLayout->addWidget(eyePosyLabel);
-	//eyePosLayout->addWidget(eyePosyLineEdit);
 	eyePosLayout->addWidget(eyePoszLabel);
-	//eyePosLayout->addWidget(eyePoszLineEdit);
 	eyePosLayout->addWidget(eyePosLineEdit);
 	eyePosLayout2->addLayout(eyePosLayout);
 	eyePosLayout2->addWidget(eyePosBtn);
@@ -257,9 +352,6 @@ void Window::SlotLoadState()
 
 void Window::applyEyePos()
 {
-	//float x = eyePosxLineEdit->text().toFloat();
-	//float y = eyePosyLineEdit->text().toFloat();
-	//float z = eyePoszLineEdit->text().toFloat();
 	QString s = eyePosLineEdit->text();
 	QStringList sl = s.split(QRegExp("[\\s,]+"));
 	matrixMgr->moveEyeInLocalTo(QVector3D(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
@@ -309,4 +401,9 @@ void Window::setLabel(std::shared_ptr<VolumeCUDA> v)
 {
 	labelVol = v;
 	//volumeRenderable->setLabelVolume(labelVol);
+}
+
+void Window::isBrushingClicked()
+{
+	sbInteractor->isActive = !sbInteractor->isActive;
 }

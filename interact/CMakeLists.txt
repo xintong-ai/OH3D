@@ -18,12 +18,14 @@ set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h
 mouse/Interactor.h mouse/ImmersiveInteractor.h mouse/RegularInteractor.h 
 mouse/MatrixInteractor.h 
 mouse/LensInteractor.h mouse/GlyphInteractor.h
+mouse/ScreenBrushInteractor.h
 )
 
 set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp 
 mouse/ImmersiveInteractor.cpp 
 mouse/RegularInteractor.cpp
 mouse/LensInteractor.cpp mouse/GlyphInteractor.cpp
+mouse/ScreenBrushInteractor.cpp
 )
 
 add_definitions(-DEXPORT_QT)

@@ -9,6 +9,8 @@ class GLWidget;
 class Interactor
 {
 public:
+	bool isActive = true;
+
 	Interactor(){};
 	~Interactor(){};
 	

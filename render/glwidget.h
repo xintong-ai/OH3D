@@ -21,7 +21,8 @@ enum INTERACT_MODE{
 	TRANSFORMATION,
 	ADDING_LENS,
 
-	CHANGING_FORCE //currently only used for Leap
+	CHANGING_FORCE, //currently only used for Leap
+	OTHERS
 };
 
 enum DEFORM_MODEL{

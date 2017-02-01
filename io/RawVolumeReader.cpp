@@ -171,7 +171,7 @@ void RawVolumeReader::OutputToVolumeCUDAUnsignedShort(std::shared_ptr<VolumeCUDA
 	v->~VolumeCUDA();
 
 	if (m_DataType == dtUint16){
-		v->VolumeCUDA_init(dataSizes, (unsigned short*)m_Data, 0, 1);
+		v->VolumeCUDA_init(dataSizes, (unsigned short*)m_Data, 1, 1);
 	}
 	else{
 		std::cout << "not implement" << std::endl;

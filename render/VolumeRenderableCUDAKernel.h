@@ -14,7 +14,9 @@ extern "C" {
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
 		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor);
-	
+	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
+		float density, float brightness,
+		float3 eyeInWorld, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);

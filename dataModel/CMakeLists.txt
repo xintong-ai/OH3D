@@ -13,7 +13,7 @@ else()
 include_directories(${SHARED_LIB_INCLUDE_DIR})
 
 set(SRCS Volume.cpp Particle.cpp GLMatrixManager.cpp)
-set(HDRS Volume.h Particle.h Processor.h myDefine.h GLMatrixManager.h ColorGradient.h)
+set(HDRS Volume.h Particle.h Processor.h myDefine.h GLMatrixManager.h ColorGradient.h ScreenMarker.h)
 add_library(dataModel STATIC ${HDRS} ${SRCS})
 
 target_link_libraries(${PROJECT_NAME} 

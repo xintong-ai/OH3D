@@ -1,5 +1,5 @@
-#ifndef VOLUMERENDERABLECUDA_H
-#define VOLUMERENDERABLECUDA_H
+#ifndef VOLUMERENDERABLEIMMERSIVECUDA_H
+#define VOLUMERENDERABLEIMMERSIVECUDA_H
 
 #include "Volume.h"
 #include "Renderable.h"
@@ -10,38 +10,25 @@
 #include <QOpenGLShaderProgram>
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
+class ScreenMarker;
 
-enum DEFORM_METHOD{
-	PRINCIPLE_DIRECTION,
-	DISTANCE_MAP,
-	PROJECTIVE_DYNAMIC
-};
-enum VIS_METHOD{
-	CUTAWAY,
-	DEFORM
-};
-
-
-class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
+class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
-	
+
 	//the volume to render 
 	std::shared_ptr<Volume> volume = 0;
 
-	VIS_METHOD vis_method = VIS_METHOD::DEFORM;
-	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
-	
 public:
-	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
-	~VolumeRenderableCUDA();
+	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl = 0);
+	~VolumeRenderableImmerCUDA();
 
 	//cutaway or deform paramteres
 	bool isFixed = false;
 	float wallRotateTan = 0;
 	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
 	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
-	
+
 	RayCastingParameters rcp;
 
 	void init() override;
@@ -52,8 +39,12 @@ public:
 		return volume;
 	}
 
+
+	void setScreenMarker(std::shared_ptr<ScreenMarker> _sm){ sm = _sm; }
+
 private:
 	VolumeCUDA volumeCUDAGradient;
+	std::shared_ptr<ScreenMarker> sm;
 
 	void initTextureAndCudaArrayOfScreen();
 	void deinitTextureAndCudaArrayOfScreen();

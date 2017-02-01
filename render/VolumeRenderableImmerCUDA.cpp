@@ -15,18 +15,23 @@
 #include <cuda_gl_interop.h>
 
 #include "DeformGLWidget.h"
-#include "VolumeRenderableCUDA.h"
+#include "VolumeRenderableImmerCUDA.h"
 #include "VolumeRenderableCUDAKernel.h"
 #include "TransformFunc.h"
+#include "ScreenMarker.h"
 
 
-VolumeRenderableCUDA::VolumeRenderableCUDA(std::shared_ptr<Volume> _volume)
+VolumeRenderableImmerCUDA::VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl)
 {
 	volume = _volume;
 	volumeCUDAGradient.VolumeCUDA_init(_volume->size, (float*)0, 1, 4);
+	if (_vl != 0){
+		VolumeRender_setLabelVolume(_vl.get());
+	}
+
 }
 
-VolumeRenderableCUDA::~VolumeRenderableCUDA()
+VolumeRenderableImmerCUDA::~VolumeRenderableImmerCUDA()
 {
 	VolumeRender_deinit();
 	deinitTextureAndCudaArrayOfScreen();
@@ -35,14 +40,18 @@ VolumeRenderableCUDA::~VolumeRenderableCUDA()
 
 
 
-void VolumeRenderableCUDA::init()
+void VolumeRenderableImmerCUDA::init()
 {
 	VolumeRender_init();
 	initTextureAndCudaArrayOfScreen();
+
+	int winWidth, winHeight;
+	actor->GetWindowSize(winWidth, winHeight);
+	sm->initMaskPixel(winWidth, winHeight);
 }
 
 
-void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
+void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 {
 	if (!visible)
 		return;
@@ -78,8 +87,8 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	checkCudaErrors(cudaGraphicsResourceGetMappedPointer((void **)&d_output, &num_bytes,
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
- 
-	if(volume!=0){
+
+	if (volume != 0){
 		VolumeRender_computeGradient(&(volume->volumeCuda), &volumeCUDAGradient);
 		VolumeRender_setGradient(&volumeCUDAGradient);
 		VolumeRender_setVolume(&(volume->volumeCuda));
@@ -90,8 +99,8 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	}
 
 	//compute the dvr
-	VolumeRender_render(d_output, winWidth, winHeight, rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor);
-	
+	VolumeRender_renderImmer(d_output, winWidth, winHeight, rcp.density, rcp.brightness, eyeInWorld, volume->size, rcp.maxSteps, rcp.tstep, rcp.useColor, sm->dev_isPixelSelected);
+
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
 
@@ -137,7 +146,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 
 
 
-void VolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()
+void VolumeRenderableImmerCUDA::initTextureAndCudaArrayOfScreen()
 {
 	int winWidth, winHeight;
 	actor->GetWindowSize(winWidth, winHeight);
@@ -160,7 +169,7 @@ void VolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void VolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
+void VolumeRenderableImmerCUDA::deinitTextureAndCudaArrayOfScreen()
 {
 	if (cuda_pbo_resource != 0)
 		checkCudaErrors(cudaGraphicsUnregisterResource(cuda_pbo_resource));
@@ -172,7 +181,7 @@ void VolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
 
 }
 
-void VolumeRenderableCUDA::resize(int width, int height)
+void VolumeRenderableImmerCUDA::resize(int width, int height)
 {
 	visible = false;
 	deinitTextureAndCudaArrayOfScreen();
