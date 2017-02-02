@@ -41,14 +41,19 @@ public:
 	Window();
     ~Window();
 	void init();
+
+private:
+
+	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
+
+
 	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 	RayCastingParameters rcp;
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<VolumeCUDA> labelVol;
-	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
 	bool useLabel;
 
-private:
+
 	std::shared_ptr<GLWidget> openGLMini;
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
 	std::shared_ptr<GLMatrixManager> matrixMgrMini;

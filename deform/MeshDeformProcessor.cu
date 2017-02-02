@@ -576,8 +576,9 @@ void MeshDeformProcessor::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<
 	cudaMalloc((void**)&dev_invMeshTrans, sizeof(float)* 16);
 	cudaMemcpy(dev_invMeshTrans, invMeshTransMatMemPointer, sizeof(float)* 16, cudaMemcpyHostToDevice);
 
+	cudaChannelFormatDesc cd = v->volumeCuda.channelDesc;
+	checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, cd));
 
-	checkCudaErrors(cudaBindTextureToArray(volumeTex, v->volumeCuda.content, v->volumeCuda.channelDesc));
 	d_computeTranferDensityForVolume << <gridSize, blockSize >> >(size, spacing, step, nStep, dev_invMeshTrans, GetTetDev(), GetXDev(), dev_density, dev_count, elasticityMode);
 	checkCudaErrors(cudaUnbindTexture(volumeTex));
 	float* density = lsgridMesh->EL;
@@ -624,6 +625,7 @@ void MeshDeformProcessor::SetElasticityByTetDensityOfVolumeCUDA(std::shared_ptr<
 	//std::vector<float> forDebug(density, density + tet_number);
 
 	delete count;
+	cudaFree(dev_invMeshTrans);
 	cudaFree(dev_density);
 	cudaFree(dev_count);
 }

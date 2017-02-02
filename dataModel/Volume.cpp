@@ -106,8 +106,10 @@ void Volume::GetPosRange(float3& posMin, float3& posMax)
 void Volume::initVolumeCuda(){
 	volumeCuda.VolumeCUDA_deinit();
 	volumeCuda.VolumeCUDA_init(size, values, 1, 1); //the third parameter means allowStore or not
-	volumeCudaOri.VolumeCUDA_deinit();
-	volumeCudaOri.VolumeCUDA_init(size, values, 0, 1);
+	if (originSaved){
+		volumeCudaOri.VolumeCUDA_deinit();
+		volumeCudaOri.VolumeCUDA_init(size, values, 0, 1);
+	}
 }
 
 void Volume::reset(){

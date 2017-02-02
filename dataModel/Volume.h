@@ -47,8 +47,9 @@ public:
 		values = new float[size.x*size.y*size.z];
 	};
 
-	Volume(){};
-	
+	Volume(bool _so = true){ originSaved = _so; };
+	//Volume(){ };
+
 	~Volume()
 	{
 		if (!values) delete values;
@@ -59,6 +60,7 @@ public:
 	float3 dataOrigin = make_float3(0, 0, 0);
 	void GetPosRange(float3& posMin, float3& posMax);
 
+	bool originSaved;
 	VolumeCUDA volumeCudaOri;
 	VolumeCUDA volumeCuda; //using two copies, since the volumeCuda might be deformed
 
