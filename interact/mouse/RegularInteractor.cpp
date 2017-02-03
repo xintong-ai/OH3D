@@ -5,6 +5,8 @@
 
 void RegularInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
+	if (!isActive)
+		return; 
 	Rotation *rot;
 	rot = new Rotation();
 	*rot = matrixMgr->getTrackBall()->rotate(fromX, fromY, toX, toY);
@@ -17,12 +19,16 @@ void RegularInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 
 void RegularInteractor::Translate(float x, float y)
 {
+	if (!isActive)
+		return;
 	matrixMgr->TranslateInWorldSpace(x, y);
 	return; 
 };
 
 bool RegularInteractor::MouseWheel(int x, int y, int modifier, float v)
 {
+	if (!isActive)
+		return false;
 	matrixMgr->Scale(v);
 	return true;
 }

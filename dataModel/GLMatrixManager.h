@@ -29,9 +29,8 @@ class GLMatrixManager{
 public:
 	GLMatrixManager(bool _vrMode = false);
 	void SetImmersiveMode();
-
-
-
+	void SetNonImmersiveMode();
+	
 	
 	//setting functions
 	void SetTransVec(float x, float y, float z){ transVec[0] = x; transVec[1] = y; transVec[2] = z; }

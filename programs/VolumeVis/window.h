@@ -48,8 +48,7 @@ private:
 	QPushButton* addLineLensBtn;
 
 	std::shared_ptr<QPushButton> delLensBtn;
-	std::shared_ptr<QRadioButton> radioDeformScreen;
-	std::shared_ptr<QRadioButton> radioDeformObject;
+
 
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
@@ -88,7 +87,6 @@ private slots:
 	void AddCurveLens(); 
 	void SlotToggleGrid(bool b);
 	void SlotToggleBackFace(bool b);
-	void SlotDeformModeChanged(bool clicked);
 	void SlotSaveState();
 	void SlotLoadState();
 

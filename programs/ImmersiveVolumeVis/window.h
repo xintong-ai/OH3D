@@ -44,45 +44,48 @@ public:
 
 private:
 
-	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
-
-
-	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 	RayCastingParameters rcp;
 	std::shared_ptr<Volume> inputVolume;
+	std::shared_ptr<Volume> channelVolume;
+
 	std::shared_ptr<VolumeCUDA> labelVol;
 	bool useLabel;
 
-
-	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<GLMatrixManager> matrixMgrMini;
-	std::shared_ptr<RegularInteractor> regularInteractor;
-
 	std::shared_ptr<GLWidget> openGL;
-	QTimer *aTimer;
-
-	std::shared_ptr<QPushButton> saveStateBtn;
-	std::shared_ptr<QPushButton> loadStateBtn;
 	
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
 	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
 		
 	std::shared_ptr<LabelVolumeProcessor> lvProcessor;
 
-	
+	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
+
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
-
+	std::shared_ptr<QPushButton> saveStateBtn;
+	std::shared_ptr<QPushButton> loadStateBtn;
 	QLabel *laLabel, *ldLabel, *lsLabel;
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
 	QLabel *deformForceLabel;
 	QLabel *meshResLabel;
-
 	QLineEdit *eyePosLineEdit;
 
+	std::shared_ptr<QRadioButton> oriVolumeRb;
+	std::shared_ptr<QRadioButton> channelVolumeRb;
 	
+	std::shared_ptr<QRadioButton> immerRb;
+	std::shared_ptr<QRadioButton> nonImmerRb;
+
 	std::shared_ptr<ViewpointEvaluator> ve;
+
+	QTimer *aTimer;
+
+	//for miniature
+	std::shared_ptr<GLWidget> openGLMini;
+	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
+	std::shared_ptr<GLMatrixManager> matrixMgrMini;
+	std::shared_ptr<RegularInteractor> regularInteractor;
+	std::shared_ptr<RegularInteractor> regularInteractorMini;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
@@ -106,6 +109,11 @@ private slots:
 	void isBrushingClicked();
 	void moveToOptimalBtnClicked();
 
+	void SlotOriVolumeRb(bool);
+	void SlotChannelVolumeRb(bool);
+
+	void SlotImmerRb(bool);
+	void SlotNonImmerRb(bool);
 };
 
 #endif

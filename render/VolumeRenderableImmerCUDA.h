@@ -23,6 +23,13 @@ public:
 	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl = 0);
 	~VolumeRenderableImmerCUDA();
 
+	void setVolume(std::shared_ptr<Volume> v, bool needMoreChange = false){
+		volume = v;
+		if (needMoreChange){
+			//todo in the future;
+		}
+	};
+
 	//cutaway or deform paramteres
 	bool isFixed = false;
 	float wallRotateTan = 0;

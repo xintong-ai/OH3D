@@ -4,6 +4,9 @@
 
 void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
+	if (!isActive)
+		return;
+
 	//suppose the rotation happens in eye coordinate
 	matrixMgr->getTrackBall()->rotate(fromX, fromY, toX, toY);
 	//the rotation in trackball is not strictly in eye coordinate. but use this as approximation
@@ -44,6 +47,9 @@ void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 
 void ImmersiveInteractor::Translate(float x, float y)
 {
+	if (!isActive)
+		return;
+
 	QMatrix4x4 m, mv;
 	matrixMgr->GetModelMatrix(m);
 
@@ -59,6 +65,9 @@ void ImmersiveInteractor::Translate(float x, float y)
 
 bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 {
+	if (!isActive)
+		return false;
+
 	QMatrix4x4 m, mv;
 	matrixMgr->GetModelMatrix(m);
 

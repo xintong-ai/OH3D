@@ -24,6 +24,32 @@
 
 
 
+void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
+{
+	channelV;
+	//for (int i = 0)
+	int3 dataSizes = v->size;
+
+	for (int k = 0; k < dataSizes.z; k++)
+	{
+		for (int j = 0; j < dataSizes.y; j++)
+		{
+			for (int i = 0; i < dataSizes.x; i++)
+			{
+				int ind = k*dataSizes.y * dataSizes.x + j*dataSizes.x + i;
+				if (v->values[ind] < rcp->transFuncP2){
+					channelV->values[ind] = 1;
+				}
+				else{
+					channelV->values[ind] = 0;
+				}
+			}
+		}
+	}
+	channelV->initVolumeCuda();
+	return;
+}
+
 Window::Window()
 {
     setWindowTitle(tr("Interactive Glyph Visualization"));
@@ -106,6 +132,13 @@ Window::Window()
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
 
+	channelVolume = std::make_shared<Volume>();
+	channelVolume->setSize(inputVolume->size);
+	channelVolume->dataOrigin = inputVolume->dataOrigin;
+	channelVolume->spacing = inputVolume->spacing;
+
+	computeChannelVolume(inputVolume, channelVolume, rcp);
+
 	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
 
 	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
@@ -162,23 +195,45 @@ Window::Window()
 	inputVolume->GetPosRange(posMin, posMax);
 	matrixMgr->SetVol(posMin, posMax);
 	
+
+	matrixMgrMini = std::make_shared<GLMatrixManager>(false);
+	matrixMgrMini->SetVol(posMin, posMax);
 	
+
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVol);
 	volumeRenderable->rcp = rcp;
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 	volumeRenderable->setScreenMarker(sm);
 
 
+	//if (isImmersive){
+	//	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
+	//	immersiveInteractor->setMatrixMgr(matrixMgr);
+	//	openGL->AddInteractor("model", immersiveInteractor.get());
+	//}
+	//else{
+	//	regularInteractor = std::make_shared<RegularInteractor>();
+	//	regularInteractor->setMatrixMgr(matrixMgr);
+	//	openGL->AddInteractor("model", regularInteractor.get());
+	//}
+
+	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
+	immersiveInteractor->setMatrixMgr(matrixMgr);
+	openGL->AddInteractor("model", immersiveInteractor.get());
+
+	regularInteractor = std::make_shared<RegularInteractor>();
+	regularInteractor->setMatrixMgr(matrixMgr);
+	openGL->AddInteractor("modelReg", regularInteractor.get());
+
 	if (isImmersive){
-		immersiveInteractor = std::make_shared<ImmersiveInteractor>();
-		immersiveInteractor->setMatrixMgr(matrixMgr);
-		openGL->AddInteractor("model", immersiveInteractor.get());
+		regularInteractor->isActive = false;
+		immersiveInteractor->isActive = true;
 	}
 	else{
-		regularInteractor = std::make_shared<RegularInteractor>();
-		regularInteractor->setMatrixMgr(matrixMgr);
-		openGL->AddInteractor("model", regularInteractor.get());
+		regularInteractor->isActive = true;
+		immersiveInteractor->isActive = false;
 	}
+
 	sbInteractor = std::make_shared<ScreenBrushInteractor>();
 	sbInteractor->setScreenMarker(sm);
 	openGL->AddInteractor("screenMarker", sbInteractor.get());
@@ -231,6 +286,37 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	eyePosLayout2->addWidget(eyePosBtn);
 	eyePosGroup->setLayout(eyePosLayout2);
 	controlLayout->addWidget(eyePosGroup);
+
+
+
+
+	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
+	QHBoxLayout *deformModeLayout = new QHBoxLayout;
+	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original volume"));
+	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel volume"));
+	oriVolumeRb->setChecked(true);
+	deformModeLayout->addWidget(oriVolumeRb.get());
+	deformModeLayout->addWidget(channelVolumeRb.get());
+	groupBox->setLayout(deformModeLayout);
+	controlLayout->addWidget(groupBox);
+	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
+	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
+
+
+	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
+	QHBoxLayout *deformModeLayout2= new QHBoxLayout;
+	immerRb = std::make_shared<QRadioButton>(tr("&immersive mode"));
+	nonImmerRb = std::make_shared<QRadioButton>(tr("&non immer"));
+	immerRb->setChecked(true);
+	deformModeLayout2->addWidget(immerRb.get());
+	deformModeLayout2->addWidget(nonImmerRb.get());
+	groupBox2->setLayout(deformModeLayout2);
+	controlLayout->addWidget(groupBox2);
+	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
+	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
+
+	
+
 
 
 
@@ -350,8 +436,8 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QLabel *miniatureLabel = new QLabel("miniature");
 	assistLayout->addWidget(miniatureLabel);
 
-	matrixMgrMini = std::make_shared<GLMatrixManager>(false);
-	matrixMgrMini->SetVol(posMin, posMax);
+	//matrixMgrMini = std::make_shared<GLMatrixManager>(false);
+	//matrixMgrMini->SetVol(posMin, posMax);
 	openGLMini = std::make_shared<GLWidget>(matrixMgrMini);
 	openGLMini->setFormat(format);
 	if (isImmersive){
@@ -360,11 +446,11 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 		volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
 		openGLMini->AddRenderable("1volume", volumeRenderableMini.get()); //make sure the volume is rendered first since it does not use depth test
 		assistLayout->addWidget(openGLMini.get(), 3);
-		regularInteractor = std::make_shared<RegularInteractor>();
-		regularInteractor->setMatrixMgr(matrixMgrMini);
-		openGLMini->AddInteractor("regular", regularInteractor.get());
+		regularInteractorMini = std::make_shared<RegularInteractor>();
+		regularInteractorMini->setMatrixMgr(matrixMgrMini);
+		openGLMini->AddInteractor("regular", regularInteractorMini.get());
 	}
-	openGLMini->setFixedSize(200, 200);
+	//openGLMini->setFixedSize(200, 200);
 
 	mainLayout->addLayout(assistLayout,1);
 	openGL->setFixedSize(600, 600);
@@ -446,11 +532,7 @@ void Window::lsSliderValueChanged(int v)
 	volumeRenderable->rcp->ls = 1.0*v / 10;
 	lsLabel->setText(QString::number(1.0*v / 10));
 }
-void Window::setLabel(std::shared_ptr<VolumeCUDA> v)
-{
-	labelVol = v;
-	//volumeRenderable->setLabelVolume(labelVol);
-}
+
 
 void Window::isBrushingClicked()
 {
@@ -464,4 +546,37 @@ void Window::moveToOptimalBtnClicked()
 	matrixMgr->moveEyeInLocalTo(QVector3D(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
 
 	ve->saveResultVol("labelEntro.raw");
+}
+
+void Window::SlotOriVolumeRb(bool b)
+{
+	if (b)
+	volumeRenderable->setVolume(inputVolume);
+}
+
+void Window::SlotChannelVolumeRb(bool b)
+{
+	if (b)
+	volumeRenderable->setVolume(channelVolume);
+}
+
+void Window::SlotImmerRb(bool b)
+{
+	if (b){
+		regularInteractor->isActive = false;
+		immersiveInteractor->isActive = true;
+
+		matrixMgr->SetImmersiveMode();
+	}
+}
+
+void Window::SlotNonImmerRb(bool b)
+{
+	if (b)
+	{
+		regularInteractor->isActive = true;
+		immersiveInteractor->isActive = false;
+
+		matrixMgr->SetNonImmersiveMode();		
+	}
 }

@@ -56,6 +56,18 @@ void GLMatrixManager::SetImmersiveMode()
 	cofLocal = QVector3D(64, 109, 107);
 }
 
+void GLMatrixManager::SetNonImmersiveMode()
+{
+	immersiveMode = false;
+
+	rotMat.setToIdentity();
+	viewMat.setToIdentity();
+
+	transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
+	transScale = 1;
+	float3 dataCen = (dataMin + dataMax) * 0.5;
+	cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
+}
 
 void GLMatrixManager::Rotate(float fromX, float fromY, float toX, float toY)
 {

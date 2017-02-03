@@ -66,7 +66,7 @@ Window::Window()
 		std::cout << "volume data name not recognized" << std::endl;
 		exit(0);
 	}
-	inputVolume = std::make_shared<Volume>();
+	inputVolume = std::make_shared<Volume>(true);
 
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
@@ -224,17 +224,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	meshResLayout->addWidget(addMeshResPushButton);
 	meshResLayout->addWidget(meshResLabel);
 	meshResLayout->addStretch();
-
-
-
-	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
-	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	radioDeformScreen = std::make_shared<QRadioButton>(tr("&screen space"));
-	radioDeformObject = std::make_shared<QRadioButton>(tr("&object space"));
-	radioDeformObject->setChecked(true);
-	deformModeLayout->addWidget(radioDeformScreen.get());
-	deformModeLayout->addWidget(radioDeformObject.get());
-	groupBox->setLayout(deformModeLayout);
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 	//controlLayout->addWidget(addLensBtn);
@@ -451,16 +440,6 @@ void Window::SlotLoadState()
 		meshDeformer->meshResolution = meshResolution;
 		meshDeformer->setReinitiationNeed();
 		meshResLabel->setText(QString::number(meshResolution));
-	}
-}
-
-void Window::SlotDeformModeChanged(bool clicked)
-{
-	if (radioDeformScreen->isChecked()){
-		openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
-	}
-	else if (radioDeformObject->isChecked()){
-		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
 	}
 }
 

@@ -47,7 +47,7 @@ public:
 		values = new float[size.x*size.y*size.z];
 	};
 
-	Volume(bool _so = true){ originSaved = _so; };
+	Volume(bool _so = false){ originSaved = _so; };
 	//Volume(){ };
 
 	~Volume()
