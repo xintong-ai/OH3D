@@ -6,6 +6,16 @@ set(SHARED_LIB_INCLUDE_DIR ${SHARED_LIB_INCLUDE_DIR} PARENT_SCOPE)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
+# for itk
+INCLUDE(${CMAKE_SOURCE_DIR}/programs/ImmersiveVolumeVis/IJMacros.txt)
+SET(Required_Packages
+  ITK
+)
+FOREACH(Package ${Required_Packages})
+  LOADPACKAGE(${Package})
+ENDFOREACH(Package)
+
+
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -41,6 +51,7 @@ target_link_libraries(${PROJECT_NAME}
 	dataModel
 	deform
 	vpsel
+	${ITK_LIBRARIES}
 )
 
 if(USE_OSVR)

@@ -89,7 +89,7 @@ endif()
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-#set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
+set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
 cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
 

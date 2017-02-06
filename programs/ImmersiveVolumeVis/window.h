@@ -7,6 +7,11 @@
 #include "CMakeConfig.h"
 #include "myDefine.h"
 
+//itk
+#include <itkImage.h>
+#include <itkImportImageFilter.h>
+#include "itkBinaryThinningImageFilter3D.h"
+
 class DataMgr;
 class GLWidget;
 class MarchingCubes;
@@ -43,10 +48,14 @@ public:
 	void init();
 
 private:
+	int3 dims;
+	float3 spacing;
 
 	RayCastingParameters rcp;
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<Volume> channelVolume;
+
+	std::shared_ptr<Volume> skelVolume; //only render when need to test
 
 	std::shared_ptr<VolumeCUDA> labelVol;
 	bool useLabel;
@@ -91,6 +100,42 @@ private:
 	std::shared_ptr<VRWidget> vrWidget;
 	std::shared_ptr<VRVolumeRenderableCUDA> vrVolumeRenderable;
 #endif
+
+
+	//for itk
+	//typedef unsigned char PixelType;
+	typedef float PixelType; //use float when need to render. otherwise should use less storage
+
+	typedef itk::Image< PixelType, 3 > ImageType;
+	typedef itk::ImportImageFilter< PixelType, 3 > ImportFilterType;
+	const bool importImageFilterWillOwnTheBuffer = false; //probably can change to true for faster speed?
+	typedef itk::BinaryThinningImageFilter3D< ImageType, ImageType > ThinningFilterType;
+	ImportFilterType::Pointer importFilter;
+	ThinningFilterType::Pointer thinningFilter;
+
+	void initITK() //can only be performed AFTER dims and spacing is set
+	{
+		importFilter = ImportFilterType::New();
+		thinningFilter = ThinningFilterType::New();
+
+		ImageType::SizeType imsize;
+		imsize[0] = dims.x;
+		imsize[1] = dims.y;
+		imsize[2] = dims.z;
+		ImportFilterType::IndexType start;
+		start.Fill(0);
+		ImportFilterType::RegionType region;
+		region.SetIndex(start);
+		region.SetSize(imsize);
+		importFilter->SetRegion(region);
+
+		const itk::SpacePrecisionType origin[3] = { imsize[0], imsize[1], imsize[2] };
+		importFilter->SetOrigin(origin);
+		const itk::SpacePrecisionType _spacing[3] = { spacing.x, spacing.y, spacing.z };
+		importFilter->SetSpacing(_spacing);
+	};
+	void computeSkel();
+
 
 private slots:
 	

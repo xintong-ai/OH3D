@@ -26,6 +26,6 @@ set(HDRS		ViewpointEvaluator.h)
 cuda_add_library(vpsel STATIC ${HDRS} ${SRCS})
 
 set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
-list(APPEND CUDA_NVCC_FLAGS "-g;-G")
+#list(APPEND CUDA_NVCC_FLAGS "-g;-G")
 
 endif()

@@ -26,8 +26,8 @@
 
 void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
 {
-	channelV;
-	//for (int i = 0)
+	std::cout << "computing channel volume..." << std::endl;
+
 	int3 dataSizes = v->size;
 
 	for (int k = 0; k < dataSizes.z; k++)
@@ -47,7 +47,38 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 		}
 	}
 	channelV->initVolumeCuda();
+	std::cout << "finish computing channel volume..." << std::endl;
 	return;
+}
+
+
+void Window::computeSkel()
+{
+	std::cout << "computing skeletion volume..." << std::endl;
+
+	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
+	PixelType * localBuffer = new PixelType[numberOfPixels];
+
+	for (int i = 0; i < numberOfPixels; i++){
+		if (channelVolume->values[i] > 0.5){
+			localBuffer[i] = 1;
+		}
+		else{
+			localBuffer[i] = 0;
+		}
+	}
+
+	importFilter->SetImportPointer(localBuffer, numberOfPixels, importImageFilterWillOwnTheBuffer);
+
+	thinningFilter->SetInput(importFilter->GetOutput());
+	thinningFilter->Update();
+
+	skelVolume->values = thinningFilter->GetOutput()->GetBufferPointer(); //caution! care for segmentation fault
+
+	skelVolume->initVolumeCuda();
+
+	std::cout << "finish computing skeletion volume..." << std::endl;
+
 }
 
 Window::Window()
@@ -61,8 +92,6 @@ Window::Window()
 
 	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
 
-	int3 dims;
-	float3 spacing;
 	if (std::string(dataPath).find("MGHT2") != std::string::npos){
 		dims = make_int3(320, 320, 256);
 		spacing = make_float3(0.7, 0.7, 0.7);
@@ -138,6 +167,17 @@ Window::Window()
 	channelVolume->spacing = inputVolume->spacing;
 
 	computeChannelVolume(inputVolume, channelVolume, rcp);
+
+
+	
+	skelVolume = std::make_shared<Volume>();
+	skelVolume->setSize(inputVolume->size);
+	skelVolume->dataOrigin = inputVolume->dataOrigin;
+	skelVolume->spacing = inputVolume->spacing;
+	//initITK(); 
+	//computeSkel();
+
+
 
 	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
 
@@ -557,7 +597,10 @@ void Window::SlotOriVolumeRb(bool b)
 void Window::SlotChannelVolumeRb(bool b)
 {
 	if (b)
-	volumeRenderable->setVolume(channelVolume);
+	{
+		//volumeRenderable->setVolume(skelVolume);
+		volumeRenderable->setVolume(channelVolume);
+	}
 }
 
 void Window::SlotImmerRb(bool b)
