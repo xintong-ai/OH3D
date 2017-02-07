@@ -4,7 +4,7 @@
 #include "ScreenMarker.h"
 #include <cuda_runtime.h>
 
-#define cons 3
+const int cons=3;
 
 void ScreenBrushInteractor::mousePress(int x, int y, int modifier)
 {

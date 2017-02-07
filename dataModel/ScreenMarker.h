@@ -14,7 +14,7 @@ public:
 		if (isPixelSelected != 0)
 			delete[] isPixelSelected;
 		if (dev_isPixelSelected != 0)
-			delete[] dev_isPixelSelected;
+			cudaFree(dev_isPixelSelected);
 	}
 	
 	void initMaskPixel(int w, int h){

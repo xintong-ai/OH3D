@@ -12,6 +12,10 @@
 #include <itkImportImageFilter.h>
 #include "itkBinaryThinningImageFilter3D.h"
 
+
+#include "GLWidgetQtDrawing.h"
+
+
 class DataMgr;
 class GLWidget;
 class MarchingCubes;
@@ -44,7 +48,8 @@ class Window : public QWidget
 	Q_OBJECT	//without this line, the slot does not work
 public:
 	Window();
-    ~Window();
+	~Window();
+
 	void init();
 
 private:
@@ -53,11 +58,13 @@ private:
 
 	RayCastingParameters rcp;
 	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<Volume> channelVolume;
 
-	std::shared_ptr<Volume> skelVolume; //only render when need to test
+	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
+	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test
+	
+	std::shared_ptr<VolumeCUDA> labelVolCUDA;
+	unsigned short* labelVolLocal = 0;
 
-	std::shared_ptr<VolumeCUDA> labelVol;
 	bool useLabel;
 
 	std::shared_ptr<GLWidget> openGL;
@@ -136,6 +143,7 @@ private:
 	};
 	void computeSkel();
 
+	Helper helper;
 
 private slots:
 	
@@ -159,6 +167,10 @@ private slots:
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);
+
+	void zSliderValueChanged(int v);
+	void updateLabelVolBtnClicked();
+	
 };
 
 #endif

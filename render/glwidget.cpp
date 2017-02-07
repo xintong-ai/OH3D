@@ -171,8 +171,6 @@ void GLWidget::paintGL() {
 	UpdateGL();
 }
 
-
-
 void GLWidget::resizeGL(int w, int h)
 {
     width = w;

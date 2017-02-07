@@ -109,7 +109,6 @@ protected:
 	QPoint pixelPosToGLPos(const QPointF& p);
 	QPointF pixelPosToViewPos(const QPointF& p);
 	QPointF prevPos;//previous mouse position
-	
 
 private:
 	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;

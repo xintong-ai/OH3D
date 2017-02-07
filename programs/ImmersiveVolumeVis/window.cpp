@@ -16,11 +16,13 @@
 #include "mouse/ScreenBrushInteractor.h"
 #include "LabelVolumeProcessor.h"
 #include "ViewpointEvaluator.h"
+#include "GLWidgetQtDrawing.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
 #include "VRVolumeRenderableCUDA.h"
 #endif
+
 
 
 
@@ -161,19 +163,15 @@ Window::Window()
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
 
-	channelVolume = std::make_shared<Volume>();
-	channelVolume->setSize(inputVolume->size);
-	channelVolume->dataOrigin = inputVolume->dataOrigin;
-	channelVolume->spacing = inputVolume->spacing;
-
-	computeChannelVolume(inputVolume, channelVolume, rcp);
-
-
-	
-	skelVolume = std::make_shared<Volume>();
-	skelVolume->setSize(inputVolume->size);
-	skelVolume->dataOrigin = inputVolume->dataOrigin;
-	skelVolume->spacing = inputVolume->spacing;
+	//channelVolume = std::make_shared<Volume>();
+	//channelVolume->setSize(inputVolume->size);
+	//channelVolume->dataOrigin = inputVolume->dataOrigin;
+	//channelVolume->spacing = inputVolume->spacing;
+	//computeChannelVolume(inputVolume, channelVolume, rcp);
+	//skelVolume = std::make_shared<Volume>();
+	//skelVolume->setSize(inputVolume->size);
+	//skelVolume->dataOrigin = inputVolume->dataOrigin;
+	//skelVolume->spacing = inputVolume->spacing;
 	//initITK(); 
 	//computeSkel();
 
@@ -186,23 +184,26 @@ Window::Window()
 
 
 	useLabel = true;
-	labelVol = 0;
+	labelVolCUDA = 0;
 	if (useLabel){
 		//std::shared_ptr<RawVolumeReader> reader;
 		//const std::string labelDataPath = dataMgr->GetConfig("FEATURE_PATH");
 		//reader = std::make_shared<RawVolumeReader>(labelDataPath.c_str(), dims);
-		//labelVol = std::make_shared<VolumeCUDA>();
-		//reader->OutputToVolumeCUDAUnsignedShort(labelVol);
+		//labelVolCUDA = std::make_shared<VolumeCUDA>();
+		//reader->OutputToVolumeCUDAUnsignedShort(labelVolCUDA);
 		//reader.reset();
 
-		labelVol = std::make_shared<VolumeCUDA>();
-		labelVol->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
+		labelVolCUDA = std::make_shared<VolumeCUDA>();
+		labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
 
-		lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVol);
+		lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVolCUDA);
 		lvProcessor->setScreenMarker(sm);
 		lvProcessor->rcp = rcp;
 
-		ve->setLabel(labelVol);
+		ve->setLabel(labelVolCUDA);
+
+		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
+		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
 	}
 
 
@@ -240,7 +241,7 @@ Window::Window()
 	matrixMgrMini->SetVol(posMin, posMax);
 	
 
-	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVol);
+	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA);
 	volumeRenderable->rcp = rcp;
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 	volumeRenderable->setScreenMarker(sm);
@@ -331,7 +332,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout = new QHBoxLayout;
+	QVBoxLayout *deformModeLayout = new QVBoxLayout;
 	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original volume"));
 	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel volume"));
 	oriVolumeRb->setChecked(true);
@@ -492,6 +493,27 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	}
 	//openGLMini->setFixedSize(200, 200);
 
+
+
+	helper.setData(inputVolume, labelVolLocal);
+	GLWidgetQtDrawing *openGL2 = new GLWidgetQtDrawing(&helper, this);
+	assistLayout->addWidget(openGL2, 0);
+	QTimer *timer = new QTimer(this);
+	connect(timer, &QTimer::timeout, openGL2, &GLWidgetQtDrawing::animate);
+	timer->start(5);
+
+	QSlider *zSlider = new QSlider(Qt::Horizontal);
+	zSlider->setRange(0, inputVolume->size.z);
+	zSlider->setValue(helper.z);
+	connect(zSlider, SIGNAL(valueChanged(int)), this, SLOT(zSliderValueChanged(int)));
+	assistLayout->addWidget(zSlider, 0);
+
+	QPushButton *updateLabelVolBtn = new QPushButton("Update Label Volume");
+	assistLayout->addWidget(updateLabelVolBtn);
+	connect(updateLabelVolBtn, SIGNAL(clicked()), this, SLOT(updateLabelVolBtnClicked()));
+
+
+
 	mainLayout->addLayout(assistLayout,1);
 	openGL->setFixedSize(600, 600);
 	mainLayout->addWidget(openGL.get(), 5);
@@ -504,7 +526,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 
-Window::~Window() {
+Window::~Window() 
+{
+	if (labelVolLocal)
+		delete[]labelVolLocal;
 }
 
 void Window::init()
@@ -598,8 +623,14 @@ void Window::SlotChannelVolumeRb(bool b)
 {
 	if (b)
 	{
-		//volumeRenderable->setVolume(skelVolume);
-		volumeRenderable->setVolume(channelVolume);
+		if (channelVolume){
+			volumeRenderable->setVolume(channelVolume);
+		}
+		else{
+			std::cout << "channelVolume not set!!" << std::endl;
+			oriVolumeRb->setChecked(true);
+			SlotOriVolumeRb(true);
+		}
 	}
 }
 
@@ -622,4 +653,16 @@ void Window::SlotNonImmerRb(bool b)
 
 		matrixMgr->SetNonImmersiveMode();		
 	}
+}
+
+void Window::zSliderValueChanged(int v)
+{
+	helper.z = v;
+}
+
+void Window::updateLabelVolBtnClicked()
+{
+	//labelVolCUDA->VolumeCUDA_init(dims, labelVolLocal, 1, 1);
+	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
+
 }

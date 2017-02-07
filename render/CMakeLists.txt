@@ -53,6 +53,7 @@ set( Srcs
 	VolumeRenderableCUDAKernel.cu
 	LensRenderable.cpp DeformGLWidget.cpp 
 		MeshRenderable.cpp
+		GLWidgetQtDrawing.cpp
 		)
 set( Hdrs  
 	glwidget.h 
@@ -72,6 +73,7 @@ set( Hdrs
 	VolumeRenderableCUDAKernel.h
 	LensRenderable.h DeformGLWidget.h 	
 		MeshRenderable.h
+		GLWidgetQtDrawing.h
 		)
 
 

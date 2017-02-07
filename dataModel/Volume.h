@@ -20,9 +20,11 @@ public:
 	cudaExtent size;
 	cudaArray *content = 0;
 	cudaChannelFormatDesc channelDesc;
-	void VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allowStore, int numChannels = 1);
 	
+	void VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allowStore, int numChannels = 1);
 	void VolumeCUDA_init(int3 _size, unsigned short *volumeVoxelValues, int allowStore, int numChannels = 1);
+	void VolumeCUDA_contentUpdate(unsigned short *volumeVoxelValues, int allowStore, int numChannels = 1);
+
 
 	~VolumeCUDA();
 
@@ -45,6 +47,7 @@ public:
 			delete values;
 		}
 		values = new float[size.x*size.y*size.z];
+		memset(values, 0, sizeof(float)*size.x*size.y*size.z);
 	};
 
 	Volume(bool _so = false){ originSaved = _so; };
