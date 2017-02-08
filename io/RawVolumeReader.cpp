@@ -159,6 +159,28 @@ void RawVolumeReader::OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v)
 			}
 		}
 	}
+	else if (m_DataType == dtFloat32){
+		v->~Volume();
+
+		v->size = dataSizes;
+
+		v->spacing = spacing;
+		v->dataOrigin = dataOrigin;
+
+		v->values = new float[dataSizes.x*dataSizes.y*dataSizes.z];
+
+		for (int k = 0; k < dataSizes.z; k++)
+		{
+			for (int j = 0; j < dataSizes.y; j++)
+			{
+				for (int i = 0; i < dataSizes.x; i++)
+				{
+					int ind = k*dataSizes.y * dataSizes.x + j*dataSizes.x + i;
+					v->values[ind] = (((float*)m_Data)[ind] - minVal) / (maxVal - minVal);
+				}
+			}
+		}
+	}
 	else{
 		std::cout << "not implement" << std::endl;
 		exit(0);

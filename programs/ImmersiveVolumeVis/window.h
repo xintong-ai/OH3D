@@ -88,7 +88,8 @@ private:
 
 	std::shared_ptr<QRadioButton> oriVolumeRb;
 	std::shared_ptr<QRadioButton> channelVolumeRb;
-	
+	std::shared_ptr<QRadioButton> skelVolumeRb;
+
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
@@ -164,6 +165,7 @@ private slots:
 
 	void SlotOriVolumeRb(bool);
 	void SlotChannelVolumeRb(bool);
+	void SlotSkelVolumeRb(bool);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

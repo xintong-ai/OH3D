@@ -55,7 +55,7 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 
 
 void Window::computeSkel()
-{
+{/*
 	std::cout << "computing skeletion volume..." << std::endl;
 
 	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
@@ -80,6 +80,14 @@ void Window::computeSkel()
 	skelVolume->initVolumeCuda();
 
 	std::cout << "finish computing skeletion volume..." << std::endl;
+
+	skelVolume->saveRawToFile("skel.raw");*/
+
+	std::shared_ptr<RawVolumeReader> reader;
+	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
+	reader->OutputToVolumeByNormalizedValue(skelVolume);
+	skelVolume->initVolumeCuda();
+	reader.reset();
 
 }
 
@@ -163,17 +171,20 @@ Window::Window()
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
 
-	//channelVolume = std::make_shared<Volume>();
-	//channelVolume->setSize(inputVolume->size);
-	//channelVolume->dataOrigin = inputVolume->dataOrigin;
-	//channelVolume->spacing = inputVolume->spacing;
-	//computeChannelVolume(inputVolume, channelVolume, rcp);
-	//skelVolume = std::make_shared<Volume>();
-	//skelVolume->setSize(inputVolume->size);
-	//skelVolume->dataOrigin = inputVolume->dataOrigin;
-	//skelVolume->spacing = inputVolume->spacing;
-	//initITK(); 
-	//computeSkel();
+	bool useChannelAndSkel = true;
+	if (useChannelAndSkel){
+		channelVolume = std::make_shared<Volume>();
+		channelVolume->setSize(inputVolume->size);
+		channelVolume->dataOrigin = inputVolume->dataOrigin;
+		channelVolume->spacing = inputVolume->spacing;
+		computeChannelVolume(inputVolume, channelVolume, rcp);
+		skelVolume = std::make_shared<Volume>();
+		skelVolume->setSize(inputVolume->size);
+		skelVolume->dataOrigin = inputVolume->dataOrigin;
+		skelVolume->spacing = inputVolume->spacing;
+		initITK(); 
+		computeSkel();
+	}
 
 
 
@@ -329,19 +340,20 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(eyePosGroup);
 
 
-
-
 	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
 	QVBoxLayout *deformModeLayout = new QVBoxLayout;
 	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original volume"));
 	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel volume"));
+	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton volume"));
 	oriVolumeRb->setChecked(true);
 	deformModeLayout->addWidget(oriVolumeRb.get());
 	deformModeLayout->addWidget(channelVolumeRb.get());
+	deformModeLayout->addWidget(skelVolumeRb.get());
 	groupBox->setLayout(deformModeLayout);
 	controlLayout->addWidget(groupBox);
 	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
+	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));	
+	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
 
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
@@ -355,11 +367,6 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(groupBox2);
 	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
 	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
-
-	
-
-
-
 
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
 	//controlLayout->addWidget(transFuncP1SliderLabelLit);
@@ -628,6 +635,21 @@ void Window::SlotChannelVolumeRb(bool b)
 		}
 		else{
 			std::cout << "channelVolume not set!!" << std::endl;
+			oriVolumeRb->setChecked(true);
+			SlotOriVolumeRb(true);
+		}
+	}
+}
+
+void Window::SlotSkelVolumeRb(bool b)
+{
+	if (b)
+	{
+		if (skelVolume){
+			volumeRenderable->setVolume(skelVolume);
+		}
+		else{
+			std::cout << "skelVolume not set!!" << std::endl;
 			oriVolumeRb->setChecked(true);
 			SlotOriVolumeRb(true);
 		}
