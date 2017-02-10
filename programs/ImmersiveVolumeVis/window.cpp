@@ -18,6 +18,16 @@
 #include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
 
+#include <itkBinaryMorphologicalOpeningImageFilter.h>
+#include <itkBinaryBallStructuringElement.h>
+#include <itkImageFileWriter.h>
+#include "itkBinaryErodeImageFilter.h"
+#include "itkGrayscaleMorphologicalOpeningImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+
+#include "itkImage.h"
+#include "itkSubtractImageFilter.h"
+
 #ifdef USE_OSVR
 #include "VRWidget.h"
 #include "VRVolumeRenderableCUDA.h"
@@ -55,7 +65,7 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 
 
 void Window::computeSkel()
-{/*
+{
 	std::cout << "computing skeletion volume..." << std::endl;
 
 	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
@@ -72,8 +82,57 @@ void Window::computeSkel()
 
 	importFilter->SetImportPointer(localBuffer, numberOfPixels, importImageFilterWillOwnTheBuffer);
 
-	thinningFilter->SetInput(importFilter->GetOutput());
+	typedef itk::ImageFileWriter< ImageType > WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetInput(importFilter->GetOutput());
+	writer->SetFileName("channelVol.hdr");
+	writer->Update();
+
+
+	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
+		StructuringElementType;
+	StructuringElementType structuringElement;
+	int radius = 4;
+	structuringElement.SetRadius(radius);
+	structuringElement.CreateStructuringElement(); 
+	
+	typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
+	OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
+
+
+	openingFilter->SetInput(importFilter->GetOutput());
+	openingFilter->SetKernel(structuringElement);
+	//openingFilter->Update();
+
+	WriterType::Pointer writer2 = WriterType::New();
+	writer2->SetInput(openingFilter->GetOutput());
+	writer2->SetFileName("opened2.hdr");
+	writer2->Update();
+
+
+
+	typedef itk::ConnectedComponentImageFilter <ImageType, ImageType >
+		ConnectedComponentImageFilterType;
+	ConnectedComponentImageFilterType::Pointer connected =
+		ConnectedComponentImageFilterType::New();
+	connected->SetInput(openingFilter->GetOutput());
+	connected->Update();
+	writer2->SetInput(connected->GetOutput());
+	writer2->SetFileName("cp.hdr");
+	writer2->Update();
+
+	std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
+
+
+	exit(0);
+	/*
+	thinningFilter->SetInput(openingFilter->GetOutput());
 	thinningFilter->Update();
+
+
+	writer2->SetInput(thinningFilter->GetOutput());
+	writer2->SetFileName("skel.hdr");
+	writer2->Update();
 
 	skelVolume->values = thinningFilter->GetOutput()->GetBufferPointer(); //caution! care for segmentation fault
 
@@ -81,14 +140,16 @@ void Window::computeSkel()
 
 	std::cout << "finish computing skeletion volume..." << std::endl;
 
-	skelVolume->saveRawToFile("skel.raw");*/
+	skelVolume->saveRawToFile("skel.raw");
+	
+
 
 	std::shared_ptr<RawVolumeReader> reader;
 	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
 	reader->OutputToVolumeByNormalizedValue(skelVolume);
 	skelVolume->initVolumeCuda();
 	reader.reset();
-
+	*/
 }
 
 Window::Window()
@@ -184,8 +245,9 @@ Window::Window()
 		skelVolume->spacing = inputVolume->spacing;
 		initITK(); 
 		computeSkel();
-	}
 
+		
+	}
 
 
 	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
