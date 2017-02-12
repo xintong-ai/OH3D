@@ -32,6 +32,8 @@ set( Srcs
 
 set( Hdrs  
 	window.h 
+	imageProcessing.h
+	MSTAdjList.h
     )
 
 configure_file(config.txt config.txt COPYONLY)
