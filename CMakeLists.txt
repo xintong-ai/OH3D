@@ -18,7 +18,13 @@ endif()
 option(USE_LEAP OFF)
 
 option(USE_OSVR "Enable features that require OSVR" OFF)
+
 if(USE_OSVR)
+	if (Boost_FOUND)
+	else ()
+	set ( BOOST_ROOT "/usr/local" CACHE PATH "the root directory containing Boost")
+	endif ()
+
 	find_package(osvr REQUIRED)
 	include_directories(${osvr_DIR}/../../../include)
 endif()

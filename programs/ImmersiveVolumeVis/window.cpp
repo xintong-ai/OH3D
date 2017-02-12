@@ -18,6 +18,16 @@
 #include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
 
+#include <itkBinaryMorphologicalOpeningImageFilter.h>
+#include <itkBinaryBallStructuringElement.h>
+#include <itkImageFileWriter.h>
+#include "itkBinaryErodeImageFilter.h"
+#include "itkGrayscaleMorphologicalOpeningImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+
+#include "itkImage.h"
+#include "itkSubtractImageFilter.h"
+
 #ifdef USE_OSVR
 #include "VRWidget.h"
 #include "VRVolumeRenderableCUDA.h"
@@ -55,7 +65,7 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 
 
 void Window::computeSkel()
-{/*
+{
 	std::cout << "computing skeletion volume..." << std::endl;
 
 	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
@@ -72,8 +82,57 @@ void Window::computeSkel()
 
 	importFilter->SetImportPointer(localBuffer, numberOfPixels, importImageFilterWillOwnTheBuffer);
 
-	thinningFilter->SetInput(importFilter->GetOutput());
+	typedef itk::ImageFileWriter< ImageType > WriterType;
+	WriterType::Pointer writer = WriterType::New();
+	writer->SetInput(importFilter->GetOutput());
+	writer->SetFileName("channelVol.hdr");
+	writer->Update();
+
+
+	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
+		StructuringElementType;
+	StructuringElementType structuringElement;
+	int radius = 4;
+	structuringElement.SetRadius(radius);
+	structuringElement.CreateStructuringElement();
+
+	typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
+	OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
+
+
+	openingFilter->SetInput(importFilter->GetOutput());
+	openingFilter->SetKernel(structuringElement);
+	//openingFilter->Update();
+
+	WriterType::Pointer writer2 = WriterType::New();
+	writer2->SetInput(openingFilter->GetOutput());
+	writer2->SetFileName("opened2.hdr");
+	writer2->Update();
+
+
+
+	typedef itk::ConnectedComponentImageFilter <ImageType, ImageType >
+		ConnectedComponentImageFilterType;
+	ConnectedComponentImageFilterType::Pointer connected =
+		ConnectedComponentImageFilterType::New();
+	connected->SetInput(openingFilter->GetOutput());
+	connected->Update();
+	writer2->SetInput(connected->GetOutput());
+	writer2->SetFileName("cp.hdr");
+	writer2->Update();
+
+	std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
+
+
+	exit(0);
+	/*
+	thinningFilter->SetInput(openingFilter->GetOutput());
 	thinningFilter->Update();
+
+
+	writer2->SetInput(thinningFilter->GetOutput());
+	writer2->SetFileName("skel.hdr");
+	writer2->Update();
 
 	skelVolume->values = thinningFilter->GetOutput()->GetBufferPointer(); //caution! care for segmentation fault
 
@@ -83,19 +142,20 @@ void Window::computeSkel()
 
 	skelVolume->saveRawToFile("skel.raw");
 	*/
+
 	std::shared_ptr<RawVolumeReader> reader;
 	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
 	reader->OutputToVolumeByNormalizedValue(skelVolume);
 	skelVolume->initVolumeCuda();
 	reader.reset();
-	
+
 }
 
 Window::Window()
 {
-    setWindowTitle(tr("Interactive Glyph Visualization"));
+	setWindowTitle(tr("Interactive Glyph Visualization"));
 
-////////////////data
+	////////////////data
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
 	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
@@ -182,11 +242,11 @@ Window::Window()
 		skelVolume->setSize(inputVolume->size);
 		skelVolume->dataOrigin = inputVolume->dataOrigin;
 		skelVolume->spacing = inputVolume->spacing;
-		initITK(); 
+		initITK();
 		computeSkel();
 	}
 
-////////////////matrix
+	////////////////matrix
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
 #else
@@ -195,6 +255,7 @@ Window::Window()
 	bool isImmersive = true;
 	if (isImmersive){
 		matrixMgr->SetImmersiveMode();
+
 	}
 
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
@@ -253,11 +314,11 @@ Window::Window()
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
 	matrixMgr->SetVol(posMin, posMax);
-	
+
 
 	matrixMgrMini = std::make_shared<GLMatrixManager>(false);
 	matrixMgrMini->SetVol(posMin, posMax);
-	
+
 
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA);
 	volumeRenderable->rcp = rcp;
@@ -309,8 +370,8 @@ Window::Window()
 
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
-std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
-std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
+	std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
+	std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
 
@@ -365,12 +426,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	groupBox->setLayout(deformModeLayout);
 	controlLayout->addWidget(groupBox);
 	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));	
+	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
 	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
 
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout2= new QHBoxLayout;
+	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
 	immerRb = std::make_shared<QRadioButton>(tr("&immersive mode"));
 	nonImmerRb = std::make_shared<QRadioButton>(tr("&non immer"));
 	immerRb->setChecked(true);
@@ -470,13 +531,13 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
 	QVBoxLayout *rcLayout = new QVBoxLayout;
 	rcLayout->addWidget(transFuncP1SliderLabelLit);
-	rcLayout->addLayout(transFuncP1Layout); 
+	rcLayout->addLayout(transFuncP1Layout);
 	rcLayout->addWidget(transFuncP2SliderLabelLit);
 	rcLayout->addLayout(transFuncP2Layout);
 	rcLayout->addWidget(brLabelLit);
-	rcLayout->addLayout(brLayout); 
+	rcLayout->addLayout(brLayout);
 	rcLayout->addWidget(dsLabelLit);
-	rcLayout->addLayout(dsLayout); 
+	rcLayout->addLayout(dsLayout);
 	rcLayout->addWidget(laSliderLabelLit);
 	rcLayout->addLayout(laLayout);
 	rcLayout->addWidget(ldSliderLabelLit);
@@ -538,10 +599,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 
-	mainLayout->addLayout(assistLayout,1);
+	mainLayout->addLayout(assistLayout, 1);
 	//openGL->setFixedSize(600, 600);
 	mainLayout->addWidget(openGL.get(), 5);
-	mainLayout->addLayout(controlLayout,1);
+	mainLayout->addLayout(controlLayout, 1);
 	setLayout(mainLayout);
 }
 
@@ -550,7 +611,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 
-Window::~Window() 
+Window::~Window()
 {
 	if (labelVolLocal)
 		delete[]labelVolLocal;
@@ -559,7 +620,7 @@ Window::~Window()
 void Window::init()
 {
 #ifdef USE_OSVR
-		vrWidget->show();
+	vrWidget->show();
 #endif
 }
 
@@ -631,7 +692,7 @@ void Window::isBrushingClicked()
 void Window::moveToOptimalBtnClicked()
 {
 	ve->compute(VPMethod::JS06Sphere);
-	
+
 	matrixMgr->moveEyeInLocalTo(QVector3D(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
 
 	ve->saveResultVol("labelEntro.raw");
@@ -640,7 +701,7 @@ void Window::moveToOptimalBtnClicked()
 void Window::SlotOriVolumeRb(bool b)
 {
 	if (b)
-	volumeRenderable->setVolume(inputVolume);
+		volumeRenderable->setVolume(inputVolume);
 }
 
 void Window::SlotChannelVolumeRb(bool b)
@@ -690,7 +751,7 @@ void Window::SlotNonImmerRb(bool b)
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
 
-		matrixMgr->SetNonImmersiveMode();		
+		matrixMgr->SetNonImmersiveMode();
 	}
 }
 
