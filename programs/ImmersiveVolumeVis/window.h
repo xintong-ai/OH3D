@@ -111,7 +111,7 @@ private:
 
 
 	//for itk
-	typedef unsigned char PixelType;
+	typedef unsigned short PixelType;
 	//typedef float PixelType; //use float when need to render. otherwise should use less storage
 
 	typedef itk::Image< PixelType, 3 > ImageType;

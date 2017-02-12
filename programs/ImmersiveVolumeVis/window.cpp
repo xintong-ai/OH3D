@@ -106,9 +106,8 @@ void Window::computeSkel()
 
 	WriterType::Pointer writer2 = WriterType::New();
 	writer2->SetInput(openingFilter->GetOutput());
-	writer2->SetFileName("opened2.hdr");
+	writer2->SetFileName("opened.hdr");
 	writer2->Update();
-
 
 
 	typedef itk::ConnectedComponentImageFilter <ImageType, ImageType >
@@ -121,12 +120,102 @@ void Window::computeSkel()
 	writer2->SetFileName("cp.hdr");
 	writer2->Update();
 
+	ImageType::Pointer connectedImg = connected->GetOutput();
+
+	int numObj = connected->GetObjectCount();
 	std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
 
 
-	exit(0);
-	/*
-	thinningFilter->SetInput(openingFilter->GetOutput());
+	std::vector<bool> atOutside(numObj + 1, 0);
+	for (int k = 0; k < dims.z; k += dims.z-1){
+		for (int j = 0; j < dims.y; j++){
+			for (int i = 0; i < dims.x; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = connectedImg->GetPixel(pixelIndex);
+				if (v>0){
+					atOutside[v] = true;
+				}
+			}
+		}
+	}
+	for (int k = 0; k < dims.z; k++){
+		for (int j = 0; j < dims.y; j += dims.y-1){
+			for (int i = 0; i < dims.x; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = connectedImg->GetPixel(pixelIndex);
+				if (v>0){
+					atOutside[v] = true;
+				}
+			}
+		}
+	}
+	for (int k = 0; k < dims.z; k++){
+		for (int j = 0; j < dims.y; j++){
+			for (int i = 0; i < dims.x; i += dims.x-1){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = connectedImg->GetPixel(pixelIndex);
+				if (v>0){
+					atOutside[v] = true;
+				}
+			}
+		}
+	}
+
+	std::vector<int> objCount(numObj+1, 0);
+	for (int k = 0; k < dims.z; k++){
+		for (int j = 0; j < dims.y; j++){
+			for (int i = 0; i < dims.x; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = connectedImg->GetPixel(pixelIndex);
+				if (v>0){
+					objCount[v]++;
+				}
+			}
+		}
+	}
+	//for (int i = 1; i <= numObj; i++){
+	//	std::cout << objCount[i] << std::endl;
+	//}
+
+	int thr = 1000;
+	for (int k = 0; k < dims.z; k++){
+		for (int j = 0; j < dims.y; j++){
+			for (int i = 0; i < dims.x; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = connectedImg->GetPixel(pixelIndex);
+				if (atOutside[v] || objCount[v] < thr){
+					connectedImg->SetPixel(pixelIndex, 0);
+				}
+			}
+		}
+	}
+
+	writer2->SetInput(connectedImg);
+	writer2->SetFileName("cpNew.hdr");
+	writer2->Update();
+
+
+
+
+	//exit(0);
+	
+	//thinningFilter->SetInput(openingFilter->GetOutput());
+	thinningFilter->SetInput(connectedImg); //note that connectedImg is not binary 
 	thinningFilter->Update();
 
 
@@ -134,14 +223,18 @@ void Window::computeSkel()
 	writer2->SetFileName("skel.hdr");
 	writer2->Update();
 
-	skelVolume->values = thinningFilter->GetOutput()->GetBufferPointer(); //caution! care for segmentation fault
+	PixelType* skelRes = thinningFilter->GetOutput()->GetBufferPointer();
+	for (int i = 0; i < skelVolume->size.x*skelVolume->size.y*skelVolume->size.z; i++)
+	{
+		skelVolume->values[i] = skelRes[i];
+	}
 
 	skelVolume->initVolumeCuda();
 
 	std::cout << "finish computing skeletion volume..." << std::endl;
 
 	skelVolume->saveRawToFile("skel.raw");
-	
+	/*
 
 
 	std::shared_ptr<RawVolumeReader> reader;
