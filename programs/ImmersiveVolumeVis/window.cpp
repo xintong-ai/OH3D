@@ -81,14 +81,14 @@ void Window::computeSkel()
 
 	std::cout << "finish computing skeletion volume..." << std::endl;
 
-	skelVolume->saveRawToFile("skel.raw");*/
-
+	skelVolume->saveRawToFile("skel.raw");
+	*/
 	std::shared_ptr<RawVolumeReader> reader;
 	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
 	reader->OutputToVolumeByNormalizedValue(skelVolume);
 	skelVolume->initVolumeCuda();
 	reader.reset();
-
+	
 }
 
 Window::Window()
@@ -186,7 +186,23 @@ Window::Window()
 		computeSkel();
 	}
 
+////////////////matrix
+#ifdef USE_OSVR
+	matrixMgr = std::make_shared<GLMatrixManager>(true);
+#else
+	matrixMgr = std::make_shared<GLMatrixManager>(false);
+#endif
+	bool isImmersive = true;
+	if (isImmersive){
+		matrixMgr->SetImmersiveMode();
+	}
 
+	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
+	animationByMatrixProcessor->isActive = false;
+	std::vector<float3> views;
+	views.push_back(make_float3(100, 100, 100));
+	views.push_back(make_float3(200, 100, 100));
+	animationByMatrixProcessor->setViews(views);
 
 	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
 
@@ -221,16 +237,7 @@ Window::Window()
 
 	/********GL widget******/
 
-#ifdef USE_OSVR
-	matrixMgr = std::make_shared<GLMatrixManager>(true);
-#else
-	matrixMgr = std::make_shared<GLMatrixManager>(false);
-#endif
 
-	bool isImmersive = true;
-	if (isImmersive){
-		matrixMgr->SetImmersiveMode();
-	}
 
 	openGL = std::make_shared<GLWidget>(matrixMgr);
 
@@ -290,7 +297,7 @@ Window::Window()
 	sbInteractor->setScreenMarker(sm);
 	openGL->AddInteractor("screenMarker", sbInteractor.get());
 
-
+	openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	if (useLabel){
 		openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
 	}
@@ -319,6 +326,12 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	QPushButton *moveToOptimalBtn = new QPushButton("Move to the Optimal Viewpoint");
 	controlLayout->addWidget(moveToOptimalBtn);
 	connect(moveToOptimalBtn, SIGNAL(clicked()), this, SLOT(moveToOptimalBtnClicked()));
+
+
+	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
+	controlLayout->addWidget(doTourBtn);
+	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
+
 
 	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
 
@@ -472,7 +485,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	rcLayout->addLayout(lsLayout);
 	rcGroupBox->setLayout(rcLayout);
 
-	controlLayout->addWidget(rcGroupBox);
+	//controlLayout->addWidget(rcGroupBox);
 
 	controlLayout->addStretch();
 
@@ -482,7 +495,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 	QVBoxLayout *assistLayout = new QVBoxLayout;
 	QLabel *miniatureLabel = new QLabel("miniature");
-	assistLayout->addWidget(miniatureLabel);
+	//assistLayout->addWidget(miniatureLabel);
 
 	//matrixMgrMini = std::make_shared<GLMatrixManager>(false);
 	//matrixMgrMini->SetVol(posMin, posMax);
@@ -493,7 +506,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 		//volumeRenderableMini->rcp = rcp;
 		volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
 		openGLMini->AddRenderable("1volume", volumeRenderableMini.get()); //make sure the volume is rendered first since it does not use depth test
-		assistLayout->addWidget(openGLMini.get(), 3);
+		//assistLayout->addWidget(openGLMini.get(), 3);
 		regularInteractorMini = std::make_shared<RegularInteractor>();
 		regularInteractorMini->setMatrixMgr(matrixMgrMini);
 		openGLMini->AddInteractor("regular", regularInteractorMini.get());
@@ -515,6 +528,10 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	connect(zSlider, SIGNAL(valueChanged(int)), this, SLOT(zSliderValueChanged(int)));
 	assistLayout->addWidget(zSlider, 0);
 
+	QPushButton *redrawBtn = new QPushButton("Redraw the Label");
+	assistLayout->addWidget(redrawBtn);
+	connect(redrawBtn, SIGNAL(clicked()), this, SLOT(redrawBtnClicked()));
+
 	QPushButton *updateLabelVolBtn = new QPushButton("Update Label Volume");
 	assistLayout->addWidget(updateLabelVolBtn);
 	connect(updateLabelVolBtn, SIGNAL(clicked()), this, SLOT(updateLabelVolBtnClicked()));
@@ -522,7 +539,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 
 
 	mainLayout->addLayout(assistLayout,1);
-	openGL->setFixedSize(600, 600);
+	//openGL->setFixedSize(600, 600);
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout,1);
 	setLayout(mainLayout);
@@ -684,7 +701,20 @@ void Window::zSliderValueChanged(int v)
 
 void Window::updateLabelVolBtnClicked()
 {
-	//labelVolCUDA->VolumeCUDA_init(dims, labelVolLocal, 1, 1);
 	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
+	std::cout << std::endl << "The lable volume has been updated" << std::endl << std::endl;
+}
 
+void Window::redrawBtnClicked()
+{
+	if (labelVolLocal){
+		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
+		labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
+	}
+	helper.valSet = false;
+}
+
+void Window::doTourBtnClicked()
+{
+	animationByMatrixProcessor->startAnimation();
 }

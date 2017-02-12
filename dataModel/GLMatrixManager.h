@@ -53,6 +53,9 @@ public:
 		viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), upVecInWorld);
 	}
 
+	void moveEyeInLocalTo(float3 _eyeInLocal){
+		moveEyeInLocalTo(QVector3D(_eyeInLocal.x, _eyeInLocal.y, _eyeInLocal.z));
+	}
 	void moveEyeInLocalTo(QVector3D _eyeInLocal){
 		QMatrix4x4 m;
 		GetModelMatrix(m);

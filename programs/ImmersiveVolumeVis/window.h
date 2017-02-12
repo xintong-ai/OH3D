@@ -15,6 +15,9 @@
 
 #include "GLWidgetQtDrawing.h"
 
+#include "AnimationByMatrixProcessor.h"
+
+
 
 class DataMgr;
 class GLWidget;
@@ -37,6 +40,7 @@ class ScreenBrushInteractor;
 class RegularInteractor;
 class LabelVolumeProcessor;
 class ViewpointEvaluator;
+class AnimationByMatrixProcessor;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -73,6 +77,7 @@ private:
 	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
 		
 	std::shared_ptr<LabelVolumeProcessor> lvProcessor;
+	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
 	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
 
@@ -172,7 +177,9 @@ private slots:
 
 	void zSliderValueChanged(int v);
 	void updateLabelVolBtnClicked();
-	
+	void redrawBtnClicked();
+	void doTourBtnClicked();
+
 };
 
 #endif

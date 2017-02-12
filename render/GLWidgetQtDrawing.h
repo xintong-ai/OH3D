@@ -14,6 +14,9 @@ public:
 	int w, h;
 	int z;
 	unsigned short* labelVolLocal;
+	bool valSet = false;
+
+	int multiplier = 3;
 public:
 	void paint(QPainter *painter, QPaintEvent *event, int elapsed);
 	void mousePress(int x, int y);
@@ -22,7 +25,6 @@ public:
 private:
 	std::shared_ptr<Volume> inputVolume;
 
-	bool valSet = false;
 	float val;
 
 	QBrush background;

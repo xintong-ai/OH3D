@@ -35,15 +35,23 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 	//painter->rotate(elapsed * 0.030);
 
 	int sliceOffset = z*w * h;
-	QImage image(w,h, QImage::Format_RGB32);
+	QImage image(w*multiplier, h*multiplier, QImage::Format_RGB32);
 	for (int i = 0; i<w; ++i) {
 		for (int j = 0; j<h; ++j) {
 			if (labelVolLocal[sliceOffset + w*j + i]){
-				image.setPixel(i, j, 256 * 256 * 255 + 256 * 255 + 0);
+				for (int ii = 0; ii < multiplier; ii++){
+					for (int jj = 0; jj < multiplier; jj++){
+						image.setPixel(i*multiplier + ii, j*multiplier + jj, 256 * 256 * 255 + 256 * 255 + 0);
+					}
+				}
 			}
 			else{
 				int vv = 255 * inputVolume->values[sliceOffset + j*w + i];
-				image.setPixel(i, j, 256 * 256 * vv + 256 * vv + vv);
+				for (int ii = 0; ii < multiplier; ii++){
+					for (int jj = 0; jj < multiplier; jj++){
+						image.setPixel(i*multiplier + ii, j*multiplier + jj, 256 * 256 * vv + 256 * vv + vv);
+					}
+				}
 			}
 		}
 	}
@@ -69,9 +77,10 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 	//painter->drawText(QRect(-50, -50, 100, 100), Qt::AlignCenter, QStringLiteral("Qt"));
 }
 
-void Helper::mousePress(int x, int y)
+void Helper::mousePress(int _x, int _y)
 {
 	const int cons = 3;
+	int x = _x / multiplier, y = _y / multiplier;
 
 	if (!valSet){
 		val = inputVolume->values[z*w*h + y*w + x];
@@ -104,7 +113,7 @@ GLWidgetQtDrawing::GLWidgetQtDrawing(Helper *helper, QWidget *parent)
 {
 	elapsed = 0;
 	//setFixedSize(200, 200);
-	setFixedSize(helper->w, helper->h);
+	setFixedSize(helper->w*helper->multiplier, helper->h*helper->multiplier);
 	setAutoFillBackground(false);
 }
 
