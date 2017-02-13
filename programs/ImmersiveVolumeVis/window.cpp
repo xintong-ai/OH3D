@@ -26,7 +26,6 @@
 #include "itkConnectedComponentImageFilter.h"
 
 #include "itkImage.h"
-#include "itkSubtractImageFilter.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -34,6 +33,7 @@
 #endif
 
 
+#include "imageProcessing.h"
 
 
 void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
@@ -80,68 +80,18 @@ void Window::computeSkel()
 		}
 	}
 
-	importFilter->SetImportPointer(localBuffer, numberOfPixels, importImageFilterWillOwnTheBuffer);
+	
+	ImageType::Pointer skelComponentedImg;
+	int maxComponentMark;
 
-	typedef itk::ImageFileWriter< ImageType > WriterType;
-	WriterType::Pointer writer = WriterType::New();
-	writer->SetInput(importFilter->GetOutput());
-	writer->SetFileName("channelVol.hdr");
-	writer->Update();
-
-
-	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
-		StructuringElementType;
-	StructuringElementType structuringElement;
-	int radius = 4;
-	structuringElement.SetRadius(radius);
-	structuringElement.CreateStructuringElement();
-
-	typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
-	OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
-
-
-	openingFilter->SetInput(importFilter->GetOutput());
-	openingFilter->SetKernel(structuringElement);
-	//openingFilter->Update();
-
-	WriterType::Pointer writer2 = WriterType::New();
-	writer2->SetInput(openingFilter->GetOutput());
-	writer2->SetFileName("opened2.hdr");
-	writer2->Update();
-
-
-
-	typedef itk::ConnectedComponentImageFilter <ImageType, ImageType >
-		ConnectedComponentImageFilterType;
-	ConnectedComponentImageFilterType::Pointer connected =
-		ConnectedComponentImageFilterType::New();
-	connected->SetInput(openingFilter->GetOutput());
-	connected->Update();
-	writer2->SetInput(connected->GetOutput());
-	writer2->SetFileName("cp.hdr");
-	writer2->Update();
-
-	std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
-
-
-	exit(0);
-	/*
-	thinningFilter->SetInput(openingFilter->GetOutput());
-	thinningFilter->Update();
-
-
-	writer2->SetInput(thinningFilter->GetOutput());
-	writer2->SetFileName("skel.hdr");
-	writer2->Update();
-
-	skelVolume->values = thinningFilter->GetOutput()->GetBufferPointer(); //caution! care for segmentation fault
-
+	skelComputing(localBuffer, dims, spacing, skelVolume->values, skelComponentedImg, maxComponentMark);
 	skelVolume->initVolumeCuda();
-
 	std::cout << "finish computing skeletion volume..." << std::endl;
-
 	skelVolume->saveRawToFile("skel.raw");
-	*/
+
+	
+	
+	std::cout << "reading skeletion volume..." << std::endl;
 
 	std::shared_ptr<RawVolumeReader> reader;
 	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
@@ -242,7 +192,6 @@ Window::Window()
 		skelVolume->setSize(inputVolume->size);
 		skelVolume->dataOrigin = inputVolume->dataOrigin;
 		skelVolume->spacing = inputVolume->spacing;
-		initITK();
 		computeSkel();
 	}
 
@@ -255,7 +204,6 @@ Window::Window()
 	bool isImmersive = true;
 	if (isImmersive){
 		matrixMgr->SetImmersiveMode();
-
 	}
 
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
