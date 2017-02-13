@@ -231,23 +231,9 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	retImgPointer = connectedImg;
 	maxComponentMark = numObj;
 }
-/*
-typedef itk::ImageFileReader<ImageType> ReaderType;
-ReaderType::Pointer reader = ReaderType::New();
-reader->SetFileName("skel.hdr");
-reader->Update();
-ImageType::Pointer skelImg = reader->GetOutput();
-
-ReaderType::Pointer reader2 = ReaderType::New();		//itk can use one writer for writing multiple files, but cannot use one reader for reading multiple files, because the output is pointer!!
-reader2->SetFileName("cpNew.hdr");
-reader2->Update();
-ImageType::Pointer connectedImg = reader2->GetOutput();
-std::vector<int> objCount(55 + 1, 0);
-*/
 
 
-
-void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims, float3 spacing)
+void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims, float3 spacing, std::vector<float3> &views)
 {
 	////////////order skeletons by length
 	std::vector<int> objCount(maxComponentMark + 1, 0);
@@ -283,7 +269,7 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 
 	/////////do mst for the longest skel
 	std::cout << "computing the MST" << std::endl;
-	for (int skel = 6; skel < 7; skel++){
+	for (int skel = 0; skel < 1; skel++){
 		int cpId = idx[skel];
 		int numNodes = objCount[cpId];
 
@@ -422,13 +408,22 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 			}
 		}
 
-
 		////////////by maxPath and posOfId, to compute a vector of sample points along the path
+		std::vector<float3> posOfPathNode(maxPath.size());
+		for (int i = 0; i < maxPath.size(); i++){
+			posOfPathNode[i] = posOfId[maxPath[i]];
+		}
 
+
+		int numOfViews = 50;
+		int lengthMaxPath = maxPath.size();
+		views.clear();
+		for (int i = 0; i < numOfViews; i++){
+			float pos = 1.0 * (lengthMaxPath - 1) * i / numOfViews;
+			int n1 = floor(pos), n2 = n1 + 1;
+			views.push_back(posOfPathNode[n1] * (n2 - pos) + posOfPathNode[n2] * (pos - n1));
+		}
 	}
-	
-
 
 	return;
-
 }

@@ -57,6 +57,7 @@ public:
 private:
 	int3 dims;
 	float3 spacing;
+	std::vector<float3> views;
 
 	RayCastingParameters rcp;
 	std::shared_ptr<Volume> inputVolume;

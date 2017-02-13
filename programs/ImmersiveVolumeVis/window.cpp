@@ -66,6 +66,7 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 
 void Window::computeSkel()
 {
+	/*
 	std::cout << "computing skeletion volume..." << std::endl;
 
 	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
@@ -88,7 +89,7 @@ void Window::computeSkel()
 	skelVolume->initVolumeCuda();
 	std::cout << "finish computing skeletion volume..." << std::endl;
 	skelVolume->saveRawToFile("skel.raw");
-
+	*/
 	
 	
 	std::cout << "reading skeletion volume..." << std::endl;
@@ -98,7 +99,17 @@ void Window::computeSkel()
 	reader->OutputToVolumeByNormalizedValue(skelVolume);
 	skelVolume->initVolumeCuda();
 	reader.reset();
+	
 
+	typedef itk::ImageFileReader<ImageType> ReaderType;
+	ReaderType::Pointer readeritk = ReaderType::New();
+	readeritk->SetFileName("skelComponented.hdr");
+	readeritk->Update();
+	ImageType::Pointer connectedImg = readeritk->GetOutput();
+	int maxComponentMark = 55;
+	findViews(connectedImg, maxComponentMark, dims, spacing, views);
+
+	return;
 }
 
 Window::Window()
@@ -208,9 +219,6 @@ Window::Window()
 
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 	animationByMatrixProcessor->isActive = false;
-	std::vector<float3> views;
-	views.push_back(make_float3(100, 100, 100));
-	views.push_back(make_float3(200, 100, 100));
 	animationByMatrixProcessor->setViews(views);
 
 	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();

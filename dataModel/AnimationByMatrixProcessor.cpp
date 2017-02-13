@@ -23,14 +23,15 @@ bool AnimationByMatrixProcessor::process(float modelview[16], float projection[1
 	if (past >= totalDuration){
 		//end animation
 		isActive = false;
+		std::cout << "animiation ends" << std::endl;
 	}
 
 	int n = views.size();
-	double p = past / totalDuration;
-	int n1 = (n-1)*p, n2 = n1 + 1;
+	double p = past / totalDuration * (n - 1);
+	int n1 = floor(p), n2 = n1 + 1;
 	if (n2 < n){
 		float3 view = views[n1] * (n2 - p) + views[n2] * (p - n1);
-		//std::cout << view.x << std::endl;
+		//std::cout << view.x << " " << view.y << " " << view.z << std::endl;
 		matrixMgr->moveEyeInLocalTo(view);
 	}
 	return false;
