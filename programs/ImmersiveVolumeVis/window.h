@@ -7,15 +7,11 @@
 #include "CMakeConfig.h"
 #include "myDefine.h"
 
-//itk
-#include <itkImage.h>
-#include <itkImportImageFilter.h>
-#include "itkBinaryThinningImageFilter3D.h"
+
 
 
 #include "GLWidgetQtDrawing.h"
 
-#include "AnimationByMatrixProcessor.h"
 
 class DataMgr;
 class GLWidget;
@@ -61,27 +57,45 @@ private:
 
 	RayCastingParameters rcp;
 	std::shared_ptr<Volume> inputVolume;
-
 	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
-	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test
+	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
 	
+	bool useLabel;
 	std::shared_ptr<VolumeCUDA> labelVolCUDA;
 	unsigned short* labelVolLocal = 0;
 
-	bool useLabel;
-
 	std::shared_ptr<GLWidget> openGL;
-	
+	std::shared_ptr<GLMatrixManager> matrixMgr;
+
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
 	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
-		
+	std::shared_ptr<RegularInteractor> regularInteractor;
+
 	std::shared_ptr<LabelVolumeProcessor> lvProcessor;
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
+	std::shared_ptr<ViewpointEvaluator> ve;
+
+	//for miniature
+	std::shared_ptr<GLWidget> openGLMini;
+	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
+	std::shared_ptr<GLMatrixManager> matrixMgrMini;
+	std::shared_ptr<RegularInteractor> regularInteractorMini;
+
+	//for main view
 	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
 
-	std::shared_ptr<GLMatrixManager> matrixMgr;
+	//for 2d view
+	Helper helper;
 
+	void computeSkel();
+
+#ifdef USE_OSVR
+	std::shared_ptr<VRWidget> vrWidget;
+	std::shared_ptr<VRVolumeRenderableCUDA> vrVolumeRenderable;
+#endif
+
+private:
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
 	QLabel *laLabel, *ldLabel, *lsLabel;
@@ -96,26 +110,6 @@ private:
 
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
-
-	std::shared_ptr<ViewpointEvaluator> ve;
-
-	QTimer *aTimer;
-
-	//for miniature
-	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<GLMatrixManager> matrixMgrMini;
-	std::shared_ptr<RegularInteractor> regularInteractor;
-	std::shared_ptr<RegularInteractor> regularInteractorMini;
-
-#ifdef USE_OSVR
-	std::shared_ptr<VRWidget> vrWidget;
-	std::shared_ptr<VRVolumeRenderableCUDA> vrVolumeRenderable;
-#endif
-
-	void computeSkel();
-
-	Helper helper;
 
 private slots:
 	

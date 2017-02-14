@@ -171,14 +171,19 @@ void VolumeRenderableImmerCUDA::initTextureAndCudaArrayOfScreen()
 
 void VolumeRenderableImmerCUDA::deinitTextureAndCudaArrayOfScreen()
 {
-	if (cuda_pbo_resource != 0)
+	//it seems that pbo has already been deleted in VolumeRenderableCUDA
+	if (cuda_pbo_resource != 0){
 		checkCudaErrors(cudaGraphicsUnregisterResource(cuda_pbo_resource));
-	if (pbo != 0)
+		cuda_pbo_resource = 0;
+	}
+	if (pbo != 0){
 		qgl->glDeleteBuffers(1, &pbo);
-	if (volumeTex != 0)
+		pbo = 0;
+	}
+	if (volumeTex != 0){
 		glDeleteTextures(1, &volumeTex);
-
-
+		volumeTex = 0;
+	}
 }
 
 void VolumeRenderableImmerCUDA::resize(int width, int height)

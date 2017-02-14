@@ -1,7 +1,7 @@
-#include "window.h"
-#include "GLWidget.h"
+#include <window.h>
 #include <iostream>
 
+#include "GLWidget.h"
 #include "Volume.h"
 #include "RawVolumeReader.h"
 #include "DataMgr.h"
@@ -17,15 +17,11 @@
 #include "LabelVolumeProcessor.h"
 #include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
+#include "AnimationByMatrixProcessor.h"
 
-#include <itkBinaryMorphologicalOpeningImageFilter.h>
-#include <itkBinaryBallStructuringElement.h>
-#include <itkImageFileWriter.h>
-#include "itkBinaryErodeImageFilter.h"
-#include "itkGrayscaleMorphologicalOpeningImageFilter.h"
-#include "itkConnectedComponentImageFilter.h"
+#include "imageProcessing.h"
 
-#include "itkImage.h"
+#include <itkImage.h>
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -33,7 +29,6 @@
 #endif
 
 
-#include "imageProcessing.h"
 
 
 void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
@@ -67,11 +62,10 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 void Window::computeSkel()
 {
 	/*
+	//compute skeleton volume and itk skelComponented image from the beginning
 	std::cout << "computing skeletion volume..." << std::endl;
-
 	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
 	PixelType * localBuffer = new PixelType[numberOfPixels];
-
 	for (int i = 0; i < numberOfPixels; i++){
 		if (channelVolume->values[i] > 0.5){
 			localBuffer[i] = 1;
@@ -80,33 +74,30 @@ void Window::computeSkel()
 			localBuffer[i] = 0;
 		}
 	}
-
-	
 	ImageType::Pointer skelComponentedImg;
 	int maxComponentMark;
-
 	skelComputing(localBuffer, dims, spacing, skelVolume->values, skelComponentedImg, maxComponentMark);
 	skelVolume->initVolumeCuda();
 	std::cout << "finish computing skeletion volume..." << std::endl;
 	skelVolume->saveRawToFile("skel.raw");
 	*/
 	
-	
+	//read already computed skeleton volume and itk skelComponented image
 	std::cout << "reading skeletion volume..." << std::endl;
-
 	std::shared_ptr<RawVolumeReader> reader;
 	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
 	reader->OutputToVolumeByNormalizedValue(skelVolume);
 	skelVolume->initVolumeCuda();
 	reader.reset();
-	
-
 	typedef itk::ImageFileReader<ImageType> ReaderType;
 	ReaderType::Pointer readeritk = ReaderType::New();
 	readeritk->SetFileName("skelComponented.hdr");
 	readeritk->Update();
 	ImageType::Pointer connectedImg = readeritk->GetOutput();
 	int maxComponentMark = 55;
+	
+	
+	//find the views for the tour
 	findViews(connectedImg, maxComponentMark, dims, spacing, views);
 
 	return;
@@ -253,9 +244,6 @@ Window::Window()
 
 
 	/********GL widget******/
-
-
-
 	openGL = std::make_shared<GLWidget>(matrixMgr);
 
 
@@ -272,26 +260,12 @@ Window::Window()
 	matrixMgr->SetVol(posMin, posMax);
 
 
-	matrixMgrMini = std::make_shared<GLMatrixManager>(false);
-	matrixMgrMini->SetVol(posMin, posMax);
 
 
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA);
 	volumeRenderable->rcp = rcp;
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
 	volumeRenderable->setScreenMarker(sm);
-
-
-	//if (isImmersive){
-	//	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
-	//	immersiveInteractor->setMatrixMgr(matrixMgr);
-	//	openGL->AddInteractor("model", immersiveInteractor.get());
-	//}
-	//else{
-	//	regularInteractor = std::make_shared<RegularInteractor>();
-	//	regularInteractor->setMatrixMgr(matrixMgr);
-	//	openGL->AddInteractor("model", regularInteractor.get());
-	//}
 
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
@@ -502,7 +476,7 @@ Window::Window()
 	rcLayout->addLayout(lsLayout);
 	rcGroupBox->setLayout(rcLayout);
 
-	//controlLayout->addWidget(rcGroupBox);
+	controlLayout->addWidget(rcGroupBox);
 
 	controlLayout->addStretch();
 
@@ -514,21 +488,26 @@ Window::Window()
 	QLabel *miniatureLabel = new QLabel("miniature");
 	//assistLayout->addWidget(miniatureLabel);
 
-	//matrixMgrMini = std::make_shared<GLMatrixManager>(false);
-	//matrixMgrMini->SetVol(posMin, posMax);
+	matrixMgrMini = std::make_shared<GLMatrixManager>(false);
+	matrixMgrMini->SetVol(posMin, posMax);
 	openGLMini = std::make_shared<GLWidget>(matrixMgrMini);
-	openGLMini->setFormat(format);
-	if (isImmersive){
-		volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
-		//volumeRenderableMini->rcp = rcp;
-		volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
-		openGLMini->AddRenderable("1volume", volumeRenderableMini.get()); //make sure the volume is rendered first since it does not use depth test
-		//assistLayout->addWidget(openGLMini.get(), 3);
-		regularInteractorMini = std::make_shared<RegularInteractor>();
-		regularInteractorMini->setMatrixMgr(matrixMgrMini);
-		openGLMini->AddInteractor("regular", regularInteractorMini.get());
-	}
+
+	QSurfaceFormat format2;
+	format2.setDepthBufferSize(24);
+	format2.setStencilBufferSize(8);
+	format2.setVersion(2, 0);
+	format2.setProfile(QSurfaceFormat::CoreProfile);
+	openGLMini->setFormat(format2);
+
+	volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
+	volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
+	openGLMini->AddRenderable("1volume", volumeRenderableMini.get()); //make sure the volume is rendered first since it does not use depth test
+	regularInteractorMini = std::make_shared<RegularInteractor>();
+	regularInteractorMini->setMatrixMgr(matrixMgrMini);
+	openGLMini->AddInteractor("regular", regularInteractorMini.get());
+
 	//openGLMini->setFixedSize(200, 200);
+	assistLayout->addWidget(openGLMini.get(), 3);
 
 
 
@@ -560,6 +539,17 @@ Window::Window()
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);
 	setLayout(mainLayout);
+
+
+#ifdef USE_OSVR
+	vrWidget = std::make_shared<VRWidget>(matrixMgr);
+	vrWidget->setWindowFlags(Qt::Window);
+	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
+	vrWidget->AddRenderable("volume", vrVolumeRenderable.get());
+	openGL->SetVRWidget(vrWidget.get());
+	vrVolumeRenderable->rcp = volumeRenderable->rcp;
+#endif
+
 }
 
 
@@ -707,7 +697,7 @@ void Window::SlotNonImmerRb(bool b)
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
 
-		matrixMgr->SetNonImmersiveMode();
+		matrixMgr->SetRegularMode();
 	}
 }
 

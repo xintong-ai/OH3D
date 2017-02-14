@@ -38,15 +38,13 @@ class VRWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
 	Q_OBJECT
 public:
-	explicit VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, GLWidget* _mainGLWidget, QWidget *parent = 0);
+	explicit VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent = 0);
 	~VRWidget();
 
 	QSize minimumSizeHint() const Q_DECL_OVERRIDE;
 	QSize sizeHint() const Q_DECL_OVERRIDE;
 
 	void AddRenderable(const char* name, void* r);
-
-	Renderable* GetRenderable(const char* name);
 
 	void GetWindowSize(int &w, int &h) { w = width; h = height; }
 
@@ -58,12 +56,6 @@ public:
 	//void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
 	//float3 DataCenter();
 	void UpdateGL();
-
-
-	//INTERACT_MODE GetInteractMode(){ return interactMode; }
-
-	//void SetInteractMode(INTERACT_MODE v) { interactMode = v; }
-
 
 protected:
 	virtual void initializeGL() Q_DECL_OVERRIDE;
@@ -86,27 +78,6 @@ private:
 
 	void TimerEnd();
 
-
-	//QPointF pixelPosToViewPos(const QPointF& p);
-
-	//QPoint pixelPosToGLPos(const QPoint& p);
-
-	//bool gestureEvent(QGestureEvent *event);
-
-	//void pinchTriggered(QPinchGesture *gesture);
-	/*****view*****/
-	//transformation states
-	//QVector3D transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
-	//QMatrix4x4 transRot;
-	//float transScale = 1;
-	//float currentTransScale = 1;
-
-	//Trackball *trackball;
-	//QPointF prevPos;//previous mouse position
-	//Rotation *rot;
-
-	//INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
-
 	/****timing****/
 	StopWatchInterface *timer = 0;
 	int m_frame;
@@ -118,22 +89,10 @@ private:
 	std::map<std::string, Renderable*> renderers;
 
 	bool initialized = false;
-	GLWidget* mainGLWidget;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::shared_ptr<osvr::clientkit::ClientContext> ctx;// ("com.osvr.example.SDLOpenGL");
 	std::shared_ptr<osvr::clientkit::DisplayConfig> display;// (ctx);
-
-	//bool pinching = false;
-	////mark whether there is any pinching gesture in this sequence of gestures.
-	//// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.
-	//bool pinched = false;
-
-	//float3 dataMin = make_float3(0, 0, 0);
-	//float3 dataMax = make_float3(10, 10, 10);
-
-	//private slots:
-	//void animate();
 
 };
 

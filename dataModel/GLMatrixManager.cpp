@@ -56,7 +56,7 @@ void GLMatrixManager::SetImmersiveMode()
 	cofLocal = QVector3D(64, 109, 107);
 }
 
-void GLMatrixManager::SetNonImmersiveMode()
+void GLMatrixManager::SetRegularMode()
 {
 	immersiveMode = false;
 

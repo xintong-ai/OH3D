@@ -148,12 +148,13 @@ Window::Window()
 
 
 #ifdef USE_OSVR
-	vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
+	vrWidget = std::make_shared<VRWidget>(matrixMgr);
 	vrWidget->setWindowFlags(Qt::Window);
-	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(volumeRenderable.get());
+	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 	vrWidget->AddRenderable("volume", vrVolumeRenderable.get());
 	vrWidget->AddRenderable("lens", lensRenderable.get());
 	openGL->SetVRWidget(vrWidget.get());
+	vrVolumeRenderable->rcp = volumeRenderable->rcp;
 #endif
 
 

@@ -8,10 +8,10 @@
 #include <QOpenGLTexture>
 #include <QOpenGLFunctions>
 #include <QOpenGLShaderProgram>
-class ShaderProgram;
-class QOpenGLVertexArrayObject;
+
 class ScreenMarker;
 
+//the difference from VolumeRenderableCUDA is with an extra lable volume, and a screen marker
 class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
@@ -30,11 +30,7 @@ public:
 		}
 	};
 
-	//cutaway or deform paramteres
 	bool isFixed = false;
-	float wallRotateTan = 0;
-	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
-	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
 
 	std::shared_ptr<RayCastingParameters> rcp;
 

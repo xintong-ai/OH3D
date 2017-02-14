@@ -162,14 +162,18 @@ void VolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()
 
 void VolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
 {
-	if (cuda_pbo_resource != 0)
+	if (cuda_pbo_resource != 0){
 		checkCudaErrors(cudaGraphicsUnregisterResource(cuda_pbo_resource));
-	if (pbo != 0)
+		cuda_pbo_resource = 0;
+	}
+	if (pbo != 0){
 		qgl->glDeleteBuffers(1, &pbo);
-	if (volumeTex != 0)
+		pbo = 0;
+	}
+	if (volumeTex != 0){
 		glDeleteTextures(1, &volumeTex);
-
-
+		volumeTex = 0;
+	}
 }
 
 void VolumeRenderableCUDA::resize(int width, int height)

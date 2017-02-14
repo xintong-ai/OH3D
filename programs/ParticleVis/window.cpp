@@ -199,7 +199,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 #endif
 
 #ifdef USE_OSVR 
-	vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
+	vrWidget = std::make_shared<VRWidget>(matrixMgr);
 	vrWidget->setWindowFlags(Qt::Window);
 	vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
 

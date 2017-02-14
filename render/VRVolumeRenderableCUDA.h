@@ -8,14 +8,16 @@
 #include "Renderable.h"
 #include <memory>
 class VolumeRenderableCUDA;
-class ShaderProgram;
 class VRWidget;
+class Volume;
+class RayCastingParameters;
+
 class VRVolumeRenderableCUDA : public Renderable
 {
 	Q_OBJECT
 
-	VolumeRenderableCUDA* volumeRenderable;
-	//ShaderProgram* glProg;
+	//different from other VR renderables, VRVolumeRenderableCUDA does not use a shared regular VolumeRenderableCUDA, because the heavily dependence on a different window size, and consequently, the size of the pre-allocated texture and/or pbo
+	//VolumeRenderableCUDA* volumeRenderable;
 
 	//texture and array for 2D screen
 	unsigned int  pbo = 0;           // OpenGL pixel buffer object
@@ -33,16 +35,20 @@ class VRVolumeRenderableCUDA : public Renderable
 	float invMVPMatrix[16];
 	float NMatrix[9];
 
-protected:
-	void init() override;
-	void drawVR(float modelview[16], float projection[16], int eye) override;
-
 	VRWidget* vractor;
 
+	std::shared_ptr<Volume> volume = 0;
+
 public:
-	VRVolumeRenderableCUDA(VolumeRenderableCUDA* _volumeRenderable) { volumeRenderable = _volumeRenderable; }
+	VRVolumeRenderableCUDA(std::shared_ptr<Volume> _v) {
+		volume = _v;
+	}
+
 	void SetVRActor(VRWidget* _a) override;
 	void resize(int width, int height)override;
+	void init() override;
+	void drawVR(float modelview[16], float projection[16], int eye) override;
+	std::shared_ptr<RayCastingParameters> rcp;
 
 };
 #endif

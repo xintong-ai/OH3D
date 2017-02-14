@@ -21,9 +21,6 @@
 
 void VRVolumeRenderableCUDA::init()
 {
-	//glProg = new ShaderProgram;
-	//glyphRenderable->LoadShaders(glProg);
-
 	initTextureAndCudaArrayOfScreen();
 }
 
@@ -31,14 +28,6 @@ void VRVolumeRenderableCUDA::drawVR(float modelview[16], float projection[16], i
 {
 	if (!visible)
 		return;
-	//RecordMatrix(modelview, projection);
-	//glColor3d(1, 1, 1);
-	//glMatrixMode(GL_MODELVIEW);
-	////glProg->use();
-	//glColor3d(1, 0.3, 1);
-	////glyphRenderable->DrawWithoutProgram(modelview, projection, glProg);
-	//volumeRenderable->draw(modelview, projection);
-	//glProg->disable();
 
 	
 	int winWidth, winHeight;
@@ -63,20 +52,51 @@ void VRVolumeRenderableCUDA::drawVR(float modelview[16], float projection[16], i
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
 	bool isCutaway = false;
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(volumeRenderable->transFuncP1), &(volumeRenderable->transFuncP2), &(volumeRenderable->la), &(volumeRenderable->ld), &(volumeRenderable->ls), &(volumeRenderable->getVolume()->spacing));
+	//VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &((volumeRenderable->rcp)->transFuncP1), &((volumeRenderable->rcp)->transFuncP2), &((volumeRenderable->rcp)->la), &((volumeRenderable->rcp)->ld), &((volumeRenderable->rcp)->ls), &(volumeRenderable->getVolume()->spacing));
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing));
 
 
 	////those should be well set already by volumeRenderable
-	//ComputeDisplace(modelview, projection);
 	//VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
 	//VolumeRender_setGradient(&(modelVolumeDeformer->volumeCUDAGradient));
 
 	//compute the dvr
-	VolumeRender_render(d_output, winWidth, winHeight, volumeRenderable->density, volumeRenderable->brightness, eyeInWorld, volumeRenderable->getVolume()->size, volumeRenderable->maxSteps, volumeRenderable->tstep, volumeRenderable->useColor);
+	//VolumeRender_render(d_output, winWidth, winHeight, (volumeRenderable->rcp)->density, (volumeRenderable->rcp)->brightness, eyeInWorld, volumeRenderable->getVolume()->size, (volumeRenderable->rcp)->maxSteps, (volumeRenderable->rcp)->tstep, (volumeRenderable->rcp)->useColor);
+	VolumeRender_render(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInWorld, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor);
+
 
 	cudaMemcpy(pixelColor, d_output, winWidth*winHeight * sizeof(uint), cudaMemcpyDeviceToHost);
-	glDrawPixels(winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixelColor);
+	//glDrawPixels(winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixelColor);
 
+	
+//alternative
+	glDisable(GL_DEPTH_TEST);
+
+	qgl->glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, volumeTex);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixelColor);
+
+	auto functions12 = QOpenGLContext::currentContext()->versionFunctions<QOpenGLFunctions_1_2>();
+	functions12->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2f(0, 0);
+	glVertex2f(-1, -1);
+	glTexCoord2f(1, 0);
+	glVertex2f(1, -1);
+	glTexCoord2f(1, 1);
+	glVertex2f(1, 1);
+	glTexCoord2f(0, 1);
+	glVertex2f(-1, 1);
+	glEnd();
+
+
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glEnable(GL_DEPTH_TEST);
+	
 }
 
 
@@ -94,6 +114,8 @@ void VRVolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()
 	int winWidth, winHeight;
 	vractor->GetWindowSize(winWidth, winHeight);
 
+	winWidth = winWidth / 2;
+
 	qgl->glGenBuffers(1, &pbo);
 	qgl->glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
 	qgl->glBufferData(GL_PIXEL_UNPACK_BUFFER, winWidth*winHeight*sizeof(GLubyte)* 4, 0, GL_STREAM_DRAW);
@@ -103,7 +125,7 @@ void VRVolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()
 	checkCudaErrors(cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo, cudaGraphicsMapFlagsWriteDiscard));
 
 	// create texture for display
-	qgl->glActiveTexture(GL_TEXTURE1);
+	qgl->glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &volumeTex);
 	glBindTexture(GL_TEXTURE_2D, volumeTex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, winWidth, winHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);

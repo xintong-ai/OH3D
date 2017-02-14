@@ -8,19 +8,6 @@
 #include <QOpenGLTexture>
 #include <QOpenGLFunctions>
 #include <QOpenGLShaderProgram>
-class ShaderProgram;
-class QOpenGLVertexArrayObject;
-
-enum DEFORM_METHOD{
-	PRINCIPLE_DIRECTION,
-	DISTANCE_MAP,
-	PROJECTIVE_DYNAMIC
-};
-enum VIS_METHOD{
-	CUTAWAY,
-	DEFORM
-};
-
 
 class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 {
@@ -29,19 +16,12 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 	//the volume to render 
 	std::shared_ptr<Volume> volume = 0;
 
-	VIS_METHOD vis_method = VIS_METHOD::DEFORM;
-	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
-	
 public:
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
 	~VolumeRenderableCUDA();
 
-	//cutaway or deform paramteres
 	bool isFixed = false;
-	float wallRotateTan = 0;
-	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
-	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
-
+	
 	std::shared_ptr<RayCastingParameters> rcp;
 
 	void init() override;

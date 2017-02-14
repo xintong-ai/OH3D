@@ -16,7 +16,7 @@ public:
 	unsigned short* labelVolLocal;
 	bool valSet = false;
 
-	int multiplier = 3;
+	int multiplier = 1;
 public:
 	void paint(QPainter *painter, QPaintEvent *event, int elapsed);
 	void mousePress(int x, int y);

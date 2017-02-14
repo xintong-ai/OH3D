@@ -1,18 +1,17 @@
 #include <vector_types.h>
 #include <vector>
 
-#include <itkBinaryMorphologicalOpeningImageFilter.h>
+//#include <itkBinaryMorphologicalOpeningImageFilter.h>
 #include <itkBinaryBallStructuringElement.h>
 #include <itkImageFileWriter.h>
 #include <itkImageFileReader.h>
+#include <itkGrayscaleMorphologicalOpeningImageFilter.h>
+#include <itkConnectedComponentImageFilter.h>
+#include <itkImage.h>
+#include <itkImportImageFilter.h>
 
-#include "itkBinaryErodeImageFilter.h"
-#include "itkGrayscaleMorphologicalOpeningImageFilter.h"
-#include "itkConnectedComponentImageFilter.h"
-
-#include "itkImage.h"
-
-
+//open source code
+#include "itkBinaryThinningImageFilter3D.h"
 #include "MSTAdjList.h"
 
 

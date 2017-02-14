@@ -29,7 +29,7 @@ class GLMatrixManager{
 public:
 	GLMatrixManager(bool _vrMode = false);
 	void SetImmersiveMode();
-	void SetNonImmersiveMode();
+	void SetRegularMode();
 	
 	
 	//setting functions

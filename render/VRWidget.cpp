@@ -17,11 +17,10 @@
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 
-VRWidget::VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, GLWidget* _mainGLWidget, QWidget *parent)
+VRWidget::VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 	: QOpenGLWidget(parent)
 	, matrixMgr(_matrixMgr)
 	, m_frame(0)
-	, mainGLWidget(_mainGLWidget)
 {
 	//setFocusPolicy(Qt::StrongFocus);
 	sdkCreateTimer(&timer);
@@ -104,10 +103,7 @@ void VRWidget::TimerEnd()
 
 void VRWidget::paintGL() {
 	TimerStart();
-	//GLfloat modelview[16];
-	//GLfloat projection[16];
-	//mainGLWidget->GetModelview(modelview);
-	//mainGLWidget->GetProjection(projection);
+
 	makeCurrent();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	ctx->update();
@@ -162,13 +158,6 @@ void VRWidget::paintGL() {
 		}
 	};
 
-	//glViewport(0, 0, width / 2,height);
-	////((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
-	//for (auto renderer : renderers)
-	//	renderer.second->draw(modelview, projection);
-	//glViewport(width / 2, 0, width / 2, height);
-	//for (auto renderer : renderers)
-	//	renderer.second->draw(modelview, projection);
 	TimerEnd();
 }
 //void Perspective(float fovyInDegrees, float aspectRatio,
@@ -207,15 +196,6 @@ void VRWidget::keyPressEvent(QKeyEvent * event)
 			this->showNormal();
 		}
 	}
-}
-
-Renderable* VRWidget::GetRenderable(const char* name)
-{
-	if (renderers.find(name) == renderers.end()) {
-		std::cout << "No renderer named : " << name << std::endl;
-		exit(1);
-	}
-	return renderers[name];
 }
 
 void VRWidget::UpdateGL()
