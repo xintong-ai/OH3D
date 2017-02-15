@@ -14,11 +14,13 @@
 //	xmax = ymax * aspectRatio;
 //	glFrustum(-xmax, xmax, -ymax, ymax, znear, zfar);
 //}
-GLMatrixManager::GLMatrixManager(bool _vrMode) :vrMode(_vrMode)
+GLMatrixManager::GLMatrixManager(bool _vrMode)
 {
 	trackball = new Trackball();
 	rot = new Rotation();
 	rotMat.setToIdentity();
+	vrMode = _vrMode;
+	vrMode = false;
 
 	if (vrMode) {
 		transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
@@ -79,21 +81,30 @@ void GLMatrixManager::Rotate(float fromX, float fromY, float toX, float toY)
 	rotMat = qm * rotMat;
 }
 
+void GLMatrixManager::GetProjection(QMatrix4x4 &p, float width, float height)
+{
+	p.setToIdentity();
+	if (vrMode)
+		p.perspective(96.73, (float)width / height, zNear, zFar);// for VR
+	else
+	if (immersiveMode){
+		p.perspective(55 / ((float)width / height), (float)width / height, zNear, zFar);
+	}
+	else
+	{
+		p.perspective(30, (float)width / height, zNear, zFar);
+	}
+
+	projMat = p;
+}
 
 void GLMatrixManager::GetProjection(float ret[16], float width, float height)
 {
-	QMatrix4x4 m;
-	if (vrMode)
-		m.perspective(96.73, (float)width / height, (float)0.01, (float)100);// for VR
-	else if (immersiveMode){
-		m.perspective(55 / ((float)width / height), (float)width / height, (float)0.01, (float)100);
-	}
-	else{
-		m.perspective(30, (float)width / height, (float)0.1, (float)100);
-	}
+	QMatrix4x4 p;
+	GetProjection(p, width, height);
 
-	m = m.transposed();
-	m.copyDataTo(ret); //this copy is row major, so we need to transpose it first
+	p = p.transposed();
+	p.copyDataTo(ret); //this copy is row major, so we need to transpose it first
 }
 
 void GLMatrixManager::Scale(float v)
@@ -127,12 +138,22 @@ void GLMatrixManager::GetModelMatrix(float ret[16])
 }
 
 void GLMatrixManager::GetModelViewMatrix(float mv[16], float _viewMat[16])
-{
+{	
+	//just use original model matrix
 	QMatrix4x4 m;
 	GetModelMatrix(m.data());
 	QMatrix4x4 vm(_viewMat);
 	vm = vm.transposed();
 	m = vm * m;
+	m = m.transposed();
+	m.copyDataTo(mv);
+}
+void GLMatrixManager::GetModelViewMatrixVR(float mv[16], float _viewMat[16])
+{
+	//use fakeMode computed elsewhere. either at the beginnning of each drawVR(), or at each resize()
+	QMatrix4x4 vm(_viewMat);
+	vm = vm.transposed();
+	QMatrix4x4 m = vm * fakeModel;
 	m = m.transposed();
 	m.copyDataTo(mv);
 }

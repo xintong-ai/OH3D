@@ -16,6 +16,7 @@ class GLMatrixManager{
 	QVector3D cofLocal; //center of focus in local coordinate //always assume the cof in worldcoordinate is (0,0,0)
 	QMatrix4x4 rotMat;
 	QMatrix4x4 viewMat;
+	QMatrix4x4 projMat;
 	float volScale = 1;
 	float transScale = 1;
 	float currentTransScale = 1;
@@ -31,6 +32,8 @@ public:
 	void SetImmersiveMode();
 	void SetRegularMode();
 	
+	float zNear = 0.1;
+	float zFar = 100;
 	
 	//setting functions
 	void SetTransVec(float x, float y, float z){ transVec[0] = x; transVec[1] = y; transVec[2] = z; }
@@ -68,17 +71,36 @@ public:
 	QVector3D getEyeVecInWorld(){ return eyeInWorld; };
 	QVector3D getUpVecInWorld(){ return upVecInWorld; };
 	QVector3D getCofLocal(){ return cofLocal; };
-
-	void GetModelViewMatrix(float mv[16]);
-	void GetModelViewMatrix(float mv[16], float _viewMat[16]);
-	void GetModelViewMatrix(QMatrix4x4 &mv);
-	void GetModelMatrix(float ret[16]);
+	
 	void GetModelMatrix(QMatrix4x4 &m);
-	void GetProjection(float ret[16], float width, float height);
+	void GetModelMatrix(float ret[16]);
 	void GetViewMatrix(QMatrix4x4 &v){
 		v = viewMat;
+	}; 
+	void GetModelViewMatrix(QMatrix4x4 &mv);
+	void GetModelViewMatrix(float mv[16]);
+	void GetModelViewMatrix(float mv[16], float _viewMat[16]);
+	void GetProjection(QMatrix4x4 &p, float width, float height);
+	void GetProjection(float ret[16], float width, float height);
+	//when asking the projection matrix with the width and height, compute the matrix using the given width and height, and modify the stored projMat
+	void GetProjection(QMatrix4x4 &p){
+		p = projMat;
 	};
+	//when asking the projection matrix without the width and height, give the stored projMat 
 
+
+ //while we have set our own mvp matrices in regular mode, the vr device can also provided _view and _projection matrix. We should apply the matrices provided by the device to achieve better stereo vision. to achieve this, we compute a fake model matrix fakeModel, will have the same effect with regular mode when applying together with the device _view and _projection matrix
+
+	QMatrix4x4 fakeModel;
+	void computeFakeModel(QMatrix4x4 vrViewMat, QMatrix4x4 vrProjectMat)
+	{
+		QMatrix4x4 oriMV, oriP;
+		GetModelViewMatrix(oriMV);
+		oriP = projMat;
+		fakeModel = (vrProjectMat*vrViewMat).inverted()*oriP*oriMV;
+	}
+	//returns the mv matrix when applying fakeModel
+	void GetModelViewMatrixVR(float mv[16], float _viewMat[16]);
 
 
 	float3 DataCenter();

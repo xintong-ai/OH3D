@@ -51,14 +51,14 @@ void VRVolumeRenderableCUDA::drawVR(float modelview[16], float projection[16], i
 	q_mvp.copyDataTo(MVPMatrix);
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
-	bool isCutaway = false;
 	//VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &((volumeRenderable->rcp)->transFuncP1), &((volumeRenderable->rcp)->transFuncP2), &((volumeRenderable->rcp)->la), &((volumeRenderable->rcp)->ld), &((volumeRenderable->rcp)->ls), &(volumeRenderable->getVolume()->spacing));
 	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing));
 
 
 	////those should be well set already by volumeRenderable
-	//VolumeRender_setVolume(&(modelVolumeDeformer->volumeCUDADeformed));
-	//VolumeRender_setGradient(&(modelVolumeDeformer->volumeCUDAGradient));
+	//VolumeRender_computeGradient(&(volume->volumeCuda), &volumeCUDAGradient);
+	//VolumeRender_setGradient(&volumeCUDAGradient);
+	//VolumeRender_setVolume(&(volume->volumeCuda));
 
 	//compute the dvr
 	//VolumeRender_render(d_output, winWidth, winHeight, (volumeRenderable->rcp)->density, (volumeRenderable->rcp)->brightness, eyeInWorld, volumeRenderable->getVolume()->size, (volumeRenderable->rcp)->maxSteps, (volumeRenderable->rcp)->tstep, (volumeRenderable->rcp)->useColor);

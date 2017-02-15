@@ -227,9 +227,6 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 	if ((x >= imageW) || (y >= imageH)) return;
 
-	//const int maxSteps = 1024*2;
-	//const float tstep = 0.25f;
-
 	const float opacityThreshold = 0.95f;
 
 	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
@@ -252,33 +249,22 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 	float tnear, tfar;
 	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
 
-	if (!hit || tnear < 0.0f || tfar < 0.0f)
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)
+		//	if (!hit)
 	{
 		//float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
 		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 		d_output[y*imageW + x] = rgbaFloatToInt(sum);
 		return;
 	}
-	/*
-	if (tfar < 0.0f)
-	{
-		float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f); //for warning
-		d_output[y*imageW + x] = rgbaFloatToInt(sum);
-		return;
-	}
 
-	
-	if (tnear < 0.0f)
-	{
-		float4 sum = make_float4(0.9f, 0.9f, 0.2f, 1.0f); //for warning
-		d_output[y*imageW + x] = rgbaFloatToInt(sum);
-		return;
-	}
 
-	if (tnear < 0.0f) tnear = 0.0f;     // clamp to near plane
-
-*/
-
+	//tnear = (tfar - tnear) / 80 + tnear;
+	maxSteps = maxSteps / 2;
+	float temp = (tfar - tnear) / maxSteps;
+	tstep = fmax(tstep, temp);
 
 	// march along ray from front to back, accumulating color
 	float4 sum = make_float4(0.0f);
@@ -563,7 +549,7 @@ void VolumeRender_render_withLensBlending(uint *d_output, uint imageW, uint imag
 
 
 
-//used for immersive observation. the difference is tstep is adjusted, and the label might be used
+//used for immersive observation. the difference is tstep is adjusted, and the label and screenMark might be used
 __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
@@ -571,11 +557,6 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 
 	if ((x >= imageW) || (y >= imageH)) return;
 
-	//if (screenMark[y*imageW + x]){
-	//		float4 sum = make_float4(1.0f, 1.0f, 0.0, 1.0f);
-	//		d_output[y*imageW + x] = rgbaFloatToInt(sum);
-	//		return;
-	//}
 	const float opacityThreshold = 0.95f;
 
 	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
@@ -607,11 +588,7 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 		d_output[y*imageW + x] = rgbaFloatToInt(sum);
 		return;
 	}
-	//else{
-	//	float4 sum = make_float4(0.0f, 0.0f, tfar/300.0, 1.0f);
-	//	d_output[y*imageW + x] = rgbaFloatToInt(sum);
-	//	return;
-	//}
+
 
 	//tnear = (tfar - tnear) / 80 + tnear;
 	maxSteps = maxSteps / 2;
@@ -640,7 +617,9 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 		float4 col;
 
 		float3 cc;
-		unsigned short curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
+		unsigned short curlabel = 0;
+		if(useLabel)
+			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
 
 		if (useColor)
 			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
