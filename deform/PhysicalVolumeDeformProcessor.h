@@ -4,8 +4,6 @@
 #include <vector>
 #include "Processor.h"
 
-class Lens;
-class LineLens3D;
 class MeshDeformProcessor;
 class Volume;
 

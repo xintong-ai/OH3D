@@ -28,8 +28,6 @@ void PhysicalVolumeDeformProcessor::InitFromVolume(std::shared_ptr<Volume> _ori)
 {
 	volume = _ori;
 
-	//volumeCUDADeformed.VolumeCUDA_init(_ori->size, _ori->values, 1, 1);
-
 	ModelVolumeDeformer_KernelInit();
 }
 

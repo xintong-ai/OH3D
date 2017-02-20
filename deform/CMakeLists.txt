@@ -24,6 +24,7 @@ set(SRCS
 	MeshDeformProcessor.cu
 	PhysicalVolumeDeformProcessor.cu
 	PhysicalParticleDeformProcessor.cu
+	PositionBasedDeformProcessor.cu
 	)
 
 set(HDRS	Lens.h
@@ -34,6 +35,7 @@ set(HDRS	Lens.h
 			PhysicalVolumeDeformProcessor.h
 			PhysicalParticleDeformProcessor.h
 			ScreenLensDisplaceProcessor.h
+			PositionBasedDeformProcessor.h
 						)
 
 cuda_add_library(deform STATIC ${HDRS} ${SRCS})

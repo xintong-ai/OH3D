@@ -41,6 +41,16 @@ public:
 	
 	float *values = 0; //used to store the voxel values. generally normalized to [0,1] if used for volume rendering
 
+	//float getVoxel(int3 v){
+	//	return values[v.z*size.x*size.y + v.y*size.x + v.x];
+	//};
+
+	float getVoxel(float3 v){
+		return values[int(v.z)*size.x*size.y + int(v.y)*size.x + int(v.x)];
+	};
+	bool inRange(float3 v){
+		return v.x >= 0 && v.x < size.x && v.y >= 0 && v.y < size.y &&v.z >= 0 && v.z < size.z;
+	}
 	void setSize(int3 s){ 
 		size = s;
 		if (values != 0){

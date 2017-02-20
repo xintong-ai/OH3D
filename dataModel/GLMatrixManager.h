@@ -4,9 +4,12 @@
 #include <vector_functions.h>
 #include <QVector3D>
 #include <QMatrix4x4>
+#include "MatrixManager.h"
+
 class Trackball;
 class Rotation;
-class GLMatrixManager{
+class GLMatrixManager: public MatrixManager{
+protected:
 	Trackball *trackball;
 	Rotation *rot;
 	//transformation states
@@ -16,6 +19,7 @@ class GLMatrixManager{
 	QVector3D cofLocal; //center of focus in local coordinate //always assume the cof in worldcoordinate is (0,0,0)
 	QMatrix4x4 rotMat;
 	QMatrix4x4 viewMat;
+	QVector3D originalViewVecInLocal, originalUpVecInLocal; //fixed viewMat is equivalent to using these two vectors
 	QMatrix4x4 projMat;
 	float volScale = 1;
 	float transScale = 1;
@@ -24,11 +28,10 @@ class GLMatrixManager{
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
 
-	bool vrMode = false;
 	bool immersiveMode = false;
 
 public:
-	GLMatrixManager(bool _vrMode = false);
+	GLMatrixManager();
 	void SetImmersiveMode();
 	void SetRegularMode();
 	
@@ -47,7 +50,7 @@ public:
 		transVec[0] += x;
 		transVec[1] += y;
 	}
-	void Rotate(float fromX, float fromY, float toX, float toY);//historical methods. may deprecate
+	virtual void Rotate(float fromX, float fromY, float toX, float toY);//historical methods. may deprecate
 	void setCofLocal(QVector3D _cofLocal){ cofLocal = _cofLocal; }
 	void setEyeAndUpInWorld(QVector3D _eyeVecInWorld, QVector3D _upVecInWorld){
 		eyeInWorld = _eyeVecInWorld; 
@@ -71,17 +74,17 @@ public:
 	QVector3D getEyeVecInWorld(){ return eyeInWorld; };
 	QVector3D getUpVecInWorld(){ return upVecInWorld; };
 	QVector3D getCofLocal(){ return cofLocal; };
-	
+
 	void GetModelMatrix(QMatrix4x4 &m);
 	void GetModelMatrix(float ret[16]);
 	void GetViewMatrix(QMatrix4x4 &v){
 		v = viewMat;
 	}; 
 	void GetModelViewMatrix(QMatrix4x4 &mv);
-	void GetModelViewMatrix(float mv[16]);
+	virtual void GetModelViewMatrix(float mv[16]);
 	void GetModelViewMatrix(float mv[16], float _viewMat[16]);
 	void GetProjection(QMatrix4x4 &p, float width, float height);
-	void GetProjection(float ret[16], float width, float height);
+	virtual void GetProjection(float ret[16], float width, float height);
 	//when asking the projection matrix with the width and height, compute the matrix using the given width and height, and modify the stored projMat
 	void GetProjection(QMatrix4x4 &p){
 		p = projMat;
@@ -104,10 +107,21 @@ public:
 
 
 	float3 DataCenter();
-	void SetVol(float3 posMin, float3 posMax);
+	virtual void SetVol(float3 posMin, float3 posMax);
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
 	
 	void SaveState(const char* filename);
 	void LoadState(const char* filename);
+
+
+	virtual void moveWheel(float v){
+		QMatrix4x4 m;
+		GetModelMatrix(m);
+
+		QVector3D dir = eyeInWorld.normalized()*v / -1000.0;
+		QVector3D newCofInWorld = dir;
+
+		setCofLocal(m.inverted().map(newCofInWorld));
+	};
 };
 #endif //GL_MATRIX_MANAGER_H

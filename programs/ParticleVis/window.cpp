@@ -70,11 +70,9 @@ Window::Window()
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
 
 	/********GL widget******/
-#ifdef USE_OSVR
-	matrixMgr = std::make_shared<GLMatrixManager>(true);
-#else
-	matrixMgr = std::make_shared<GLMatrixManager>(false);
-#endif
+
+	matrixMgr = std::make_shared<GLMatrixManager>();
+
 	matrixMgr->SetVol(posMin, posMax);
 
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);

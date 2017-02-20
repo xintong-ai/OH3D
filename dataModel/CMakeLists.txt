@@ -14,10 +14,13 @@ include_directories(${SHARED_LIB_INCLUDE_DIR})
 
 set(SRCS Volume.cpp Particle.cpp GLMatrixManager.cpp
 	LabelVolumeProcessor.cpp
-	AnimationByMatrixProcessor.cpp)
+	AnimationByMatrixProcessor.cpp
+	GLImmerMatrixManager.cpp)
 set(HDRS Volume.h Particle.h Processor.h myDefine.h GLMatrixManager.h ColorGradient.h ScreenMarker.h
 	LabelVolumeProcessor.h
+	GLImmerMatrixManager.h
 	AnimationByMatrixProcessor.h
+	MatrixManager.h
 )
 add_library(dataModel STATIC ${HDRS} ${SRCS})
 

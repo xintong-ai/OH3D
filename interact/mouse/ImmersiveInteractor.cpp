@@ -6,7 +6,8 @@ void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
 	if (!isActive)
 		return;
-
+	matrixMgr->Rotate(fromX,  fromY,  toX,  toY);
+	return;
 	//suppose the rotation happens in eye coordinate
 	matrixMgr->getTrackBall()->rotate(fromX, fromY, toX, toY);
 	//the rotation in trackball is not strictly in eye coordinate. but use this as approximation
@@ -68,14 +69,6 @@ bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 	if (!isActive)
 		return false;
 
-	QMatrix4x4 m, mv;
-	matrixMgr->GetModelMatrix(m);
-
-	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
-	QVector3D dir = eyeInWorld.normalized()*v/-1000.0;
-	QVector3D newCofInWorld = dir;
-
-	matrixMgr->setCofLocal(m.inverted().map(newCofInWorld));
-	
-	return true;
+	matrixMgr->moveWheel(v);
+		return true;
 }

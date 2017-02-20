@@ -19,6 +19,9 @@
 #include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
 
+#include "GLImmerMatrixManager.h"
+#include "PositionBasedDeformProcessor.h"
+
 #include "imageProcessing.h"
 
 #include <itkImage.h>
@@ -61,6 +64,8 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 
 void Window::computeSkel()
 {
+	return; //for debug
+
 	/*
 	//compute skeleton volume and itk skelComponented image from the beginning
 	std::cout << "computing skeletion volume..." << std::endl;
@@ -102,6 +107,8 @@ void Window::computeSkel()
 
 	return;
 }
+
+
 
 Window::Window()
 {
@@ -159,7 +166,7 @@ Window::Window()
 		exit(0);
 	}
 
-	inputVolume = std::make_shared<Volume>();
+	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
@@ -199,12 +206,17 @@ Window::Window()
 
 	////////////////matrix
 
-	matrixMgr = std::make_shared<GLMatrixManager>();
+	matrixMgr = std::make_shared<GLImmerMatrixManager>();
 
 	bool isImmersive = true;
 	if (isImmersive){
 		matrixMgr->SetImmersiveMode();
 	}
+
+
+	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
+
+	
 
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 	animationByMatrixProcessor->isActive = false;
@@ -291,6 +303,7 @@ Window::Window()
 		openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
 	}
 
+	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
@@ -505,15 +518,15 @@ Window::Window()
 	openGLMini->AddInteractor("regular", regularInteractorMini.get());
 
 	//openGLMini->setFixedSize(200, 200);
-	assistLayout->addWidget(openGLMini.get(), 3);
+	//assistLayout->addWidget(openGLMini.get(), 3);
 
 
 
 	helper.setData(inputVolume, labelVolLocal);
-	GLWidgetQtDrawing *openGL2 = new GLWidgetQtDrawing(&helper, this);
-	assistLayout->addWidget(openGL2, 0);
+	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
+	assistLayout->addWidget(openGL2D, 0);
 	QTimer *timer = new QTimer(this);
-	connect(timer, &QTimer::timeout, openGL2, &GLWidgetQtDrawing::animate);
+	connect(timer, &QTimer::timeout, openGL2D, &GLWidgetQtDrawing::animate);
 	timer->start(5);
 
 	QSlider *zSlider = new QSlider(Qt::Horizontal);

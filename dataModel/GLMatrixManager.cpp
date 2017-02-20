@@ -14,21 +14,13 @@
 //	xmax = ymax * aspectRatio;
 //	glFrustum(-xmax, xmax, -ymax, ymax, znear, zfar);
 //}
-GLMatrixManager::GLMatrixManager(bool _vrMode)
+GLMatrixManager::GLMatrixManager()
 {
 	trackball = new Trackball();
 	rot = new Rotation();
 	rotMat.setToIdentity();
-	vrMode = _vrMode;
-	vrMode = false;
 
-	if (vrMode) {
-		transVec = QVector3D(0.0f, 0.0f, -3.0f);//move it towards the front of the camera
-		transScale = 2;
-		float3 dataCen = (dataMin + dataMax) * 0.5;
-		cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
-	}
-	else if (immersiveMode)
+	if (immersiveMode)
 	{
 		SetImmersiveMode();
 	}
@@ -43,6 +35,7 @@ GLMatrixManager::GLMatrixManager(bool _vrMode)
 
 void GLMatrixManager::SetImmersiveMode()
 {
+	return;  //should be processed in glimmerMAtrixManager
 	immersiveMode = true;
 
 	transVec = QVector3D(0.0f, 0.0f, 0.0f);//not using this in immersiveMode
@@ -54,7 +47,6 @@ void GLMatrixManager::SetImmersiveMode()
 	rotMat.setToIdentity();
 
 	transScale = 20;
-	//cofLocal = QVector3D(70, 70, 128);
 	cofLocal = QVector3D(64, 109, 107);
 }
 
@@ -73,20 +65,18 @@ void GLMatrixManager::SetRegularMode()
 
 void GLMatrixManager::Rotate(float fromX, float fromY, float toX, float toY)
 {
-	*rot = trackball->rotate(fromX, fromY,
-		toX, toY);
-	float m[16];
-	rot->matrix(m);
-	QMatrix4x4 qm = QMatrix4x4(m).transposed();
-	rotMat = qm * rotMat;
+	//*rot = trackball->rotate(fromX, fromY,
+	//	toX, toY);
+	//float m[16];
+	//rot->matrix(m);
+	//QMatrix4x4 qm = QMatrix4x4(m).transposed();
+	//rotMat = qm * rotMat;
 }
 
 void GLMatrixManager::GetProjection(QMatrix4x4 &p, float width, float height)
 {
 	p.setToIdentity();
-	if (vrMode)
-		p.perspective(96.73, (float)width / height, zNear, zFar);// for VR
-	else
+	
 	if (immersiveMode){
 		p.perspective(55 / ((float)width / height), (float)width / height, zNear, zFar);
 	}
@@ -94,6 +84,7 @@ void GLMatrixManager::GetProjection(QMatrix4x4 &p, float width, float height)
 	{
 		p.perspective(30, (float)width / height, zNear, zFar);
 	}
+	//p.perspective(96.73, (float)width / height, zNear, zFar);// originally used for VR
 
 	projMat = p;
 }
