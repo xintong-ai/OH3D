@@ -17,12 +17,10 @@ GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
     , m_frame(0)
 	, matrixMgr(_matrixMgr)
 {
-
     setFocusPolicy(Qt::StrongFocus);
     sdkCreateTimer(&timer);
 
 	grabGesture(Qt::PinchGesture);
-
 }
 
 

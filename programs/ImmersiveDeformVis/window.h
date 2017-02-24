@@ -70,6 +70,7 @@ private:
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLImmerMatrixManager> matrixMgr;
+//	std::shared_ptr<GLMatrixManager> regularMatrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
 	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
@@ -82,8 +83,7 @@ private:
 
 	//for miniature
 	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<GLMatrixManager> matrixMgrMini;
+	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;	std::shared_ptr<GLMatrixManager> matrixMgrMini;
 	std::shared_ptr<RegularInteractor> regularInteractorMini;
 
 	//for main view

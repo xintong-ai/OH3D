@@ -82,10 +82,12 @@ public:
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 #endif
 
+
+	std::shared_ptr<GLMatrixManager> matrixMgr;
+
 protected:
 	uint width = 750, height = 900;
 
-	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::map<std::string, Renderable*> renderers;
 	std::map<std::string, Processor*> processors;

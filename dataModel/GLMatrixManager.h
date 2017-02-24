@@ -28,8 +28,6 @@ protected:
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
 
-	bool immersiveMode = false;
-
 public:
 	GLMatrixManager();
 	void SetImmersiveMode();

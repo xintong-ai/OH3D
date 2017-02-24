@@ -20,22 +20,22 @@ GLMatrixManager::GLMatrixManager()
 	rot = new Rotation();
 	rotMat.setToIdentity();
 
-	if (immersiveMode)
-	{
-		SetImmersiveMode();
-	}
-	else{
+
+		//SetImmersiveMode();
+
 		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
 		transScale = 1;
 		float3 dataCen = (dataMin + dataMax) * 0.5;
 		cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
-	}
+
 
 }
 
 void GLMatrixManager::SetImmersiveMode()
 {
 	return;  //should be processed in glimmerMAtrixManager
+
+	/*
 	immersiveMode = true;
 
 	transVec = QVector3D(0.0f, 0.0f, 0.0f);//not using this in immersiveMode
@@ -48,11 +48,11 @@ void GLMatrixManager::SetImmersiveMode()
 
 	transScale = 20;
 	cofLocal = QVector3D(64, 109, 107);
+	*/
 }
 
 void GLMatrixManager::SetRegularMode()
 {
-	immersiveMode = false;
 
 	rotMat.setToIdentity();
 	viewMat.setToIdentity();
@@ -77,13 +77,10 @@ void GLMatrixManager::GetProjection(QMatrix4x4 &p, float width, float height)
 {
 	p.setToIdentity();
 	
-	if (immersiveMode){
-		p.perspective(55 / ((float)width / height), (float)width / height, zNear, zFar);
-	}
-	else
-	{
-		p.perspective(30, (float)width / height, zNear, zFar);
-	}
+	
+//		p.perspective(55 / ((float)width / height), (float)width / height, zNear, zFar);
+	p.perspective(30, (float)width / height, zNear, zFar);
+	
 	//p.perspective(96.73, (float)width / height, zNear, zFar);// originally used for VR
 
 	projMat = p;
@@ -169,11 +166,9 @@ void GLMatrixManager::SetVol(float3 posMin, float3 posMax)
 	float3 dataWidth = dataMax - dataMin;
 	float dataMaxWidth = std::max(std::max(dataWidth.x, dataWidth.y), dataWidth.z);
 	volScale = 2.0f / dataMaxWidth;
-	if (!immersiveMode){
-		float3 dataCen = (dataMin + dataMax) * 0.5;
-		cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
-	}
 
+	float3 dataCen = (dataMin + dataMax) * 0.5;
+	cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
 }
 
 

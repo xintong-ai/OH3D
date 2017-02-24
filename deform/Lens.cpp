@@ -367,7 +367,7 @@ void LineLens3D::UpdateObjectLineLensByCtrlPointScreen(int winWidth, int winHeig
 {
 	//this function works correctly when the projection info of the front face has been set
 	//the computation is done by using ctrlPointScreen1, ctrlPointScreen2, and the previous center to provide the depth value
-
+	
 	float _invmv[16];
 	float _invpj[16];
 	invertMatrix(_pj, _invpj);
@@ -394,8 +394,11 @@ void LineLens3D::UpdateObjectLineLensByCtrlPointScreen(int winWidth, int winHeig
 	float t1 = length(cross(v2, v1)) / abs(dot(v2, v3));
 	float3 screenCenter_camera = camera_Camera + t1*lensDir_camera;
 	float4 oldcenterclip = Object2Clip(make_float4(c,1.0), _mv, _pj);
-	float3 lensCen = make_float3(Clip2ObjectGlobal(make_float4(make_float3(GetXY(Camera2ClipGlobal(make_float4(screenCenter_camera, 1.0), _pj)), oldcenterclip.z), 1.0), _invmv, _invpj));
-	
+
+	float4 screenCenterclip = Camera2ClipGlobal(make_float4(screenCenter_camera, 1.0), _pj);
+	float4 lensCenterClip = make_float4(make_float3(GetXY(screenCenterclip), oldcenterclip.z), 1.0);
+	float3 lensCen = make_float3(Clip2ObjectGlobal(lensCenterClip, _invmv, _invpj));
+
 	c = lensCen;
 
 	float3 cameraObj = make_float3(Camera2Object(make_float4(0, 0, 0, 1), _invmv));
@@ -531,7 +534,7 @@ void LineLens3D::UpdateObjectLineLens(int winWidth, int winHeight, float _mv[16]
 
 void LineLens3D::FinishConstructing(float* _mv, float* _pj, int winW, int winH, float3 dataMin, float3 dataMax)
 {
-	UpdateObjectLineLens(winW, winW, _mv, _pj, dataMin, dataMax);
+	UpdateObjectLineLens(winW, winH, _mv, _pj, dataMin, dataMax);
 	isConstructing = false;
 }
 

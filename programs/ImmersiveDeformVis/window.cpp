@@ -207,12 +207,9 @@ Window::Window()
 	////////////////matrix
 
 	matrixMgr = std::make_shared<GLImmerMatrixManager>();
+	matrixMgrMini = std::make_shared<GLMatrixManager>();
 
 	bool isImmersive = true;
-	if (isImmersive){
-		matrixMgr->SetImmersiveMode();
-	}
-
 
 	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 
@@ -282,7 +279,8 @@ Window::Window()
 	openGL->AddInteractor("model", immersiveInteractor.get());
 
 	regularInteractor = std::make_shared<RegularInteractor>();
-	regularInteractor->setMatrixMgr(matrixMgr);
+	//regularInteractor->setMatrixMgr(matrixMgr);
+	regularInteractor->setMatrixMgr(matrixMgrMini);
 	openGL->AddInteractor("modelReg", regularInteractor.get());
 
 	if (isImmersive){
@@ -487,7 +485,7 @@ Window::Window()
 	rcLayout->addLayout(lsLayout);
 	rcGroupBox->setLayout(rcLayout);
 
-	controlLayout->addWidget(rcGroupBox);
+	//controlLayout->addWidget(rcGroupBox);
 
 	controlLayout->addStretch();
 
@@ -499,7 +497,7 @@ Window::Window()
 	QLabel *miniatureLabel = new QLabel("miniature");
 	//assistLayout->addWidget(miniatureLabel);
 
-	matrixMgrMini = std::make_shared<GLMatrixManager>();
+	//matrixMgrMini = std::make_shared<GLMatrixManager>();
 	matrixMgrMini->SetVol(posMin, posMax);
 	openGLMini = std::make_shared<GLWidget>(matrixMgrMini);
 
@@ -696,8 +694,8 @@ void Window::SlotImmerRb(bool b)
 	if (b){
 		regularInteractor->isActive = false;
 		immersiveInteractor->isActive = true;
-
-		matrixMgr->SetImmersiveMode();
+		openGL->matrixMgr = matrixMgr;
+		//matrixMgr->SetImmersiveMode();
 	}
 }
 
@@ -707,8 +705,8 @@ void Window::SlotNonImmerRb(bool b)
 	{
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
-
-		matrixMgr->SetRegularMode();
+		openGL->matrixMgr = matrixMgrMini;
+		//matrixMgr->SetRegularMode();
 	}
 }
 
