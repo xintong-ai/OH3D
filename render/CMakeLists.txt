@@ -50,6 +50,7 @@ set( Srcs
 	GridRenderable.cpp
 	VolumeRenderableImmerCUDA.cpp
 	VolumeRenderableCUDA.cpp
+	VolumeRenderableCUDAShader.cpp
 	VolumeRenderableCUDAKernel.cu
 	LensRenderable.cpp DeformGLWidget.cpp 
 		MeshRenderable.cpp
@@ -70,6 +71,7 @@ set( Hdrs
 	CosmoRenderable.h
 	VolumeRenderableImmerCUDA.h
 	VolumeRenderableCUDA.h
+	VolumeRenderableCUDAShader.h
 	VolumeRenderableCUDAKernel.h
 	LensRenderable.h DeformGLWidget.h 	
 		MeshRenderable.h

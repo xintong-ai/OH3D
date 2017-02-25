@@ -10,6 +10,7 @@
 #include "ScreenMarker.h"
 #include "LabelVolumeProcessor.h"
 #include "VolumeRenderableCUDA.h"
+#include "VolumeRenderableCUDAShader.h"
 #include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
@@ -508,7 +509,7 @@ Window::Window()
 	format2.setProfile(QSurfaceFormat::CoreProfile);
 	openGLMini->setFormat(format2);
 
-	volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
+	volumeRenderableMini = std::make_shared<VolumeRenderableCUDAShader>(inputVolume);
 	volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
 	openGLMini->AddRenderable("1volume", volumeRenderableMini.get()); //make sure the volume is rendered first since it does not use depth test
 	regularInteractorMini = std::make_shared<RegularInteractor>();
@@ -516,7 +517,7 @@ Window::Window()
 	openGLMini->AddInteractor("regular", regularInteractorMini.get());
 
 	//openGLMini->setFixedSize(200, 200);
-	//assistLayout->addWidget(openGLMini.get(), 3);
+	assistLayout->addWidget(openGLMini.get(), 3);
 
 
 

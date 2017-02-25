@@ -28,6 +28,7 @@ class Volume;
 class VolumeCUDA;
 class VolumeRenderableImmerCUDA;
 class VolumeRenderableCUDA;
+class VolumeRenderableCUDAShader;
 class ImmersiveInteractor;
 class QLineEdit;
 class ScreenBrushInteractor;
@@ -83,7 +84,8 @@ private:
 
 	//for miniature
 	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;	std::shared_ptr<GLMatrixManager> matrixMgrMini;
+	std::shared_ptr<VolumeRenderableCUDAShader> volumeRenderableMini;	
+	std::shared_ptr<GLMatrixManager> matrixMgrMini;
 	std::shared_ptr<RegularInteractor> regularInteractorMini;
 
 	//for main view

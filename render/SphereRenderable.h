@@ -23,7 +23,6 @@ protected:
 	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
 
 private:
-	//std::vector<float> val;// = nullptr;
 	std::vector<float3> sphereColor;
 	void GenVertexBuffer(int nv, float* vertex);
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;

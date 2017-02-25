@@ -102,9 +102,9 @@ void GLImmerMatrixManager::Rotate(float fromX, float fromY, float toX, float toY
 	if (dot(viewVecInLocal, upVecInLocal) > 0.95)
 		return;
 
-	rotMat = temprotMat;
-	resetModelMat();
-	return;
+	//rotMat = temprotMat;
+	//resetModelMat();
+	//return;
 
 
 	//std::cout << "the new viewVecInLocal: " << viewVecInLocal.x() << " " << viewVecInLocal.y() << " " << viewVecInLocal.z() << std::endl;
