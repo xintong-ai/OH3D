@@ -45,7 +45,7 @@ public:
 	//variables for rendering. are not needed if not used for a glyphRenderable
 	//generally rendering
 	bool hasInitedForRendering = false;
-	void initForRendering();
+	void initForRendering(float s = 1.0f, float b = 1.0f);
 	std::vector<float> glyphBright;
 	std::vector<float> glyphSizeScale;
 	//used for feature freezing / snapping

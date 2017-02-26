@@ -45,6 +45,10 @@ private:
 	GLuint volumeTex = 0;     // OpenGL texture object
 	struct cudaGraphicsResource *cuda_pbo_resource = 0; // CUDA Graphics Resource (to receive the result of the CUDA computer, and transfer it to PBO)
 
+	GLuint pboDepth = 0;           // OpenGL pixel buffer object
+	GLuint volumeTexDepth = 0;     // OpenGL texture object
+	struct cudaGraphicsResource *cuda_pbo_resourceDepth = 0; 
+
 	int2 lastPt = make_int2(0, 0);
 
 	//to transfer data to cuda functions

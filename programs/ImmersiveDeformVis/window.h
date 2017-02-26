@@ -38,6 +38,7 @@ class ViewpointEvaluator;
 class AnimationByMatrixProcessor;
 class GLImmerMatrixManager;
 class PositionBasedDeformProcessor;
+class SphereRenderable;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -87,6 +88,7 @@ private:
 	std::shared_ptr<VolumeRenderableCUDAShader> volumeRenderableMini;	
 	std::shared_ptr<GLMatrixManager> matrixMgrMini;
 	std::shared_ptr<RegularInteractor> regularInteractorMini;
+	std::shared_ptr<SphereRenderable> sphereRenderableMini;
 
 	//for main view
 	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;

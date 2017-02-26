@@ -104,9 +104,6 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
 
-	// display results
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	// draw image from PBO
 	glDisable(GL_DEPTH_TEST);
 

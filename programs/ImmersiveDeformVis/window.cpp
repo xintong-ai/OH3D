@@ -19,6 +19,8 @@
 #include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
+#include "SphereRenderable.h"
+#include "Particle.h"
 
 #include "GLImmerMatrixManager.h"
 #include "PositionBasedDeformProcessor.h"
@@ -509,14 +511,29 @@ Window::Window()
 	format2.setProfile(QSurfaceFormat::CoreProfile);
 	openGLMini->setFormat(format2);
 
+
+	std::vector<float4> pos;
+	pos.push_back(make_float4(matrixMgr->getEyeInLocal(), 1.0));
+	std::vector<float> val;
+	val.push_back(1.0);
+	std::shared_ptr<Particle> particle = std::make_shared<Particle>(pos, val);
+	particle->initForRendering(200, 1);
+	sphereRenderableMini = std::make_shared<SphereRenderable>(particle);
+	openGLMini->AddRenderable("1center", sphereRenderableMini.get());
+
+
 	volumeRenderableMini = std::make_shared<VolumeRenderableCUDAShader>(inputVolume);
 	volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
-	openGLMini->AddRenderable("1volume", volumeRenderableMini.get()); //make sure the volume is rendered first since it does not use depth test
+	openGLMini->AddRenderable("2volume", volumeRenderableMini.get());
 	regularInteractorMini = std::make_shared<RegularInteractor>();
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
 	openGLMini->AddInteractor("regular", regularInteractorMini.get());
 
-	//openGLMini->setFixedSize(200, 200);
+
+
+
+
+
 	assistLayout->addWidget(openGLMini.get(), 3);
 
 

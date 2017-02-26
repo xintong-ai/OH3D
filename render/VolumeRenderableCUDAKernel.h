@@ -14,6 +14,10 @@ extern "C" {
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
 		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor);
+	void VolumeRender_renderWithDepthOutput(uint *d_output, float* depth, uint imageW, uint imageH, float density, float brightness,
+		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor);
+
+
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
 		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark);

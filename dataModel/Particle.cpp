@@ -65,11 +65,13 @@ void Particle::setFeature(std::vector<char> _f)
 	}
 }
 
-void Particle::initForRendering()
+void Particle::initForRendering(float s, float b)
 {
+	if (hasInitedForRendering)	return;
+
 	hasInitedForRendering = true;
-	glyphSizeScale.assign(numParticles, 1.0f);
-	glyphBright.assign(numParticles, 1.0f);
+	glyphSizeScale.assign(numParticles, s);
+	glyphBright.assign(numParticles, b);
 }
 
 

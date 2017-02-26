@@ -337,6 +337,126 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 }
 
 
+__global__ void d_render_preintWithDepth(uint *d_output, float *d_outputDepth, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+	//const float3 boxMin = make_float3(0.0f, 114.0f, 0.0f);
+	//const float3 boxMax = spacing*make_float3(256, 115, 256);//for NEK image
+
+
+	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
+	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
+	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
+	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
+	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)
+		//	if (!hit)
+	{
+		//float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
+		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		d_outputDepth[y*imageW + x] = 1.0;
+		return;
+	}
+
+	//tnear = (tfar - tnear) / 80 + tnear;
+	maxSteps = maxSteps / 2;
+	float temp = (tfar - tnear) / maxSteps;
+	tstep = fmax(tstep, temp);
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+	float lightingThr = 0.000001;
+
+	float fragDepth = 0.999999;
+
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+
+		// lookup in transfer function texture
+		float4 col;
+
+		float3 cc;
+		if (useColor)
+			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
+		else
+			cc = make_float3(funcRes, funcRes, funcRes);
+
+
+		float3 posInWorld = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
+		}
+		else
+		{
+			col = make_float4(la*cc, funcRes);
+		}
+
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold || i == maxSteps-1){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			if (fragDepth < 0)
+				fragDepth = 0;
+			break;
+		}
+
+		t += tstep;
+
+		if (t > tfar){
+			//float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			//fragDepth = posInClip.z / 2.0 + 0.5;
+			fragDepth = 0;
+			break;
+		}
+
+		pos += step;
+	}
+
+	d_outputDepth[y*imageW + x] = fragDepth;
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+}
+
 
 __global__ void d_render_preint_withLensBlending(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float* dev_pts)
 {
@@ -527,6 +647,16 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 
 	//checkCudaErrors(cudaUnbindTexture(volumeTexValueForRC));
 	//checkCudaErrors(cudaUnbindTexture(volumeTexGradient));
+}
+
+
+void VolumeRender_renderWithDepthOutput(uint *d_output, float* depth, uint imageW, uint imageH,
+float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+{
+	dim3 blockSize = dim3(16, 16, 1);
+	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
+
+	d_render_preintWithDepth << <gridSize, blockSize >> >(d_output, depth, imageW, imageH, density, brightness, eyeInLocal, volumeSize, maxSteps, tstep, useColor);
 }
 
 
