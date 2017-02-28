@@ -22,7 +22,6 @@
 #include "SphereRenderable.h"
 #include "Particle.h"
 
-#include "GLImmerMatrixManager.h"
 #include "PositionBasedDeformProcessor.h"
 
 #include "imageProcessing.h"
@@ -67,7 +66,9 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 
 void Window::computeSkel()
 {
-	return; //for debug
+
+	skelVolume = channelVolume;
+	return; //currently for debug
 
 	/*
 	//compute skeleton volume and itk skelComponented image from the beginning
@@ -207,17 +208,22 @@ Window::Window()
 		computeSkel();
 	}
 
+
 	////////////////matrix
 
-	matrixMgr = std::make_shared<GLImmerMatrixManager>();
+	matrixMgr = std::make_shared<GLMatrixManager>();
 	matrixMgrMini = std::make_shared<GLMatrixManager>();
 
-	bool isImmersive = true;
-
-	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
-
+	float3 posMin, posMax;
+	inputVolume->GetPosRange(posMin, posMax);
+	matrixMgr->SetVol(posMin, posMax);
+	matrixMgr->setDefaultForImmersiveMode();
+	
+	matrixMgrMini->SetVol(posMin, posMax);
 	
 
+	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
+	
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 	animationByMatrixProcessor->isActive = false;
 	animationByMatrixProcessor->setViews(views);
@@ -226,7 +232,6 @@ Window::Window()
 
 	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
 	ve->initDownSampledResultVolume(make_int3(40, 40, 40));
-
 
 	useLabel = true;
 	labelVolCUDA = 0;
@@ -255,8 +260,6 @@ Window::Window()
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
-
-
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
@@ -264,14 +267,7 @@ Window::Window()
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
-
-	float3 posMin, posMax;
-	inputVolume->GetPosRange(posMin, posMax);
-	matrixMgr->SetVol(posMin, posMax);
-
-
-
-
+	
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA);
 	volumeRenderable->rcp = rcp;
 	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
@@ -279,32 +275,24 @@ Window::Window()
 
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
-	openGL->AddInteractor("model", immersiveInteractor.get());
-
 	regularInteractor = std::make_shared<RegularInteractor>();
-	//regularInteractor->setMatrixMgr(matrixMgr);
 	regularInteractor->setMatrixMgr(matrixMgrMini);
-	openGL->AddInteractor("modelReg", regularInteractor.get());
+	regularInteractor->isActive = false;
+	immersiveInteractor->isActive = true;
+	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
+	openGL->AddInteractor("2modelReg", regularInteractor.get());
 
-	if (isImmersive){
-		regularInteractor->isActive = false;
-		immersiveInteractor->isActive = true;
-	}
-	else{
-		regularInteractor->isActive = true;
-		immersiveInteractor->isActive = false;
-	}
 
 	sbInteractor = std::make_shared<ScreenBrushInteractor>();
 	sbInteractor->setScreenMarker(sm);
 	openGL->AddInteractor("screenMarker", sbInteractor.get());
 
-	openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
+	//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	if (useLabel){
-		openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
+		//openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
 	}
 
-	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	//openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
@@ -500,8 +488,6 @@ Window::Window()
 	QLabel *miniatureLabel = new QLabel("miniature");
 	//assistLayout->addWidget(miniatureLabel);
 
-	//matrixMgrMini = std::make_shared<GLMatrixManager>();
-	matrixMgrMini->SetVol(posMin, posMax);
 	openGLMini = std::make_shared<GLWidget>(matrixMgrMini);
 
 	QSurfaceFormat format2;
@@ -530,13 +516,7 @@ Window::Window()
 	openGLMini->AddInteractor("regular", regularInteractorMini.get());
 
 
-
-
-
-
 	assistLayout->addWidget(openGLMini.get(), 3);
-
-
 
 	helper.setData(inputVolume, labelVolLocal);
 	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
@@ -612,7 +592,7 @@ void Window::applyEyePos()
 {
 	QString s = eyePosLineEdit->text();
 	QStringList sl = s.split(QRegExp("[\\s,]+"));
-	matrixMgr->moveEyeInLocalTo(QVector3D(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
+	matrixMgr->moveEyeInLocalTo(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
 }
 
 
@@ -666,7 +646,7 @@ void Window::moveToOptimalBtnClicked()
 {
 	ve->compute(VPMethod::JS06Sphere);
 
-	matrixMgr->moveEyeInLocalTo(QVector3D(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
+	matrixMgr->moveEyeInLocalTo(make_float3(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
 
 	ve->saveResultVol("labelEntro.raw");
 }
@@ -713,7 +693,7 @@ void Window::SlotImmerRb(bool b)
 		regularInteractor->isActive = false;
 		immersiveInteractor->isActive = true;
 		openGL->matrixMgr = matrixMgr;
-		//matrixMgr->SetImmersiveMode();
+		//matrixMgr->setDefaultForImmersiveMode();
 	}
 }
 
@@ -724,7 +704,6 @@ void Window::SlotNonImmerRb(bool b)
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
 		openGL->matrixMgr = matrixMgrMini;
-		//matrixMgr->SetRegularMode();
 	}
 }
 

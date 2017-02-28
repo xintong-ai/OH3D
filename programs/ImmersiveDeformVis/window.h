@@ -36,7 +36,6 @@ class RegularInteractor;
 class LabelVolumeProcessor;
 class ViewpointEvaluator;
 class AnimationByMatrixProcessor;
-class GLImmerMatrixManager;
 class PositionBasedDeformProcessor;
 class SphereRenderable;
 
@@ -71,7 +70,7 @@ private:
 	unsigned short* labelVolLocal = 0;
 
 	std::shared_ptr<GLWidget> openGL;
-	std::shared_ptr<GLImmerMatrixManager> matrixMgr;
+	std::shared_ptr<GLMatrixManager> matrixMgr;
 //	std::shared_ptr<GLMatrixManager> regularMatrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;

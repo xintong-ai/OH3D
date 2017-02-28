@@ -1,5 +1,3 @@
-
-
 #ifndef REGULARINTERACTOR_H
 #define REGULARINTERACTOR_H
 
@@ -12,10 +10,7 @@ public:
 	~RegularInteractor(){};
 
 	void Rotate(float fromX, float fromY, float toX, float toY) override;
-
 	void Translate(float x, float y) override;
 	bool MouseWheel(int x, int y, int modifier, float v) override;
-
-
 };
 #endif

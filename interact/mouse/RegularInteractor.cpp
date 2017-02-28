@@ -1,19 +1,14 @@
 #include "RegularInteractor.h"
 #include "GLMatrixManager.h"
-#include "mouse/trackball.h"
-#include "Rotation.h"
 
 void RegularInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
 	if (!isActive)
 		return; 
-	Rotation *rot;
-	rot = new Rotation();
-	*rot = matrixMgr->getTrackBall()->rotate(fromX, fromY, toX, toY);
+	*rot = trackball->rotate(fromX, fromY, toX, toY);
 	float m[16];
 	rot->matrix(m);
 	matrixMgr->applyPreRotMat(QMatrix4x4(m).transposed());
-	delete rot;
 	return;
 };
 
@@ -21,7 +16,14 @@ void RegularInteractor::Translate(float x, float y)
 {
 	if (!isActive)
 		return;
-	matrixMgr->TranslateInWorldSpace(x, y);
+
+	float scale = 10;
+
+	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
+	QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+	QVector3D viewVecWorld = matrixMgr->getViewVecInWorld();
+	QVector3D newEyeInWorld = eyeInWorld + x*scale* (QVector3D::crossProduct(upVecInWorld, viewVecWorld)).normalized() - y*scale*(upVecInWorld.normalized());
+	matrixMgr->setEyeInWorld(newEyeInWorld);
 	return; 
 };
 
@@ -29,6 +31,10 @@ bool RegularInteractor::MouseWheel(int x, int y, int modifier, float v)
 {
 	if (!isActive)
 		return false;
-	matrixMgr->Scale(v);
+	
+	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
+	QVector3D viewVecWorld = matrixMgr->getViewVecInWorld();
+	matrixMgr->setEyeInWorld(eyeInWorld + v*viewVecWorld);
+
 	return true;
 }

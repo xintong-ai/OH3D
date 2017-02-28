@@ -203,7 +203,7 @@ Window::Window()
 
 	bool isImmersive = true;
 	if (isImmersive){
-		matrixMgr->SetImmersiveMode();
+		matrixMgr->setDefaultForImmersiveMode();
 	}
 
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
@@ -583,7 +583,7 @@ void Window::applyEyePos()
 {
 	QString s = eyePosLineEdit->text();
 	QStringList sl = s.split(QRegExp("[\\s,]+"));
-	matrixMgr->moveEyeInLocalTo(QVector3D(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
+	matrixMgr->moveEyeInLocalTo(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
 }
 
 
@@ -637,7 +637,7 @@ void Window::moveToOptimalBtnClicked()
 {
 	ve->compute(VPMethod::JS06Sphere);
 
-	matrixMgr->moveEyeInLocalTo(QVector3D(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
+	matrixMgr->moveEyeInLocalTo(make_float3(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
 
 	ve->saveResultVol("labelEntro.raw");
 }
@@ -684,7 +684,7 @@ void Window::SlotImmerRb(bool b)
 		regularInteractor->isActive = false;
 		immersiveInteractor->isActive = true;
 
-		matrixMgr->SetImmersiveMode();
+		matrixMgr->setDefaultForImmersiveMode();
 	}
 }
 
@@ -695,7 +695,6 @@ void Window::SlotNonImmerRb(bool b)
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
 
-		matrixMgr->SetRegularMode();
 	}
 }
 

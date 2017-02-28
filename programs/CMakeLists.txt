@@ -7,7 +7,7 @@ PROJECT(programs)
 	if(USE_SUPERQUADRIC)
 		add_subdirectory(TensorVis)
 	endif()
-	
+
 	add_subdirectory(ImmersiveDeformVis)
 
 if(USE_LEAP)

@@ -363,12 +363,12 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 				- pixelPosToViewPos(gesture->lastCenterPoint());
 			//transVec[0] += diff.x();
 			//transVec[1] += diff.y();
-			matrixMgr->TranslateInWorldSpace(diff.x(), diff.y());
+			//matrixMgr->TranslateInWorldSpace(diff.x(), diff.y());
 			update();
 		}
 
 		if (gesture->state() == Qt::GestureFinished) {
-			matrixMgr->FinishedScale();
+			//matrixMgr->FinishedScale();
 		}
 		break;
 	}

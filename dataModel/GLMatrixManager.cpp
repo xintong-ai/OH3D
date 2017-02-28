@@ -1,161 +1,90 @@
 #include <GLMatrixManager.h>
-#include <mouse/trackball.h>
-#include <mouse/Rotation.h>
+
+
 #include <qmatrix4x4.h>
 #include <helper_math.h>
 #include <fstream>
 #include <iostream>
-//
-//void Perspective(float fovyInDegrees, float aspectRatio,
-//	float znear, float zfar)
-//{
-//	float ymax, xmax;
-//	ymax = znear * tanf(fovyInDegrees * M_PI / 360.0);
-//	xmax = ymax * aspectRatio;
-//	glFrustum(-xmax, xmax, -ymax, ymax, znear, zfar);
-//}
+
+
 GLMatrixManager::GLMatrixManager()
 {
-	trackball = new Trackball();
-	rot = new Rotation();
+	transVec = QVector3D(0, 0, 0);
 	rotMat.setToIdentity();
+	UpdateModelMatrixFromDetail();
 
-
-		//SetImmersiveMode();
-
-		transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
-		transScale = 1;
-		float3 dataCen = (dataMin + dataMax) * 0.5;
-		cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
-
-
-}
-
-void GLMatrixManager::SetImmersiveMode()
-{
-	return;  //should be processed in glimmerMAtrixManager
-
-	/*
-	immersiveMode = true;
-
-	transVec = QVector3D(0.0f, 0.0f, 0.0f);//not using this in immersiveMode
-
-	eyeInWorld = QVector3D(-1.01f, 0.0f, 0.0f);
-	viewMat.setToIdentity();
-	viewMat.lookAt(eyeInWorld, QVector3D(0.0f, 0.0f, 0.0f), upVecInWorld);// always use (0,0,0) as the world coordinate of the view focus
-
-	rotMat.setToIdentity();
-
-	transScale = 20;
-	cofLocal = QVector3D(64, 109, 107);
-	*/
-}
-
-void GLMatrixManager::SetRegularMode()
-{
-
-	rotMat.setToIdentity();
-	viewMat.setToIdentity();
-
-	transVec = QVector3D(0.0f, 0.0f, -5.0f);//move it towards the front of the camera
-	transScale = 1;
-	float3 dataCen = (dataMin + dataMax) * 0.5;
-	cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
-}
-
-void GLMatrixManager::Rotate(float fromX, float fromY, float toX, float toY)
-{
-	//*rot = trackball->rotate(fromX, fromY,
-	//	toX, toY);
-	//float m[16];
-	//rot->matrix(m);
-	//QMatrix4x4 qm = QMatrix4x4(m).transposed();
-	//rotMat = qm * rotMat;
-}
-
-void GLMatrixManager::GetProjection(QMatrix4x4 &p, float width, float height)
-{
-	p.setToIdentity();
+	eyeInWorld = QVector3D(0, 0, 300);
+	upVecInWorld = QVector3D(0, 1, 0);;
+	viewVecInWorld = QVector3D(0, 0, -1);
+	UpdateViewMatrixFromDetail();
 	
-	
-//		p.perspective(55 / ((float)width / height), (float)width / height, zNear, zFar);
-	p.perspective(30, (float)width / height, zNear, zFar);
-	
-	//p.perspective(96.73, (float)width / height, zNear, zFar);// originally used for VR
-
-	projMat = p;
+	projAngle = 30;
+	zNear = 0.1;
+	zFar = 1000;
 }
+
+void GLMatrixManager::setDefaultForImmersiveMode()  //must be called after setVol()
+{
+	//give some inital values for immersive mode
+
+	//while we have set our own mvp matrices in regular mode, the vr device can also provided _view and _projection matrix. We should apply the matrices provided by the device to achieve better stereo vision. 
+
+	//for immersive mode, these should not be changed, since the view matrix should be close to what the device gives. but these also should not be precisely relied on, because we cannot precisely predict the viewmat received from the device
+	viewVecInWorld = QVector3D(0.0f, 0.0f, -1.0f); //corresponding to the identity view matrix
+	upVecInWorld = QVector3D(0.0f, 1.0f, 0.0f); //corresponding to the identity view matrix
+	eyeInWorld = QVector3D(0.0f, 0.0f, 0.0f);
+	viewMat.setToIdentity(); //identity view matrix is close to what VR device provided. it is equivalent to seeing from (0,0,0) to the direction of (0,0,-1), with up (0,1,0)
+
+
+	transVec = -QVector3D(64, 109, 107);
+	rotMat.setToIdentity();	
+	UpdateModelMatrixFromDetail();
+
+	projAngle = 96.73;
+	zNear = 0.1;
+	zFar = 1000;
+}
+
 
 void GLMatrixManager::GetProjection(float ret[16], float width, float height)
 {
-	QMatrix4x4 p;
-	GetProjection(p, width, height);
-
-	p = p.transposed();
-	p.copyDataTo(ret); //this copy is row major, so we need to transpose it first
+	UpdateProjMatrixFromDetail(width, height);//different from mv matrix, prj relys on width and height
+	QMatrix4x4 pm = projMat.transposed();
+	pm.copyDataTo(ret);
+	return;
 }
 
 void GLMatrixManager::Scale(float v)
 {
-	transScale *= exp(v * -0.001);
+	scaleEff *= exp(v * -0.001);
+	UpdateModelMatrixFromDetail();
 }
 
-void GLMatrixManager::FinishedScale()
+void GLMatrixManager::UpdateModelMatrixFromDetail()
 {
-	transScale *= currentTransScale;
-	currentTransScale = 1;
+	modeMat.setToIdentity();
+	modeMat = modeMat * rotMat;
+	modeMat.scale(scaleEff);
+	modeMat.translate(transVec);
 }
 
-
-void GLMatrixManager::GetModelMatrix(QMatrix4x4 &m)
+void GLMatrixManager::UpdateViewMatrixFromDetail()
 {
-	m.setToIdentity();
-	m.translate(transVec);
-	m = m * rotMat;
-	m.scale(volScale * transScale * currentTransScale);
-	m.translate(-cofLocal);
+	viewMat.setToIdentity();
+	viewMat.lookAt(eyeInWorld, eyeInWorld + viewVecInWorld, upVecInWorld);
 }
 
-void GLMatrixManager::GetModelMatrix(float ret[16])
+void GLMatrixManager::UpdateProjMatrixFromDetail(float width, float height)
 {
-	QMatrix4x4 m;
-	GetModelMatrix(m);
-
-	m = m.transposed();
-	m.copyDataTo(ret); //this copy is row major, so we need to transpose it first
-}
-
-void GLMatrixManager::GetModelViewMatrix(float mv[16], float _viewMat[16])
-{	
-	//just use original model matrix
-	QMatrix4x4 m;
-	GetModelMatrix(m.data());
-	QMatrix4x4 vm(_viewMat);
-	vm = vm.transposed();
-	m = vm * m;
-	m = m.transposed();
-	m.copyDataTo(mv);
-}
-void GLMatrixManager::GetModelViewMatrixVR(float mv[16], float _viewMat[16])
-{
-	//use fakeMode computed elsewhere. either at the beginnning of each drawVR(), or at each resize()
-	QMatrix4x4 vm(_viewMat);
-	vm = vm.transposed();
-	QMatrix4x4 m = vm * fakeModel;
-	m = m.transposed();
-	m.copyDataTo(mv);
+	projMat.setToIdentity();
+	projMat.perspective(projAngle, (float)width / height, zNear, zFar);
 }
 
 void GLMatrixManager::GetModelViewMatrix(float mv[16])
 {
-	GetModelViewMatrix(mv, viewMat.data());
-}
-
-void GLMatrixManager::GetModelViewMatrix(QMatrix4x4 &mv)
-{
-	QMatrix4x4 m;
-	GetModelMatrix(m);
-	mv = viewMat*m;
+	QMatrix4x4 pm = (viewMat*modeMat).transposed();
+	pm.copyDataTo(mv);
+	return;
 }
 
 void GLMatrixManager::SetVol(float3 posMin, float3 posMax)
@@ -163,12 +92,10 @@ void GLMatrixManager::SetVol(float3 posMin, float3 posMax)
 	dataMin = posMin;
 	dataMax = posMax;
 
-	float3 dataWidth = dataMax - dataMin;
-	float dataMaxWidth = std::max(std::max(dataWidth.x, dataWidth.y), dataWidth.z);
-	volScale = 2.0f / dataMaxWidth;
-
 	float3 dataCen = (dataMin + dataMax) * 0.5;
-	cofLocal = QVector3D(dataCen.x, dataCen.y, dataCen.z);
+
+	transVec = -float3ToQvec3(dataCen);
+	UpdateModelMatrixFromDetail();
 }
 
 
@@ -191,7 +118,7 @@ void GLMatrixManager::SaveState(const char* filename)
 	}
 	myfile << std::endl;
 
-	myfile << transScale << std::endl;
+	myfile << scaleEff << std::endl;
 	myfile.close();
 }
 
@@ -207,7 +134,7 @@ void GLMatrixManager::LoadState(const char* filename)
 	ifs >> transVec[1];
 	ifs >> transVec[2];
 
-	ifs >> transScale;
+	ifs >> scaleEff;
 
 	ifs.close();
 
