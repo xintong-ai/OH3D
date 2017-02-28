@@ -1,0 +1,10 @@
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
+dVOLUME_DATA_PATH=D:/Dropbox/shareXin/brat.img
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
+
+eVOLUME_DATA_PATH=D:/Dropbox/shareXin/MGHT2.raw
+dVOLUME_DATA_PATH=D:/Dropbox/shareXin/engine.raw
+eVOLUME_DATA_PATH=D:/Data/volume/CT-knee.raw
+
+dVOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec
+yVOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw

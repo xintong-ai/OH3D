@@ -1,4 +1,3 @@
-
 #include <string>
 #include <iostream>
 #include <QApplication>
@@ -15,9 +14,6 @@
 #include "ViewpointEvaluator.h"
 
 using namespace std;
-
-//#define debugoutput
-
 
 int main(int argc, char **argv)
 {

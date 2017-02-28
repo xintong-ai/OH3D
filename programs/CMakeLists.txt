@@ -9,7 +9,7 @@ PROJECT(programs)
 	endif()
 
 	add_subdirectory(ImmersiveDeformVis)
-
+	add_subdirectory(ITKProcessing)
 if(USE_LEAP)
 	find_package(Qt5Widgets REQUIRED)
 	#qt5_use_modules(render OpenGL Gui Widgets)

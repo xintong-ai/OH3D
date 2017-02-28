@@ -24,18 +24,13 @@
 
 #include "PositionBasedDeformProcessor.h"
 
-#include "imageProcessing.h"
-
-#include <itkImage.h>
-
 #ifdef USE_OSVR
 #include "VRWidget.h"
 #include "VRVolumeRenderableCUDA.h"
 #endif
 
 
-
-
+//note!!! this function also happens in the ITKProcessing program. remember to change both if needed
 void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
 {
 	std::cout << "computing channel volume..." << std::endl;
@@ -62,57 +57,6 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 	std::cout << "finish computing channel volume..." << std::endl;
 	return;
 }
-
-
-void Window::computeSkel()
-{
-
-	skelVolume = channelVolume;
-	return; //currently for debug
-
-	/*
-	//compute skeleton volume and itk skelComponented image from the beginning
-	std::cout << "computing skeletion volume..." << std::endl;
-	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
-	PixelType * localBuffer = new PixelType[numberOfPixels];
-	for (int i = 0; i < numberOfPixels; i++){
-		if (channelVolume->values[i] > 0.5){
-			localBuffer[i] = 1;
-		}
-		else{
-			localBuffer[i] = 0;
-		}
-	}
-	ImageType::Pointer skelComponentedImg;
-	int maxComponentMark;
-	skelComputing(localBuffer, dims, spacing, skelVolume->values, skelComponentedImg, maxComponentMark);
-	skelVolume->initVolumeCuda();
-	std::cout << "finish computing skeletion volume..." << std::endl;
-	skelVolume->saveRawToFile("skel.raw");
-	*/
-	
-	//read already computed skeleton volume and itk skelComponented image
-	std::cout << "reading skeletion volume..." << std::endl;
-	std::shared_ptr<RawVolumeReader> reader;
-	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
-	reader->OutputToVolumeByNormalizedValue(skelVolume);
-	skelVolume->initVolumeCuda();
-	reader.reset();
-	typedef itk::ImageFileReader<ImageType> ReaderType;
-	ReaderType::Pointer readeritk = ReaderType::New();
-	readeritk->SetFileName("skelComponented.hdr");
-	readeritk->Update();
-	ImageType::Pointer connectedImg = readeritk->GetOutput();
-	int maxComponentMark = 55;
-	
-	
-	//find the views for the tour
-	findViews(connectedImg, maxComponentMark, dims, spacing, views);
-
-	return;
-}
-
-
 
 Window::Window()
 {
@@ -201,16 +145,17 @@ Window::Window()
 		channelVolume->dataOrigin = inputVolume->dataOrigin;
 		channelVolume->spacing = inputVolume->spacing;
 		computeChannelVolume(inputVolume, channelVolume, rcp);
+		
 		skelVolume = std::make_shared<Volume>();
-		skelVolume->setSize(inputVolume->size);
-		skelVolume->dataOrigin = inputVolume->dataOrigin;
-		skelVolume->spacing = inputVolume->spacing;
-		computeSkel();
+		std::shared_ptr<RawVolumeReader> reader;
+		reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
+		reader->OutputToVolumeByNormalizedValue(skelVolume);
+		skelVolume->initVolumeCuda();
+		reader.reset();
 	}
 
 
 	////////////////matrix
-
 	matrixMgr = std::make_shared<GLMatrixManager>();
 	matrixMgrMini = std::make_shared<GLMatrixManager>();
 
@@ -221,7 +166,7 @@ Window::Window()
 	
 	matrixMgrMini->SetVol(posMin, posMax);
 	
-
+	////////////////processor
 	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 	
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
@@ -296,18 +241,15 @@ Window::Window()
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
-
-
+	
+	QVBoxLayout *controlLayout = new QVBoxLayout;
+	
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 	std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 	std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
-
-	QVBoxLayout *controlLayout = new QVBoxLayout;
-
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
-
 
 	QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
 	isBrushingCb->setChecked(sbInteractor->isActive);
@@ -318,17 +260,13 @@ Window::Window()
 	controlLayout->addWidget(moveToOptimalBtn);
 	connect(moveToOptimalBtn, SIGNAL(clicked()), this, SLOT(moveToOptimalBtnClicked()));
 
-
 	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
 	controlLayout->addWidget(doTourBtn);
 	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
 
-
 	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
-
 	QHBoxLayout *eyePosLayout = new QHBoxLayout;
 	QVBoxLayout *eyePosLayout2 = new QVBoxLayout;
-
 	QLabel *eyePosxLabel = new QLabel("x");
 	QLabel *eyePosyLabel = new QLabel("y");
 	QLabel *eyePoszLabel = new QLabel("z");
@@ -342,7 +280,6 @@ Window::Window()
 	eyePosLayout2->addWidget(eyePosBtn);
 	eyePosGroup->setLayout(eyePosLayout2);
 	controlLayout->addWidget(eyePosGroup);
-
 
 	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
 	QVBoxLayout *deformModeLayout = new QVBoxLayout;
@@ -358,7 +295,6 @@ Window::Window()
 	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
 	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
 	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
-
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -420,7 +356,6 @@ Window::Window()
 	dsLayout->addWidget(dsLabel);
 	//controlLayout->addLayout(dsLayout);
 
-
 	QLabel *laSliderLabelLit = new QLabel("Coefficient for Ambient Lighting: ");
 	//controlLayout->addWidget(laSliderLabelLit);
 	QSlider* laSlider = new QSlider(Qt::Horizontal);
@@ -457,7 +392,6 @@ Window::Window()
 	lsLayout->addWidget(lsLabel);
 	//controlLayout->addLayout(lsLayout);
 
-
 	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
 	QVBoxLayout *rcLayout = new QVBoxLayout;
 	rcLayout->addWidget(transFuncP1SliderLabelLit);
@@ -484,6 +418,9 @@ Window::Window()
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
 
+
+
+	//////////////////////////miniature
 	QVBoxLayout *assistLayout = new QVBoxLayout;
 	QLabel *miniatureLabel = new QLabel("miniature");
 	//assistLayout->addWidget(miniatureLabel);
@@ -496,7 +433,6 @@ Window::Window()
 	format2.setVersion(2, 0);
 	format2.setProfile(QSurfaceFormat::CoreProfile);
 	openGLMini->setFormat(format2);
-
 
 	std::vector<float4> pos;
 	pos.push_back(make_float4(matrixMgr->getEyeInLocal(), 1.0));
@@ -514,7 +450,6 @@ Window::Window()
 	regularInteractorMini = std::make_shared<RegularInteractor>();
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
 	openGLMini->AddInteractor("regular", regularInteractorMini.get());
-
 
 	assistLayout->addWidget(openGLMini.get(), 3);
 
@@ -538,8 +473,6 @@ Window::Window()
 	QPushButton *updateLabelVolBtn = new QPushButton("Update Label Volume");
 	assistLayout->addWidget(updateLabelVolBtn);
 	connect(updateLabelVolBtn, SIGNAL(clicked()), this, SLOT(updateLabelVolBtnClicked()));
-
-
 
 	mainLayout->addLayout(assistLayout, 1);
 	//openGL->setFixedSize(600, 600);
@@ -579,13 +512,10 @@ void Window::init()
 
 void Window::SlotSaveState()
 {
-
-
 }
 
 void Window::SlotLoadState()
 {
-
 }
 
 void Window::applyEyePos()
@@ -594,8 +524,6 @@ void Window::applyEyePos()
 	QStringList sl = s.split(QRegExp("[\\s,]+"));
 	matrixMgr->moveEyeInLocalTo(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
 }
-
-
 
 void Window::transFuncP1LabelSliderValueChanged(int v)
 {
@@ -635,7 +563,6 @@ void Window::lsSliderValueChanged(int v)
 	volumeRenderable->rcp->ls = 1.0*v / 10;
 	lsLabel->setText(QString::number(1.0*v / 10));
 }
-
 
 void Window::isBrushingClicked()
 {

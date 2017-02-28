@@ -95,7 +95,6 @@ private:
 	//for 2d view
 	Helper helper;
 
-	void computeSkel();
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
