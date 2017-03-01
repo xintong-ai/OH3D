@@ -9,7 +9,7 @@
 class ImmersiveInteractor :public MatrixInteractor
 {
 	//not set
-	QVector3D targetUpVecInLocal = QVector3D(0.0, 0.0, 1.0);  //fixed viewMat is equivalent to using these two vectors
+	QVector3D targetUpVecInLocal = QVector3D(0.0, 0.0, 1.0);
 public:
 	ImmersiveInteractor(){};
 	~ImmersiveInteractor(){};

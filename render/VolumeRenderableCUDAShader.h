@@ -11,6 +11,8 @@
 
 class ShaderProgram;
 
+//compared with VolumeRenderableCUDA.h, this class draw the volume with a depth, which is defined as the depth of the ending point of the casted ray
+//actually this depth is not quite useful in real. this code is majorly saved as examples
 class VolumeRenderableCUDAShader :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT

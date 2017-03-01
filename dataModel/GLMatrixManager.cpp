@@ -34,10 +34,10 @@ void GLMatrixManager::setDefaultForImmersiveMode()  //must be called after setVo
 	upVecInWorld = QVector3D(0.0f, 1.0f, 0.0f); //corresponding to the identity view matrix
 	eyeInWorld = QVector3D(0.0f, 0.0f, 0.0f);
 	viewMat.setToIdentity(); //identity view matrix is close to what VR device provided. it is equivalent to seeing from (0,0,0) to the direction of (0,0,-1), with up (0,1,0)
-
-
+	
 	transVec = -QVector3D(64, 109, 107);
-	rotMat.setToIdentity();	
+	rotMat.setToIdentity();			
+	rotMat.rotate(-90, QVector3D(1,0,0));  //this rotation makes (0,0,1) in local overlap with the upvecinWorld
 	UpdateModelMatrixFromDetail();
 
 	projAngle = 96.73;

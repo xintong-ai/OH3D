@@ -52,6 +52,36 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	int winWidth, winHeight;
 	actor->GetWindowSize(winWidth, winHeight);
 
+	if (blendPreviousImage){
+		//for color
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		// copy from pbo to texture
+		qgl->glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+		qgl->glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, volumeTex);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, winWidth, winHeight);
+		checkCudaErrors(cudaGraphicsGLRegisterImage(&cuda_inputImageTex_resource, volumeTex, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsReadOnly));
+		checkCudaErrors(cudaGraphicsMapResources(1, &cuda_inputImageTex_resource));
+		checkCudaErrors(cudaGraphicsSubResourceGetMappedArray(&c_inputImageColorArray, cuda_inputImageTex_resource, 0, 0));
+
+		//for depth
+		qgl->glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_2D, textureDepth);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, winWidth, winHeight);
+		glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, localDepthArray);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		cudaExtent dataSize = make_cudaExtent(winWidth, winHeight, 1);
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcPtr = make_cudaPitchedPtr(localDepthArray, dataSize.width*sizeof(float), dataSize.width, dataSize.height);
+		copyParams.dstArray = c_inputImageDepthArray;
+		copyParams.extent = dataSize;
+		copyParams.kind = cudaMemcpyHostToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+		setInputImageInfo(c_inputImageDepthArray, c_inputImageColorArray);
+	}
+
+
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview).transposed();
 	QMatrix4x4 q_invMV = q_modelview.inverted();
 	QVector4D q_eye4 = q_invMV.map(QVector4D(0, 0, 0, 1));
@@ -78,8 +108,8 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	checkCudaErrors(cudaGraphicsResourceGetMappedPointer((void **)&d_output, &num_bytes,
 		cuda_pbo_resource));
 	checkCudaErrors(cudaMemset(d_output, 0, winWidth*winHeight * 4));
- 
-	if(volume!=0){
+
+	if (volume != 0){
 		VolumeRender_computeGradient(&(volume->volumeCuda), &volumeCUDAGradient);
 		VolumeRender_setGradient(&volumeCUDAGradient);
 		VolumeRender_setVolume(&(volume->volumeCuda));
@@ -90,10 +120,18 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	}
 
 	//compute the dvr
-	VolumeRender_render(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor);
-	
+	if (blendPreviousImage){
+		VolumeRender_renderWithDepthInput(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, densityBonus);
+	}
+	else{
+		VolumeRender_render(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor);
+	}
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
+	if (blendPreviousImage){
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);//since previous image has been blended, they should be removed
+		checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_inputImageTex_resource, 0));
+	}
 
 	// draw image from PBO
 	glDisable(GL_DEPTH_TEST);
@@ -110,7 +148,6 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	qgl->glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
 	// draw textured quad
-
 	auto functions12 = QOpenGLContext::currentContext()->versionFunctions<QOpenGLFunctions_1_2>();
 	functions12->glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
@@ -155,6 +192,22 @@ void VolumeRenderableCUDA::initTextureAndCudaArrayOfScreen()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	if (blendPreviousImage){
+		//for depth
+		glGenTextures(1, &textureDepth);
+		qgl->glActiveTexture(GL_TEXTURE5);
+		glBindTexture(GL_TEXTURE_2D, textureDepth);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, winWidth, winHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		localDepthArray = new float[winWidth*winHeight];
+		cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
+		cudaExtent dataSize = make_cudaExtent(winWidth, winHeight, 1);
+		checkCudaErrors(cudaMalloc3DArray(&c_inputImageDepthArray, &channelDesc, dataSize, 0));
+	}
 }
 
 void VolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
@@ -170,6 +223,21 @@ void VolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
 	if (volumeTex != 0){
 		glDeleteTextures(1, &volumeTex);
 		volumeTex = 0;
+	}
+
+	if (blendPreviousImage){
+		//for color
+		if (cuda_inputImageTex_resource != 0){
+			checkCudaErrors(cudaGraphicsUnregisterResource(cuda_inputImageTex_resource));
+			cuda_inputImageTex_resource = 0;
+		}
+		//for depth
+		if (localDepthArray != 0)
+			delete[] localDepthArray;
+		if (textureDepth != 0)
+			glDeleteTextures(1, &textureDepth);
+		if (c_inputImageDepthArray != 0)
+			cudaFreeArray(c_inputImageDepthArray);
 	}
 }
 

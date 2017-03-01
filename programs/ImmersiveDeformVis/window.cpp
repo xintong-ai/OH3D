@@ -23,6 +23,7 @@
 #include "Particle.h"
 
 #include "PositionBasedDeformProcessor.h"
+#include "MatrixMgrRenderable.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -215,8 +216,13 @@ Window::Window()
 	
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA);
 	volumeRenderable->rcp = rcp;
-	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
+	openGL->AddRenderable("1volume", volumeRenderable.get());
 	volumeRenderable->setScreenMarker(sm);
+
+	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
+
+
 
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
@@ -237,7 +243,7 @@ Window::Window()
 		//openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
 	}
 
-	//openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
@@ -444,8 +450,9 @@ Window::Window()
 	openGLMini->AddRenderable("1center", sphereRenderableMini.get());
 
 
-	volumeRenderableMini = std::make_shared<VolumeRenderableCUDAShader>(inputVolume);
+	volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
+	volumeRenderableMini->setBlending(true, 50);
 	openGLMini->AddRenderable("2volume", volumeRenderableMini.get());
 	regularInteractorMini = std::make_shared<RegularInteractor>();
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);

@@ -130,12 +130,14 @@ Window::Window()
 	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
 	
 	volumeRenderable->rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false);
+	volumeRenderable->setBlending(true);
 
-	openGL->AddRenderable("lenses", lensRenderable.get());
-	openGL->AddRenderable("1volume", volumeRenderable.get()); //make sure the volume is rendered first since it does not use depth test
-	openGL->AddRenderable("model", meshRenderable.get());
-
-
+	openGL->AddRenderable("2lenses", lensRenderable.get());
+	openGL->AddRenderable("3model", meshRenderable.get());
+	openGL->AddRenderable("4volume", volumeRenderable.get()); 
+	//NOTE!! if need to blend other renderable result into the dvr, volume need to be rendered last
+	//or else volume needs to be rendered first, since it is set to always pass the depth test
+	
 
 	rInteractor = std::make_shared<RegularInteractor>();
 	rInteractor->setMatrixMgr(matrixMgr);

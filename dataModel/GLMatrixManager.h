@@ -56,6 +56,10 @@ public:
 		rotMat = r * rotMat; 
 		UpdateModelMatrixFromDetail();
 	};
+	void setRotMat(QMatrix4x4 r){
+		rotMat = r;
+		UpdateModelMatrixFromDetail();
+	}; 
 	void setTransVec(QVector3D _t){
 		transVec = _t;
 		UpdateModelMatrixFromDetail();
@@ -101,13 +105,13 @@ public:
 		*/
 	}
 
-	//void GetModelMatrix(QMatrix4x4 &m){
-	//	m = modeMat;
-	//};
+	void GetModelMatrix(QMatrix4x4 &m){ m = modeMat;};
+	void GetRotMatrix(QMatrix4x4 &m){ m = rotMat; };
+
 	//void GetViewMatrix(QMatrix4x4 &v){
 	//	v = viewMat;
 	//};
-//	void GetModelViewMatrix(QMatrix4x4 &mv){ mv = viewMat*modeMat; };
+	void GetModelViewMatrix(QMatrix4x4 &mv){ mv = viewMat*modeMat; };
 	
 	void GetModelViewMatrix(float mv[16]);
 	void GetProjection(float ret[16], float width, float height);

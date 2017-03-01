@@ -55,6 +55,7 @@ set( Srcs
 	LensRenderable.cpp DeformGLWidget.cpp 
 		MeshRenderable.cpp
 		GLWidgetQtDrawing.cpp
+		MatrixMgrRenderable.cpp
 		)
 set( Hdrs  
 	glwidget.h 
@@ -76,6 +77,7 @@ set( Hdrs
 	LensRenderable.h DeformGLWidget.h 	
 		MeshRenderable.h
 		GLWidgetQtDrawing.h
+		MatrixMgrRenderable.h
 		)
 
 

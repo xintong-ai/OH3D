@@ -38,11 +38,6 @@ void VecReader::Load(const char* filename)
 	}
 	delete voxelValues;
 	fclose(pFile);
-	
-	//std::cout << "num : " << num << std::endl;
-	//for (int i = 0; i < 30; i++){
-	//	std::cout << "fiber: " << vecs[i].x << " " << vecs[i].y << " " << vecs[i] .z << std::endl;
-	//}
 }
 
 void VecReader::GetPosRange(float3& posMin, float3& posMax)

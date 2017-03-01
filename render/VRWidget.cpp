@@ -108,16 +108,6 @@ void VRWidget::paintGL() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	ctx->update();
 
-	QMatrix4x4 viewMat;
-	display->getViewer(0).getEye(0).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
-		viewMat.data());
-	QMatrix4x4 projMat;
-	display->getViewer(0).getEye(0).getSurface(0).getProjectionMatrix(
-		matrixMgr->zNear, matrixMgr->zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
-		OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
-		projMat.data());
-	//matrixMgr->SetViewMat(viewMat);
-	matrixMgr->computeFakeModel(viewMat, projMat);
 
 	OSVR_ViewerCount viewers = display->getNumViewers();
 	for (OSVR_ViewerCount viewer = 0; viewer < viewers; ++viewer) {
@@ -142,9 +132,10 @@ void VRWidget::paintGL() {
 					OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
 					projMat.data());
 				
+				matrixMgr->SetViewMat(viewMat);
 				QMatrix4x4 mv;
-				//matrixMgr->GetModelViewMatrixOld(mv.data(), viewMat.data());
-				matrixMgr->GetModelViewMatrix(mv.data(), viewMat.data());
+				matrixMgr->GetModelViewMatrix(mv.data());
+
 
 				/// Call out to render our scene.
 				for (auto renderer : renderers){
