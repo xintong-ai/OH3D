@@ -56,6 +56,22 @@ d_updateVolumebyMatrixInfo(cudaExtent volumeSize, float3 start, float3 end, floa
 	return;
 }
 
+void PositionBasedDeformProcessor::doDeforme(float degree)
+{
+	cudaExtent size = volume->volumeCuda.size;
+	unsigned int dim = 32;
+	dim3 blockSize(dim, dim, 1);
+	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
+
+	cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
+	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
+
+	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
+	d_updateVolumebyMatrixInfo << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree);
+
+	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+}
+
 bool PositionBasedDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
 {
 	if (!isActive)
@@ -74,26 +90,18 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				hasAnimeStarted = true;
 				start = std::clock();
 
-				float3 moveVecInLocal = matrixMgr->getMoveVecFromViewAndUp();
+				float3 tunnelAxis = matrixMgr->getHorizontalMoveVec(make_float3(0,0,1));
+				//note! the vector make_float3(0,0,1) may also be used in ImmersiveInteractor class
 				//std::cout << "viewVecInLocal: " << moveVecInLocal.x << " " << moveVecInLocal.y << " " << moveVecInLocal.z << std::endl;
 				float step = 0.5;
 				tunnelStart = eyeInLocal;
-				tunnelEnd = eyeInLocal + moveVecInLocal*step;
+				tunnelEnd = eyeInLocal + tunnelAxis*step;
 				while (channelVolume->inRange(tunnelEnd) && channelVolume->getVoxel(tunnelEnd) < 0.5){
-					tunnelEnd += moveVecInLocal*step;
+					tunnelEnd += tunnelAxis*step;
 				}
 			}
 			if (hasAnimeStarted){
-				cudaExtent size = volume->volumeCuda.size;
-				unsigned int dim = 32;
-				dim3 blockSize(dim, dim, 1);
-				dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
-
-				cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
-				checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
-
-				checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
-
+				
 				float r;
 				double past = (std::clock() - start) / (double)CLOCKS_PER_SEC;
 				if (past >= totalDuration){
@@ -105,9 +113,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				}
 				closeStartingRadius = r;
 
-				d_updateVolumebyMatrixInfo << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, r);
-
-				checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+				doDeforme(r);
 			}
 			
 		}
@@ -124,16 +130,6 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				start = std::clock();
 			}
 			if (hasAnimeStarted){
-				cudaExtent size = volume->volumeCuda.size;
-				unsigned int dim = 32;
-				dim3 blockSize(dim, dim, 1);
-				dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
-
-				cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
-				checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
-
-				checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
-
 				float r;
 				double past = (std::clock() - start) / (double)CLOCKS_PER_SEC;
 				if (past >= totalDuration){
@@ -143,10 +139,9 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				else{
 					r = (1 - past / totalDuration)*closeStartingRadius;
 				
-					d_updateVolumebyMatrixInfo << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, r);
+					doDeforme(r);
 				}
 
-				checkCudaErrors(cudaUnbindTexture(volumeTexInput));
 			}
 		}
 	}

@@ -91,13 +91,12 @@ Window::Window()
 	}
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
-			
+	float3 posMin, posMax;
+	inputVolume->GetPosRange(posMin, posMax);
 
 	/********GL widget******/
 
-	matrixMgr = std::make_shared<GLMatrixManager>();
-
-
+	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
@@ -110,11 +109,6 @@ Window::Window()
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
-
-	float3 posMin, posMax;
-	inputVolume->GetPosRange(posMin, posMax);
-	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	
 	meshDeformer = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
 	meshDeformer->data_type = DATA_TYPE::USE_VOLUME;
 	meshDeformer->setVolumeData(inputVolume);

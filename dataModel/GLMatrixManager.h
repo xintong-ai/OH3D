@@ -43,7 +43,7 @@ protected:
 	QVector3D inline float3ToQvec3(float3 f){ return QVector3D(f.x, f.y, f.z); }
 
 public:
-	GLMatrixManager();
+	GLMatrixManager(float3 posMin = make_float3(0, 0, 0), float3 posMax = make_float3(0, 0, 0));
 	void setDefaultForImmersiveMode();
 	
 	float zNear = 0.1;
@@ -51,7 +51,13 @@ public:
 	
 	//setting functions
 	void Scale(float v);
-	void SetViewMat(QMatrix4x4 _m){ viewMat = _m; }
+	void SetViewMat(QMatrix4x4 _m){ 
+		viewMat = _m; 
+		QMatrix4x4 invViewMat = viewMat.inverted();
+		eyeInWorld = invViewMat*QVector3D(0, 0, 0);
+		viewVecInWorld = QVector3D(invViewMat*QVector4D(0, 0, -1, 0));
+		upVecInWorld = QVector3D(invViewMat*QVector4D(0, 1, 0, 0));
+	}
 	void applyPreRotMat(QMatrix4x4 r){ 
 		rotMat = r * rotMat; 
 		UpdateModelMatrixFromDetail();
@@ -82,12 +88,10 @@ public:
 	{
 		return normalize(qvec3ToFloat3(QVector3D(modeMat.inverted()*QVector4D(upVecInWorld, 0)))); //viewVecInWorld is a vector, so add 0 to make it a vector4;
 	};
-	float3 getMoveVecFromViewAndUp() override
+	float3 getHorizontalMoveVec(float3 refUpInLocal) override
 	{
-		float3 upVecInLocal = getUpInLocal();
-		float3 eyeInLocal = getEyeInLocal();
 		float3 viewVecInLocal = getViewVecInLocal();
-		return normalize(cross(upVecInLocal, cross(viewVecInLocal, upVecInLocal)));
+		return normalize(cross(refUpInLocal, cross(viewVecInLocal, refUpInLocal)));
 	}
 
 	void setEyeInWorld(QVector3D _eyeVecInWorld)
@@ -96,13 +100,11 @@ public:
 		UpdateViewMatrixFromDetail();
 	}
 
-	void moveEyeInLocalTo(float3 _eyeInLocal){
-		//not finish. moving eyeinlocal can be done in 2 ways, by changing modemat or by changing eyeinworld. need to specific
-
-		/*
-		eyeInLocal = _eyeInLocal;
-		UpdateViewMatrixFromDetail();
-		*/
+	void moveEyeInLocalByModeMat(float3 newEyeInLocal){	
+		//moving eyeinlocal can be done in 2 ways, by changing modemat or by changing eyeinworld. need to specific
+		float3 oldeye = getEyeInLocal(); //for immersive mode, this should be the same with -transVec, but may not the same for other modes
+		transVec = transVec - float3ToQvec3(newEyeInLocal - oldeye);
+		UpdateModelMatrixFromDetail();
 	}
 
 	void GetModelMatrix(QMatrix4x4 &m){ m = modeMat;};
@@ -119,7 +121,6 @@ public:
 
 
 	float3 DataCenter();
-	void SetVol(float3 posMin, float3 posMax);
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
 	
 	void SaveState(const char* filename);

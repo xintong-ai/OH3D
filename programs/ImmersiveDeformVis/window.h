@@ -90,7 +90,7 @@ private:
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
 	std::shared_ptr<GLMatrixManager> matrixMgrMini;
 	std::shared_ptr<RegularInteractor> regularInteractorMini;
-	std::shared_ptr<SphereRenderable> sphereRenderableMini;
+	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderableMini;
 
 
 

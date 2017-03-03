@@ -1,5 +1,6 @@
 #include <vector_types.h>
 #include <vector>
+#include <memory>
 #include <numeric>
 //#include <itkBinaryMorphologicalOpeningImageFilter.h>
 #include <itkBinaryBallStructuringElement.h>
@@ -13,6 +14,7 @@
 //open source code
 #include "itkBinaryThinningImageFilter3D.h"
 #include "MSTAdjList.h"
+#include "Volume.h"
 
 
 #define WRITEIMAGETODISK
@@ -161,6 +163,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	//	std::cout << objCount[i] << std::endl;
 	//}
 
+	////first, filter out small componenets
 	int thr = 1000;
 	for (int k = 0; k < dims.z; k++){
 		for (int j = 0; j < dims.y; j++){
@@ -170,12 +173,50 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 				pixelIndex[1] = j; // y position
 				pixelIndex[2] = k; // z position
 				int v = connectedImg->GetPixel(pixelIndex);
-				if (atOutside[v] || objCount[v] < thr){
+				if (objCount[v] < thr){
 					connectedImg->SetPixel(pixelIndex, 0);
 				}
 			}
 		}
 	}
+
+	//save cleaned channel
+	std::shared_ptr<Volume> cleanedChannelVolume = std::make_shared<Volume>();
+	cleanedChannelVolume->setSize(dims);
+	cleanedChannelVolume->dataOrigin = make_float3(0, 0, 0);
+	cleanedChannelVolume->spacing = spacing;
+	for (int k = 0; k < dims.z; k++){
+		for (int j = 0; j < dims.y; j++){
+			for (int i = 0; i < dims.x; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = connectedImg->GetPixel(pixelIndex);
+				if (v>0){
+					cleanedChannelVolume->values[k*dims.x*dims.y + j*dims.x + i] = 1;
+				}
+			}
+		}
+	}
+	cleanedChannelVolume->saveRawToFile("cleanedChannel.raw");
+
+	////then, filter out boiundary componenets
+	for (int k = 0; k < dims.z; k++){
+		for (int j = 0; j < dims.y; j++){
+			for (int i = 0; i < dims.x; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = connectedImg->GetPixel(pixelIndex);
+				if (atOutside[v]){
+					connectedImg->SetPixel(pixelIndex, 0);
+				}
+			}
+		}
+	}
+
 
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(connectedImg);

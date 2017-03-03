@@ -2,8 +2,8 @@
 #include <string>
 #include <iostream>
 
-#include <cuda_runtime.h>
-#include <helper_cuda.h>
+//#include <cuda_runtime.h>
+//#include <helper_cuda.h>
 
 #include "Volume.h"
 #include "RawVolumeReader.h"
@@ -17,7 +17,6 @@
 
 using namespace std;
 
-//note!!! this function also happens in the ImmersiveDeformVis program. remember to change both if needed
 void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
 {
 	std::cout << "computing channel volume..." << std::endl;
@@ -40,7 +39,7 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 			}
 		}
 	}
-	channelV->initVolumeCuda();
+	//channelV->initVolumeCuda();
 	std::cout << "finish computing channel volume..." << std::endl;
 	return;
 }
@@ -63,7 +62,7 @@ void computeSkel(shared_ptr<Volume> channelVolume, shared_ptr<Volume> skelVolume
 	ImageType::Pointer skelComponentedImg;
 	int maxComponentMark;
 	skelComputing(localBuffer, dims, spacing, skelVolume->values, skelComponentedImg, maxComponentMark);
-	skelVolume->initVolumeCuda();
+	//skelVolume->initVolumeCuda();
 	std::cout << "finish computing skeletion volume..." << std::endl;
 	skelVolume->saveRawToFile("skel.raw");
 

@@ -310,10 +310,6 @@ void CosmoRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 
 void CosmoRenderable::draw(float modelview[16], float projection[16])
 {
-	if (!updated) {
-		updated = true;
-	}
-
 
 	RecordMatrix(modelview, projection);
 

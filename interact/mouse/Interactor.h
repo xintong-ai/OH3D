@@ -25,6 +25,7 @@ public:
 	virtual void mouseRelease(int x, int y, int modifier) {}
 	virtual void mouseMove(int x, int y, int modifier) {}
 	virtual bool MouseWheel(int x, int y, int modifier, float delta){ return false; };
+	virtual void keyPress(char key) {}
 
 protected:
 	GLWidget* actor;

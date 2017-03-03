@@ -71,9 +71,7 @@ Window::Window()
 
 	/********GL widget******/
 
-	matrixMgr = std::make_shared<GLMatrixManager>();
-
-	matrixMgr->SetVol(posMin, posMax);
+	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);

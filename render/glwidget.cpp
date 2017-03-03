@@ -269,6 +269,8 @@ void GLWidget::wheelEvent(QWheelEvent * event)
 
 void GLWidget::keyPressEvent(QKeyEvent * event)
 {
+	for (auto interactor : interactors)
+		interactor.second->keyPress(event->key());
 }
 
 bool GLWidget::event(QEvent *event)

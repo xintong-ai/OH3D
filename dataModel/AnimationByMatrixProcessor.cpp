@@ -32,7 +32,7 @@ bool AnimationByMatrixProcessor::process(float modelview[16], float projection[1
 	if (n2 < n){
 		float3 view = views[n1] * (n2 - p) + views[n2] * (p - n1);
 		//std::cout << view.x << " " << view.y << " " << view.z << std::endl;
-		matrixMgr->moveEyeInLocalTo(view);
+		matrixMgr->moveEyeInLocalByModeMat(view);
 	}
 	return false;
 }

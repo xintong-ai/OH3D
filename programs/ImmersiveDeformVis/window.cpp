@@ -19,7 +19,6 @@
 #include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
-#include "SphereRenderable.h"
 #include "Particle.h"
 
 #include "PositionBasedDeformProcessor.h"
@@ -29,35 +28,6 @@
 #include "VRWidget.h"
 #include "VRVolumeRenderableCUDA.h"
 #endif
-
-
-//note!!! this function also happens in the ITKProcessing program. remember to change both if needed
-void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
-{
-	std::cout << "computing channel volume..." << std::endl;
-
-	int3 dataSizes = v->size;
-
-	for (int k = 0; k < dataSizes.z; k++)
-	{
-		for (int j = 0; j < dataSizes.y; j++)
-		{
-			for (int i = 0; i < dataSizes.x; i++)
-			{
-				int ind = k*dataSizes.y * dataSizes.x + j*dataSizes.x + i;
-				if (v->values[ind] < rcp->transFuncP2){
-					channelV->values[ind] = 1;
-				}
-				else{
-					channelV->values[ind] = 0;
-				}
-			}
-		}
-	}
-	channelV->initVolumeCuda();
-	std::cout << "finish computing channel volume..." << std::endl;
-	return;
-}
 
 Window::Window()
 {
@@ -142,11 +112,12 @@ Window::Window()
 	bool useChannelAndSkel = true;
 	if (useChannelAndSkel){
 		channelVolume = std::make_shared<Volume>();
-		channelVolume->setSize(inputVolume->size);
-		channelVolume->dataOrigin = inputVolume->dataOrigin;
-		channelVolume->spacing = inputVolume->spacing;
-		computeChannelVolume(inputVolume, channelVolume, rcp);
-		
+		std::shared_ptr<RawVolumeReader> reader2;
+		reader2 = std::make_shared<RawVolumeReader>("cleanedChannel.raw", dims, RawVolumeReader::dtFloat32);
+		reader2->OutputToVolumeByNormalizedValue(channelVolume);
+		channelVolume->initVolumeCuda();
+		reader2.reset();
+
 		skelVolume = std::make_shared<Volume>();
 		std::shared_ptr<RawVolumeReader> reader;
 		reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
@@ -154,19 +125,15 @@ Window::Window()
 		skelVolume->initVolumeCuda();
 		reader.reset();
 	}
-
-
-	////////////////matrix
-	matrixMgr = std::make_shared<GLMatrixManager>();
-	matrixMgrMini = std::make_shared<GLMatrixManager>();
-
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
-	matrixMgr->SetVol(posMin, posMax);
+
+	////////////////matrix
+	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
+	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
+
 	matrixMgr->setDefaultForImmersiveMode();
-	
-	matrixMgrMini->SetVol(posMin, posMax);
-	
+		
 	////////////////processor
 	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 	
@@ -222,6 +189,9 @@ Window::Window()
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
 
+
+	
+	
 
 
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
@@ -440,20 +410,16 @@ Window::Window()
 	format2.setProfile(QSurfaceFormat::CoreProfile);
 	openGLMini->setFormat(format2);
 
-	std::vector<float4> pos;
-	pos.push_back(make_float4(matrixMgr->getEyeInLocal(), 1.0));
-	std::vector<float> val;
-	val.push_back(1.0);
-	std::shared_ptr<Particle> particle = std::make_shared<Particle>(pos, val);
-	particle->initForRendering(200, 1);
-	sphereRenderableMini = std::make_shared<SphereRenderable>(particle);
-	openGLMini->AddRenderable("1center", sphereRenderableMini.get());
+	matrixMgrRenderableMini = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	matrixMgrRenderableMini->renderPart = 2;
+	openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
+
 
 
 	volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
 	volumeRenderableMini->setBlending(true, 50);
-	openGLMini->AddRenderable("2volume", volumeRenderableMini.get());
+	openGLMini->AddRenderable("4volume", volumeRenderableMini.get());
 	regularInteractorMini = std::make_shared<RegularInteractor>();
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
 	openGLMini->AddInteractor("regular", regularInteractorMini.get());
@@ -529,7 +495,7 @@ void Window::applyEyePos()
 {
 	QString s = eyePosLineEdit->text();
 	QStringList sl = s.split(QRegExp("[\\s,]+"));
-	matrixMgr->moveEyeInLocalTo(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
 }
 
 void Window::transFuncP1LabelSliderValueChanged(int v)
@@ -580,7 +546,7 @@ void Window::moveToOptimalBtnClicked()
 {
 	ve->compute(VPMethod::JS06Sphere);
 
-	matrixMgr->moveEyeInLocalTo(make_float3(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
 
 	ve->saveResultVol("labelEntro.raw");
 }

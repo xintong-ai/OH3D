@@ -20,12 +20,15 @@ public:
 	//virtual float3 getViewVecInLocal(){
 	//	return viewVecInLocal;
 	//};
-	//virtual float3 getMoveVecFromViewAndUp(){
+	//virtual float3 getHorizontalMoveVec(){
 	//	return normalize(cross(upVecInLocal,cross(viewVecInLocal, upVecInLocal)));
 	//}
 	virtual float3 getEyeInLocal() = 0;
 	virtual float3 getUpInLocal() = 0;
 	virtual float3 getViewVecInLocal() = 0;
-	virtual float3 getMoveVecFromViewAndUp() = 0;
+	virtual float3 getHorizontalMoveVec(float3 refUpInLocal) = 0; //the direction decided by view vec, but perpendicular to the refUpInLocal
+
+	int recentChange = 0; 
+	//0. no change is recorded; 1. changed by moving forward. 2. backward. 3. left; 4. right. 5. down; 6. up
 };
 #endif

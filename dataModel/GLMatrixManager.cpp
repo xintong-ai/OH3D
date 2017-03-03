@@ -7,9 +7,13 @@
 #include <iostream>
 
 
-GLMatrixManager::GLMatrixManager()
+GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 {
-	transVec = QVector3D(0, 0, 0);
+	dataMin = posMin;
+	dataMax = posMax;
+
+	float3 dataCen = (dataMin + dataMax) * 0.5;
+	transVec = -float3ToQvec3(dataCen);
 	rotMat.setToIdentity();
 	UpdateModelMatrixFromDetail();
 
@@ -17,7 +21,7 @@ GLMatrixManager::GLMatrixManager()
 	upVecInWorld = QVector3D(0, 1, 0);;
 	viewVecInWorld = QVector3D(0, 0, -1);
 	UpdateViewMatrixFromDetail();
-	
+
 	projAngle = 30;
 	zNear = 0.1;
 	zFar = 1000;
@@ -86,18 +90,6 @@ void GLMatrixManager::GetModelViewMatrix(float mv[16])
 	pm.copyDataTo(mv);
 	return;
 }
-
-void GLMatrixManager::SetVol(float3 posMin, float3 posMax)
-{
-	dataMin = posMin;
-	dataMax = posMax;
-
-	float3 dataCen = (dataMin + dataMax) * 0.5;
-
-	transVec = -float3ToQvec3(dataCen);
-	UpdateModelMatrixFromDetail();
-}
-
 
 float3 GLMatrixManager::DataCenter()
 {

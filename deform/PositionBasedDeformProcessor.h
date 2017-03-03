@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <ctime>
+#include <vector_types.h>
 
 #include "Processor.h"
 
@@ -13,7 +14,6 @@ class PositionBasedDeformProcessor :public Processor
 public:
 	std::shared_ptr<Volume> volume;
 	std::shared_ptr<Volume> channelVolume;
-//std::shared_ptr<MeshDeformProcessor> meshDeformer;
 	std::shared_ptr<MatrixManager> matrixMgr;
 
 	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
@@ -29,6 +29,7 @@ public:
 	};
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
+	void doDeforme(float degree);
 
 private:
 	void InitCudaSupplies();

@@ -1,5 +1,6 @@
 #include "ImmersiveInteractor.h"
 #include "GLMatrixManager.h"
+#include <iostream>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -92,4 +93,50 @@ bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 	float3 viewVecLocal = matrixMgr->getViewVecInLocal();
 	QVector3D oldTransVec = matrixMgr->getTransVec();
 	matrixMgr->setTransVec(oldTransVec - v / 100.0 *QVector3D(viewVecLocal.x, viewVecLocal.y, viewVecLocal.z));
+	if (v > 0){
+		matrixMgr->recentChange = 1;
+	}
+	else{
+		matrixMgr->recentChange = 2;
+	}
+}
+
+void ImmersiveInteractor::keyPress(char key)
+{
+	switch (key)
+	{
+	case 'a':
+	case 'A':
+		moveViewHorizontally(0);
+		break;
+	case 'd':
+	case 'D':
+		moveViewHorizontally(1);
+		break;
+	case 'w':
+	case 'W':
+		moveViewVertically(1);
+		break;
+	case 's':
+	case 'S':
+		moveViewVertically(0);
+		break;
+	}
+}
+
+void ImmersiveInteractor::moveViewHorizontally(int d)
+{
+	//d: 0. left; 1. right
+	float3 horiViewInLocal = matrixMgr->getHorizontalMoveVec(make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z()));
+	float3 newEye = matrixMgr->getEyeInLocal() + cross(horiViewInLocal, make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z()))*(d==1?1:(-1));
+	matrixMgr->moveEyeInLocalByModeMat(newEye);
+	matrixMgr->recentChange = 3 + d;
+}
+
+void ImmersiveInteractor::moveViewVertically(int d)
+{
+	//d: 0. down; 1. up
+	float3 newEye = matrixMgr->getEyeInLocal() + make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z())*(d==1?1:(-1));
+	matrixMgr->moveEyeInLocalByModeMat(newEye);
+	matrixMgr->recentChange = 5 + d;
 }

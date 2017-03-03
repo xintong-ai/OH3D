@@ -46,11 +46,8 @@ target_link_libraries(${PROJECT_NAME}
 	Qt5::Widgets  
 	${OPENGL_LIBRARIES} 
 	io
-	interact
-	render
 	dataModel
-	deform
-	vpsel
+	deform #now this one is required since volume.h contains VolumeCUDA, which needs cuda components
 	${ITK_LIBRARIES}
 )
 

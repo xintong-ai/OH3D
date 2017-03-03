@@ -233,10 +233,6 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 void SphereRenderable::draw(float modelview[16], float projection[16])
 {
-	if (!updated) {
-		updated = true;
-	}
-
 	RecordMatrix(modelview, projection);
 
 	if (!visible)
