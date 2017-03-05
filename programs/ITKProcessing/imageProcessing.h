@@ -65,7 +65,8 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
 		StructuringElementType;
 	StructuringElementType structuringElement;
-	int radius = 4;
+	//int radius = 4;//for 181
+	int radius = 1;//for engine
 	structuringElement.SetRadius(radius);
 	structuringElement.CreateStructuringElement();
 	typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;

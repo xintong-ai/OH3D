@@ -41,7 +41,6 @@ protected:
 	//utility funcs
 	float3 inline qvec3ToFloat3(QVector3D q){ return make_float3(q.x(), q.y(), q.z()); }
 	QVector3D inline float3ToQvec3(float3 f){ return QVector3D(f.x, f.y, f.z); }
-
 public:
 	GLMatrixManager(float3 posMin = make_float3(0, 0, 0), float3 posMax = make_float3(0, 0, 0));
 	void setDefaultForImmersiveMode();
@@ -67,7 +66,9 @@ public:
 		UpdateModelMatrixFromDetail();
 	}; 
 	void setTransVec(QVector3D _t){
+		QVector3D oldTransVec = transVec;
 		transVec = _t;
+		recentMove =  - qvec3ToFloat3(transVec - oldTransVec); //opposite direction!
 		UpdateModelMatrixFromDetail();
 	};
 
@@ -103,7 +104,7 @@ public:
 	void moveEyeInLocalByModeMat(float3 newEyeInLocal){	
 		//moving eyeinlocal can be done in 2 ways, by changing modemat or by changing eyeinworld. need to specific
 		float3 oldeye = getEyeInLocal(); //for immersive mode, this should be the same with -transVec, but may not the same for other modes
-		transVec = transVec - float3ToQvec3(newEyeInLocal - oldeye);
+		setTransVec(transVec - float3ToQvec3(newEyeInLocal - oldeye));
 		UpdateModelMatrixFromDetail();
 	}
 

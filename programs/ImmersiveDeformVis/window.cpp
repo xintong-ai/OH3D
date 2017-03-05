@@ -40,6 +40,7 @@ Window::Window()
 
 	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
 
+	std::string subfolder;
 	if (std::string(dataPath).find("MGHT2") != std::string::npos){
 		dims = make_int3(320, 320, 256);
 		spacing = make_float3(0.7, 0.7, 0.7);
@@ -70,6 +71,7 @@ Window::Window()
 		dims = make_int3(149, 208, 110);
 		spacing = make_float3(1, 1, 1);
 		rcp = std::make_shared<RayCastingParameters>(0.8, 0.4, 1.2, 1.0, 0.05, 1.25, 512, 0.25f, 1.0, false);
+		subfolder = "engine";
 	}
 	else if (std::string(dataPath).find("knee") != std::string::npos){
 		dims = make_int3(379, 229, 305);
@@ -79,6 +81,7 @@ Window::Window()
 		dims = make_int3(181, 217, 181);
 		spacing = make_float3(1, 1, 1);
 		rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
+		subfolder = "181";
 	}
 	else{
 		std::cout << "volume data name not recognized" << std::endl;
@@ -111,16 +114,16 @@ Window::Window()
 
 	bool useChannelAndSkel = true;
 	if (useChannelAndSkel){
-		channelVolume = std::make_shared<Volume>();
+		channelVolume = std::make_shared<Volume>(true);
 		std::shared_ptr<RawVolumeReader> reader2;
-		reader2 = std::make_shared<RawVolumeReader>("cleanedChannel.raw", dims, RawVolumeReader::dtFloat32);
+		reader2 = std::make_shared<RawVolumeReader>((subfolder+"/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
 
 		skelVolume = std::make_shared<Volume>();
 		std::shared_ptr<RawVolumeReader> reader;
-		reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
+		reader = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
 		reader->OutputToVolumeByNormalizedValue(skelVolume);
 		skelVolume->initVolumeCuda();
 		reader.reset();
@@ -134,6 +137,10 @@ Window::Window()
 
 	matrixMgr->setDefaultForImmersiveMode();
 		
+	if (std::string(dataPath).find("engine") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -50, 60));
+	}
+
 	////////////////processor
 	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 	

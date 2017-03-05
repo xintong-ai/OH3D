@@ -29,18 +29,27 @@ public:
 	};
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
-	void doDeforme(float degree);
 
 private:
 	void InitCudaSupplies();
 
-	bool hasDeformed = false;
-	bool hasAnimeStarted = false;
-	float maxRadius = 10;
-	std::clock_t start;
-	double totalDuration = 5;
+	void doDeforme(float degree);
+	void doTunnelDeforme(float degree);//generally degree is same with deformationScale
+	void computeTunnelInfo();
 
 	float3 tunnelStart, tunnelEnd;
+	float deformationScale = 10; // for circle, it is maxRadius; for rect, the width of opening
+	float deformationScale2nd = 7; // for rectangular, it is the other side length
+	float3 rectDeformDir2nd; // for rectangular, it is the direction of deformationScale2nd
+
 	float closeStartingRadius;
+
+	bool hasBeenDeformed = false;
+	bool hasOpenAnimeStarted = false;
+	bool hasCloseAnimeStarted = false;
+	std::clock_t startOpen;
+	std::clock_t startClose;
+	double totalDuration = 4;
+
 };
 #endif
