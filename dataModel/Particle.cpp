@@ -13,7 +13,11 @@ Particle::Particle(std::vector<float4> _pos, std::vector<float> _val)
 	posOrig = _pos;
 	val = _val;
 	numParticles = pos.size();
+	updateMaxMinValAndPos();
+}
 
+void Particle::updateMaxMinValAndPos()
+{
 	posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 	float v = 0;
@@ -47,6 +51,7 @@ Particle::Particle(std::vector<float4> _pos, std::vector<float> _val)
 			valMin = v;
 	}
 }
+
 
 void Particle::setFeature(std::vector<char> _f)
 {

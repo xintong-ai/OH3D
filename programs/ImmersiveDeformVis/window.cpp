@@ -23,6 +23,8 @@
 
 #include "PositionBasedDeformProcessor.h"
 #include "MatrixMgrRenderable.h"
+#include "InfoGuideRenderable.h"
+#include "BinaryTuplesReader.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -33,62 +35,17 @@ Window::Window()
 {
 	setWindowTitle(tr("Interactive Glyph Visualization"));
 
-	////////////////data
+	////////////////////////////////prepare data////////////////////////////////
+	//////////////////Volume and RayCastingParameters
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
 	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
 	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
-
 	std::string subfolder;
-	if (std::string(dataPath).find("MGHT2") != std::string::npos){
-		dims = make_int3(320, 320, 256);
-		spacing = make_float3(0.7, 0.7, 0.7);
-	}
-	else if (std::string(dataPath).find("MGHT1") != std::string::npos){
-		dims = make_int3(256, 256, 176);
-		spacing = make_float3(1.0, 1.0, 1.0);
-		rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
-	}
-	else if (std::string(dataPath).find("nek128") != std::string::npos){
-		dims = make_int3(128, 128, 128);
-		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
-	}
-	else if (std::string(dataPath).find("nek256") != std::string::npos){
-		dims = make_int3(256, 256, 256);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("cthead") != std::string::npos){
-		dims = make_int3(208, 256, 225);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("brat") != std::string::npos){
-		dims = make_int3(160, 216, 176);
-		spacing = make_float3(1, 1, 1);
-		rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
-	}
-	else if (std::string(dataPath).find("engine") != std::string::npos){
-		dims = make_int3(149, 208, 110);
-		spacing = make_float3(1, 1, 1);
-		rcp = std::make_shared<RayCastingParameters>(0.8, 0.4, 1.2, 1.0, 0.05, 1.25, 512, 0.25f, 1.0, false);
-		subfolder = "engine";
-	}
-	else if (std::string(dataPath).find("knee") != std::string::npos){
-		dims = make_int3(379, 229, 305);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("181") != std::string::npos){
-		dims = make_int3(181, 217, 181);
-		spacing = make_float3(1, 1, 1);
-		rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
-		subfolder = "181";
-	}
-	else{
-		std::cout << "volume data name not recognized" << std::endl;
-		exit(0);
-	}
-
+	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	inputVolume = std::make_shared<Volume>(true);
+
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
@@ -111,47 +68,64 @@ Window::Window()
 	}
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
+	
+	channelVolume = std::make_shared<Volume>(true);
+	std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
+	reader2->OutputToVolumeByNormalizedValue(channelVolume);
+	channelVolume->initVolumeCuda();
+	reader2.reset();
 
-	bool useChannelAndSkel = true;
-	if (useChannelAndSkel){
-		channelVolume = std::make_shared<Volume>(true);
-		std::shared_ptr<RawVolumeReader> reader2;
-		reader2 = std::make_shared<RawVolumeReader>((subfolder+"/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		reader2->OutputToVolumeByNormalizedValue(channelVolume);
-		channelVolume->initVolumeCuda();
-		reader2.reset();
+	skelVolume = std::make_shared<Volume>();
+	std::shared_ptr<RawVolumeReader> reader4 = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
+	reader4->OutputToVolumeByNormalizedValue(skelVolume);
+	skelVolume->initVolumeCuda();
+	reader4.reset();
 
-		skelVolume = std::make_shared<Volume>();
-		std::shared_ptr<RawVolumeReader> reader;
-		reader = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		reader->OutputToVolumeByNormalizedValue(skelVolume);
-		skelVolume->initVolumeCuda();
-		reader.reset();
-	}
+
+	////////////////matrix manager
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
 
-	////////////////matrix
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
-	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
-
-	matrixMgr->setDefaultForImmersiveMode();
-		
+	matrixMgr->setDefaultForImmersiveMode();		
 	if (std::string(dataPath).find("engine") != std::string::npos){
 		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -50, 60));
 	}
 
-	////////////////processor
+	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
+
+
+	//////////////ScreenMarker, ViewpointEvaluator
+	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
+	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
+	//ve->initDownSampledResultVolume(make_int3(40, 40, 40));
+	ve->setSpherePoints();
+	
+	std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
+	reader3->OutputToParticleDataArrays(ve->skelViews);
+	reader3.reset();
+
+
+	/********GL widget******/
+	openGL = std::make_shared<GLWidget>(matrixMgr);
+	QSurfaceFormat format;
+	format.setDepthBufferSize(24);
+	format.setStencilBufferSize(8);
+	format.setVersion(2, 0);
+	format.setProfile(QSurfaceFormat::CoreProfile);
+	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
+
+
+
+
+
+
+	//////////////////////////////// Processor ////////////////////////////////
 	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 	
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 	animationByMatrixProcessor->isActive = false;
 	animationByMatrixProcessor->setViews(views);
-
-	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
-
-	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
-	ve->initDownSampledResultVolume(make_int3(40, 40, 40));
 
 	useLabel = true;
 	labelVolCUDA = 0;
@@ -171,23 +145,21 @@ Window::Window()
 		lvProcessor->rcp = rcp;
 
 		ve->setLabel(labelVolCUDA);
+		ve->useLabelCount = true;
+		ve->useColor = false;
 
 		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
 		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
 	}
+	//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
+	if (useLabel){
+		//openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
+	}
+	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 
 
-	/********GL widget******/
-	openGL = std::make_shared<GLWidget>(matrixMgr);
-	QSurfaceFormat format;
-	format.setDepthBufferSize(24);
-	format.setStencilBufferSize(8);
-	format.setVersion(2, 0);
-	format.setProfile(QSurfaceFormat::CoreProfile);
-	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
-
-	
+	//////////////////////////////// Renderable ////////////////////////////////
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA);
 	volumeRenderable->rcp = rcp;
 	openGL->AddRenderable("1volume", volumeRenderable.get());
@@ -196,11 +168,11 @@ Window::Window()
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
 
+	infoGuideRenderable = std::make_shared<InfoGuideRenderable>(ve, matrixMgr);
+	openGL->AddRenderable("3infoGuide", infoGuideRenderable.get());
 
 	
-	
-
-
+	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
 	regularInteractor = std::make_shared<RegularInteractor>();
@@ -209,18 +181,13 @@ Window::Window()
 	immersiveInteractor->isActive = true;
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
-
-
-	sbInteractor = std::make_shared<ScreenBrushInteractor>();
-	sbInteractor->setScreenMarker(sm);
-	openGL->AddInteractor("screenMarker", sbInteractor.get());
-
-	//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	if (useLabel){
-		//openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
+		sbInteractor = std::make_shared<ScreenBrushInteractor>();
+		sbInteractor->setScreenMarker(sm);
+		openGL->AddInteractor("3screenMarker", sbInteractor.get());
 	}
 
-	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
@@ -421,8 +388,6 @@ Window::Window()
 	matrixMgrRenderableMini->renderPart = 2;
 	openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
 
-
-
 	volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	volumeRenderableMini->rcp = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false);
 	volumeRenderableMini->setBlending(true, 50);
@@ -431,7 +396,7 @@ Window::Window()
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
 	openGLMini->AddInteractor("regular", regularInteractorMini.get());
 
-	assistLayout->addWidget(openGLMini.get(), 3);
+	//assistLayout->addWidget(openGLMini.get(), 3);
 
 	helper.setData(inputVolume, labelVolLocal);
 	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
@@ -551,11 +516,9 @@ void Window::isBrushingClicked()
 
 void Window::moveToOptimalBtnClicked()
 {
-	ve->compute(VPMethod::JS06Sphere);
-
+	//ve->compute_UniformSampling(VPMethod::JS06Sphere);
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
-
-	ve->saveResultVol("labelEntro.raw");
+	//ve->saveResultVol("labelEntro.raw");
 }
 
 void Window::SlotOriVolumeRb(bool b)
@@ -623,6 +586,8 @@ void Window::updateLabelVolBtnClicked()
 {
 	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
 	std::cout << std::endl << "The lable volume has been updated" << std::endl << std::endl;
+	ve->compute_SkelSampling(VPMethod::JS06Sphere);
+	std::cout << std::endl << "The optimal view point has been computed" << std::endl << std::endl;
 }
 
 void Window::redrawBtnClicked()

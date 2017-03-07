@@ -179,9 +179,9 @@ int main(int argc, char **argv)
 	int maxComponentMark = 55;
 
 
-	std::vector<float3> views;
+	std::vector<std::vector<float3>> viewArrays;
 	//find the views for the tour
-	findViews(connectedImg, maxComponentMark, dims, spacing, views);
+	findViews(connectedImg, maxComponentMark, dims, spacing, viewArrays);
 	
 	//std::cout << "views: " << endl << views.size() << endl << views[5].x << " " << views[5].y << " " << views[5].z<<endl;
 

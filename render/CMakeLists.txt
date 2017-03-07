@@ -56,6 +56,7 @@ set( Srcs
 		MeshRenderable.cpp
 		GLWidgetQtDrawing.cpp
 		MatrixMgrRenderable.cpp
+	InfoGuideRenderable.cpp
 		)
 set( Hdrs  
 	glwidget.h 
@@ -78,6 +79,7 @@ set( Hdrs
 		MeshRenderable.h
 		GLWidgetQtDrawing.h
 		MatrixMgrRenderable.h
+	InfoGuideRenderable.h
 		)
 
 

@@ -39,6 +39,7 @@ class AnimationByMatrixProcessor;
 class PositionBasedDeformProcessor;
 class SphereRenderable;
 class MatrixMgrRenderable;
+class InfoGuideRenderable;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -72,7 +73,6 @@ private:
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
-//	std::shared_ptr<GLMatrixManager> regularMatrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
 	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
@@ -97,6 +97,7 @@ private:
 	//for main view
 	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
+	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
 
 	//for 2d view
 	Helper helper;

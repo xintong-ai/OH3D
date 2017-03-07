@@ -37,6 +37,7 @@ public:
 	{
 	};
 	
+	void updateMaxMinValAndPos();
 	void clear(){};
 	
 	void featureReshuffle();

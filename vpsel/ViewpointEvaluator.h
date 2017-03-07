@@ -7,6 +7,7 @@
 #include "myDefine.h"
 #include <memory>
 #include <vector>
+class Particle;
 
 enum VPMethod{
 	BS05,
@@ -38,28 +39,45 @@ public:
 			cudaFree(d_r); d_r = 0;
 		};
 	};
+	void setSpherePoints(int n = 512);
+
+	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 
 	std::shared_ptr<Volume> volume;
 	std::shared_ptr<RayCastingParameters> rcp;
 	void initDownSampledResultVolume(int3 sampleSize);	
-	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
-	void compute(VPMethod m);
+	void compute_UniformSampling(VPMethod m);
+	void compute_SkelSampling(VPMethod m);
 	void saveResultVol(const char*);
 
 	float3 optimalEyeInLocal;
+	bool optimalEyeValid = false; //when the optimalEye has not been computed, optimalEyeInLocal should not be used
+
+	std::vector<float> cubeInfo;
+	void computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir);
+	
+	std::vector<std::shared_ptr<Particle>> skelViews;
+	
+	float computeVectorEntropy(float* ary, int size);
+
+	bool useHist = true, useTrad = false;
+	bool useLabelCount = true, useColor = false;
+	bool useDist = false;//not well set yet
+	int maxLabel = 1; //!! data dependant
+
 private:
 	void GPU_setVolume(const VolumeCUDA *vol);
 	void GPU_setConstants(float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing);
 
-	void setSpherePoints(int n = 512);
 	std::vector<SpherePoint> sphereSamples;
 	int numSphereSample;
 	float* d_sphereSamples = 0;
 
-	bool useHist, useTrad;
-	bool useDist, useLabelCount;
+
+
 	const int nbins = 32;
 	float* d_hist;
+	std::vector<float*> cubeFaceDist;
 
 	std::shared_ptr<Volume> resVol = 0;
 

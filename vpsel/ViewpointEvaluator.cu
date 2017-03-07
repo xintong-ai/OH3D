@@ -3,6 +3,7 @@
 #include "ViewpointEvaluator.h"
 #include "Volume.h"
 #include "TransformFunc.h"
+#include "Particle.h"
 #include <thrust/device_vector.h>
 #include <thrust/count.h>
 #include <thrust/execution_policy.h>
@@ -28,6 +29,13 @@ ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r,
 	rcp->tstep = 1.0; //generally don't need to sample beyond each voxel
 
 	cudaMalloc(&d_hist, sizeof(float)*nbins);
+
+	cubeFaceDist.resize(6);
+	for (int i = 0; i < 6; i++){
+		cudaMalloc(&cubeFaceDist[i], sizeof(float)*nbins);
+	}
+
+	cubeInfo.resize(6);
 }
 
 
@@ -84,7 +92,7 @@ void ViewpointEvaluator::initJS06Sphere()
 
 }
 
-void ViewpointEvaluator::compute(VPMethod m)
+void ViewpointEvaluator::compute_UniformSampling(VPMethod m)
 {
 	float maxRes = -999;
 	int3 sampleSize = resVol->size;
@@ -117,7 +125,43 @@ void ViewpointEvaluator::compute(VPMethod m)
 			}
 		}
 	}
+	optimalEyeValid = true;
 }
+
+
+void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
+{
+	float maxRes = -999;
+	//int3 sampleSize = resVol->size;
+	if (m == BS05){
+		//initBS05();
+		//for (int k = 0; k < sampleSize.z; k++){
+		//	std::cout << "now doing k = " << k << std::endl;
+		//	for (int j = 0; j < sampleSize.y; j++){
+		//		for (int i = 0; i < sampleSize.x; i++){
+		//			float3 eyeInLocal = indToLocal(i, j, k);
+		//			resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = computeEntropyJS06Sphere(eyeInLocal);
+		//		}
+		//	}
+		//}
+	}
+	else if (m == JS06Sphere){
+		initJS06Sphere();
+		for (int i = 0; i < skelViews.size(); i++){
+			for (int j = 0; j < skelViews[i]->numParticles; j++){
+				float3 eyeInLocal = make_float3(skelViews[i]->pos[j]);
+				float entroRes = computeEntropyJS06Sphere(eyeInLocal);
+				if (entroRes>maxRes){
+					maxRes = entroRes;
+					optimalEyeInLocal = eyeInLocal;
+				}
+			}
+		}
+	}
+	optimalEyeValid = true;
+}
+
+
 
 void ViewpointEvaluator::saveResultVol(const char* fname)
 {
@@ -251,7 +295,6 @@ void ViewpointEvaluator::GPU_setVolume(const VolumeCUDA *vol)
 
 void ViewpointEvaluator::GPU_setConstants(float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing)
 {
-	
 	checkCudaErrors(cudaMemcpyToSymbol(transFuncP1, _transFuncP1, sizeof(float)));
 	checkCudaErrors(cudaMemcpyToSymbol(transFuncP2, _transFuncP2, sizeof(float)));
 	checkCudaErrors(cudaMemcpyToSymbol(la, _la, sizeof(float)));
@@ -518,16 +561,13 @@ struct is_solid
 	}
 };
 
+
 float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInLocal)
 {
 	int threadsPerBlock = 64;
 	int blocksPerGrid = (numSphereSample + threadsPerBlock - 1) / threadsPerBlock;
 
 	cudaMemset(d_hist, 0, sizeof(float)*nbins);
-
-	useHist = true; useTrad = false;
-	useLabelCount = true; int maxLabel = 1; //!! data dependant
-	useDist = false;
 
 	if (useLabelCount && !labelBeenSet){
 		std::cout << "label not set yet! " << std::endl;
@@ -537,59 +577,228 @@ float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInLocal)
 	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist);
 
 	float ret;
-	if (useLabelCount){
-		if (useHist){
-			thrust::device_vector< float > iVec(d_hist, d_hist + (maxLabel+1));
-			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
-			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+	if (useHist){
+		if (useLabelCount){
+			ret = computeVectorEntropy(d_hist, maxLabel + 1);
 		}
-		else{
-			thrust::device_vector< float > iVec(d_r, d_r + numSphereSample);
-			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		else if (useColor){
+			ret = computeVectorEntropy(d_hist, nbins);
 		}
 	}
-	else if (useDist){
-		if (useHist){
-			thrust::device_vector< float > iHistVec(d_hist, d_hist + nbins);
-			//std::vector<float> D(nbins);
-			//thrust::copy(iVec.begin(), iVec.end(), D.begin());
-			thrust::transform(iHistVec.begin(), iHistVec.end(), iHistVec.begin(), functor_computeEntropy((float)numSphereSample));
-			float hisRes = thrust::reduce(iHistVec.begin(), iHistVec.end(), (float)0, thrust::plus<float>());
-
-			thrust::device_vector< float > iRVec(d_r, d_r + numSphereSample);  
-			int c = thrust::count_if(thrust::device, iRVec.begin(), iRVec.end(), is_solid());
-			ret = hisRes*c / numSphereSample;
-		}
+	else if (useTrad){
+		ret = computeVectorEntropy(d_r, numSphereSample);
 	}
 	else{
-		if (useHist && useTrad){
-			thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
-			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
-			float hisRes = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		std::cout << "entropy computation not defined! " << std::endl;
+		exit(0);
+	}
 
-			thrust::device_vector< float > iVec2(d_r, d_r + numSphereSample);
-			float sum = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
-			thrust::transform(iVec2.begin(), iVec2.end(), iVec2.begin(), functor_computeEntropy(sum));
-			float tradRes = thrust::reduce(iVec2.begin(), iVec2.end(), (float)0, thrust::plus<float>());
-			//ret = 0.5 * hisRes / log(nbins) + 0.5 * tradRes / log(numSphereSample);
-			ret = min(hisRes / log(nbins), tradRes / log(numSphereSample));
+	return ret;
+}
+
+float ViewpointEvaluator::computeVectorEntropy(float* ary, int size)
+{
+	thrust::device_vector< float > iVec(ary, ary + size);
+	float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+	thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy(sum));
+	return thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+}
+
+
+__global__ void d_computeCubeColorHist(float density, float brightness,
+	float3 eyeInLocal, float3 viewVec, float3 upVec, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist0, float *hist1, float *hist2, float *hist3, float *hist4, float *hist5, int nbins, bool useHist, bool useLabelCount)//, bool useDist)
+{
+
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= numSphereSample)	return;
+
+	const float opacityThreshold = 0.95f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	eyeRay.d = make_float3(sphereSamples[3 * i], sphereSamples[3 * i + 1], sphereSamples[3 * i + 2]);
+
+	float tnear, tfar;
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+	intersectBox2(eyeRay, boxMin, boxMax, &tnear, &tfar);
+	tnear = 0.01f;	//!!!NOTE!!! this tnear is not in the clip space but in the original space
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+
+	unsigned short label = 0;
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeVal, coord.x, coord.y, coord.z);
+		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+		// lookup in transfer function texture
+		float4 col;
+
+		float3 cc;
+		if (useColor)
+			cc = GetColourDiverge2(clamp(funcRes, 0.0f, 1.0f));
+		else
+			cc = make_float3(funcRes, funcRes, funcRes);
+
+		////currently ignore lighting
+		col = make_float4(la*cc, funcRes);
+
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			break;
 		}
-		else if (useHist){
-			thrust::device_vector< float > iVec(d_hist, d_hist + nbins);
-			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy((float)numSphereSample));
-			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+		else if (useLabelCount){
+			unsigned short curlabel = tex3D(volumeLabel, coord.x, coord.y, coord.z);
+			if (curlabel > label)
+			{
+				label = curlabel;
+			}
 		}
-		else if (useTrad){
-			thrust::device_vector< float > iVec(d_r, d_r + numSphereSample);
-			float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
-			thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy(sum));
-			ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
+
+		t += tstep;
+		if (t > tfar){
+			break;
+		}
+		pos += step;
+	}
+	sum *= brightness;
+
+	//float uv = sum.w; //use density
+	float uv = sum.x;// !!! NOTE !!! this is only true for grey scale color
+
+	//r[i] = uv; //currently not need this
+
+	//if (useLabelCount){
+	//	r[i] = label;
+	//	if (useHist){
+	//		int bin;
+	//		if (label > 0)
+	//			bin = 1;
+	//		else
+	//			bin = 0;
+	//		atomicAdd(hist + bin, 1);
+	//	}
+	//}
+	//else if (useDist){
+	//	float dis;
+	//	if (uv < 0.00001)
+	//		dis = 0;
+	//	else
+	//		dis = t;
+	//	r[i] = uv;
+	//	if (useHist){
+	//		float maxDist = fmaxf(fmaxf(boxMax.x, boxMax.y), boxMax.z);
+	//		float minDist = 0;
+	//		// !!! change the range into [0,1] !!!
+	//		int bin = min((int)((dis - minDist) / (maxDist - minDist) *nbins), nbins - 1);
+	//		atomicAdd(hist + bin, 1);
+	//	}
+	//}
+	//else{
+	//	if (useHist){
+	//		// !!! this is true only when we know uv is in [0,1] !!!
+	//		int bin = min((int)(uv*nbins), nbins - 1);
+	//		atomicAdd(hist + bin, 1);
+	//	}
+	//}
+
+	//if (useHist){
+
+	int bin;
+	if (useLabelCount){
+		if (label > 0)
+			bin = 1;
+		else
+			bin = 0;
+	}
+	else{
+		// !!! this is true only when we know uv is in [0,1] !!!
+		bin = min((int)(uv*nbins), nbins - 1);
+	}
+		//atomicAdd(hist + bin, 1);
+
+		//suppose x coord is along viewVew, suppose upVec and viewVew are normalized and perpendicular
+		float3 sidevec = cross(upVec, viewVec);
+		float rayz = dot(eyeRay.d, upVec), rayx = dot(eyeRay.d, viewVec), rayy = dot(eyeRay.d, sidevec);
+
+		float xabs = abs(rayx), yabs = abs(rayy), zabs = abs(rayz);
+		if (xabs > yabs && xabs > zabs){
+			if (rayx > 0){ //front
+				atomicAdd(hist0 + bin, 1);
+			}
+			else{ //back
+				atomicAdd(hist1 + bin, 1);
+			}
+		}
+		else if (yabs > xabs && yabs > zabs){
+			if (rayy > 0){ //left
+				atomicAdd(hist2 + bin, 1);
+			}
+			else{ //right
+				atomicAdd(hist3 + bin, 1);
+			}
+		}
+		else{ //zabs is the max
+			if (rayz > 0){ //up
+				atomicAdd(hist4 + bin, 1);
+			}
+			else{ //below
+				atomicAdd(hist5 + bin, 1);
+			}
+		}
+	//}
+}
+
+void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir)
+{
+	int threadsPerBlock = 64;
+	int blocksPerGrid = (numSphereSample + threadsPerBlock - 1) / threadsPerBlock;
+
+//	cudaMemset(d_hist, 0, sizeof(float)*nbins);
+	for (int i = 0; i < 6; i++){
+		cudaMemset(cubeFaceDist[i], 0, sizeof(float)*nbins);
+	}
+
+	if (useLabelCount && !labelBeenSet){
+		std::cout << "label not set yet! " << std::endl;
+		exit(0);
+	}
+
+//	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist);
+
+	d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceDist[0], cubeFaceDist[1], cubeFaceDist[2], cubeFaceDist[3], cubeFaceDist[4], cubeFaceDist[5], nbins, useHist, useLabelCount);
+
+	for (int i = 0; i < 6; i++){
+		
+		if (useHist){
+			if (useLabelCount){
+				cubeInfo[i] = computeVectorEntropy(cubeFaceDist[i], maxLabel + 1);
+			}
+			else if (useColor){
+				cubeInfo[i] = computeVectorEntropy(cubeFaceDist[i], nbins);
+			}
 		}
 		else{
 			std::cout << "entropy computation not defined! " << std::endl;
 			exit(0);
 		}
-	}
 
-	return ret;
+	}
+	return;
 }

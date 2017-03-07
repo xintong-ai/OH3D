@@ -41,7 +41,10 @@ protected:
 	//utility funcs
 	float3 inline qvec3ToFloat3(QVector3D q){ return make_float3(q.x(), q.y(), q.z()); }
 	QVector3D inline float3ToQvec3(float3 f){ return QVector3D(f.x, f.y, f.z); }
+
 public:
+	bool justChanged = false; //currently just cover the change of model and view mat, not prj mat
+
 	GLMatrixManager(float3 posMin = make_float3(0, 0, 0), float3 posMax = make_float3(0, 0, 0));
 	void setDefaultForImmersiveMode();
 	

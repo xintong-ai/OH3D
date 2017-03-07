@@ -53,19 +53,21 @@ Window::Window()
 		std::shared_ptr<SolutionParticleReader> reader;
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),130);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
-		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
 	}
 	else{
 		std::shared_ptr<BinaryParticleReader> reader;
 		reader = std::make_shared<BinaryParticleReader>(dataPath.c_str());
-		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
 		deformForceConstant = 2;
 		//inputParticle->featureReshuffle();
 	}
+
+	posMin = inputParticle->posMin;
+	posMax = inputParticle->posMax;
+
 
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
 

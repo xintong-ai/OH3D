@@ -17,8 +17,9 @@ GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 	rotMat.setToIdentity();
 	UpdateModelMatrixFromDetail();
 
-	eyeInWorld = QVector3D(0, 0, 300);
-	upVecInWorld = QVector3D(0, 1, 0);;
+	eyeInWorld = QVector3D(0, 0, 300); //may need adjust wisely. for data whose range is small, 300 is a number which is too big
+	//eyeInWorld = QVector3D(0, 0, 30);
+	upVecInWorld = QVector3D(0, 1, 0);
 	viewVecInWorld = QVector3D(0, 0, -1);
 	UpdateViewMatrixFromDetail();
 
@@ -70,12 +71,14 @@ void GLMatrixManager::UpdateModelMatrixFromDetail()
 	modeMat = modeMat * rotMat;
 	modeMat.scale(scaleEff);
 	modeMat.translate(transVec);
+	justChanged = true;
 }
 
 void GLMatrixManager::UpdateViewMatrixFromDetail()
 {
 	viewMat.setToIdentity();
 	viewMat.lookAt(eyeInWorld, eyeInWorld + viewVecInWorld, upVecInWorld);
+	justChanged = true;
 }
 
 void GLMatrixManager::UpdateProjMatrixFromDetail(float width, float height)

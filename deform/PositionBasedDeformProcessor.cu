@@ -263,7 +263,7 @@ void PositionBasedDeformProcessor::computeTunnelInfo()
 	else{
 		rectDeformDir2nd = matrixMgr->getViewVecInLocal();
 	}
-	std::cout << "rectDeformDir2nd: " << rectDeformDir2nd.x << " " << rectDeformDir2nd.y << " " << rectDeformDir2nd.z << std::endl;
+	//std::cout << "rectDeformDir2nd: " << rectDeformDir2nd.x << " " << rectDeformDir2nd.y << " " << rectDeformDir2nd.z << std::endl;
 }
 
 bool PositionBasedDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
