@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "TransformFunc.h"
 
 GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 {
@@ -26,9 +27,11 @@ GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 	projAngle = 30;
 	zNear = 0.1;
 	zFar = 1000;
+	UpdateProjMatrixFromDetail();
+
 }
 
-void GLMatrixManager::setDefaultForImmersiveMode()  //must be called after setVol()
+void GLMatrixManager::setDefaultForImmersiveMode()
 {
 	//give some inital values for immersive mode
 
@@ -50,10 +53,14 @@ void GLMatrixManager::setDefaultForImmersiveMode()  //must be called after setVo
 	zFar = 1000;
 }
 
-
-void GLMatrixManager::GetProjection(float ret[16], float width, float height)
+void GLMatrixManager::setWinSize(float w, float h)
 {
-	UpdateProjMatrixFromDetail(width, height);//different from mv matrix, prj relys on width and height
+	width = w; height = h;
+	UpdateProjMatrixFromDetail();
+}
+
+void GLMatrixManager::GetProjection(float ret[16])
+{
 	QMatrix4x4 pm = projMat.transposed();
 	pm.copyDataTo(ret);
 	return;
@@ -72,6 +79,7 @@ void GLMatrixManager::UpdateModelMatrixFromDetail()
 	modeMat.scale(scaleEff);
 	modeMat.translate(transVec);
 	justChanged = true;
+	updateDepthRange();
 }
 
 void GLMatrixManager::UpdateViewMatrixFromDetail()
@@ -79,9 +87,17 @@ void GLMatrixManager::UpdateViewMatrixFromDetail()
 	viewMat.setToIdentity();
 	viewMat.lookAt(eyeInWorld, eyeInWorld + viewVecInWorld, upVecInWorld);
 	justChanged = true;
+	updateDepthRange();
 }
 
 void GLMatrixManager::UpdateProjMatrixFromDetail(float width, float height)
+{
+	projMat.setToIdentity();
+	projMat.perspective(projAngle, (float)width / height, zNear, zFar);
+	updateDepthRange();
+}
+
+void GLMatrixManager::UpdateProjMatrixFromDetail()
 {
 	projMat.setToIdentity();
 	projMat.perspective(projAngle, (float)width / height, zNear, zFar);
@@ -97,6 +113,11 @@ void GLMatrixManager::GetModelViewMatrix(float mv[16])
 float3 GLMatrixManager::DataCenter()
 {
 	return (dataMin + dataMax) * 0.5;
+}
+
+void GLMatrixManager::GetClipDepthRangeOfVol(float2 & dr)
+{
+	dr = clipDepthRangeOfVol;
 }
 
 void GLMatrixManager::SaveState(const char* filename)
@@ -133,4 +154,31 @@ void GLMatrixManager::LoadState(const char* filename)
 
 	ifs.close();
 
+}
+void GLMatrixManager::updateDepthRange()
+{
+	float modelview[16];
+	float projection[16];
+	GetModelViewMatrix(modelview);
+	GetProjection(projection);
+
+	float4 p[8];
+	p[0] = make_float4(dataMin.x, dataMin.y, dataMin.z, 1.0f);
+	p[1] = make_float4(dataMin.x, dataMin.y, dataMax.z, 1.0f);
+	p[2] = make_float4(dataMin.x, dataMax.y, dataMin.z, 1.0f);
+	p[3] = make_float4(dataMin.x, dataMax.y, dataMax.z, 1.0f);
+	p[4] = make_float4(dataMax.x, dataMin.y, dataMin.z, 1.0f);
+	p[5] = make_float4(dataMax.x, dataMin.y, dataMax.z, 1.0f);
+	p[6] = make_float4(dataMax.x, dataMax.y, dataMin.z, 1.0f);
+	p[7] = make_float4(dataMax.x, dataMax.y, dataMax.z, 1.0f);
+
+	float4 pClip[8];
+	std::vector<float> clipDepths;
+	for (int i = 0; i < 8; i++) {
+		pClip[i] = Object2Clip(p[i], modelview, projection);
+		clipDepths.push_back(pClip[i].z);
+	}
+	clipDepthRangeOfVol.x = clamp(*std::min_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
+	clipDepthRangeOfVol.y = clamp(*std::max_element(clipDepths.begin(), clipDepths.end()), 0.0f, 1.0f);
+	//std::cout << "depthRange: " << depthRange.x << "," << depthRange.y << std::endl;
 }

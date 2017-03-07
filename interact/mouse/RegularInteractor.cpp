@@ -1,6 +1,16 @@
 #include "RegularInteractor.h"
 #include "GLMatrixManager.h"
 
+void RegularInteractor::mouseMoveMatrix(float fromX, float fromY, float toX, float toY, int modifier, int mouseKey)
+{
+	if (mouseKey == 1){
+		Rotate(fromX, fromY, toX, toY);
+	}
+	else if (mouseKey == 2){
+		Translate(toX - fromX, toY - fromY);
+	}
+}
+
 void RegularInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
 	if (!isActive)

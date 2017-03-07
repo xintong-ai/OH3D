@@ -4,6 +4,18 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+void ImmersiveInteractor::mouseMoveMatrix(float fromX, float fromY, float toX, float toY, int modifier, int mouseKey)
+{
+	if (!noMoveMode){
+		if (mouseKey == 1){
+			Rotate(fromX, fromY, toX, toY);
+		}
+		else if (mouseKey == 2){
+			Translate(toX - fromX, toY - fromY);
+		}
+	}
+}
+
 void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 {
 	if (!isActive)
@@ -68,22 +80,33 @@ void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 
 
 void ImmersiveInteractor::Translate(float x, float y)
-{/*
-	if (!isActive)
-		return;
-
-	QMatrix4x4 m, mv;
-	matrixMgr->GetModelMatrix(m);
-
-	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
-	QVector3D dir = QVector3D::crossProduct(eyeInWorld, matrixMgr->getUpVecInWorld())*x ;
-		
-	QVector3D newCofInWorld = dir;
-
-	matrixMgr->setCofLocal(m.inverted().map(newCofInWorld));
-	*/
+{
 	return;
 };
+
+
+void ImmersiveInteractor::mousePress(int x, int y, int modifier, int mouseKey)
+{
+	if (noMoveMode){
+		if (mouseKey == 1)
+		{
+			matrixMgr->toRotateLeft = true;
+		}
+		else if (mouseKey == 2)
+		{
+			matrixMgr->toRotateRight = true;
+		}
+	}
+}
+
+void ImmersiveInteractor::mouseRelease(int x, int y, int modifier)
+{
+	if (noMoveMode){
+		matrixMgr->toRotateLeft = false;
+		matrixMgr->toRotateRight = false;
+	}
+}
+
 
 bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 {

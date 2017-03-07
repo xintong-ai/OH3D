@@ -65,6 +65,7 @@ public:
 
 	float3 DataCenter();	
 	void GetPosRange(float3 &pmin, float3 &pmax);
+	void GetDepthRange(float2 &dr);
 
 	void UpdateGL();
 
@@ -92,6 +93,7 @@ protected:
 	std::map<std::string, Renderable*> renderers;
 	std::map<std::string, Processor*> processors;
 	std::map<std::string, Interactor*> interactors;
+	std::map<std::string, Interactor*> matrixInteractors;
 
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;

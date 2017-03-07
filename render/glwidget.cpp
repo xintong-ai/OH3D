@@ -42,6 +42,7 @@ void GLWidget::AddInteractor(const char* name, void* r)
 	((Interactor*)r)->SetActor(this);
 }
 
+
 GLWidget::~GLWidget()
 {
 	sdkDeleteTimer(&timer);
@@ -104,7 +105,7 @@ void GLWidget::paintGL() {
 	GLfloat modelview[16];
 	GLfloat projection[16];
 	matrixMgr->GetModelViewMatrix(modelview);
-	matrixMgr->GetProjection(projection, width, height);
+	matrixMgr->GetProjection(projection);
 
 
 	for (auto processor : processors)
@@ -174,7 +175,9 @@ void GLWidget::resizeGL(int w, int h)
     width = w;
     height = h;
 	std::cout << "OpenGL window size:" << w << "x" << h << std::endl;
-
+	
+	matrixMgr->setWinSize(w, h);
+	
 	for (auto processor : processors)
 		processor.second->resize(w, h);
 
@@ -188,40 +191,8 @@ void GLWidget::resizeGL(int w, int h)
 			renderer.second->init();
         initialized = true;
     }
-    //glMatrixMode(GL_PROJECTION);
-    //glLoadIdentity();
-    //glMatrixMode(GL_MODELVIEW);
 }
 
-void GLWidget::mouseMoveEvent(QMouseEvent *event)
-{
-	if (pinching)
-		return;
-
-	QPointF pos = event->pos();
-	if (INTERACT_MODE::TRANSFORMATION == interactMode) {
-		if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
-			QPointF from = pixelPosToViewPos(prevPos);
-			QPointF to = pixelPosToViewPos(pos);
-
-			for (auto interactor : interactors)
-				interactor.second->Rotate(from.x(), from.y(), to.x(), to.y());
-		}
-		else if (event->buttons() & Qt::RightButton) {
-			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
-
-			for (auto interactor : interactors)
-				interactor.second->Translate(diff.x(), diff.y());
-		}
-	}
-	else{
-		QPoint posGL = pixelPosToGLPos(event->pos());
-		for (auto interactor : interactors)
-			interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
-	}
-    prevPos = pos;
-    update();
-}
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
@@ -234,19 +205,54 @@ void GLWidget::mousePressEvent(QMouseEvent *event)
 
 	makeCurrent();
 
+	int mouseKey = 0;
+	if (event->buttons() & Qt::LeftButton){
+		mouseKey = 1;
+	}
+	else if (event->buttons() & Qt::RightButton){
+		mouseKey = 2;
+	}
 	for (auto interactor : interactors)
-		interactor.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+		interactor.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), mouseKey);
 
-    prevPos = pos;
+	prevPos = pos;
+}
+
+
+void GLWidget::mouseMoveEvent(QMouseEvent *event)
+{
+	//if (pinching)
+		//return;
+
+	QPointF pos = event->pos();
+	if (INTERACT_MODE::TRANSFORMATION == interactMode) {
+		QPointF from = pixelPosToViewPos(prevPos);
+		QPointF to = pixelPosToViewPos(pos);
+		int mouseKey = 0;
+		if (event->buttons() & Qt::LeftButton){
+			mouseKey = 1;
+		}
+		else if (event->buttons() & Qt::RightButton){
+			mouseKey = 2;
+		}
+		for (auto interactor : interactors)
+			interactor.second->mouseMoveMatrix(from.x(), from.y(), to.x(), to.y(), QApplication::keyboardModifiers(), mouseKey);
+	}
+	else{
+		QPoint posGL = pixelPosToGLPos(pos);
+		for (auto interactor : interactors)
+			interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	}
+	
+	prevPos = pos;
+    update();
 }
 
 void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 {
 	//if (pinching)
 	//	return;
-
-	pinched = false;
-
+	//pinched = false;
 	QPoint posGL = pixelPosToGLPos(event->pos());
 	for (auto interactor : interactors)
 		interactor.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
@@ -416,6 +422,10 @@ void GLWidget::GetPosRange(float3 &pmin, float3 &pmax)
 {
 	matrixMgr->GetVol(pmin, pmax);
 }
+void GLWidget::GetDepthRange(float2 &dr)
+{
+	matrixMgr->GetClipDepthRangeOfVol(dr);
+}
 
 void GLWidget::GetModelview(float* m)
 {
@@ -424,7 +434,7 @@ void GLWidget::GetModelview(float* m)
 
 void GLWidget::GetProjection(float* m)
 {
-	matrixMgr->GetProjection(m, width, height);
+	matrixMgr->GetProjection(m);
 }
 
 void GLWidget::SetInteractMode(INTERACT_MODE v)

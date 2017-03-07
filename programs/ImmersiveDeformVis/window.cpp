@@ -124,7 +124,6 @@ Window::Window()
 	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 	
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
-	animationByMatrixProcessor->isActive = false;
 	animationByMatrixProcessor->setViews(views);
 
 	useLabel = true;
@@ -151,7 +150,7 @@ Window::Window()
 		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
 		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
 	}
-	//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
+	openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	if (useLabel){
 		//openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
 	}
@@ -179,6 +178,9 @@ Window::Window()
 	regularInteractor->setMatrixMgr(matrixMgrMini);
 	regularInteractor->isActive = false;
 	immersiveInteractor->isActive = true;
+
+	immersiveInteractor->noMoveMode = true;
+	
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
 	if (useLabel){
@@ -394,9 +396,9 @@ Window::Window()
 	openGLMini->AddRenderable("4volume", volumeRenderableMini.get());
 	regularInteractorMini = std::make_shared<RegularInteractor>();
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
-	openGLMini->AddInteractor("regular", regularInteractorMini.get());
+	openGLMini->AddInteractor("1regular", regularInteractorMini.get());
 
-	//assistLayout->addWidget(openGLMini.get(), 3);
+	assistLayout->addWidget(openGLMini.get(), 3);
 
 	helper.setData(inputVolume, labelVolLocal);
 	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);

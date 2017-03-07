@@ -18,7 +18,7 @@ public:
 
 	void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 
-	void mousePress(int x, int y, int modifier) override;
+	void mousePress(int x, int y, int modifier, int mouseKey = 0) override;
 	void mouseRelease(int x, int y, int modifier) override;
 	void mouseMove(int x, int y, int modifier) override;
 	bool MouseWheel(int x, int y, int modifier, float delta)  override;

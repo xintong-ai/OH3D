@@ -13,17 +13,15 @@ public:
 
 	Interactor(){};
 	~Interactor(){};
-	
-	virtual void Rotate(float fromX, float fromY, float toX, float toY ){ return; };
-	virtual void Translate(float x, float y){ return; };
 
 	void SetActor(GLWidget* _actor) {
 		actor = _actor;
 	}
 
-	virtual void mousePress(int x, int y, int modifier) {}
+	virtual void mousePress(int x, int y, int modifier, int mouseKey = 0) {}
 	virtual void mouseRelease(int x, int y, int modifier) {}
 	virtual void mouseMove(int x, int y, int modifier) {}
+	virtual void mouseMoveMatrix(float fromX, float fromY, float toX, float toY, int modifier, int mouseKey) {}
 	virtual bool MouseWheel(int x, int y, int modifier, float delta){ return false; };
 	virtual void keyPress(char key) {}
 

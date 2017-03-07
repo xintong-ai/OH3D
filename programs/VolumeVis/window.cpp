@@ -34,47 +34,19 @@ Window::Window()
 
 	int3 dims;
 	float3 spacing;
-	if (std::string(dataPath).find("MGHT2") != std::string::npos){
-		dims = make_int3(320, 320, 256);
-		spacing = make_float3(0.7, 0.7, 0.7);
-	}
-	else if (std::string(dataPath).find("MGHT1") != std::string::npos){
-		dims = make_int3(256, 256, 176);
-		spacing = make_float3(1.0, 1.0, 1.0);
-	}
-	else if (std::string(dataPath).find("nek128") != std::string::npos){
-		dims = make_int3(128, 128, 128);
-		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
-	}
-	else if (std::string(dataPath).find("nek256") != std::string::npos){
-		dims = make_int3(256, 256, 256);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("cthead") != std::string::npos){
-		dims = make_int3(208, 256, 225);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("brat") != std::string::npos){
-		dims = make_int3(160, 216, 176);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("181") != std::string::npos){
-		dims = make_int3(181, 217, 181);
-		spacing = make_float3(1, 1, 1);
-	}
-	else{
-		std::cout << "volume data name not recognized" << std::endl;
-		exit(0);
-	}
+
+	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
+	std::string subfolder;
+	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	inputVolume = std::make_shared<Volume>(true);
 
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
-		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
+		//reader->OutputToVolumeByNormalizedVecMag(inputVolume);
 		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
 		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
+		reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
 		
 		reader.reset();
 	}
@@ -123,7 +95,7 @@ Window::Window()
 	lensRenderable = std::make_shared<LensRenderable>(&lenses);
 	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
 	
-	volumeRenderable->rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false);
+	volumeRenderable->rcp = rcp;
 	volumeRenderable->setBlending(true);
 
 	openGL->AddRenderable("2lenses", lensRenderable.get());

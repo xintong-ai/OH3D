@@ -19,7 +19,7 @@ public:
 
 	//void SetLenses(std::vector<Lens*> *_lenses){ lenses = _lenses; }
 
-	void mousePress(int x, int y, int modifier) override;
+	void mousePress(int x, int y, int modifier, int mouseKey = 0) override;
 	
 };
 #endif

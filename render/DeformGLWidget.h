@@ -19,9 +19,6 @@ protected:
 	virtual void pinchTriggered(QPinchGesture *gesture) override;
 
 private:
-	void UpdateDepthRange();
-
-
 	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE;
 
 private slots:

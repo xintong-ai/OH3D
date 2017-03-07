@@ -3,7 +3,7 @@
 #include "glwidget.h"
 #include "Lens.h"
 
-void LensInteractor::mousePress(int x, int y, int modifier)
+void LensInteractor::mousePress(int x, int y, int modifier, int mouseKey)
 {
 	int2 winSize = actor->GetWindowSize();
 	GLfloat modelview[16];

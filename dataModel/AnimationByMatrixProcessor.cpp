@@ -6,7 +6,7 @@
 void AnimationByMatrixProcessor::startAnimation()
 {
 	if (views.size() > 1){
-		isActive = true;
+		animeStarted = true;
 		start = std::clock();
 	}
 	else{
@@ -19,21 +19,43 @@ bool AnimationByMatrixProcessor::process(float modelview[16], float projection[1
 	if (!isActive)
 		return false;
 
-	double past = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-	if (past >= totalDuration){
-		//end animation
-		isActive = false;
-		std::cout << "animiation ends" << std::endl;
+	if (matrixMgr->toRotateLeft){
+		QMatrix4x4 oriRotMat;
+		matrixMgr->GetRotMatrix(oriRotMat);
+		QVector3D axis = QVector3D(oriRotMat*QVector4D(targetUpVecInLocal.x, targetUpVecInLocal.y, targetUpVecInLocal.z, 0.0));
+		QMatrix4x4 newRotation;
+		newRotation.rotate(-1, axis);
+		matrixMgr->setRotMat(newRotation*oriRotMat);
 	}
+	else if (matrixMgr->toRotateRight){
+		QMatrix4x4 oriRotMat;
+		matrixMgr->GetRotMatrix(oriRotMat);
+		QVector3D axis = QVector3D(oriRotMat*QVector4D(targetUpVecInLocal.x, targetUpVecInLocal.y, targetUpVecInLocal.z, 0.0));
+		QMatrix4x4 newRotation;
+		newRotation.rotate(1, axis);
+		matrixMgr->setRotMat(newRotation*oriRotMat);
+	}
+	else if (animeStarted){	
+		double past = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+		if (past > totalDuration){
+			//end animation
+			isActive = false;
+			std::cout << "animiation ends" << std::endl;
+			return false;
+		}
 
-	int n = views.size();
-	double p = past / totalDuration * (n - 1);
-	int n1 = floor(p), n2 = n1 + 1;
-	if (n2 < n){
-		float3 view = views[n1] * (n2 - p) + views[n2] * (p - n1);
-		//std::cout << view.x << " " << view.y << " " << view.z << std::endl;
-		matrixMgr->moveEyeInLocalByModeMat(view);
+		int n = views.size();
+		double p = past / totalDuration * (n - 1);
+		int n1 = floor(p), n2 = n1 + 1;
+		if (n2 < n){
+			float3 view = views[n1] * (n2 - p) + views[n2] * (p - n1);
+			//std::cout << view.x << " " << view.y << " " << view.z << std::endl;
+			matrixMgr->moveEyeInLocalByModeMat(view);
+		}
+		return true;
 	}
-	return false;
+	else{
+		return false;
+	}
 }
 

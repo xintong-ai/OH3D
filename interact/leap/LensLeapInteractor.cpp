@@ -342,7 +342,7 @@ void LensLeapInteractor::ChangeLensCenterbyLeap(Lens *l, float3 p)
 		float3 leapPos = GetNormalizedLeapPos(p);
 		const float aa = 0.02f;
 		float2 depthRange;
-		((DeformGLWidget*)actor)->GetDepthRange(depthRange);
+		actor->GetDepthRange(depthRange);
 
 		bool usingVR = false;
 		if (usingVR){
@@ -374,7 +374,7 @@ float3 LensLeapInteractor::GetTransferredLeapPos(float3 p)
 	actor->GetProjection(projection);
 
 	float2 depthRange;
-	((DeformGLWidget*)actor)->GetDepthRange(depthRange);
+	actor->GetDepthRange(depthRange);
 
 	float leapClipx = leapPosNormalized.x * 2 - 1;
 	float leapClipy = leapPosNormalized.y * 2 - 1;

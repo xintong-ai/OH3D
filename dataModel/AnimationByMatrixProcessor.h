@@ -24,10 +24,12 @@ public:
 private:
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
+	bool animeStarted = false;
 	std::clock_t start;
 	double totalDuration = 5;
-
 	std::vector<float3> views;
+
+	float3 targetUpVecInLocal = make_float3(0, 0, 1);	//note! the vector make_float3(0,0,1) may also be used in ImmersiveInteractor class
 
 public:
 	bool process(float modelview[16], float projection[16], int winW, int winH) override;

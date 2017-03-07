@@ -31,23 +31,30 @@ protected:
 	//float zNear = 0.1;
 	//float zFar = 100;
 	float projAngle = 30;
+	float width = 1, height = 1;
 	void UpdateProjMatrixFromDetail(float width, float height);
+	void UpdateProjMatrixFromDetail();
+
 	QMatrix4x4 projMat;
 
 	//data related
 	float3 dataMin = make_float3(0, 0, 0);
 	float3 dataMax = make_float3(10, 10, 10);
-	
+	float2 clipDepthRangeOfVol = make_float2(0, 0);
+
 	//utility funcs
 	float3 inline qvec3ToFloat3(QVector3D q){ return make_float3(q.x(), q.y(), q.z()); }
 	QVector3D inline float3ToQvec3(float3 f){ return QVector3D(f.x, f.y, f.z); }
+
+	void updateDepthRange();
 
 public:
 	bool justChanged = false; //currently just cover the change of model and view mat, not prj mat
 
 	GLMatrixManager(float3 posMin = make_float3(0, 0, 0), float3 posMax = make_float3(0, 0, 0));
 	void setDefaultForImmersiveMode();
-	
+	void setWinSize(float w, float h);
+
 	float zNear = 0.1;
 	float zFar = 1000;
 	
@@ -120,15 +127,17 @@ public:
 	void GetModelViewMatrix(QMatrix4x4 &mv){ mv = viewMat*modeMat; };
 	
 	void GetModelViewMatrix(float mv[16]);
-	void GetProjection(float ret[16], float width, float height);
+	void GetProjection(float ret[16]);
 	//when asking the projection matrix with the width and height, compute the matrix using the given width and height, and modify the stored projMat
 
 
 	float3 DataCenter();
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
-	
+	void GetClipDepthRangeOfVol(float2 & depthRange);
 	void SaveState(const char* filename);
 	void LoadState(const char* filename);
 
+
+	bool toRotateLeft = false, toRotateRight = false;//to receive change requirement, then the GLMatrixManger object will be changed in certain processor
 };
 #endif //GL_MATRIX_MANAGER_H
