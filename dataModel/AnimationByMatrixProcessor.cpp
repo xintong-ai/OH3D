@@ -19,12 +19,13 @@ bool AnimationByMatrixProcessor::process(float modelview[16], float projection[1
 	if (!isActive)
 		return false;
 
+	float rotationDegree = 2;
 	if (matrixMgr->toRotateLeft){
 		QMatrix4x4 oriRotMat;
 		matrixMgr->GetRotMatrix(oriRotMat);
 		QVector3D axis = QVector3D(oriRotMat*QVector4D(targetUpVecInLocal.x, targetUpVecInLocal.y, targetUpVecInLocal.z, 0.0));
 		QMatrix4x4 newRotation;
-		newRotation.rotate(-1, axis);
+		newRotation.rotate(-rotationDegree, axis);
 		matrixMgr->setRotMat(newRotation*oriRotMat);
 	}
 	else if (matrixMgr->toRotateRight){
@@ -32,7 +33,7 @@ bool AnimationByMatrixProcessor::process(float modelview[16], float projection[1
 		matrixMgr->GetRotMatrix(oriRotMat);
 		QVector3D axis = QVector3D(oriRotMat*QVector4D(targetUpVecInLocal.x, targetUpVecInLocal.y, targetUpVecInLocal.z, 0.0));
 		QMatrix4x4 newRotation;
-		newRotation.rotate(1, axis);
+		newRotation.rotate(rotationDegree, axis);
 		matrixMgr->setRotMat(newRotation*oriRotMat);
 	}
 	else if (animeStarted){	

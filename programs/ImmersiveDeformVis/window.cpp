@@ -89,7 +89,7 @@ Window::Window()
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	matrixMgr->setDefaultForImmersiveMode();		
 	if (std::string(dataPath).find("engine") != std::string::npos){
-		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -50, 60));
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -20, 60));
 	}
 
 	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);

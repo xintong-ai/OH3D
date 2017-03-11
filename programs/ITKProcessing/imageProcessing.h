@@ -65,18 +65,43 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
 		StructuringElementType;
 	StructuringElementType structuringElement;
-	int radius = 4;//for 181
-	//int radius = 1;//for engine
-	structuringElement.SetRadius(radius);
-	structuringElement.CreateStructuringElement();
-	typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
-	OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
-	openingFilter->SetInput(importFilter->GetOutput());
-	openingFilter->SetKernel(structuringElement);
-	openingFilter->Update();
+	//int radius = 4;//for 181
+	int radius = 1;//for engine
+	ImageType::Pointer openedImage;
+	if (radius > 0)
+	{
+		structuringElement.SetRadius(radius);
+		structuringElement.CreateStructuringElement();
+		typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
+		OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
+		openingFilter->SetInput(importFilter->GetOutput());
+		openingFilter->SetKernel(structuringElement);
+		openingFilter->Update();
+		openedImage = openingFilter->GetOutput();
+
+	}
+	else{
+		openedImage = importFilter->GetOutput();
+
+		for (int k = 0; k < dims.z; k ++){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					int v = openedImage->GetPixel(pixelIndex);
+					if (v>0){
+						openedImage->SetPixel(pixelIndex, 1);
+					}
+				}
+			}
+		}
+
+	}
 
 #ifdef WRITEIMAGETODISK
-	writer->SetInput(openingFilter->GetOutput());
+	writer->SetInput(openedImage);
 	writer->SetFileName("opened.hdr");
 	writer->Update();
 #endif
@@ -86,7 +111,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		ConnectedComponentImageFilterType;
 	ConnectedComponentImageFilterType::Pointer connected =
 		ConnectedComponentImageFilterType::New();
-	connected->SetInput(openingFilter->GetOutput());
+	connected->SetInput(openedImage);
 	connected->Update();
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(connected->GetOutput());
