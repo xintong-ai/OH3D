@@ -8,6 +8,11 @@ inline QVector3D Leap2QVector(Leap::Vector v)
 	return QVector3D(v.x, v.y, v.z);
 }
 
+inline float3 Leap2float3(Leap::Vector v)
+{
+	return make_float3(v.x, v.y, v.z);
+}
+
 inline QVector<QVector3D> Leap2QVector(std::vector<Leap::Vector> v)
 {
 	QVector<QVector3D> ret;
@@ -41,25 +46,26 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 		//std::cout << "num of hands:" << f.hands().count() << std::endl;
 		if (1 == f.hands().count())
 		{
-
 			Leap::Vector middleTipRight, ringTipRight;
 			GetFingers(rightMostHand, thumbTipRight, indexTipRight, middleTipRight, ringTipRight);
 			//emit UpdateHandsNew(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), QVector3D(0, 0, 0), QVector3D(0, 0, 0), Leap2QVector(middleTipRight), Leap2QVector(ringTipRight), 1);
 			
-			float f = 800;
+			float force = 800;
 			
-			QVector3D rightThumbTip = Leap2QVector(thumbTipRight);
-			QVector3D rightIndexTip = Leap2QVector(indexTipRight);
-			QVector3D rightMiddleTip = Leap2QVector(middleTipRight);
-			QVector3D rightRingTip = Leap2QVector(ringTipRight);
+			float3 rightThumbTip = Leap2float3(thumbTipRight);
+			float3 rightIndexTip = Leap2float3(indexTipRight);
+			float3 rightMiddleTip = Leap2float3(middleTipRight);
+			float3 rightRingTip = Leap2float3(ringTipRight);
 
-			for (auto interactor : interactors)
-				interactor.second->SlotOneHandChanged(
-				make_float3(rightThumbTip.x(), rightThumbTip.y(), rightThumbTip.z()),
-				make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()),
-				make_float3(rightMiddleTip.x(), rightMiddleTip.y(), rightMiddleTip.z()),
-				make_float3(rightRingTip.x(), rightRingTip.y(), rightRingTip.z()),
-				f);
+			float3 leftThumbTip = Leap2float3(thumbTipLeft);
+			float3 leftIndexTip = Leap2float3(indexTipRight);
+			float3 leftMiddleTip = Leap2float3(middleTipRight);
+			float3 leftRingTip = Leap2float3(ringTipRight);
+
+			for (auto interactor : interactors){
+				interactor.second->SlotRightHandChanged(rightThumbTip, rightIndexTip, rightMiddleTip, rightRingTip, force);
+				interactor.second->SlotLeftHandChanged(leftThumbTip, leftIndexTip, leftMiddleTip, leftRingTip);
+			}
 		}
 
 

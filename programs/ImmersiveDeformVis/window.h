@@ -7,30 +7,25 @@
 #include "CMakeConfig.h"
 #include "myDefine.h"
 
-
-
-
 #include "GLWidgetQtDrawing.h"
-
 
 class DataMgr;
 class GLWidget;
-class MarchingCubes;
 class QPushButton;
 class QSlider;
-class Renderable;
 class QCheckBox;
 class QLabel;
 class QRadioButton;
 class QTimer;
 class GLMatrixManager;
+class QLineEdit;
+
 class Volume;
 class VolumeCUDA;
 class VolumeRenderableImmerCUDA;
 class VolumeRenderableCUDA;
 class VolumeRenderableCUDAShader;
 class ImmersiveInteractor;
-class QLineEdit;
 class ScreenBrushInteractor;
 class RegularInteractor;
 class LabelVolumeProcessor;
@@ -40,6 +35,14 @@ class PositionBasedDeformProcessor;
 class SphereRenderable;
 class MatrixMgrRenderable;
 class InfoGuideRenderable;
+
+#ifdef USE_LEAP
+class LeapListener;
+namespace Leap{
+	class Controller;
+}
+class MatrixLeapInteractor;
+#endif
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -102,6 +105,11 @@ private:
 	//for 2d view
 	Helper helper;
 
+#ifdef USE_LEAP
+	LeapListener* listener;
+	Leap::Controller* controller; 
+	std::shared_ptr<MatrixLeapInteractor> matrixMgrLeapInteractor;
+#endif
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
@@ -138,6 +146,7 @@ private slots:
 	void ldSliderValueChanged(int);
 	void lsSliderValueChanged(int);
 
+	void isDeformEnabledClicked(bool b);
 	void isBrushingClicked();
 	void moveToOptimalBtnClicked();
 

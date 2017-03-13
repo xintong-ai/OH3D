@@ -45,6 +45,12 @@ target_link_libraries(${PROJECT_NAME}
 	${ITK_LIBRARIES}
 )
 
+
+if(USE_LEAP)
+	include_directories(${Leap_ROOT_DIR}/include)
+	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
+endif()
+
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
 endif()

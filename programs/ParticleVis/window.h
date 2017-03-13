@@ -9,10 +9,8 @@
 
 class DataMgr;
 class DeformGLWidget;
-class MarchingCubes;
 class QPushButton;
 class QSlider;
-class Renderable;
 class QCheckBox;
 class QLabel;
 class GlyphRenderable;
@@ -29,7 +27,6 @@ class PhysicalParticleDeformProcessor;
 class Lens;
 class RegularInteractor;
 class LensInteractor;
-class LensLeapInteractor;
 
 
 #ifdef USE_LEAP
@@ -38,6 +35,7 @@ class ArrowRenderable; //used to draw leap finger indicators
 namespace Leap{
 	class Controller;
 }
+class LensLeapInteractor;
 #endif
 
 #ifdef USE_OSVR

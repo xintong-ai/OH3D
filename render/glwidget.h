@@ -22,6 +22,7 @@ enum INTERACT_MODE{
 	ADDING_LENS,
 
 	CHANGING_FORCE, //currently only used for Leap
+	PANNING_MATRIX, //currently only used for Leap
 	OTHERS
 };
 

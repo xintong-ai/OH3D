@@ -8,10 +8,8 @@
 
 class DataMgr;
 class DeformGLWidget;
-class MarchingCubes;
 class QPushButton;
 class QSlider;
-class Renderable;
 class QCheckBox;
 class QLabel;
 class QRadioButton;

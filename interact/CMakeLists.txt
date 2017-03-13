@@ -36,8 +36,8 @@ if(USE_LEAP)
 	find_package(Leap)
 	include_directories(${Leap_ROOT_DIR}/include)
 	set( HDRS ${HDRS} leap/LeapInteraction.h leap/LeapListener.h 
-		leap/LeapInteractor.h leap/LensLeapInteractor.h)
-	set( SRCS ${SRCS} leap/LeapListener.cpp leap/LensLeapInteractor.cpp)
+		leap/LeapInteractor.h leap/LensLeapInteractor.h leap/MatrixLeapInteractor.h)
+	set( SRCS ${SRCS} leap/LeapListener.cpp leap/LensLeapInteractor.cpp leap/MatrixLeapInteractor.cpp)
 endif()
 
 if(USE_CONTROLLER)

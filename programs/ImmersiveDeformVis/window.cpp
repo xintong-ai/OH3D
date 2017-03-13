@@ -31,13 +31,18 @@
 #include "VRVolumeRenderableCUDA.h"
 #endif
 
+#ifdef USE_LEAP
+#include <Leap.h>
+#include "leap/LeapListener.h"
+#include "leap/MatrixLeapInteractor.h"
+#endif
+
 #include "VolumeRenderableCUDAKernel.h"
 
 
 Window::Window()
 {
-
-	setWindowTitle(tr("Interactive Glyph Visualization"));
+	setWindowTitle(tr("Egocentric VR Volume Visualization"));
 
 	////////////////////////////////prepare data////////////////////////////////
 	//////////////////Volume and RayCastingParameters
@@ -200,7 +205,16 @@ Window::Window()
 		openGL->AddInteractor("3screenMarker", sbInteractor.get());
 	}
 
+#ifdef USE_LEAP
+	listener = new LeapListener();
+	controller = new Leap::Controller();
+	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
+	controller->addListener(*listener);
 
+	matrixMgrLeapInteractor = std::make_shared<MatrixLeapInteractor>(matrixMgr);
+	matrixMgrLeapInteractor->SetActor(openGL.get());
+	listener->AddLeapInteractor("matrixMgr", (LeapInteractor*)(matrixMgrLeapInteractor.get()));
+#endif
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
@@ -213,6 +227,12 @@ Window::Window()
 	std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
+
+
+	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
+	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+	controlLayout->addWidget(isDeformEnabled);
+	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 
 	QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
 	isBrushingCb->setChecked(sbInteractor->isActive);
@@ -373,7 +393,7 @@ Window::Window()
 	rcLayout->addLayout(lsLayout);
 	rcGroupBox->setLayout(rcLayout);
 
-	controlLayout->addWidget(rcGroupBox);
+	//controlLayout->addWidget(rcGroupBox);
 
 	controlLayout->addStretch();
 
@@ -520,6 +540,19 @@ void Window::lsSliderValueChanged(int v)
 {
 	volumeRenderable->rcpTrans->ls = 1.0*v / 10;
 	lsLabel->setText(QString::number(1.0*v / 10));
+}
+
+void Window::isDeformEnabledClicked(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isActive = true;
+		positionBasedDeformProcessor->reset();
+	}
+	else{
+		positionBasedDeformProcessor->isActive = false;
+		inputVolume->reset();
+		channelVolume->reset();
+	}
 }
 
 void Window::isBrushingClicked()

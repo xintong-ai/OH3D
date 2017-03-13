@@ -286,107 +286,6 @@ void PositionBasedDeformProcessor::doDeform(float degree)
 	//checkCudaErrors(cudaUnbindTexture(channelVolumeTexInput));
 }
 
-
-__device__ bool
-d_posInChannel2(float3 pos, int3 dims, float3 spacing)
-{
-	float3 ind = pos / spacing;
-	if (ind.x >= 0 && ind.x < dims.x && ind.y >= 0 && ind.y < dims.y && ind.z >= 0 && ind.z<dims.z) {
-		float res = tex3D(channelVolumeTexInput, ind.x, ind.y, ind.z);
-
-		if (res > 0.5)
-			return true;
-		else
-			return false;
-	}
-	else{
-		return true;
-	}
-}
-
-__global__ void
-d_updateVolumebyTransparentPanelty(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float deformationScale, float deformationScaleVertical, float3 dir2nd)
-{
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-
-	float3 pos = make_float3(x, y, z) * spacing;
-
-	bool needTransparentPenalty = inTunnel(pos, start, end, deformationScale, deformationScaleVertical, dir2nd);
-
-	if (needTransparentPenalty){
-		bool isInCell = d_posInChannel2(pos, make_int3(volumeSize.width, volumeSize.height, volumeSize.depth), spacing);
-
-		if (isInCell)
-		{
-			float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-			return;
-		}
-
-		const float thr = 10;
-		float3 tunnelDir = normalize(end - start);
-
-		int count = 1;
-		while (count < thr && !d_posInChannel2(pos + count * tunnelDir, make_int3(volumeSize.width, volumeSize.height, volumeSize.depth), spacing)){
-			count++;
-		}
-
-		if (count < thr){
-			float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-			return;
-		}
-
-		count = 1;
-		while (count < thr && !d_posInChannel2(pos - count * tunnelDir, make_int3(volumeSize.width, volumeSize.height, volumeSize.depth), spacing)){
-			count++;
-		}
-		if (count < thr){
-			float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-			return;
-		}
-
-
-
-		float res = 0;
-		surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-	}
-	else{
-		float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
-		surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-	}
-	return;
-}
-
-void PositionBasedDeformProcessor::changeForTransparency()
-{
-	cudaExtent size = volume->volumeCuda.size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
-
-	cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
-	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
-		
-	cudaChannelFormatDesc cd2 = channelVolume->volumeCuda.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTexInput, channelVolume->volumeCudaOri.content, cd2));
-	
-	d_updateVolumebyTransparentPanelty << <gridSize, blockSize >> >(size, transTunnelStart, transTunnelEnd, volume->spacing, deformationScale, deformationScaleVertical, transRectVerticalDir);
-
-	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
-	checkCudaErrors(cudaUnbindTexture(channelVolumeTexInput));
-}
-
 void PositionBasedDeformProcessor::doDeforme2Tunnel(float degree, float degreeClose)
 {
 	cudaExtent size = volume->volumeCuda.size;
@@ -467,47 +366,6 @@ bool PositionBasedDeformProcessor::inDeformedCell(float3 pos)
 	return inchannel;
 }
 
-void PositionBasedDeformProcessor::checkTransparencyOption()
-{
-	const float parencyThr = 5; //should be data dependant
-	//assume when this function is called, eyeInLocal is known to be in cell
-	float3 eyeInLocal = matrixMgr->getEyeInLocal();
-	float3 viewDir = normalize(matrixMgr->getViewVecInLocal());
-
-	float l = 0;
-
-	float3 curPoint = eyeInLocal + viewDir*l;
-	while (l < parencyThr && (!channelVolume->inRange(curPoint) || channelVolume->getVoxel(curPoint) > 0.5)){
-		curPoint = eyeInLocal + viewDir*l;
-		l = l + 1;
-	}
-	if (l < parencyThr){
-		lastEyeState = closeToWall;
-		//computeTunnelInfo(curPoint);
-		transTunnelStart = eyeInLocal;//special setting
-		transparentPenalty = 0.95;
-
-		float step = 0.5;
-		transTunnelEnd = curPoint + viewDir*step;
-		while (channelVolume->inRange(transTunnelEnd) && channelVolume->getVoxel(transTunnelEnd) < 0.5){
-			transTunnelEnd += viewDir*step;
-		}
-		if (abs(dot(targetUpVecInLocal, viewDir)) < 0.9){
-			transRectVerticalDir = normalize(cross(cross(viewDir, targetUpVecInLocal), viewDir));
-		}
-		else{
-			transRectVerticalDir = matrixMgr->getViewVecInLocal();
-		}
-
-		changeForTransparency();
-	}
-	else{
-		if (lastEyeState == inWall || lastEyeState == closeToWall){
-			volume->reset();
-		}
-		lastEyeState = inCell;
-	}
-}
 
 bool PositionBasedDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
 {
@@ -538,7 +396,6 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		else{
 			// either eyeInLocal is out of range, or eyeInLocal is in channel
 			//in this case, no state change
-			checkTransparencyOption();
 		}
 	}
 	else{ //lastVolumeState == Deformed
@@ -577,9 +434,6 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			channelVolume->reset();
 			lastVolumeState = ORIGINAL;
 			lastEyeState = inCell;
-
-			checkTransparencyOption();
-
 		}
 	}
 

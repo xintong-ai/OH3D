@@ -18,7 +18,11 @@ GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 	rotMat.setToIdentity();
 	UpdateModelMatrixFromDetail();
 
-	eyeInWorld = QVector3D(0, 0, 300); //may need adjust wisely. for data whose range is small, 300 is a number which is too big
+	float3 dataRange = posMax - posMin;
+	float initEyePos = max(max(dataRange.x, dataRange.y), dataRange.z) * 3;
+	//float initEyePos = 300;
+
+	eyeInWorld = QVector3D(0, 0, initEyePos); //may need adjust wisely. for data whose range is small, 300 is a number which is too big
 	//eyeInWorld = QVector3D(0, 0, 30);
 	upVecInWorld = QVector3D(0, 1, 0);
 	viewVecInWorld = QVector3D(0, 0, -1);

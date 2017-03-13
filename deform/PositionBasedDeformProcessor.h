@@ -25,36 +25,31 @@ public:
 		matrixMgr = _m;		
 		channelVolume = ch;
 
-		InitCudaSupplies();
-
-		cudaMalloc(&d_transparentAchieved, sizeof(bool)* 1);
-		
+		InitCudaSupplies();		
 	};
 
 	~PositionBasedDeformProcessor(){
-		cudaFree(d_transparentAchieved);
 	};
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
-	bool noNeedTransparent(){
-		return lastEyeState != closeToWall;
-	};
-	float transparentPenalty = 1.0;
-	bool *d_transparentAchieved;
+
 	EYE_STATE lastEyeState = inCell;
 	VOLUME_STATE lastVolumeState = ORIGINAL;
 
-	float3 transTunnelStart, transTunnelEnd;
-	float3 transRectVerticalDir; 
+	//float3 transTunnelStart, transTunnelEnd;
+	//float3 transRectVerticalDir; 
 	// maybe equal to tunnelStart, tunnelEnd, rectVerticalDir?
 
 	float deformationScale = 5;// 10; // for circle, it is maxRadius; for rect, the width of opening
 	float deformationScaleVertical = 7; // for rectangular, it is the other side length
 
+	void reset(){
+		EYE_STATE lastEyeState = inCell;
+		VOLUME_STATE lastVolumeState = ORIGINAL;
+	}
 private:
 
 	bool inDeformedCell(float3 pos);
-
 
 	std::clock_t startTime;
 
@@ -71,9 +66,7 @@ private:
 	void doDeforme2Tunnel(float degree, float degreeClose);
 	void doTunnelDeforme(float degree);
 	void computeTunnelInfo(float3 centerPoint);
-	void changeForTransparency();
 
-	void checkTransparencyOption();
 
 	bool hasBeenDeformed = false;
 	bool hasOpenAnimeStarted = false;
