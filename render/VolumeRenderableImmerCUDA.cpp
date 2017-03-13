@@ -20,15 +20,17 @@
 #include "TransformFunc.h"
 #include "ScreenMarker.h"
 
+#include "PositionBasedDeformProcessor.h"
 
-VolumeRenderableImmerCUDA::VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl)
+VolumeRenderableImmerCUDA::VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vlabel, std::shared_ptr<PositionBasedDeformProcessor> p)
 {
 	volume = _volume;
 	volumeCUDAGradient.VolumeCUDA_init(_volume->size, (float*)0, 1, 4);
-	if (_vl != 0){
-		VolumeRender_setLabelVolume(_vl.get());
+	if (_vlabel != 0){
+		VolumeRender_setLabelVolume(_vlabel.get());
 	}
 
+	positionBasedDeformProcessor = p;
 }
 
 VolumeRenderableImmerCUDA::~VolumeRenderableImmerCUDA()
@@ -37,8 +39,6 @@ VolumeRenderableImmerCUDA::~VolumeRenderableImmerCUDA()
 	deinitTextureAndCudaArrayOfScreen();
 	//cudaDeviceReset();
 };
-
-
 
 void VolumeRenderableImmerCUDA::init()
 {
@@ -99,7 +99,7 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 	}
 
 	//compute the dvr
-	VolumeRender_renderImmer(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, sm->dev_isPixelSelected);
+	VolumeRender_renderImmer(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, sm->dev_isPixelSelected, positionBasedDeformProcessor.get(), rcpTrans.get());
 
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));

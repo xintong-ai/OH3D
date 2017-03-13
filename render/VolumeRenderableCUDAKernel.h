@@ -3,7 +3,10 @@
 
 #include <cuda_runtime.h>
 #include "Volume.h"
+#include "myDefine.h"
+#include <memory>
 #include <vector>
+#include "PositionBasedDeformProcessor.h"
 
 typedef unsigned int  uint;
 
@@ -21,9 +24,10 @@ extern "C" {
 
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
-		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark);
+		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark, PositionBasedDeformProcessor *pd, RayCastingParameters* rcpTrans);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
+	void VolumeRender_setChannelVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);
 	void VolumeRender_setLabelVolume(const VolumeCUDA *volume);
 

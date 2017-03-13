@@ -10,6 +10,7 @@
 #include <QOpenGLShaderProgram>
 
 class ScreenMarker;
+class PositionBasedDeformProcessor;
 
 //the difference from VolumeRenderableCUDA is with an extra lable volume, and a screen marker
 class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
@@ -18,9 +19,9 @@ class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
 
 	//the volume to render 
 	std::shared_ptr<Volume> volume = 0;
-
+	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor;//may not be a good design
 public:
-	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl = 0);
+	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl = 0, std::shared_ptr<PositionBasedDeformProcessor> p = 0);
 	~VolumeRenderableImmerCUDA();
 
 	void setVolume(std::shared_ptr<Volume> v, bool needMoreChange = false){
@@ -33,6 +34,7 @@ public:
 	bool isFixed = false;
 
 	std::shared_ptr<RayCastingParameters> rcp;
+	std::shared_ptr<RayCastingParameters> rcpTrans;
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;

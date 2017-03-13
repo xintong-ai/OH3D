@@ -26,36 +26,37 @@ public:
 		channelVolume = ch;
 
 		InitCudaSupplies();
+
+		cudaMalloc(&d_transparentAchieved, sizeof(bool)* 1);
+		
 	};
 
 	~PositionBasedDeformProcessor(){
+		cudaFree(d_transparentAchieved);
 	};
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
+	bool noNeedTransparent(){
+		return lastEyeState != closeToWall;
+	};
+	float transparentPenalty = 1.0;
+	bool *d_transparentAchieved;
+	EYE_STATE lastEyeState = inCell;
+	VOLUME_STATE lastVolumeState = ORIGINAL;
+
+	float3 transTunnelStart, transTunnelEnd;
+	float3 transRectVerticalDir; 
+	// maybe equal to tunnelStart, tunnelEnd, rectVerticalDir?
+
+	float deformationScale = 5;// 10; // for circle, it is maxRadius; for rect, the width of opening
+	float deformationScaleVertical = 7; // for rectangular, it is the other side length
 
 private:
-	void eyeFromCellToWall(){
-		//hasBeenDeformed = true;
-		lastVolumeState = DEFORMED;
-		lastEyeState = inWall;
-
-		computeTunnelInfo();
-		doTunnelDeforme(deformationScale);
-		//start a opening animation
-		hasOpenAnimeStarted = true;
-		hasCloseAnimeStarted = false;
-		startOpen = std::clock();
-		//currently if there is other tunnels exist, they are closed suddenly, because doing animation needs another group of tunnel info
-	}
 
 	bool inDeformedCell(float3 pos);
 
-	EYE_STATE lastEyeState = inCell;
-	VOLUME_STATE lastVolumeState = ORIGINAL;
-	std::clock_t startTime;
 
-	float deformationScale = 10; // for circle, it is maxRadius; for rect, the width of opening
-	float deformationScaleVertical = 7; // for rectangular, it is the other side length
+	std::clock_t startTime;
 
 	float lastDeformationDegree;
 	float3 lastDeformationDirVertical;
@@ -64,13 +65,15 @@ private:
 	float3 tunnelStart, tunnelEnd;
 	float3 rectVerticalDir; // for rectangular, it is the direction of deformationScaleVertical
 
-
 	void InitCudaSupplies();
 
-	void doDeforme(float degree);
+	void doDeform(float degree);
 	void doDeforme2Tunnel(float degree, float degreeClose);
 	void doTunnelDeforme(float degree);
-	void computeTunnelInfo();
+	void computeTunnelInfo(float3 centerPoint);
+	void changeForTransparency();
+
+	void checkTransparencyOption();
 
 	bool hasBeenDeformed = false;
 	bool hasOpenAnimeStarted = false;
