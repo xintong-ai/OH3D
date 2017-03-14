@@ -87,6 +87,10 @@ public:
 
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
+	void saveCurrentImage(){
+		needSaveImage = true;
+	};
+	
 protected:
 	uint width = 750, height = 900;
 
@@ -116,6 +120,11 @@ protected:
 	QPointF prevPos;//previous mouse position
 
 private:
+
+	bool needSaveImage = false;
+	GLuint screenTex = 0;
+
+
 	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
 	
 	bool initialized = false;

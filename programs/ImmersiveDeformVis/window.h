@@ -161,6 +161,7 @@ private slots:
 	void updateLabelVolBtnClicked();
 	void redrawBtnClicked();
 	void doTourBtnClicked();
+	void saveScreenBtnClicked();
 
 };
 

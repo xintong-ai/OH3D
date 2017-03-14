@@ -5,12 +5,20 @@
 #include <iostream>
 #include <fstream>
 #include <helper_timer.h>
+#include <Windows.h>
+
 
 #include "Renderable.h"
 #include "VRWidget.h"
 #include "GLMatrixManager.h"
 #include "Processor.h"
 #include "mouse/Interactor.h"
+
+// removing the following lines will cause runtime error
+#ifdef WIN32
+#include <windows.h>
+#endif
+#define qgl	QOpenGLContext::currentContext()->functions()
 
 GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 : QOpenGLWidget(parent)
@@ -168,6 +176,49 @@ void GLWidget::paintGL() {
 #endif
 	
 	UpdateGL();
+
+	if (needSaveImage){
+		SYSTEMTIME st;
+		GetSystemTime(&st);
+		std::string fname = "screenShot_" + std::to_string(st.wMinute) + std::to_string(st.wSecond) + std::to_string(st.wMilliseconds) + ".png";
+		std::cout << "saving screen shot to file: " << fname << std::endl;
+
+		qgl->glActiveTexture(GL_TEXTURE0);
+		glGenTextures(1, &screenTex);
+		glBindTexture(GL_TEXTURE_2D, screenTex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		int w = width, h = height;
+
+		std::cout << "w " << w << " h " << h << std::endl;
+		uint8_t *pixels = new uint8_t[w * h * 3];
+		// copy pixels from screen
+		glBindTexture(GL_TEXTURE_2D, screenTex);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
+	
+		QImage image(w, h, QImage::Format_RGB32);
+		for (int i = 0; i<w; ++i) {
+			for (int j = 0; j<h; ++j) {
+				int jinv = h - 1 - j;
+				int ind = (i + j*w) * 3;
+				image.setPixel(i, jinv, 256 * 256 * pixels[ind] + 256 * pixels[ind + 1] + pixels[ind + 2]);
+			}
+		}
+
+		image.save(fname.c_str());
+
+		glDeleteTextures(1, &screenTex);
+		screenTex = 0;
+
+		delete[]pixels;
+		needSaveImage = false;
+		std::cout << "finish saving image" << std::endl;
+	}
 }
 
 void GLWidget::resizeGL(int w, int h)
@@ -442,3 +493,4 @@ void GLWidget::SetInteractMode(INTERACT_MODE v)
 	interactMode = v; 
 	//std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; 
 }
+

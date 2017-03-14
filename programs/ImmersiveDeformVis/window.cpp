@@ -291,6 +291,12 @@ Window::Window()
 	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
 	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
 
+	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
+	controlLayout->addWidget(saveScreenBtn);
+	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+
+
+	///////////////ray casting settings
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
 	//controlLayout->addWidget(transFuncP1SliderLabelLit);
 	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
@@ -429,7 +435,7 @@ Window::Window()
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
 	openGLMini->AddInteractor("1regular", regularInteractorMini.get());
 
-	assistLayout->addWidget(openGLMini.get(), 3);
+	//assistLayout->addWidget(openGLMini.get(), 3);
 
 	helper.setData(inputVolume, labelVolLocal);
 	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
@@ -648,4 +654,9 @@ void Window::redrawBtnClicked()
 void Window::doTourBtnClicked()
 {
 	animationByMatrixProcessor->startAnimation();
+}
+
+void Window::saveScreenBtnClicked()
+{
+	openGL->saveCurrentImage();
 }
