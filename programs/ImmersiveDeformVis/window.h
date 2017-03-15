@@ -24,7 +24,6 @@ class Volume;
 class VolumeCUDA;
 class VolumeRenderableImmerCUDA;
 class VolumeRenderableCUDA;
-class VolumeRenderableCUDAShader;
 class ImmersiveInteractor;
 class ScreenBrushInteractor;
 class RegularInteractor;
@@ -35,6 +34,7 @@ class PositionBasedDeformProcessor;
 class SphereRenderable;
 class MatrixMgrRenderable;
 class InfoGuideRenderable;
+class DeformFrameRenderable;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -101,6 +101,7 @@ private:
 	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
+	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 
 	//for 2d view
 	Helper helper;

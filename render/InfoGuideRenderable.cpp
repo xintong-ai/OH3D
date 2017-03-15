@@ -140,7 +140,7 @@ void InfoGuideRenderable::drawGlobalGuide(float modelview[16], float projection[
 	
 	float3 startpos = matrixMgr->getEyeInLocal() + viewVec * 5;
 
-	float arrowLength =5;
+	float arrowLength =2;
 
 	//vecToOpti = arrowLength * normalize(vecToOpti);
 

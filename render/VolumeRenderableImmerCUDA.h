@@ -44,8 +44,8 @@ public:
 		return volume;
 	}
 
-
 	void setScreenMarker(std::shared_ptr<ScreenMarker> _sm){ sm = _sm; }
+	void setBlending(bool b, float d = 1.0){ blendPreviousImage = b; densityBonus = d; };
 
 private:
 	VolumeCUDA volumeCUDAGradient;
@@ -77,6 +77,26 @@ private:
 	};
 
 	uint *d_output;
+
+	//attributes used to blend the current image in pbo into the volume rendering
+	bool blendPreviousImage = false;
+	float densityBonus;
+
+	//for belending
+	//for color
+	struct cudaGraphicsResource *cuda_inputImageTex_resource = 0;
+	//for depth
+	//to transfer the depth of the current depth buffer to cuda, three possible methods are:
+	//testmethod == 1: store the depth in a opengl texture, then use a cuda_fiberImageDepthTex_resource to map it to CUDA array. Currently this mapping does not accept GL_DEPTH_COMPONENT, thus the depth value need to be first copied out into a host array, then be copied into a opengl float texure.
+	//another untested similar way is to encode the depth value into the color channel, which is non-intuitive and introduce extra error
+	//testmethod == 2: copy out the depth value into a host array, then	store the depth in a 2D cuda array. does not work currently
+	//anothe untested similar way is to use 1D cuda array
+	//testmethod == 3: store the depth in a 3D cuda array, then use it to init a 3D cuda texture.
+	//so here use method 3
+	unsigned int textureDepth = 0;
+	cudaArray_t c_inputImageDepthArray = 0;
+	cudaArray_t c_inputImageColorArray; //no allocation or deallocation
+	float *localDepthArray = 0; //used to transfer opengl depth to cuda array
 };
 
 #endif

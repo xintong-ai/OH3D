@@ -10,7 +10,6 @@
 #include "ScreenMarker.h"
 #include "LabelVolumeProcessor.h"
 #include "VolumeRenderableCUDA.h"
-#include "VolumeRenderableCUDAShader.h"
 #include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
@@ -25,6 +24,7 @@
 #include "MatrixMgrRenderable.h"
 #include "InfoGuideRenderable.h"
 #include "BinaryTuplesReader.h"
+#include "DeformFrameRenderable.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -86,9 +86,6 @@ Window::Window()
 	reader2->OutputToVolumeByNormalizedValue(channelVolume);
 	channelVolume->initVolumeCuda();
 	reader2.reset();
-
-	VolumeRender_setChannelVolume(&(channelVolume->volumeCudaOri));
-
 
 	skelVolume = std::make_shared<Volume>();
 	std::shared_ptr<RawVolumeReader> reader4 = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
@@ -174,11 +171,17 @@ Window::Window()
 
 
 	//////////////////////////////// Renderable ////////////////////////////////
+	
+	
+	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
+	
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
 	volumeRenderable->rcp = rcp;
 	volumeRenderable->rcpTrans = rcpTrans;
 	openGL->AddRenderable("1volume", volumeRenderable.get());
 	volumeRenderable->setScreenMarker(sm);
+	volumeRenderable->setBlending(true);
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
@@ -186,7 +189,8 @@ Window::Window()
 	infoGuideRenderable = std::make_shared<InfoGuideRenderable>(ve, matrixMgr);
 	openGL->AddRenderable("3infoGuide", infoGuideRenderable.get());
 
-	
+
+
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);

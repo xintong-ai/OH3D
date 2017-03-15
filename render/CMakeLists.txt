@@ -50,14 +50,14 @@ set( Srcs
 	GridRenderable.cpp
 	VolumeRenderableImmerCUDA.cpp
 	VolumeRenderableCUDA.cpp
-	VolumeRenderableCUDAShader.cpp
 	VolumeRenderableCUDAKernel.cu
 	LensRenderable.cpp DeformGLWidget.cpp 
 		MeshRenderable.cpp
 		GLWidgetQtDrawing.cpp
 		MatrixMgrRenderable.cpp
 	InfoGuideRenderable.cpp
-		)
+		DeformFrameRenderable.cpp
+	)
 set( Hdrs  
 	glwidget.h 
 	Renderable.h 
@@ -73,14 +73,14 @@ set( Hdrs
 	CosmoRenderable.h
 	VolumeRenderableImmerCUDA.h
 	VolumeRenderableCUDA.h
-	VolumeRenderableCUDAShader.h
 	VolumeRenderableCUDAKernel.h
 	LensRenderable.h DeformGLWidget.h 	
 		MeshRenderable.h
 		GLWidgetQtDrawing.h
 		MatrixMgrRenderable.h
 	InfoGuideRenderable.h
-		)
+		DeformFrameRenderable.h
+	)
 
 
 if(USE_OSVR)

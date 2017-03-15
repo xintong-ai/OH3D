@@ -6,11 +6,12 @@
 #include <vector_types.h>
 
 #include "Processor.h"
+#include "Volume.h"
 
 enum EYE_STATE { inCell, closeToWall, inWall };
 enum VOLUME_STATE {DEFORMED, ORIGINAL};
 
-class Volume;
+
 class MatrixManager;
 class PositionBasedDeformProcessor :public Processor
 {
@@ -40,45 +41,48 @@ public:
 	//float3 transRectVerticalDir; 
 	// maybe equal to tunnelStart, tunnelEnd, rectVerticalDir?
 
-	float deformationScale = 5;// 10; // for circle, it is maxRadius; for rect, the width of opening
+	float deformationScale = 5; // for rect, the width of opening
 	float deformationScaleVertical = 7; // for rectangular, it is the other side length
 
 	void reset(){
 		EYE_STATE lastEyeState = inCell;
 		VOLUME_STATE lastVolumeState = ORIGINAL;
 	}
+
+	bool hasOpenAnimeStarted = false;
+	bool hasCloseAnimeStarted = false;
+
+	float3 tunnelStart, tunnelEnd;
+	float3 rectVerticalDir; // for rectangular, it is the direction of deformationScaleVertical
+
 private:
+	VolumeCUDA volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 
 	bool inDeformedCell(float3 pos);
 
 	std::clock_t startTime;
 
-	float lastDeformationDegree;
+	float lastOpenFinalDegree;
 	float3 lastDeformationDirVertical;
 	float3 lastTunnelStart, lastTunnelEnd;
 
-	float3 tunnelStart, tunnelEnd;
-	float3 rectVerticalDir; // for rectangular, it is the direction of deformationScaleVertical
 
 	void InitCudaSupplies();
 
 	void doDeform(float degree);
-	void doDeforme2Tunnel(float degree, float degreeClose);
-	void doTunnelDeforme(float degree);
+	void doDeform2Tunnel(float degree, float degreeClose);
+	void doTunnelDeform(float degree);
 	void computeTunnelInfo(float3 centerPoint);
 
-
 	bool hasBeenDeformed = false;
-	bool hasOpenAnimeStarted = false;
-	bool hasCloseAnimeStarted = false;
+
 	std::clock_t startOpen;
 	std::clock_t startClose;
-	double totalDuration = 4;
+	double totalDuration = 3;
 
 	float closeStartingRadius;
-	double closeDuration = 4;
+	double closeDuration = 3;
 
 	float3 targetUpVecInLocal = make_float3(0, 0, 1);	//note! the vector make_float3(0,0,1) may also be used in ImmersiveInteractor class
-
 };
 #endif

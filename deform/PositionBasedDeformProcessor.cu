@@ -16,8 +16,8 @@
 texture<float, 3, cudaReadModeElementType>  volumeTexInput;
 surface<void, cudaSurfaceType3D>			volumeSurfaceOut;
 
-texture<float, 3, cudaReadModeElementType>  channelVolumeTexInput;
-surface<void, cudaSurfaceType3D>			channelVolumeSurfaceOut;
+texture<float, 3, cudaReadModeElementType>  channelVolumeTex;
+surface<void, cudaSurfaceType3D>			channelVolumeSurface;
 
 __device__ bool inTunnel(float3 pos, float3 start, float3 end, float deformationScale, float deformationScaleVertical, float3 dir2nd)
 {
@@ -81,7 +81,7 @@ __device__ float3 sampleDis(float3 pos, float3 start, float3 end, float r, float
 
 
 __global__ void
-d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScaleVertical, float3 dir2nd)
+d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
 {
 	int x = blockIdx.x*blockDim.x + threadIdx.x;
 	int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -93,7 +93,7 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 	}
 
 	float3 pos = make_float3(x, y, z) * spacing;
-	
+
 	float3 tunnelVec = normalize(end - start);
 	float tunnelLength = length(end - start);
 
@@ -108,17 +108,14 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 			float dis = length(pos - prjPoint);
 			float3 samplePos = prjPoint + dir*(r - (r - dis) * 2);
 
-			if (dis < r / 2){
+			if (dis < r){
 				float res = 0;
 				surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-
-				//float res2 = 1;
-				//surf3Dwrite(res2, channelVolumeSurfaceOut, x * sizeof(float), y, z);
 			}
-			else if (dis < r){
+			else if (dis < deformationScale){
 				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
-				float3 dir = normalize(start - prjPoint);
-				float3 samplePos = prjPoint + dir*(r - (r - dis) * 2); //!!! NOTE !!! spacing not considered yet!!!!
+				float3 dir = normalize(pos - prjPoint);
+				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale; //!!! NOTE !!! spacing not considered yet!!!!
 
 				float res = tex3D(volumeTexInput, samplePos.x + 0.5, samplePos.y + 0.5, samplePos.z + 0.5);
 				surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
@@ -143,63 +140,7 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 
 
 __global__ void
-d_updateVolumebyMatrixInfo_rect_2anime(cudaExtent volumeSize, float3 spacing, float3 start, float3 end, float r, float deformationScaleVertical, float3 dir2nd, float lastDeformationDegree, float3 lastDeformationDirVertical, float3 lastTunnelStart, float3 lastTunnelEnd, float rClose)
-{
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-	float3 pos = make_float3(x, y, z) * spacing;
-
-	float3 posOpen = sampleDis(pos, start, end, r, deformationScaleVertical, dir2nd);
-	float3 posClose = sampleDis(pos, lastTunnelStart, lastTunnelEnd, rClose, deformationScaleVertical, lastDeformationDirVertical);
-
-	if (posOpen.x < 0 && posOpen.z < posOpen.x && posClose.x < 0 && posClose.z < posClose.x){ //both no change of sample position
-		float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
-		surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-	}
-	else if (posOpen.x < 0 && posOpen.z < posOpen.x){//for open no change of sample position, just regular close
-		if (posClose.x < 0 && posClose.x < posClose.z){
-			float res = 0;
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-		}
-		else{
-			float res = tex3D(volumeTexInput, posClose.x + 0.5, posClose.y + 0.5, posClose.z + 0.5);
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-		}
-	}
-	else if (posClose.x < 0 && posClose.z < posClose.x){//for close no change of sample position, just regular open
-		if (posOpen.x < 0 && posOpen.x < posOpen.z){
-			float res = 0;
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-		}
-		else{
-			float res = tex3D(volumeTexInput, posOpen.x + 0.5, posOpen.y + 0.5, posOpen.z + 0.5);
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-		}
-	}
-	else{ //affected by both close and open
-		//only work as open
-		if (posOpen.x < 0 && posOpen.x < posOpen.z){
-			float res = 0;
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-		}
-		else{
-			float res = tex3D(volumeTexInput, posOpen.x + 0.5, posOpen.y + 0.5, posOpen.z + 0.5);
-			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
-		}
-	}
-	return;
-}
-
-
-__global__ void
-d_updateVolumebyMatrixInfo_tunnel_rect(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScaleVertical, float3 dir2nd)
+d_updateVolumebyMatrixInfo_tunnel_rect(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
 {
 	int x = blockIdx.x*blockDim.x + threadIdx.x;
 	int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -227,29 +168,29 @@ d_updateVolumebyMatrixInfo_tunnel_rect(cudaExtent volumeSize, float3 start, floa
 
 			if (dis < r / 2){
 				float res2 = 1;
-				surf3Dwrite(res2, channelVolumeSurfaceOut, x * sizeof(float), y, z);
+				surf3Dwrite(res2, channelVolumeSurface, x * sizeof(float), y, z);
 			}
-			else if (dis < r){
+			else if (dis < deformationScale){
 				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
-				float3 dir = normalize(start - prjPoint);
-				float3 samplePos = prjPoint + dir*(r - (r - dis) * 2);
+				float3 dir = normalize(pos - prjPoint);
+				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale; //!!! NOTE !!! spacing not considered yet!!!!
 
-				float res2 = tex3D(channelVolumeTexInput, samplePos.x, samplePos.y, samplePos.z);
-				surf3Dwrite(res2, channelVolumeSurfaceOut, x * sizeof(float), y, z);
+				float res2 = tex3D(channelVolumeTex, samplePos.x, samplePos.y, samplePos.z);
+				surf3Dwrite(res2, channelVolumeSurface, x * sizeof(float), y, z);
 			}
 			else{
-				float res2 = tex3D(channelVolumeTexInput, x, y, z);
-				surf3Dwrite(res2, channelVolumeSurfaceOut, x * sizeof(float), y, z);
+				float res2 = tex3D(channelVolumeTex, x, y, z);
+				surf3Dwrite(res2, channelVolumeSurface, x * sizeof(float), y, z);
 			}
 		}
 		else{
-			float res2 = tex3D(channelVolumeTexInput, x, y, z);
-			surf3Dwrite(res2, channelVolumeSurfaceOut, x * sizeof(float), y, z);
+			float res2 = tex3D(channelVolumeTex, x, y, z);
+			surf3Dwrite(res2, channelVolumeSurface, x * sizeof(float), y, z);
 		}
 	}
 	else{
-		float res2 = tex3D(channelVolumeTexInput, x, y, z);
-		surf3Dwrite(res2, channelVolumeSurfaceOut, x * sizeof(float), y, z);
+		float res2 = tex3D(channelVolumeTex, x, y, z);
+		surf3Dwrite(res2, channelVolumeSurface, x * sizeof(float), y, z);
 	}
 	return;
 }
@@ -259,7 +200,7 @@ d_posInDeformedChannelVolume(float3 pos, int3 dims, float3 spacing, bool* inChan
 {
 	float3 ind = pos / spacing;
 	if (ind.x >= 0 && ind.x < dims.x && ind.y >= 0 && ind.y < dims.y && ind.z >= 0 && ind.z<dims.z) {
-		float res = tex3D(channelVolumeTexInput, ind.x, ind.y, ind.z);
+		float res = tex3D(channelVolumeTex, ind.x, ind.y, ind.z);
 		if (res > 0.5)
 			*inChannel = true;
 		else
@@ -281,12 +222,12 @@ void PositionBasedDeformProcessor::doDeform(float degree)
 	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
 	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
 
-	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree, deformationScaleVertical, rectVerticalDir);
+	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir);
 	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
-	//checkCudaErrors(cudaUnbindTexture(channelVolumeTexInput));
+	//checkCudaErrors(cudaUnbindTexture(channelVolumeTex));
 }
 
-void PositionBasedDeformProcessor::doDeforme2Tunnel(float degree, float degreeClose)
+void PositionBasedDeformProcessor::doDeform2Tunnel(float degree, float degreeClose)
 {
 	cudaExtent size = volume->volumeCuda.size;
 	unsigned int dim = 32;
@@ -294,15 +235,20 @@ void PositionBasedDeformProcessor::doDeforme2Tunnel(float degree, float degreeCl
 	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
 	cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
+	
 	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
-	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
-
-	d_updateVolumebyMatrixInfo_rect_2anime << <gridSize, blockSize >> >(size, volume->spacing, tunnelStart, tunnelEnd, degree, deformationScaleVertical, rectVerticalDir, lastDeformationDegree, lastDeformationDirVertical, lastTunnelStart, lastTunnelEnd, degreeClose);
-
+	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCudaIntermediate.content));
+	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, lastTunnelStart, lastTunnelEnd, volume->spacing, degreeClose, deformationScale, deformationScaleVertical, lastDeformationDirVertical);
 	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+
+	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volumeCudaIntermediate.content, cd));
+	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
+	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir);
+	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+
 }
 
-void PositionBasedDeformProcessor::doTunnelDeforme(float degree)
+void PositionBasedDeformProcessor::doTunnelDeform(float degree)
 {
 	cudaExtent size = volume->volumeCuda.size;
 	unsigned int dim = 32;
@@ -310,11 +256,11 @@ void PositionBasedDeformProcessor::doTunnelDeforme(float degree)
 	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
 	cudaChannelFormatDesc cd2 = channelVolume->volumeCuda.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTexInput, channelVolume->volumeCudaOri.content, cd2));
-	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurfaceOut, channelVolume->volumeCuda.content));
+	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCudaOri.content, cd2));
+	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurface, channelVolume->volumeCuda.content));
 
-	d_updateVolumebyMatrixInfo_tunnel_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, deformationScale, deformationScaleVertical, rectVerticalDir);
-	checkCudaErrors(cudaUnbindTexture(channelVolumeTexInput));
+	d_updateVolumebyMatrixInfo_tunnel_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir);
+	checkCudaErrors(cudaUnbindTexture(channelVolumeTex));
 }
 
 
@@ -359,7 +305,7 @@ bool PositionBasedDeformProcessor::inDeformedCell(float3 pos)
 	bool* d_inchannel;
 	cudaMalloc(&d_inchannel, sizeof(bool)* 1);
 	cudaChannelFormatDesc cd2 = channelVolume->volumeCudaOri.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTexInput, channelVolume->volumeCuda.content, cd2));
+	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCuda.content, cd2));
 	d_posInDeformedChannelVolume << <1, 1 >> >(pos, volume->size, volume->spacing, d_inchannel);
 	bool inchannel;
 	cudaMemcpy(&inchannel, d_inchannel, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
@@ -383,7 +329,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				lastEyeState = inWall;
 
 				computeTunnelInfo(eyeInLocal);
-				doTunnelDeforme(deformationScale);
+				doTunnelDeform(deformationScale);
 				//start a opening animation
 				hasOpenAnimeStarted = true;
 				hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
@@ -413,13 +359,13 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				//volume->reset();
 				//channelVolume->reset();
 
-				lastDeformationDegree = closeStartingRadius;
+				lastOpenFinalDegree = closeStartingRadius;
 				lastDeformationDirVertical = rectVerticalDir;
 				lastTunnelStart = tunnelStart;
 				lastTunnelEnd = tunnelEnd;
 
 				computeTunnelInfo(eyeInLocal);
-				doTunnelDeforme(deformationScale);
+				doTunnelDeform(deformationScale);
 	
 				hasOpenAnimeStarted = true;//start a opening animation
 				hasCloseAnimeStarted = true; //since eye should just moved to the current solid, the previous solid should be closed 
@@ -441,23 +387,22 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		float r, rClose;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
-			r = deformationScale;
+			//r = deformationScale;
 			hasOpenAnimeStarted = false;
 			hasCloseAnimeStarted = false;
-			rClose = 0;
+			//rClose = 0;
 		}
 		else{
-			r = past / totalDuration*deformationScale;
-
+			r = past / totalDuration*deformationScale/2;
 			if (past >= closeDuration){
 				hasCloseAnimeStarted = false;
 				rClose = 0;
+				doDeform(r);
 			}
 			else{
 				rClose = (1 - past / closeDuration)*closeStartingRadius;
+				doDeform2Tunnel(r, rClose);
 			}
-
-			doDeforme2Tunnel(r, rClose);
 		}
 	}
 	else if (hasOpenAnimeStarted){
@@ -468,7 +413,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			hasOpenAnimeStarted = false;
 		}
 		else{
-			r = past / totalDuration*deformationScale;
+			r = past / totalDuration*deformationScale/2;
 			doDeform(r);
 			closeStartingRadius = r;
 			closeDuration = past;
@@ -498,10 +443,15 @@ void PositionBasedDeformProcessor::InitCudaSupplies()
 	volumeTexInput.addressMode[1] = cudaAddressModeBorder;
 	volumeTexInput.addressMode[2] = cudaAddressModeBorder;
 
-	channelVolumeTexInput.normalized = false;
-	channelVolumeTexInput.filterMode = cudaFilterModePoint;
-	channelVolumeTexInput.addressMode[0] = cudaAddressModeBorder;
-	channelVolumeTexInput.addressMode[1] = cudaAddressModeBorder;
-	channelVolumeTexInput.addressMode[2] = cudaAddressModeBorder;
+	channelVolumeTex.normalized = false;
+	channelVolumeTex.filterMode = cudaFilterModePoint;
+	channelVolumeTex.addressMode[0] = cudaAddressModeBorder;
+	channelVolumeTex.addressMode[1] = cudaAddressModeBorder;
+	channelVolumeTex.addressMode[2] = cudaAddressModeBorder;
+
+
+	volumeCudaIntermediate.VolumeCUDA_deinit();
+	volumeCudaIntermediate.VolumeCUDA_init(volume->size, volume->values, 1, 1); 
+	//	volumeCudaIntermediate.VolumeCUDA_init(volume->size, 0, 1, 1);//??
 }
 

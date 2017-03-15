@@ -17,8 +17,7 @@ extern "C" {
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 		float density, float brightness,
 		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor);
-	void VolumeRender_renderWithDepthOutput(uint *d_output, float* depth, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor);
-	
+
 	void VolumeRender_renderWithDepthInput(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float densityBonus);
 
 
@@ -27,7 +26,6 @@ extern "C" {
 		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark, PositionBasedDeformProcessor *pd, RayCastingParameters* rcpTrans);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
-	void VolumeRender_setChannelVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);
 	void VolumeRender_setLabelVolume(const VolumeCUDA *volume);
 

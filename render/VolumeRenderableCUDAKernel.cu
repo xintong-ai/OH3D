@@ -16,7 +16,6 @@
 // texture
 
 texture<float, 3, cudaReadModeElementType>  volumeTexValueForRC;
-texture<float, 3, cudaReadModeElementType>  channelVolumeTex; //original channel so should not change
 
 texture<float4, 3, cudaReadModeElementType>  volumeTexGradient;
 
@@ -108,11 +107,6 @@ void VolumeRender_setVolume(const VolumeCUDA *vol)
 	checkCudaErrors(cudaBindTextureToArray(volumeTexValueForRC, vol->content, vol->channelDesc));
 }
 
-void VolumeRender_setChannelVolume(const VolumeCUDA *vol)
-{
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, vol->content, vol->channelDesc));
-}
-
 void VolumeRender_setLabelVolume(const VolumeCUDA *v)
 {
 	volumeLabelValue.normalized = false;
@@ -171,12 +165,6 @@ void VolumeRender_init()
 	tex_inputImageDepth.addressMode[1] = cudaAddressModeBorder;
 	tex_inputImageDepth.addressMode[2] = cudaAddressModeBorder;
 
-	channelVolumeTex.normalized = false;
-	channelVolumeTex.filterMode = cudaFilterModePoint;
-	channelVolumeTex.addressMode[0] = cudaAddressModeBorder;
-	channelVolumeTex.addressMode[1] = cudaAddressModeBorder;
-	channelVolumeTex.addressMode[2] = cudaAddressModeBorder;
-
 	tex_inputImageColor.normalized = false;
 	tex_inputImageColor.filterMode = cudaFilterModePoint;
 	tex_inputImageColor.addressMode[0] = cudaAddressModeBorder;
@@ -230,7 +218,7 @@ __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
 	//float la = 1.0, ld = 1.0, ls = 1.0;
 	float Shininess = 25;
 
-	float3 light_in_eye = make_float3(0.0, 0.0, 0.0);
+	float3 light_in_eye = make_float3(0.0, 2.0, 0.0);
 
 	float3 s = normalize(light_in_eye - pos_in_eye);
 	float3 v = normalize(-pos_in_eye);
@@ -520,15 +508,6 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 	//checkCudaErrors(cudaUnbindTexture(volumeTexGradient));
 }
 
-
-void VolumeRender_renderWithDepthOutput(uint *d_output, float* depth, uint imageW, uint imageH,
-float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor)
-{
-	dim3 blockSize = dim3(16, 16, 1);
-	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
-
-	d_render_preintWithDepthOutput << <gridSize, blockSize >> >(d_output, depth, imageW, imageH, density, brightness, eyeInLocal, volumeSize, maxSteps, tstep, useColor);
-}
 
 
 __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark)
