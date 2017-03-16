@@ -3,15 +3,18 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-
 #include "myDefine.h"
 #include <memory>
 #include <vector>
+
+#include "Volume.h"
+
 class Particle;
 
 enum VPMethod{
 	BS05,
-	JS06Sphere
+	JS06Sphere,
+	Tao09Detail
 };
 
 struct SpherePoint {
@@ -38,13 +41,18 @@ public:
 		if (d_r != 0){
 			cudaFree(d_r); d_r = 0;
 		};
+		for (int i = 0; i < cubeFaceHists.size(); i++){
+			if (cubeFaceHists[i] != 0){
+				cudaFree(cubeFaceHists[i]);
+			}
+		}
 	};
+
 	void setSpherePoints(int n = 512);
 
 	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 
-	std::shared_ptr<Volume> volume;
-	std::shared_ptr<RayCastingParameters> rcp;
+
 	void initDownSampledResultVolume(int3 sampleSize);	
 	void compute_UniformSampling(VPMethod m);
 	void compute_SkelSampling(VPMethod m);
@@ -55,17 +63,27 @@ public:
 
 	std::vector<float> cubeInfo;
 	void computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir);
-	
+	void computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir, VPMethod m);
+
 	std::vector<std::shared_ptr<Particle>> skelViews;
 	
-	float computeVectorEntropy(float* ary, int size);
 
 	bool useHist = true, useTrad = false;
-	bool useLabelCount = true, useColor = false;
-	bool useDist = false;//not well set yet
+	bool useLabelCount = false, useColor = true;
+	bool useDist = false;//not well set yet. may eliminate later
 	int maxLabel = 1; //!! data dependant
 
 private:
+	std::shared_ptr<Volume> volume;
+	std::shared_ptr<RayCastingParameters> rcp;
+	
+	VolumeCUDA volumeGradient;
+	VolumeCUDA filteredVolumeGradient;
+
+
+
+	float computeVectorEntropy(float* ary, int size);
+
 	void GPU_setVolume(const VolumeCUDA *vol);
 	void GPU_setConstants(float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing);
 
@@ -77,22 +95,26 @@ private:
 
 	const int nbins = 32;
 	float* d_hist;
-	std::vector<float*> cubeFaceDist;
+	std::vector<float*> cubeFaceHists;
 
 	std::shared_ptr<Volume> resVol = 0;
 
 	float * d_r = 0;
 
-	void initBS05();
 	void initJS06Sphere();
-	bool BS05Inited = false;
+	void initTao09Detail();
+	
 	bool JS06SphereInited = false;
-	float computeEntropyBS05(float3 eyeInLocal);
+	bool Tao09DetailInited = false;
+
 	float computeEntropyJS06Sphere(float3 eyeInLocal);
+	float computeEntropyTao09Detail(float3 eyeInLocal);
 
 	bool labelBeenSet = false;
 
 	float3 indToLocal(int i, int j, int k);
+
+	bool spherePointSet = false;
 
 };
 

@@ -694,7 +694,7 @@ d_computeGradient(cudaExtent volumeSize)
 
 	int indy1 = y - 2, indy2 = y + 2;
 	if (indy1 < 0)	indy1 = 0;
-	if (indy2 > y >= volumeSize.height - 1) indy2 = y >= volumeSize.height - 1;
+	if (indy2 > volumeSize.height - 1) indy2 = volumeSize.height - 1;
 	grad.y = (tex3D(volumeTexValueForRC, x + 0.5, indy2 + 0.5, z + 0.5) - tex3D(volumeTexValueForRC, x + 0.5, indy1 + 0.5, z + 0.5)) / (indy2 - indy1);
 
 	int indx1 = x - 2, indx2 = x + 2;

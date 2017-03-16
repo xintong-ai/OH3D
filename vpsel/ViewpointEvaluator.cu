@@ -1,7 +1,5 @@
-
 #include <iostream>
 #include "ViewpointEvaluator.h"
-#include "Volume.h"
 #include "TransformFunc.h"
 #include "Particle.h"
 #include <thrust/device_vector.h>
@@ -10,6 +8,9 @@
 
 texture<float, 3, cudaReadModeElementType>  volumeVal;
 texture<unsigned short, 3, cudaReadModeElementType>  volumeLabel;
+
+texture<float4, 3, cudaReadModeElementType>  gradientTexOri;
+texture<float4, 3, cudaReadModeElementType>  gradientTexFiltered;
 
 ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r, std::shared_ptr<Volume> v)
 {
@@ -30,9 +31,9 @@ ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r,
 
 	cudaMalloc(&d_hist, sizeof(float)*nbins);
 
-	cubeFaceDist.resize(6);
+	cubeFaceHists.resize(6);
 	for (int i = 0; i < 6; i++){
-		cudaMalloc(&cubeFaceDist[i], sizeof(float)*nbins);
+		cudaMalloc(&cubeFaceHists[i], sizeof(float)*nbins);
 	}
 
 	cubeInfo.resize(6);
@@ -70,16 +71,6 @@ void ViewpointEvaluator::setLabel(std::shared_ptr<VolumeCUDA> v)
 }
 
 
-void ViewpointEvaluator::initBS05()
-{
-	if (BS05Inited)	return;
-
-	if (d_r != 0) cudaFree(d_r);
-	cudaMalloc(&d_r, sizeof(float)*volume->size.x*volume->size.y*volume->size.z);
-	BS05Inited = true;
-	JS06SphereInited = false;
-}
-
 void ViewpointEvaluator::initJS06Sphere()
 {
 	if (JS06SphereInited)	return;
@@ -88,8 +79,57 @@ void ViewpointEvaluator::initJS06Sphere()
 	setSpherePoints();
 	cudaMalloc(&d_r, sizeof(float)*numSphereSample);
 	JS06SphereInited = true;
-	BS05Inited = false;
+	Tao09DetailInited = false;
+}
 
+void ViewpointEvaluator::initTao09Detail()
+{
+	if (Tao09DetailInited)	return;
+
+	std::cout << "initializing for viewpoint evaluation method" << std::endl;
+
+	if (d_r != 0) cudaFree(d_r);
+	setSpherePoints();
+	cudaMalloc(&d_r, sizeof(float)*numSphereSample);
+	
+	float* gradient = 0;
+	volume->computeGradient(gradient);
+	volumeGradient.VolumeCUDA_deinit();
+	volumeGradient.VolumeCUDA_init(volume->size, gradient, 0, 4);
+	delete[] gradient;
+
+	//float* bilateralVolumeRes = 0;
+	//volume->computeBilateralFiltering(bilateralVolumeRes, 2, 0.2);
+	//FILE * fp = fopen("bilat.raw", "wb");
+	//fwrite(bilateralVolumeRes, sizeof(float), volume->size.x*volume->size.y*volume->size.z, fp);
+	//fclose(fp);
+	
+	float* bilateralVolumeRes = new float[volume->size.x*volume->size.y*volume->size.z];
+	FILE * fp = fopen("bilat.raw", "rb");
+	fread(bilateralVolumeRes, sizeof(float), volume->size.x*volume->size.y*volume->size.z, fp);
+	fclose(fp);
+
+	float* bGradient = 0;
+	volume->computeGradient(bilateralVolumeRes, volume->size, bGradient);
+	filteredVolumeGradient.VolumeCUDA_deinit();
+	filteredVolumeGradient.VolumeCUDA_init(volume->size, bGradient, 0, 4);
+	delete[] bGradient;
+	delete[] bilateralVolumeRes;
+		
+	gradientTexOri.normalized = false;
+	gradientTexOri.filterMode = cudaFilterModeLinear;
+	gradientTexOri.addressMode[0] = cudaAddressModeBorder;
+	gradientTexOri.addressMode[1] = cudaAddressModeBorder;
+	gradientTexOri.addressMode[2] = cudaAddressModeBorder;
+	
+	gradientTexFiltered.normalized = false;
+	gradientTexFiltered.filterMode = cudaFilterModeLinear;
+	gradientTexFiltered.addressMode[0] = cudaAddressModeBorder;
+	gradientTexFiltered.addressMode[1] = cudaAddressModeBorder;
+	gradientTexFiltered.addressMode[2] = cudaAddressModeBorder;
+	
+	Tao09DetailInited = true;
+	JS06SphereInited = false;
 }
 
 void ViewpointEvaluator::compute_UniformSampling(VPMethod m)
@@ -97,16 +137,6 @@ void ViewpointEvaluator::compute_UniformSampling(VPMethod m)
 	float maxRes = -999;
 	int3 sampleSize = resVol->size;
 	if (m == BS05){
-		initBS05();
-		for (int k = 0; k < sampleSize.z; k++){
-			std::cout << "now doing k = " << k << std::endl;
-			for (int j = 0; j < sampleSize.y; j++){
-				for (int i = 0; i < sampleSize.x; i++){
-					float3 eyeInLocal = indToLocal(i, j, k);
-					resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = computeEntropyJS06Sphere(eyeInLocal);
-				}
-			}
-		}
 	}
 	else if (m == JS06Sphere){
 		initJS06Sphere();
@@ -134,16 +164,6 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 	float maxRes = -999;
 	//int3 sampleSize = resVol->size;
 	if (m == BS05){
-		//initBS05();
-		//for (int k = 0; k < sampleSize.z; k++){
-		//	std::cout << "now doing k = " << k << std::endl;
-		//	for (int j = 0; j < sampleSize.y; j++){
-		//		for (int i = 0; i < sampleSize.x; i++){
-		//			float3 eyeInLocal = indToLocal(i, j, k);
-		//			resVol->values[k*sampleSize.y*sampleSize.x + j*sampleSize.x + i] = computeEntropyJS06Sphere(eyeInLocal);
-		//		}
-		//	}
-		//}
 	}
 	else if (m == JS06Sphere){
 		initJS06Sphere();
@@ -158,10 +178,28 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 			}
 		}
 	}
+	else if (m == Tao09Detail){
+		initTao09Detail();
+
+		checkCudaErrors(cudaBindTextureToArray(gradientTexOri, volumeGradient.content, volumeGradient.channelDesc));
+		checkCudaErrors(cudaBindTextureToArray(gradientTexFiltered, filteredVolumeGradient.content, filteredVolumeGradient.channelDesc));
+
+		for (int i = 0; i < skelViews.size(); i++){
+			for (int j = 0; j < skelViews[i]->numParticles; j++){
+				float3 eyeInLocal = make_float3(skelViews[i]->pos[j]);
+				float entroRes = computeEntropyTao09Detail(eyeInLocal);
+				if (entroRes>maxRes){
+					maxRes = entroRes;
+					optimalEyeInLocal = eyeInLocal;
+				}
+			}
+		}
+		
+		checkCudaErrors(cudaUnbindTexture(gradientTexOri));
+		checkCudaErrors(cudaUnbindTexture(gradientTexFiltered));
+	}
 	optimalEyeValid = true;
 }
-
-
 
 void ViewpointEvaluator::saveResultVol(const char* fname)
 {
@@ -170,6 +208,8 @@ void ViewpointEvaluator::saveResultVol(const char* fname)
 
 void ViewpointEvaluator::setSpherePoints(int n)
 {
+	if (spherePointSet) return;
+
 	//source: https://www.openprocessing.org/sketch/41142
 
 	numSphereSample = n;
@@ -193,9 +233,8 @@ void ViewpointEvaluator::setSpherePoints(int n)
 	}
 	cudaMalloc(&d_sphereSamples, sizeof(float)*numSphereSample * 3);
 	cudaMemcpy(d_sphereSamples, (float*)(&sphereSamples[0]), sizeof(float)*numSphereSample * 3, cudaMemcpyHostToDevice);
+	spherePointSet = true;
 }
-
-
 
 __constant__ float colorTableDiverge[33][4] = {
 	0, 0.231372549, 0.298039216, 0.752941176,
@@ -245,8 +284,7 @@ __device__ float3 GetColourDiverge2(float v)
 		pos++;
 	}
 	float ratio = (v - colorTableDiverge[pos][0]) / (colorTableDiverge[pos + 1][0] - colorTableDiverge[pos][0]);
-
-
+	
 	float3 c = make_float3(
 		ratio*(colorTableDiverge[pos + 1][1] - colorTableDiverge[pos][1]) + colorTableDiverge[pos][1],
 		ratio*(colorTableDiverge[pos + 1][2] - colorTableDiverge[pos][2]) + colorTableDiverge[pos][2],
@@ -305,97 +343,6 @@ void ViewpointEvaluator::GPU_setConstants(float* _transFuncP1, float* _transFunc
 }
 
 
-
-
-
-
-__global__ void d_computeVolumeVisibility(float density, float brightness,
-	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r)
-{
-
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.x || y >= volumeSize.y || z >= volumeSize.z)
-	{
-		return;
-	}
-
-	const float opacityThreshold = 0.95f;
-
-	Ray eyeRay;
-	eyeRay.o = eyeInLocal;
-	float3 voxelInWorld = make_float3(x, y, z);
-	eyeRay.d = normalize(voxelInWorld - eyeRay.o);
-
-	float tnear, tfar;
-	tnear = 0.01f;	//!!!NOTE!!! this tnear is not in the clip space but in the original space
-	tfar = length(voxelInWorld - eyeRay.o);
-
-	// march along ray from front to back, accumulating color
-	float4 sum = make_float4(0.0f);
-	float t = tnear;
-	float3 pos = eyeRay.o + eyeRay.d*tnear;
-	float3 step = eyeRay.d*tstep;
-
-	for (int i = 0; i<maxSteps; i++)
-	{
-		float3 coord = pos / spacing;
-		float sample = tex3D(volumeVal, coord.x, coord.y, coord.z);
-		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
-
-		// lookup in transfer function texture
-		float4 col;
-
-		float3 cc;
-		if (useColor)
-			cc = GetColourDiverge2(clamp(funcRes, 0.0f, 1.0f));
-		else
-			cc = make_float3(funcRes, funcRes, funcRes);
-
-		////currently ignore lighting
-		col = make_float4(la*cc, funcRes);
-
-
-		col.w *= density;
-
-		// pre-multiply alpha
-		col.x *= col.w;
-		col.y *= col.w;
-		col.z *= col.w;
-		// "over" operator for front-to-back blending
-		sum = sum + col*(1.0f - sum.w);
-
-		// exit early if opaque
-		if (sum.w > opacityThreshold){
-			break;
-		}
-
-		t += tstep;
-
-		if (t > tfar){
-			break;
-		}
-
-		pos += step;
-	}
-
-	sum *= brightness;
-
-	float vj;
-	if (t > tfar){
-		vj = sum.w;
-	}
-	else{ //if the iteration ends early, it means the voxel is not visible, so vj is 0
-		vj = 0.0f;
-	}
-
-	r[z*volumeSize.x * volumeSize.y + y*volumeSize.x + x] = vj;
-}
-
-
-
 struct functor_computeEntropy
 {
 	float sum;
@@ -413,27 +360,11 @@ struct functor_computeEntropy
 };
 
 
-float ViewpointEvaluator::computeEntropyBS05(float3 eyeInLocal)
-{
-	cudaExtent size = make_cudaExtent(volume->size.x, volume->size.y, volume->size.z);
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
-
-	d_computeVolumeVisibility << <gridSize, blockSize >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r);
-
-	thrust::device_vector< float > iVec(d_r, d_r + volume->size.x*volume->size.y*volume->size.z);
-	float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
-	thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy(sum));
-	float ret = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
-
-	return ret;
-};
 
 
 
-__global__ void d_computeSphereUtility(float density, float brightness,
-	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist, bool useLabelCount, bool useDist)
+__global__ void d_computeSphereColor(float density, float brightness,
+	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist, bool useLabelCount, bool useDist, VPMethod vpmethod)
 {
 
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -453,12 +384,15 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 	tnear = 0.01f;	//!!!NOTE!!! this tnear is not in the clip space but in the original space
 
 	// march along ray from front to back, accumulating color
-	float4 sum = make_float4(0.0f);
 	float t = tnear;
 	float3 pos = eyeRay.o + eyeRay.d*tnear;
 	float3 step = eyeRay.d*tstep;
 
-	unsigned short label = 0;
+	float4 sum = make_float4(0.0f); //for JS
+	unsigned short label = 0; //for label count
+	float detailDescriptor = 0; //for TaoDetail
+
+	float lightingThr = 0.000001; //used for the threshold of TaoDetail
 
 	for (int i = 0; i<maxSteps; i++)
 	{
@@ -484,8 +418,26 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 		col.x *= col.w;
 		col.y *= col.w;
 		col.z *= col.w;
+		
+		float visibility = 1.0f - sum.w;
+		
 		// "over" operator for front-to-back blending
 		sum = sum + col*(1.0f - sum.w);
+
+		if (vpmethod == Tao09Detail){ //if not Tao09Detail, the sampled texture may not be prepared
+			float curDetail = 0;
+			float3 normalOri = make_float3(tex3D(gradientTexOri, coord.x, coord.y, coord.z)) / spacing;
+			float3 normalFiltered = make_float3(tex3D(gradientTexFiltered, coord.x, coord.y, coord.z)) / spacing;
+			if (length(normalOri) > lightingThr){
+				if (length(normalFiltered) > lightingThr){
+					curDetail = 1 - dot(normalize(normalOri), normalize(normalFiltered));
+				}
+				else{
+					curDetail = 1;
+				}
+			}
+			detailDescriptor = detailDescriptor + curDetail*visibility;
+		}
 
 		// exit early if opaque
 		if (sum.w > opacityThreshold){
@@ -511,6 +463,8 @@ __global__ void d_computeSphereUtility(float density, float brightness,
 	sum *= brightness;
 
 	float uv = sum.w;
+	if (vpmethod == Tao09Detail)
+		uv = detailDescriptor;
 
 	r[i] = uv;
 
@@ -574,7 +528,7 @@ float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInLocal)
 		exit(0);
 	}
 
-	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist);
+	d_computeSphereColor << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist, JS06Sphere);
 
 	float ret;
 	if (useHist){
@@ -596,9 +550,48 @@ float ViewpointEvaluator::computeEntropyJS06Sphere(float3 eyeInLocal)
 	return ret;
 }
 
+float ViewpointEvaluator::computeEntropyTao09Detail(float3 eyeInLocal)
+{
+	int threadsPerBlock = 64;
+	int blocksPerGrid = (numSphereSample + threadsPerBlock - 1) / threadsPerBlock;
+
+	cudaMemset(d_hist, 0, sizeof(float)*nbins);
+
+	if (useLabelCount && !labelBeenSet){
+		std::cout << "label not set yet! " << std::endl;
+		exit(0);
+	}
+
+	d_computeSphereColor << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist, Tao09Detail);
+
+	float ret;
+	if (useHist){
+		if (useLabelCount){
+			ret = computeVectorEntropy(d_hist, maxLabel + 1);
+		}
+		else if (useColor){
+			ret = computeVectorEntropy(d_hist, nbins);
+		}
+	}
+	else if (useTrad){
+		ret = computeVectorEntropy(d_r, numSphereSample);
+	}
+	else{
+		std::cout << "entropy computation not defined! " << std::endl;
+		exit(0);
+	}
+
+	return ret;
+}
+
+
 float ViewpointEvaluator::computeVectorEntropy(float* ary, int size)
 {
 	thrust::device_vector< float > iVec(ary, ary + size);
+
+	std::vector<float> stl_vector(size);
+	thrust::copy(iVec.begin(), iVec.end(), stl_vector.begin());
+
 	float sum = thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
 	thrust::transform(iVec.begin(), iVec.end(), iVec.begin(), functor_computeEntropy(sum));
 	return thrust::reduce(iVec.begin(), iVec.end(), (float)0, thrust::plus<float>());
@@ -606,9 +599,8 @@ float ViewpointEvaluator::computeVectorEntropy(float* ary, int size)
 
 
 __global__ void d_computeCubeColorHist(float density, float brightness,
-	float3 eyeInLocal, float3 viewVec, float3 upVec, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist0, float *hist1, float *hist2, float *hist3, float *hist4, float *hist5, int nbins, bool useHist, bool useLabelCount)//, bool useDist)
+	float3 eyeInLocal, float3 viewVec, float3 upVec, int3 volumeSize, int maxSteps, float tstep, bool useColor, float * r, int numSphereSample, float *sphereSamples, float *hist0, float *hist1, float *hist2, float *hist3, float *hist4, float *hist5, int nbins, bool useHist, bool useLabelCount, VPMethod vpmethod)//, bool useDist)
 {
-
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= numSphereSample)	return;
 
@@ -625,12 +617,16 @@ __global__ void d_computeCubeColorHist(float density, float brightness,
 	tnear = 0.01f;	//!!!NOTE!!! this tnear is not in the clip space but in the original space
 
 	// march along ray from front to back, accumulating color
-	float4 sum = make_float4(0.0f);
 	float t = tnear;
 	float3 pos = eyeRay.o + eyeRay.d*tnear;
 	float3 step = eyeRay.d*tstep;
 
-	unsigned short label = 0;
+	float4 sum = make_float4(0.0f); //for JS
+	unsigned short label = 0; //for label count
+	float detailDescriptor= 0; //for TaoDetail
+
+	float lightingThr = 0.000001; //used for the threshold of TaoDetail
+
 
 	for (int i = 0; i<maxSteps; i++)
 	{
@@ -657,7 +653,26 @@ __global__ void d_computeCubeColorHist(float density, float brightness,
 		col.y *= col.w;
 		col.z *= col.w;
 		// "over" operator for front-to-back blending
+
+		float visibility = 1.0f - sum.w;
+
 		sum = sum + col*(1.0f - sum.w);
+
+
+		if (vpmethod == Tao09Detail){ //if not Tao09Detail, the sampled texture may not be prepared
+			float curDetail = 0;
+			float3 normalOri = make_float3(tex3D(gradientTexOri, coord.x, coord.y, coord.z)) / spacing;
+			float3 normalFiltered = make_float3(tex3D(gradientTexFiltered, coord.x, coord.y, coord.z)) / spacing;
+			if (length(normalOri) > lightingThr){
+				if (length(normalFiltered) > lightingThr){
+					curDetail = 1 - dot(normalize(normalOri), normalize(normalFiltered));
+				}
+				else{
+					curDetail = 1;
+				}
+			}
+			detailDescriptor = detailDescriptor + curDetail*visibility;
+		}
 
 		// exit early if opaque
 		if (sum.w > opacityThreshold){
@@ -679,90 +694,104 @@ __global__ void d_computeCubeColorHist(float density, float brightness,
 	}
 	sum *= brightness;
 
-	//float uv = sum.w; //use density
-	float uv = sum.x;// !!! NOTE !!! this is only true for grey scale color
-
-	//r[i] = uv; //currently not need this
-
-	//if (useLabelCount){
-	//	r[i] = label;
-	//	if (useHist){
-	//		int bin;
-	//		if (label > 0)
-	//			bin = 1;
-	//		else
-	//			bin = 0;
-	//		atomicAdd(hist + bin, 1);
-	//	}
-	//}
-	//else if (useDist){
-	//	float dis;
-	//	if (uv < 0.00001)
-	//		dis = 0;
-	//	else
-	//		dis = t;
-	//	r[i] = uv;
-	//	if (useHist){
-	//		float maxDist = fmaxf(fmaxf(boxMax.x, boxMax.y), boxMax.z);
-	//		float minDist = 0;
-	//		// !!! change the range into [0,1] !!!
-	//		int bin = min((int)((dis - minDist) / (maxDist - minDist) *nbins), nbins - 1);
-	//		atomicAdd(hist + bin, 1);
-	//	}
-	//}
-	//else{
-	//	if (useHist){
-	//		// !!! this is true only when we know uv is in [0,1] !!!
-	//		int bin = min((int)(uv*nbins), nbins - 1);
-	//		atomicAdd(hist + bin, 1);
-	//	}
-	//}
-
-	//if (useHist){
 
 	int bin;
 	if (useLabelCount){
-		if (label > 0)
+		// !!! this is true only when we know max label is 1 !!!
+		if (label > 0)		
 			bin = 1;
 		else
 			bin = 0;
 	}
 	else{
-		// !!! this is true only when we know uv is in [0,1] !!!
-		bin = min((int)(uv*nbins), nbins - 1);
+		if (vpmethod == JS06Sphere){
+			float uv = sum.x; // !!! NOTE !!! this is only true for grey scale color
+			// !!! this is true only when we know uv is in [0,1] !!!
+			bin = min((int)(uv*nbins), nbins - 1);
+		}
+		else if (vpmethod == Tao09Detail){
+			float uv = detailDescriptor;
+			// !!! this is true only when we know uv is in [0,1] !!!
+			bin = min((int)(uv*nbins), nbins - 1);
+		}
 	}
-		//atomicAdd(hist + bin, 1);
 
-		//suppose x coord is along viewVew, suppose upVec and viewVew are normalized and perpendicular
-		float3 sidevec = cross(upVec, viewVec);
-		float rayz = dot(eyeRay.d, upVec), rayx = dot(eyeRay.d, viewVec), rayy = dot(eyeRay.d, sidevec);
+	//suppose x coord is along viewVew, suppose upVec and viewVew are normalized and perpendicular
+	float3 sidevec = cross(upVec, viewVec);
+	float rayz = dot(eyeRay.d, upVec), rayx = dot(eyeRay.d, viewVec), rayy = dot(eyeRay.d, sidevec);
 
-		float xabs = abs(rayx), yabs = abs(rayy), zabs = abs(rayz);
-		if (xabs > yabs && xabs > zabs){
-			if (rayx > 0){ //front
-				atomicAdd(hist0 + bin, 1);
+	float xabs = abs(rayx), yabs = abs(rayy), zabs = abs(rayz);
+	if (xabs > yabs && xabs > zabs){
+		if (rayx > 0){ //front
+			atomicAdd(hist0 + bin, 1);
+		}
+		else{ //back
+			atomicAdd(hist1 + bin, 1);
+		}
+	}
+	else if (yabs > xabs && yabs > zabs){
+		if (rayy > 0){ //left
+			atomicAdd(hist2 + bin, 1);
+		}
+		else{ //right
+			atomicAdd(hist3 + bin, 1);
+		}
+	}
+	else{ //zabs is the max
+		if (rayz > 0){ //up
+			atomicAdd(hist4 + bin, 1);
+		}
+		else{ //below
+			atomicAdd(hist5 + bin, 1);
+		}
+	}
+}
+
+
+void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir, VPMethod m)
+{
+	if (m == Tao09Detail){
+		initTao09Detail();
+
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (numSphereSample + threadsPerBlock - 1) / threadsPerBlock;
+
+		for (int i = 0; i < 6; i++){
+			cudaMemset(cubeFaceHists[i], 0, sizeof(float)*nbins);
+		}
+
+		if (useLabelCount && !labelBeenSet){
+			std::cout << "label not set yet! " << std::endl;
+			exit(0);
+		}
+
+		checkCudaErrors(cudaBindTextureToArray(gradientTexOri, volumeGradient.content, volumeGradient.channelDesc));
+		checkCudaErrors(cudaBindTextureToArray(gradientTexFiltered, filteredVolumeGradient.content, filteredVolumeGradient.channelDesc));
+
+		d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, useLabelCount, VPMethod::Tao09Detail);
+
+		checkCudaErrors(cudaUnbindTexture(gradientTexOri));
+		checkCudaErrors(cudaUnbindTexture(gradientTexFiltered));
+
+		for (int i = 0; i < 6; i++){
+			if (useHist){
+				if (useLabelCount){
+					cubeInfo[i] = computeVectorEntropy(cubeFaceHists[i], maxLabel + 1);
+				}
+				else if (useColor){
+					cubeInfo[i] = computeVectorEntropy(cubeFaceHists[i], nbins);
+				}
 			}
-			else{ //back
-				atomicAdd(hist1 + bin, 1);
+			else{
+				std::cout << "entropy computation not defined! " << std::endl;
+				exit(0);
 			}
 		}
-		else if (yabs > xabs && yabs > zabs){
-			if (rayy > 0){ //left
-				atomicAdd(hist2 + bin, 1);
-			}
-			else{ //right
-				atomicAdd(hist3 + bin, 1);
-			}
-		}
-		else{ //zabs is the max
-			if (rayz > 0){ //up
-				atomicAdd(hist4 + bin, 1);
-			}
-			else{ //below
-				atomicAdd(hist5 + bin, 1);
-			}
-		}
-	//}
+	}
+	else{
+		return;
+	}
+
 }
 
 void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir)
@@ -772,7 +801,7 @@ void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, f
 
 //	cudaMemset(d_hist, 0, sizeof(float)*nbins);
 	for (int i = 0; i < 6; i++){
-		cudaMemset(cubeFaceDist[i], 0, sizeof(float)*nbins);
+		cudaMemset(cubeFaceHists[i], 0, sizeof(float)*nbins);
 	}
 
 	if (useLabelCount && !labelBeenSet){
@@ -780,18 +809,16 @@ void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, f
 		exit(0);
 	}
 
-//	d_computeSphereUtility << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, useLabelCount, useDist);
-
-	d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceDist[0], cubeFaceDist[1], cubeFaceDist[2], cubeFaceDist[3], cubeFaceDist[4], cubeFaceDist[5], nbins, useHist, useLabelCount);
+	d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, useLabelCount, VPMethod::JS06Sphere);
 
 	for (int i = 0; i < 6; i++){
 		
 		if (useHist){
 			if (useLabelCount){
-				cubeInfo[i] = computeVectorEntropy(cubeFaceDist[i], maxLabel + 1);
+				cubeInfo[i] = computeVectorEntropy(cubeFaceHists[i], maxLabel + 1);
 			}
 			else if (useColor){
-				cubeInfo[i] = computeVectorEntropy(cubeFaceDist[i], nbins);
+				cubeInfo[i] = computeVectorEntropy(cubeFaceHists[i], nbins);
 			}
 		}
 		else{

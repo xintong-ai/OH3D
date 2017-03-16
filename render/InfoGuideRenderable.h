@@ -81,5 +81,7 @@ public:
 	~InfoGuideRenderable()
 	{
 	};
+
+	bool globalGuideOn = false; //currently only used for label count
 };
 #endif

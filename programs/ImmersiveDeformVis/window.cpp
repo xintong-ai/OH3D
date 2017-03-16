@@ -93,11 +93,14 @@ Window::Window()
 	skelVolume->initVolumeCuda();
 	reader4.reset();
 
+	labelVolCUDA = std::make_shared<VolumeCUDA>();
+	labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
+	labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
+	memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
 
 	////////////////matrix manager
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
-
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	matrixMgr->setDefaultForImmersiveMode();		
 	if (std::string(dataPath).find("engine") != std::string::npos){
@@ -112,7 +115,8 @@ Window::Window()
 	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
 	//ve->initDownSampledResultVolume(make_int3(40, 40, 40));
 	ve->setSpherePoints();
-	
+	ve->setLabel(labelVolCUDA);
+
 	std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
 	reader3->OutputToParticleDataArrays(ve->skelViews);
 	reader3.reset();
@@ -138,41 +142,20 @@ Window::Window()
 	animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 	animationByMatrixProcessor->setViews(views);
 
-	useLabel = true;
-	labelVolCUDA = 0;
-	if (useLabel){
-		//std::shared_ptr<RawVolumeReader> reader;
-		//const std::string labelDataPath = dataMgr->GetConfig("FEATURE_PATH");
-		//reader = std::make_shared<RawVolumeReader>(labelDataPath.c_str(), dims);
-		//labelVolCUDA = std::make_shared<VolumeCUDA>();
-		//reader->OutputToVolumeCUDAUnsignedShort(labelVolCUDA);
-		//reader.reset();
 
-		labelVolCUDA = std::make_shared<VolumeCUDA>();
-		labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
+	lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVolCUDA);
+	lvProcessor->setScreenMarker(sm);
+	lvProcessor->rcp = rcp;
 
-		lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVolCUDA);
-		lvProcessor->setScreenMarker(sm);
-		lvProcessor->rcp = rcp;
+	
 
-		ve->setLabel(labelVolCUDA);
-		ve->useLabelCount = true;
-		ve->useColor = false;
-
-		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
-		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
-	}
 	openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
-	if (useLabel){
-		//openGL->AddProcessor("screenMarkerVolumeProcessor", lvProcessor.get());
-	}
+	//openGL->AddProcessor("screenMarkerLabelVolumeProcessor", lvProcessor.get());
 	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 
 
 	//////////////////////////////// Renderable ////////////////////////////////
-	
-	
 	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 	
@@ -203,11 +186,11 @@ Window::Window()
 	
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
-	if (useLabel){
-		sbInteractor = std::make_shared<ScreenBrushInteractor>();
-		sbInteractor->setScreenMarker(sm);
-		openGL->AddInteractor("3screenMarker", sbInteractor.get());
-	}
+	
+	sbInteractor = std::make_shared<ScreenBrushInteractor>();
+	sbInteractor->setScreenMarker(sm);
+	openGL->AddInteractor("3screenMarker", sbInteractor.get());
+	
 
 #ifdef USE_LEAP
 	listener = new LeapListener();
@@ -439,7 +422,7 @@ Window::Window()
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
 	openGLMini->AddInteractor("1regular", regularInteractorMini.get());
 
-	//assistLayout->addWidget(openGLMini.get(), 3);
+	assistLayout->addWidget(openGLMini.get(), 3);
 
 	helper.setData(inputVolume, labelVolLocal);
 	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
@@ -458,9 +441,14 @@ Window::Window()
 	assistLayout->addWidget(redrawBtn);
 	connect(redrawBtn, SIGNAL(clicked()), this, SLOT(redrawBtnClicked()));
 
-	QPushButton *updateLabelVolBtn = new QPushButton("Update Label Volume");
+	QPushButton *updateLabelVolBtn = new QPushButton("Find optimal for Label");
 	assistLayout->addWidget(updateLabelVolBtn);
 	connect(updateLabelVolBtn, SIGNAL(clicked()), this, SLOT(updateLabelVolBtnClicked()));
+
+	QPushButton *findGeneralOptimalBtn = new QPushButton("Find general optimal");
+	assistLayout->addWidget(findGeneralOptimalBtn);
+	connect(findGeneralOptimalBtn, SIGNAL(clicked()), this, SLOT(findGeneralOptimalBtnClicked()));
+
 
 	mainLayout->addLayout(assistLayout, 1);
 	//openGL->setFixedSize(600, 600);
@@ -642,9 +630,23 @@ void Window::updateLabelVolBtnClicked()
 {
 	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
 	std::cout << std::endl << "The lable volume has been updated" << std::endl << std::endl;
+	ve->useLabelCount = true;
+	ve->useColor = false;
 	ve->compute_SkelSampling(VPMethod::JS06Sphere);
 	std::cout << std::endl << "The optimal view point has been computed" << std::endl << std::endl;
+	infoGuideRenderable->globalGuideOn = true;
+	// !!! may need to change back useLabelCount and useColor ???
 }
+
+void Window::findGeneralOptimalBtnClicked()
+{
+	ve->useLabelCount = false;
+	ve->useColor = true;
+	ve->compute_SkelSampling(VPMethod::Tao09Detail);
+	std::cout << std::endl << "The optimal view point has been computed" << std::endl << std::endl;
+	infoGuideRenderable->globalGuideOn = true;
+}
+
 
 void Window::redrawBtnClicked()
 {

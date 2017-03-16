@@ -19,6 +19,7 @@ bool AnimationByMatrixProcessor::process(float modelview[16], float projection[1
 	if (!isActive)
 		return false;
 
+	//theoretically the following belongs to the job of interactor. however qt interactor does not well support mouse key pressint-and-holding, so put it here
 	float rotationDegree = 2;
 	if (matrixMgr->toRotateLeft){
 		QMatrix4x4 oriRotMat;

@@ -160,10 +160,10 @@ private slots:
 
 	void zSliderValueChanged(int v);
 	void updateLabelVolBtnClicked();
+	void findGeneralOptimalBtnClicked();
 	void redrawBtnClicked();
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
-
 };
 
 #endif

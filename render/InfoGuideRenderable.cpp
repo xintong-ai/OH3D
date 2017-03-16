@@ -21,7 +21,12 @@ void InfoGuideRenderable::draw(float modelview[16], float projection[16])
 		return;
 
 	if (matrixMgr->justChanged){// !!! note !!! when using VR device, justChanged is not enough to detect matrix change
-		ve->computeCubeEntropy(matrixMgr->getEyeInLocal(), matrixMgr->getViewVecInLocal(), matrixMgr->getUpInLocal());
+		if (globalGuideOn){
+			ve->computeCubeEntropy(matrixMgr->getEyeInLocal(), matrixMgr->getViewVecInLocal(), matrixMgr->getUpInLocal());
+		}
+		else{	
+			ve->computeCubeEntropy(matrixMgr->getEyeInLocal(), matrixMgr->getViewVecInLocal(), matrixMgr->getUpInLocal(), VPMethod::Tao09Detail);
+		}
 		matrixMgr->justChanged = false;
 
 		//cout << "cube info " << ve->cubeInfo[0] << " " << ve->cubeInfo[1] << " " << ve->cubeInfo[2] << " " << ve->cubeInfo[3] << " " << ve->cubeInfo[4] << " " << ve->cubeInfo[5] << endl;
@@ -29,8 +34,8 @@ void InfoGuideRenderable::draw(float modelview[16], float projection[16])
 
 	int2 winSize = actor->GetWindowSize();
 
-
-	if (ve->useLabelCount){
+	if (globalGuideOn){
+	//if (ve->useLabelCount){
 		float maxInfo = *std::max_element(ve->cubeInfo.begin(), ve->cubeInfo.begin() + ve->cubeInfo.size());
 
 		float infoThr = 0.001;
@@ -42,6 +47,9 @@ void InfoGuideRenderable::draw(float modelview[16], float projection[16])
 				drawGlobalGuide(modelview, projection, winSize);
 			}
 		}
+	}
+	else{
+		drawLocalGuide(winSize);
 	}
 }
 
@@ -66,36 +74,60 @@ void InfoGuideRenderable::drawLocalGuide(int2 winSize)
 
 	glColor4f(0.89f, 0.39f, 0.26f, 0.5f);
 
-	float thrRatio = 1.07;
+	//float maxInfo = *std::max_element(ve->cubeInfo.begin(), ve->cubeInfo.begin() + ve->cubeInfo.size());
+	int maxInd = std::max_element(ve->cubeInfo.begin(), ve->cubeInfo.begin() + ve->cubeInfo.size()) - ve->cubeInfo.begin();
+	float maxInfo = ve->cubeInfo[maxInd];
+
+	float thrRatio = 1.1;
 	const float tipRatio = 0.1;
 	const float sideRatio = 0.2;
-	if (ve->cubeInfo[2] > thrRatio*ve->cubeInfo[0]){
-		glBegin(GL_TRIANGLES);
-		glVertex2f(winSize.x*tipRatio, winSize.y*0.5);
-		glVertex2f(winSize.x*tipRatio * 2, winSize.y*sideRatio);
-		glVertex2f(winSize.x*tipRatio * 2, winSize.y*(1 - sideRatio));
-		glEnd();
-	}
-	if (ve->cubeInfo[3] > thrRatio*ve->cubeInfo[0]){
-		glBegin(GL_TRIANGLES);
-		glVertex2f(winSize.x*(1 - tipRatio), winSize.y*0.5);
-		glVertex2f(winSize.x*(1 - tipRatio * 2), winSize.y*sideRatio);
-		glVertex2f(winSize.x*(1 - tipRatio * 2), winSize.y*(1 - sideRatio));
-		glEnd();
-	}
-	if (ve->cubeInfo[4] > thrRatio*ve->cubeInfo[0]){
-		glBegin(GL_TRIANGLES);
-		glVertex2f(winSize.x*0.5, winSize.y*(1 - tipRatio));
-		glVertex2f(winSize.x*sideRatio, winSize.y*(1 - 2 * tipRatio));
-		glVertex2f(winSize.x*(1 - sideRatio), winSize.y*(1 - 2 * tipRatio));
-		glEnd();
-	}
-	if (ve->cubeInfo[5] > thrRatio*ve->cubeInfo[0]){
-		glBegin(GL_TRIANGLES);
-		glVertex2f(winSize.x*0.5, winSize.y*tipRatio);
-		glVertex2f(winSize.x*sideRatio, winSize.y * 2 * tipRatio);
-		glVertex2f(winSize.x*(1 - sideRatio), winSize.y * 2 * tipRatio);
-		glEnd();
+	if (maxInfo > thrRatio*ve->cubeInfo[0]){
+		if (maxInd == 1){
+
+			glLineWidth(40);
+
+			glBegin(GL_LINE_STRIP);
+			for (int j = 0; j < turnArrowParts[0].size(); j++){
+				glVertex2f(turnArrowParts[0][j].x * 120 + winSize.x*0.4, turnArrowParts[0][j].y * 120 + winSize.y*0.7);
+			}
+			glEnd();
+
+			glLineWidth(4);
+
+			glBegin(GL_TRIANGLES);
+			for (int j = 0; j < turnArrowParts[1].size(); j++){
+				glVertex2f(turnArrowParts[1][j].x * 120 + winSize.x*0.4, turnArrowParts[1][j].y * 120 + winSize.y*0.7);
+			}
+			glEnd();
+		}
+		else if(maxInd == 2){
+			glBegin(GL_TRIANGLES);
+			glVertex2f(winSize.x*tipRatio, winSize.y*0.5);
+			glVertex2f(winSize.x*tipRatio * 2, winSize.y*sideRatio);
+			glVertex2f(winSize.x*tipRatio * 2, winSize.y*(1 - sideRatio));
+			glEnd();
+		}
+		else if (maxInd == 3){
+			glBegin(GL_TRIANGLES);
+			glVertex2f(winSize.x*(1 - tipRatio), winSize.y*0.5);
+			glVertex2f(winSize.x*(1 - tipRatio * 2), winSize.y*sideRatio);
+			glVertex2f(winSize.x*(1 - tipRatio * 2), winSize.y*(1 - sideRatio));
+			glEnd();
+		}
+		else if (maxInd == 4){
+			glBegin(GL_TRIANGLES);
+			glVertex2f(winSize.x*0.5, winSize.y*(1 - tipRatio));
+			glVertex2f(winSize.x*sideRatio, winSize.y*(1 - 2 * tipRatio));
+			glVertex2f(winSize.x*(1 - sideRatio), winSize.y*(1 - 2 * tipRatio));
+			glEnd();
+		}
+		else if (maxInd == 5){
+			glBegin(GL_TRIANGLES);
+			glVertex2f(winSize.x*0.5, winSize.y*tipRatio);
+			glVertex2f(winSize.x*sideRatio, winSize.y * 2 * tipRatio);
+			glVertex2f(winSize.x*(1 - sideRatio), winSize.y * 2 * tipRatio);
+			glEnd();
+		}
 	}
 
 	glDisable(GL_BLEND);

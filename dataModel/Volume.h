@@ -82,6 +82,10 @@ public:
 	void initVolumeCuda();
 	void reset();
 
+	void computeGradient(float* &f);
+	void computeGradient(float* input, int3 size, float* &f);
+	void computeBilateralFiltering(float* &res, float sigs, float sigr); //see Structure-Aware Viewpoint Selection for Volume Visualization
+
 	void saveRawToFile(const char *);
 
 	static void rawFileInfo(std::string dataPath, int3 & dims, float3 &spacing, std::shared_ptr<RayCastingParameters> & rcp, std::string  &subfolder)

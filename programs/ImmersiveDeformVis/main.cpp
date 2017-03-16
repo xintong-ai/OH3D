@@ -24,19 +24,6 @@ int main(int argc, char **argv)
 	Window win;
 
 	win.init();
-	//win.setFixedSize(1095, 822);
-
-
-
-	//std::shared_ptr<ViewpointEvaluator> ve = std::make_shared<ViewpointEvaluator>(win.rcp, win.inputVolume);
-	//if (win.useLabel){
-	//	ve->setLabel(win.labelVol);
-	//}
-	//ve->initDownSampledResultVolume(make_int3(40, 40, 40));
-	//ve->compute(VPMethod::JS06Sphere);
-	//ve->saveResultVol("entro.raw");
-
-
 	win.show();
 	return app.exec();
 
