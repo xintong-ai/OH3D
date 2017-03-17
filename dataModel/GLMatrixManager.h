@@ -49,7 +49,7 @@ protected:
 	void updateDepthRange();
 
 public:
-	bool justChanged = false; //currently just cover the change of model and view mat, not prj mat
+	//bool justChanged = false; //currently just cover the change of model and view mat, not prj mat
 
 	GLMatrixManager(float3 posMin = make_float3(0, 0, 0), float3 posMax = make_float3(0, 0, 0));
 	void setDefaultForImmersiveMode();

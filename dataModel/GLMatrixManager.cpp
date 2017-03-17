@@ -82,7 +82,7 @@ void GLMatrixManager::UpdateModelMatrixFromDetail()
 	modeMat = modeMat * rotMat;
 	modeMat.scale(scaleEff);
 	modeMat.translate(transVec);
-	justChanged = true;
+	//justChanged = true;
 	updateDepthRange();
 }
 
@@ -90,7 +90,7 @@ void GLMatrixManager::UpdateViewMatrixFromDetail()
 {
 	viewMat.setToIdentity();
 	viewMat.lookAt(eyeInWorld, eyeInWorld + viewVecInWorld, upVecInWorld);
-	justChanged = true;
+	//justChanged = true;
 	updateDepthRange();
 }
 

@@ -156,18 +156,20 @@ Window::Window()
 
 
 	//////////////////////////////// Renderable ////////////////////////////////
-	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
+
 	
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
 	volumeRenderable->rcp = rcp;
 	volumeRenderable->rcpTrans = rcpTrans;
 	openGL->AddRenderable("1volume", volumeRenderable.get());
 	volumeRenderable->setScreenMarker(sm);
-	volumeRenderable->setBlending(true);
 
-	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
+	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
+	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+
+	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	//openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
 
 	infoGuideRenderable = std::make_shared<InfoGuideRenderable>(ve, matrixMgr);
 	openGL->AddRenderable("3infoGuide", infoGuideRenderable.get());
@@ -449,6 +451,9 @@ Window::Window()
 	assistLayout->addWidget(findGeneralOptimalBtn);
 	connect(findGeneralOptimalBtn, SIGNAL(clicked()), this, SLOT(findGeneralOptimalBtnClicked()));
 
+	QPushButton *turnOffGlobalGuideBtn = new QPushButton("Turn Off GLobal Guide");
+	assistLayout->addWidget(turnOffGlobalGuideBtn);
+	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
 
 	mainLayout->addLayout(assistLayout, 1);
 	//openGL->setFixedSize(600, 600);
@@ -461,7 +466,10 @@ Window::Window()
 	vrWidget = std::make_shared<VRWidget>(matrixMgr);
 	vrWidget->setWindowFlags(Qt::Window);
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
-	vrWidget->AddRenderable("volume", vrVolumeRenderable.get());
+
+	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
+	vrWidget->AddRenderable("2info", infoGuideRenderable.get());
+	
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = volumeRenderable->rcp;
 #endif
@@ -630,23 +638,26 @@ void Window::updateLabelVolBtnClicked()
 {
 	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
 	std::cout << std::endl << "The lable volume has been updated" << std::endl << std::endl;
-	ve->useLabelCount = true;
-	ve->useColor = false;
-	ve->compute_SkelSampling(VPMethod::JS06Sphere);
-	std::cout << std::endl << "The optimal view point has been computed" << std::endl << std::endl;
-	infoGuideRenderable->globalGuideOn = true;
-	// !!! may need to change back useLabelCount and useColor ???
+
+	ve->currentMethod = VPMethod::LabelVisibility;
+	ve->compute_SkelSampling(VPMethod::LabelVisibility);
+	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy << std::endl;
+	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 }
 
 void Window::findGeneralOptimalBtnClicked()
 {
-	ve->useLabelCount = false;
-	ve->useColor = true;
+	ve->currentMethod = VPMethod::Tao09Detail;
 	ve->compute_SkelSampling(VPMethod::Tao09Detail);
-	std::cout << std::endl << "The optimal view point has been computed" << std::endl << std::endl;
-	infoGuideRenderable->globalGuideOn = true;
+	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy<< std::endl;
+	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 }
 
+
+void Window::turnOffGlobalGuideBtnClicked()
+{
+	infoGuideRenderable->changeWhetherGlobalGuideMode(false);
+}
 
 void Window::redrawBtnClicked()
 {

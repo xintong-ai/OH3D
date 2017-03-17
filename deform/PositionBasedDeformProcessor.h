@@ -60,8 +60,6 @@ private:
 
 	bool inDeformedCell(float3 pos);
 
-	std::clock_t startTime;
-
 	float lastOpenFinalDegree;
 	float3 lastDeformationDirVertical;
 	float3 lastTunnelStart, lastTunnelEnd;

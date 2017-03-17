@@ -14,7 +14,8 @@ class Particle;
 enum VPMethod{
 	BS05,
 	JS06Sphere,
-	Tao09Detail
+	Tao09Detail,
+	LabelVisibility
 };
 
 struct SpherePoint {
@@ -48,29 +49,24 @@ public:
 		}
 	};
 
+	VPMethod currentMethod = Tao09Detail;
+
 	void setSpherePoints(int n = 512);
-
 	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
-
-
 	void initDownSampledResultVolume(int3 sampleSize);	
 	void compute_UniformSampling(VPMethod m);
 	void compute_SkelSampling(VPMethod m);
 	void saveResultVol(const char*);
 
+	float maxEntropy;
 	float3 optimalEyeInLocal;
-	bool optimalEyeValid = false; //when the optimalEye has not been computed, optimalEyeInLocal should not be used
 
 	std::vector<float> cubeInfo;
-	void computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir);
 	void computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir, VPMethod m);
 
 	std::vector<std::shared_ptr<Particle>> skelViews;
 	
-
-	bool useHist = true, useTrad = false;
-	bool useLabelCount = false, useColor = true;
-	bool useDist = false;//not well set yet. may eliminate later
+	bool useHist = true;  //most papers do not use histogram to compute entropy. however we mostly use histogram. if true, each bin will be computed a probability; if false, each pixel will be computed a probability
 	int maxLabel = 1; //!! data dependant
 
 private:
@@ -80,8 +76,6 @@ private:
 	VolumeCUDA volumeGradient;
 	VolumeCUDA filteredVolumeGradient;
 
-
-
 	float computeVectorEntropy(float* ary, int size);
 
 	void GPU_setVolume(const VolumeCUDA *vol);
@@ -90,8 +84,6 @@ private:
 	std::vector<SpherePoint> sphereSamples;
 	int numSphereSample;
 	float* d_sphereSamples = 0;
-
-
 
 	const int nbins = 32;
 	float* d_hist;
@@ -103,19 +95,18 @@ private:
 
 	void initJS06Sphere();
 	void initTao09Detail();
-	
+	void initLabelVisibility();
+
 	bool JS06SphereInited = false;
 	bool Tao09DetailInited = false;
+	bool LabelVisibilityInited = false;
 
-	float computeEntropyJS06Sphere(float3 eyeInLocal);
-	float computeEntropyTao09Detail(float3 eyeInLocal);
+	float computeLocalSphereEntropy(float3 eyeInLocal, VPMethod m);
 
 	bool labelBeenSet = false;
 
 	float3 indToLocal(int i, int j, int k);
-
 	bool spherePointSet = false;
-
 };
 
 
