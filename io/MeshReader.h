@@ -14,9 +14,9 @@ struct MeshReader
 	int TotalConnectedPoints;
 	int TotalFaces;
 
-	float* Faces_Triangles;
-	float* Normals;
-	unsigned int* indices;
+	float* Faces_Triangles = 0;
+	float* Normals = 0;
+	unsigned int* indices = 0;
 	int numElements;
 
 	void LoadPLY(const char* filename);
@@ -25,6 +25,12 @@ struct MeshReader
 	
 	float3 center;
 	void computeCenter(); //this center is the average position of all face centers, NOT average of vertices positions
+
+	~MeshReader(){
+		if (Faces_Triangles) delete[] Faces_Triangles;
+		if (Normals) delete[] Normals;
+		if (indices) delete[] indices;
+	}
 };
 
 

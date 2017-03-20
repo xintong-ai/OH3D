@@ -12,7 +12,7 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
-#include "myDefine.h"
+#include "myDefineRayCasting.h"
 
 typedef float VolumeType;
 
@@ -43,6 +43,11 @@ public:
 	
 	float *values = 0; //used to store the voxel values. generally normalized to [0,1] if used for volume rendering
 
+	float *gradient = 0; //only used after computation. will not be automatically computed
+	//note!! gradient stores the gradient in float4 tuples, because it is preparing to copy the data to cudaArray, which does not support float3 well
+	float maxGadientLength = 0;
+
+
 	//float getVoxel(int3 v){
 	//	return values[v.z*size.x*size.y + v.y*size.x + v.x];
 	//};
@@ -68,6 +73,7 @@ public:
 	~Volume()
 	{
 		if (!values) delete values;
+		if (!gradient) delete gradient;
 	};
 
 
@@ -82,6 +88,7 @@ public:
 	void initVolumeCuda();
 	void reset();
 
+	void computeGradient();
 	void computeGradient(float* &f);
 	void computeGradient(float* input, int3 size, float* &f);
 	void computeBilateralFiltering(float* &res, float sigs, float sigr); //see Structure-Aware Viewpoint Selection for Volume Visualization
@@ -119,7 +126,7 @@ public:
 		else if (std::string(dataPath).find("engine") != std::string::npos){
 			dims = make_int3(149, 208, 110);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(0.8, 0.4, 1.2, 1.0, 0.05, 1.25, 512, 0.25f, 1.0, false);
+			rcp = std::make_shared<RayCastingParameters>(0.8, 0.4, 1.2, 1.0, 0.05, 1.25, 256, 0.25f, 1.0, false);
 			subfolder = "engine";
 		}
 		else if (std::string(dataPath).find("knee") != std::string::npos){
@@ -129,8 +136,14 @@ public:
 		else if (std::string(dataPath).find("181") != std::string::npos){
 			dims = make_int3(181, 217, 181);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
+			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 256, 0.25f, 1.0, false); //for 181
 			subfolder = "181";
+		}
+		else if (std::string(dataPath).find("bloodCell") != std::string::npos){
+			dims = make_int3(160, 224, 64);
+			spacing = make_float3(1, 1, 1);
+			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false); //for 181
+			subfolder = "bloodCell";
 		}
 		else{
 			std::cout << "volume data name not recognized" << std::endl;

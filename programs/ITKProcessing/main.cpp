@@ -10,7 +10,7 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 
-#include "myDefine.h"
+#include "myDefineRayCasting.h"
 
 #include "imageProcessing.h"
 #include <itkImage.h>
@@ -79,54 +79,11 @@ int main(int argc, char **argv)
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
 	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
-
 	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
-
-	if (std::string(dataPath).find("MGHT2") != std::string::npos){
-		dims = make_int3(320, 320, 256);
-		spacing = make_float3(0.7, 0.7, 0.7);
-	}
-	else if (std::string(dataPath).find("MGHT1") != std::string::npos){
-		dims = make_int3(256, 256, 176);
-		spacing = make_float3(1.0, 1.0, 1.0);
-		rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.29, 1.25, 512, 0.25f, 1.3, false);
-	}
-	else if (std::string(dataPath).find("nek128") != std::string::npos){
-		dims = make_int3(128, 128, 128);
-		spacing = make_float3(2, 2, 2); //to fit the streamline of nek256
-	}
-	else if (std::string(dataPath).find("nek256") != std::string::npos){
-		dims = make_int3(256, 256, 256);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("cthead") != std::string::npos){
-		dims = make_int3(208, 256, 225);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("brat") != std::string::npos){
-		dims = make_int3(160, 216, 176);
-		spacing = make_float3(1, 1, 1);
-		rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
-	}
-	else if (std::string(dataPath).find("engine") != std::string::npos){
-		dims = make_int3(149, 208, 110);
-		spacing = make_float3(1, 1, 1);
-		rcp = std::make_shared<RayCastingParameters>(0.8, 0.4, 1.2, 1.0, 0.05, 1.25, 512, 0.25f, 1.0, false);
-	}
-	else if (std::string(dataPath).find("knee") != std::string::npos){
-		dims = make_int3(379, 229, 305);
-		spacing = make_float3(1, 1, 1);
-	}
-	else if (std::string(dataPath).find("181") != std::string::npos){
-		dims = make_int3(181, 217, 181);
-		spacing = make_float3(1, 1, 1);
-		rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
-	}
-	else{
-		std::cout << "volume data name not recognized" << std::endl;
-		exit(0);
-	}
-
+	std::string subfolder;
+	
+	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
+	
 	shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
@@ -139,7 +96,7 @@ int main(int argc, char **argv)
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
-		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos){
+		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos || std::string(dataPath).find("bloodCell") != std::string::npos){
 			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
 		}
 		else{

@@ -11,6 +11,7 @@
 
 class ScreenMarker;
 class PositionBasedDeformProcessor;
+struct RayCastingParameters;
 
 //the difference from VolumeRenderableCUDA is with an extra lable volume, and a screen marker
 class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
@@ -34,7 +35,6 @@ public:
 	bool isFixed = false;
 
 	std::shared_ptr<RayCastingParameters> rcp;
-	std::shared_ptr<RayCastingParameters> rcpTrans;
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;

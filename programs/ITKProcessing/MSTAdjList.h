@@ -5,6 +5,9 @@
 #include <limits.h>
 #include <vector>
 
+#include <vector_types.h>
+#include <helper_math.h>
+
 // A structure to represent a node in adjacency list
 struct AdjListNode
 {
@@ -293,4 +296,27 @@ void PrimMST(struct Graph* graph, struct Graph* res)
 		addEdge(res, i, parent[i], key[i]);
 	}
 
+}
+
+void traveCurList(Graph * mst, std::vector<float3> & views, const float3 lastSample, const float lengthThr, std::vector<bool> & hasTraversed, int n, std::vector<float3> & posOfId)
+{
+	if (hasTraversed[n])
+		return;
+	
+	hasTraversed[n] = true;
+	float3 newLastSample;
+	if (length(posOfId[n] - lastSample) > lengthThr){
+		views.push_back(posOfId[n]);
+		newLastSample = posOfId[n];
+	}
+	else{
+		newLastSample = lastSample;
+	}
+	struct AdjListNode* curList = mst->array[n].head;
+	while (curList != NULL){
+		if (!hasTraversed[curList->dest]){
+			traveCurList(mst, views, newLastSample, lengthThr, hasTraversed, curList->dest, posOfId);
+		}
+		curList = curList->next;
+	}
 }

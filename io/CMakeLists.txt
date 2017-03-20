@@ -19,13 +19,15 @@ set(SRCS DataMgr.cpp MeshReader.cpp ParticleReader.cpp
 	VecReader.cpp TeemVolumeReader.cpp DTIVolumeReader.cpp 
 	SolutionParticleReader.cpp BinaryParticleReader.cpp
 	RawVolumeReader.cpp
-	BinaryTuplesReader.cpp)
+	BinaryTuplesReader.cpp
+	ply.c)
 
 set(HDRS DataMgr.h MeshReader.h ParticleReader.h
 	VecReader.h TeemVolumeReader.h DTIVolumeReader.h 
 	SolutionParticleReader.h BinaryParticleReader.h
 	RawVolumeReader.h
-	BinaryTuplesReader.h)
+	BinaryTuplesReader.h
+	ply.h)
 
 add_library(io STATIC ${HDRS} ${SRCS})
 

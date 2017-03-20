@@ -8,3 +8,7 @@ eVOLUME_DATA_PATH=D:/Data/volume/CT-knee.raw
 
 dVOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec
 yVOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
+dVOLUME_DATA_PATH=D:/Data/volume/dataset-stagbeetle-416x416x247.img
+
+qVOLUME_DATA_PATH=D:/Dropbox/shareXin/bloodCellWall0032.raw
+VOLUME_DATA_PATH=D:/Data/volume/Orange.raw

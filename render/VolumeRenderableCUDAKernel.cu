@@ -3,7 +3,7 @@
 #include <iostream>
 #include "TransformFunc.h"
 #include "PositionBasedDeformProcessor.h"
-#include "myDefine.h"
+#include "myDefineRayCasting.h"
 
 #include <stdlib.h>
 
@@ -37,6 +37,14 @@ __constant__ float transFuncP2;
 __constant__ float la;
 __constant__ float ld;
 __constant__ float ls;
+
+__constant__ float density;
+__constant__ float brightness,
+__constant__ int maxSteps;
+__constant__ float tstep;
+__constant__ bool useColor;
+
+
 __constant__ float3 spacing;
 
 __constant__ bool useLabel = false;
@@ -123,7 +131,7 @@ void VolumeRender_setLabelVolume(const VolumeCUDA *v)
 }
 
 
-void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing)
+void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing, RayCastingParameters* rcp)
 {
 	size_t sizeof4x4Matrix = sizeof(float4)* 4;
 	checkCudaErrors(cudaMemcpyToSymbol(c_MVMatrix, MVMatrix, sizeof4x4Matrix));
@@ -137,6 +145,12 @@ void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMa
 	checkCudaErrors(cudaMemcpyToSymbol(la, _la, sizeof(float)));
 	checkCudaErrors(cudaMemcpyToSymbol(ld, _ld, sizeof(float)));
 	checkCudaErrors(cudaMemcpyToSymbol(ls, _ls, sizeof(float)));
+
+	checkCudaErrors(cudaMemcpyToSymbol(density, &(rcp->density), sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(brightness, &(rcp->brightness), sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(maxSteps, &(rcp->maxSteps), sizeof(int)));
+	checkCudaErrors(cudaMemcpyToSymbol(tstep, &(rcp->tstep), sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(useColor, &(rcp->useColor), sizeof(bool)));
 
 	checkCudaErrors(cudaMemcpyToSymbol(spacing, _spacing, sizeof(float3)));
 }
@@ -234,28 +248,28 @@ __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
 	return ambient + diffuse + spec;
 }
 
-__device__ float3 phongModelGivenCoeff(float3 a, float3 pos_in_eye, float3 normal, float la2, float ld2, float ls2){
-	float Shininess = 25;
+//__device__ float3 phongModelGivenCoeff(float3 a, float3 pos_in_eye, float3 normal, float la2, float ld2, float ls2){
+//	float Shininess = 25;
+//
+//	float3 light_in_eye = make_float3(0.0, 0.0, 0.0);
+//
+//	float3 s = normalize(light_in_eye - pos_in_eye);
+//	float3 v = normalize(-pos_in_eye);
+//	float3 r = reflect(-s, normal);
+//	float3 ambient = a * la2;
+//	//float sDotN = max(dot(s, normal), 0.0);
+//	float sDotN = abs(dot(s, normal));
+//
+//	float3 diffuse = a * sDotN * ld2;
+//	float3 spec = make_float3(0.0);
+//	//if (sDotN > 0.0)
+//	spec = a * pow(max(dot(r, v), 0.0f), Shininess)* ls2;
+//	return ambient + diffuse + spec;
+//}
 
-	float3 light_in_eye = make_float3(0.0, 0.0, 0.0);
-
-	float3 s = normalize(light_in_eye - pos_in_eye);
-	float3 v = normalize(-pos_in_eye);
-	float3 r = reflect(-s, normal);
-	float3 ambient = a * la2;
-	//float sDotN = max(dot(s, normal), 0.0);
-	float sDotN = abs(dot(s, normal));
-
-	float3 diffuse = a * sDotN * ld2;
-	float3 spec = make_float3(0.0);
-	//if (sDotN > 0.0)
-	spec = a * pow(max(dot(r, v), 0.0f), Shininess)* ls2;
-	return ambient + diffuse + spec;
-}
 
 
-
-__global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+__global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -286,20 +300,12 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 
 	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
 
-	if (tfar<tnear)
-		//	if (!hit)
+	if (tfar<tnear)//	if (!hit)
 	{
-		//float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
 		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 		d_output[y*imageW + x] = rgbaFloatToInt(sum);
 		return;
 	}
-
-
-	//tnear = (tfar - tnear) / 80 + tnear;
-	maxSteps = maxSteps / 2;
-	float temp = (tfar - tnear) / maxSteps;
-	tstep = fmax(tstep, temp);
 
 	// march along ray from front to back, accumulating color
 	float4 sum = make_float4(0.0f);
@@ -372,126 +378,6 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float 
 }
 
 
-__global__ void d_render_preintWithDepthOutput(uint *d_output, float *d_outputDepth, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor)
-{
-	uint x = blockIdx.x*blockDim.x + threadIdx.x;
-	uint y = blockIdx.y*blockDim.y + threadIdx.y;
-
-	if ((x >= imageW) || (y >= imageH)) return;
-
-	const float opacityThreshold = 0.95f;
-
-	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
-	const float3 boxMax = spacing*make_float3(volumeSize);
-	//const float3 boxMin = make_float3(0.0f, 114.0f, 0.0f);
-	//const float3 boxMax = spacing*make_float3(256, 115, 256);//for NEK image
-
-
-	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
-	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
-	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
-
-	Ray eyeRay;
-	eyeRay.o = eyeInLocal;
-	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
-	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
-	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
-
-	// find intersection with box
-	float tnear, tfar;
-	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
-
-	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
-
-	if (tfar<tnear)
-		//	if (!hit)
-	{
-		//float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
-		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
-		d_output[y*imageW + x] = rgbaFloatToInt(sum);
-		d_outputDepth[y*imageW + x] = 1.0;
-		return;
-	}
-
-	//tnear = (tfar - tnear) / 80 + tnear;
-	maxSteps = maxSteps / 2;
-	float temp = (tfar - tnear) / maxSteps;
-	tstep = fmax(tstep, temp);
-
-	// march along ray from front to back, accumulating color
-	float4 sum = make_float4(0.0f);
-	float t = tnear;
-	float3 pos = eyeRay.o + eyeRay.d*tnear;
-	float3 step = eyeRay.d*tstep;
-	float lightingThr = 0.000001;
-
-	float fragDepth = 0.999999;
-
-
-	for (int i = 0; i<maxSteps; i++)
-	{
-		float3 coord = pos / spacing;
-		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
-		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
-
-		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
-
-		// lookup in transfer function texture
-		float4 col;
-
-		float3 cc;
-		if (useColor)
-			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
-		else
-			cc = make_float3(funcRes, funcRes, funcRes);
-
-
-		float3 posInWorld = mul(c_MVMatrix, pos);
-		if (length(normalInWorld) > lightingThr)
-		{
-			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
-		}
-		else
-		{
-			col = make_float4(la*cc, funcRes);
-		}
-
-		col.w *= density;
-
-		// pre-multiply alpha
-		col.x *= col.w;
-		col.y *= col.w;
-		col.z *= col.w;
-		// "over" operator for front-to-back blending
-		sum = sum + col*(1.0f - sum.w);
-
-		// exit early if opaque
-		if (sum.w > opacityThreshold || i == maxSteps-1){
-			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
-			fragDepth = posInClip.z / 2.0 + 0.5;
-			if (fragDepth < 0)
-				fragDepth = 0;
-			break;
-		}
-
-		t += tstep;
-
-		if (t > tfar){
-			//float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
-			//fragDepth = posInClip.z / 2.0 + 0.5;
-			fragDepth = 0;
-			break;
-		}
-
-		pos += step;
-	}
-
-	d_outputDepth[y*imageW + x] = fragDepth;
-	sum *= brightness;
-	d_output[y*imageW + x] = rgbaFloatToInt(sum);
-}
-
 
 void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 	float density, float brightness,
@@ -500,7 +386,7 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 
-	d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInLocal, volumeSize, maxSteps, tstep, useColor);
+	d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);
 
 	//clean what was used
 
@@ -510,7 +396,7 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 
 
 
-__global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark)
+__global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH,  float3 eyeInLocal, int3 volumeSize, char* screenMark)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -521,8 +407,6 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 
 	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
 	const float3 boxMax = spacing*make_float3(volumeSize);
-
-
 
 	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
 	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
@@ -543,17 +427,10 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 	if (tfar<tnear)
 		//	if (!hit)
 	{
-		//float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
 		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 		d_output[y*imageW + x] = rgbaFloatToInt(sum);
 		return;
 	}
-
-
-	//tnear = (tfar - tnear) / 80 + tnear;
-	maxSteps = maxSteps / 2;
-	float temp = (tfar - tnear) / maxSteps;
-	tstep = fmax(tstep, temp);
 
 	// march along ray from front to back, accumulating color
 	float4 sum = make_float4(0.0f);
@@ -584,7 +461,7 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 		if (useColor)
 			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
 		else{
-			cc = make_float3(funcRes, funcRes, funcRes);
+			cc = make_float3(funcRes, funcRes*0.2, funcRes*0.3);
 
 			if (useLabel && curlabel > 1)
 			{
@@ -637,39 +514,146 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 	d_output[y*imageW + x] = rgbaFloatToInt(sum);
 }
 
-
-
-__device__ bool inTunnel2(float3 pos, float3 start, float3 end, float deformationScale, float deformationScaleVertical, float3 dir2nd)
+__global__ void d_render_2dint_immer(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, char* screenMark, float secondCutOffHigh, float secondCutOffLow, float secondNormalizationCoeff)
 {
-	float3 tunnelVec = normalize(end - start);
-	float tunnelLength = length(end - start);
-	float3 voxelVec = pos - start;
-	float l = dot(voxelVec, tunnelVec);
-	if (l > 0 && l < tunnelLength){
-		float disToStart = length(voxelVec);
-		float l2 = dot(voxelVec, dir2nd);
-		if (abs(l2) < deformationScaleVertical){
-			float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
-			float3 dir = normalize(pos - prjPoint);
-			float dis = length(pos - prjPoint);
-			if (dis < deformationScale / 2.0){
-				return true;
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+
+	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
+	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
+	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
+	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
+	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)//	if (!hit)
+	{
+		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		return;
+	}
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+	float lightingThr = 0.000001;
+
+	float fragDepth = 1.0;
+
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		
+		//float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+		//just for Orange
+		float funcRes;
+		if (sample<transFuncP1)
+			funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+		else
+			funcRes = 1 - clamp((sample - transFuncP1) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+
+		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+
+		float funcRes2nd = clamp((length(normalInWorld) / secondNormalizationCoeff - secondCutOffLow) / (secondCutOffHigh - secondCutOffLow), 0.0, 1.0);
+
+		// lookup in transfer function texture
+		float4 col;
+
+		float3 cc;
+		unsigned short curlabel = 0;
+		if (useLabel)
+			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
+
+		if (useColor)
+			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
+		else{
+			cc = make_float3(funcRes, funcRes, funcRes);
+
+			if (useLabel && curlabel > 1)
+			{
+				cc = make_float3(funcRes, 0.0f, 0.0f);
+			}
+			else if (useLabel && curlabel > 0){
+				cc = make_float3(funcRes, funcRes, 0.0f);
 			}
 		}
+
+		float3 posInWorld = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
+		}
+		else
+		{
+			col = make_float4(la*cc, funcRes);
+		}
+
+		col.w *= (density*funcRes2nd);
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		t += tstep;
+
+		if (t > tfar){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		pos += step;
 	}
-	return false;
+
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
 }
 
 
-//used for immersive observation. the difference is tstep is adjusted, and the label and screenMark might be used, and the positionBasedDeformationProcessor content
+//used for immersive observation. the difference is the label and screenMark might be used
 void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-	float density, float brightness,
-	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark, PositionBasedDeformProcessor *pd, RayCastingParameters *rcpTran)
+	float3 eyeInLocal, int3 volumeSize, char* screenMark, RayCastingParameters* rcp)
 {
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
-
-	d_render_preint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInLocal, volumeSize, maxSteps, tstep, useColor, screenMark);
+	if (rcp->use2DInteg){
+		d_render_2dint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, screenMark, rcp->secondCutOffHigh, rcp->secondCutOffLow, rcp->secondNormalizationCoeff);
+	}
+	else{
+		d_render_preint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, screenMark);
+	}
 }
 
 
@@ -874,7 +858,7 @@ void LabelProcessor(uint imageW, uint imageH,
 
 
 
-__global__ void d_render_preint_withDepthInput(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float densityBonus)
+__global__ void d_render_preint_withDepthInput(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, float densityBonus)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -912,7 +896,6 @@ __global__ void d_render_preint_withDepthInput(uint *d_output, uint imageW, uint
 	if (tfar<tnear)
 		//	if (!hit)
 	{
-		//float4 sum = make_float4(0.5f, 0.9f, 0.2f, 1.0f);
 		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
 		if (inputDepth < 1.0){
 			//cases when previous renderable result is outside of the bounding box
@@ -923,12 +906,6 @@ __global__ void d_render_preint_withDepthInput(uint *d_output, uint imageW, uint
 		}
 		return;
 	}
-
-
-	//tnear = (tfar - tnear) / 80 + tnear;
-	maxSteps = maxSteps / 2;
-	float temp = (tfar - tnear) / maxSteps;
-	tstep = fmax(tstep, temp);
 
 	// march along ray from front to back, accumulating color
 	float4 sum = make_float4(0.0f);
@@ -1046,5 +1023,5 @@ void VolumeRender_renderWithDepthInput(uint *d_output, uint imageW, uint imageH,
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 
-	d_render_preint_withDepthInput << <gridSize, blockSize >> >(d_output, imageW, imageH, density, brightness, eyeInLocal, volumeSize, maxSteps, tstep, useColor, densityBonus);
+	d_render_preint_withDepthInput << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, densityBonus);
 }

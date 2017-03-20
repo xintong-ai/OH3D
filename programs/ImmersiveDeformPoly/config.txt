@@ -1,0 +1,3 @@
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/bloodCellWall0032.raw
+POLY_DATA_PATH=D:/Dropbox/shareXin/rbcs-0032.ply
+

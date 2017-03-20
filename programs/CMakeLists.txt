@@ -9,6 +9,7 @@ PROJECT(programs)
 	endif()
 
 	add_subdirectory(ImmersiveDeformVis)
+	add_subdirectory(ImmersiveDeformPoly)
 	add_subdirectory(ITKProcessing)
 if(USE_LEAP)
 	find_package(Qt5Widgets REQUIRED)

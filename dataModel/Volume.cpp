@@ -163,6 +163,42 @@ void Volume::saveRawToFile(const char *f)
 	fclose(fp);
 }
 
+void Volume::computeGradient()
+{
+	if (gradient != 0) delete[] gradient;
+
+	gradient = new float[size.x*size.y*size.z * 4];
+
+	for (int z = 0; z < size.z; z++){
+		for (int y = 0; y < size.y; y++){
+			for (int x = 0; x < size.x; x++){
+				int ind = (z*size.y*size.x + y*size.x + x) * 4;
+
+				int indz1 = z - 2, indz2 = z + 2;
+				if (indz1 < 0)	indz1 = 0;
+				if (indz2 > size.z - 1) indz2 = size.z - 1;
+				gradient[ind + 2] = (values[indz2*size.y*size.x + y*size.x + x] - values[indz1*size.y*size.x + y*size.x + x]) / (indz2 - indz1);
+
+				int indy1 = y - 2, indy2 = y + 2;
+				if (indy1 < 0)	indy1 = 0;
+				if (indy2 > size.y - 1) indy2 = size.y - 1;
+				gradient[ind + 1] = (values[z*size.y*size.x + indy2*size.x + x] - values[z*size.y*size.x + indy1*size.x + x]) / (indy2 - indy1);
+
+				int indx1 = x - 2, indx2 = x + 2;
+				if (indx1 < 0)	indx1 = 0;
+				if (indx2 > size.x - 1) indx2 = size.x - 1;
+				gradient[ind] = (values[z*size.y*size.x + y*size.x + indx2] - values[z*size.y*size.x + y*size.x + indx1]) / (indx2 - indx1);
+
+				gradient[ind + 3] = 0;
+
+				float l = sqrt(gradient[ind] * gradient[ind] + gradient[ind + 1] * gradient[ind + 1] + gradient[ind + 2] * gradient[ind + 2]);
+				if (l > maxGadientLength)
+					maxGadientLength = l;
+			}
+		}
+	}
+}
+
 void Volume::computeGradient(float* &f)
 {
 	//note!! this function stores the gradient in float4 tuples, because it is preparing to copy the data to cudaArray, which does not support float3 well

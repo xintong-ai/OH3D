@@ -37,6 +37,7 @@ class InfoGuideRenderable;
 class DeformFrameRenderable;
 class GlyphRenderable;
 struct RayCastingParameters;
+class PolyRenderable;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -73,10 +74,6 @@ private:
 	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
-	bool useLabel;
-	std::shared_ptr<VolumeCUDA> labelVolCUDA;
-	unsigned short* labelVolLocal = 0;
-
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
@@ -84,10 +81,8 @@ private:
 	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
 	std::shared_ptr<RegularInteractor> regularInteractor;
 
-	std::shared_ptr<LabelVolumeProcessor> lvProcessor;
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
-	std::shared_ptr<ViewpointEvaluator> ve;
 
 
 
@@ -106,6 +101,7 @@ private:
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
+	std::shared_ptr<PolyRenderable> polyRenderable;
 
 	//for 2d view
 	Helper helper;

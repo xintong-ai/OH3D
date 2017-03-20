@@ -1,4 +1,5 @@
 #include <vector_types.h>
+#include <helper_math.h>
 #include <vector>
 #include <memory>
 #include <numeric>
@@ -61,12 +62,15 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	writer->Update();
 #endif
 
+
 	//////////////////openining
 	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
 		StructuringElementType;
 	StructuringElementType structuringElement;
 	//int radius = 4;//for 181
 	int radius = 1;//for engine
+	//int radius = 1;//for bloodCell
+	//int radius = 0;
 	ImageType::Pointer openedImage;
 	if (radius > 0)
 	{
@@ -83,7 +87,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	else{
 		openedImage = importFilter->GetOutput();
 
-		for (int k = 0; k < dims.z; k ++){
+		for (int k = 0; k < dims.z; k++){
 			for (int j = 0; j < dims.y; j++){
 				for (int i = 0; i < dims.x; i++){
 					ImageType::IndexType pixelIndex;
@@ -227,6 +231,8 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	}
 	cleanedChannelVolume->saveRawToFile("cleanedChannel.raw");
 
+	/*
+	// do not filter out boundary componenets for data:  bloodCell
 	////then, filter out boundary componenets
 	for (int k = 0; k < dims.z; k++){
 		for (int j = 0; j < dims.y; j++){
@@ -242,6 +248,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 			}
 		}
 	}
+	*/
 
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(connectedImg);
@@ -329,12 +336,12 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 	//for (int i = 0; i < objCount.size(); i++){
 	//	std::cout << "index: " << idx[i] << " with count: " << objCount[idx[i]] << std::endl;
 	//}
-	
+
 
 
 	/////////do mst for the longest skel
 	std::cout << "computing the MST" << std::endl;
-	for (int skel = 0; skel < maxComponentMark+1; skel++){
+	for (int skel = 0; skel < maxComponentMark + 1; skel++){
 		int cpId = idx[skel];
 		if (cpId == 0) {
 			std::vector<float3> views;
@@ -399,8 +406,6 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 											&& i + ii >= 0 && i + ii < dims.x
 											&& j + jj >= 0 && j + jj < dims.y
 											&& k + kk >= 0 && k + kk < dims.z){
-
-
 											ImageType::IndexType pixelIndexNei;
 											pixelIndexNei[0] = i + ii; // x position
 											pixelIndexNei[1] = j + jj; // y position
@@ -429,6 +434,8 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 			PrimMST(graph, mst);
 
 
+			/*			{
+			//////////////////method 1, only consider about the longest path of the mst
 			//use 2 dfs to find the longest path in the tree
 			//http://cs.stackexchange.com/questions/11263/longest-path-in-an-undirected-tree-with-only-one-traversal
 			int source = 0;//randomly use node 0 as start
@@ -444,28 +451,28 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 			int maxDepthNode = -1;
 
 			while (toTraverse.size() > 0){
-				int curLevel = toTraverse.size() - 1;
+			int curLevel = toTraverse.size() - 1;
 
-				if (curLevel > maxDepth){
-					maxDepth = curLevel;
-					maxDepthNode = toTraverse[curLevel];
-				}
+			if (curLevel > maxDepth){
+			maxDepth = curLevel;
+			maxDepthNode = toTraverse[curLevel];
+			}
 
-				AdjListNode* nextNode = nextOfToTraverse[curLevel];
-				if (nextNode == NULL){
-					toTraverse.pop_back();
-					sourceOfToTraverse.pop_back();
-					nextOfToTraverse.pop_back();
-				}
-				else if (nextNode->dest == sourceOfToTraverse[curLevel]){
-					nextOfToTraverse[curLevel] = nextNode->next;
-				}
-				else{
-					nextOfToTraverse[curLevel] = nextNode->next;
-					toTraverse.push_back(nextNode->dest);
-					sourceOfToTraverse.push_back(toTraverse[curLevel]);
-					nextOfToTraverse.push_back(mst->array[nextNode->dest].head);
-				}
+			AdjListNode* nextNode = nextOfToTraverse[curLevel];
+			if (nextNode == NULL){
+			toTraverse.pop_back();
+			sourceOfToTraverse.pop_back();
+			nextOfToTraverse.pop_back();
+			}
+			else if (nextNode->dest == sourceOfToTraverse[curLevel]){
+			nextOfToTraverse[curLevel] = nextNode->next;
+			}
+			else{
+			nextOfToTraverse[curLevel] = nextNode->next;
+			toTraverse.push_back(nextNode->dest);
+			sourceOfToTraverse.push_back(toTraverse[curLevel]);
+			nextOfToTraverse.push_back(mst->array[nextNode->dest].head);
+			}
 			}
 
 			//the second traverse, which will start from the maxDepthNode, and record the maximum path
@@ -482,35 +489,35 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 			maxDepthNode = -1;
 
 			while (toTraverse.size() > 0){
-				int curLevel = toTraverse.size() - 1;
+			int curLevel = toTraverse.size() - 1;
 
-				if (curLevel > maxDepth){
-					maxDepth = curLevel;
-					maxDepthNode = toTraverse[curLevel];
-					maxPath = toTraverse;
-				}
+			if (curLevel > maxDepth){
+			maxDepth = curLevel;
+			maxDepthNode = toTraverse[curLevel];
+			maxPath = toTraverse;
+			}
 
-				AdjListNode* nextNode = nextOfToTraverse[curLevel];
-				if (nextNode == NULL){
-					toTraverse.pop_back();
-					sourceOfToTraverse.pop_back();
-					nextOfToTraverse.pop_back();
-				}
-				else if (nextNode->dest == sourceOfToTraverse[curLevel]){
-					nextOfToTraverse[curLevel] = nextNode->next;
-				}
-				else{
-					nextOfToTraverse[curLevel] = nextNode->next;
-					toTraverse.push_back(nextNode->dest);
-					sourceOfToTraverse.push_back(toTraverse[curLevel]);
-					nextOfToTraverse.push_back(mst->array[nextNode->dest].head);
-				}
+			AdjListNode* nextNode = nextOfToTraverse[curLevel];
+			if (nextNode == NULL){
+			toTraverse.pop_back();
+			sourceOfToTraverse.pop_back();
+			nextOfToTraverse.pop_back();
+			}
+			else if (nextNode->dest == sourceOfToTraverse[curLevel]){
+			nextOfToTraverse[curLevel] = nextNode->next;
+			}
+			else{
+			nextOfToTraverse[curLevel] = nextNode->next;
+			toTraverse.push_back(nextNode->dest);
+			sourceOfToTraverse.push_back(toTraverse[curLevel]);
+			nextOfToTraverse.push_back(mst->array[nextNode->dest].head);
+			}
 			}
 
 			////////////by maxPath and posOfId, to compute a vector of sample points along the path
 			std::vector<float3> posOfPathNode(maxPath.size());
 			for (int i = 0; i < maxPath.size(); i++){
-				posOfPathNode[i] = posOfId[maxPath[i]];
+			posOfPathNode[i] = posOfId[maxPath[i]];
 			}
 
 			int numOfViews = min(50, (numNodes + 1) / 2);
@@ -518,11 +525,34 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 			std::vector<float3> views;
 			views.clear();
 			for (int i = 0; i < numOfViews; i++){
-				float pos = 1.0 * (lengthMaxPath - 1) * i / numOfViews;
-				int n1 = floor(pos), n2 = n1 + 1;
-				views.push_back(posOfPathNode[n1] * (n2 - pos) + posOfPathNode[n2] * (pos - n1));
+			float pos = 1.0 * (lengthMaxPath - 1) * i / numOfViews;
+			int n1 = floor(pos), n2 = n1 + 1;
+			views.push_back(posOfPathNode[n1] * (n2 - pos) + posOfPathNode[n2] * (pos - n1));
 			}
 			viewArrays.push_back(views);
+			}
+			*/
+
+
+
+			//////////////////method 2, consider each branch of the mst
+			//float lengthThr = 3.9; //for 181
+			float lengthThr = 10; //for cell
+
+			int curNode = 0;//randomly use node 0 as start
+			std::vector<bool> hasTraversed(mst->V, false);
+			//hasTraversed[curNode] = true;
+			float3 lastSample = make_float3(-1000, -1000, -1000);
+			std::vector<float3> views;
+			views.clear();
+
+			traveCurList(mst, views, lastSample, lengthThr, hasTraversed, 0, posOfId);
+
+
+			viewArrays.push_back(views);
+
+
+
 		}
 	}
 

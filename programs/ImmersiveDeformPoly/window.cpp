@@ -27,7 +27,8 @@
 #include "BinaryTuplesReader.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
-
+#include "PolyRenderable.h"
+#include "MeshReader.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -60,25 +61,15 @@ Window::Window()
 	//Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	//rcp->useColor = false;
 
-	dims = make_int3(256, 256, 64);
-	//dims = make_int3(301, 324, 56);
-	//dims = make_int3(64, 64, 64);
-	//dims = make_int3(160, 224, 64);
+	dims = make_int3(160, 224, 64);
 	spacing = make_float3(1, 1, 1);
 	rcp = std::make_shared<RayCastingParameters>(0.6, 0.0, 0.0, 0.29, 0.0, 0.35, 512, 0.25f, 1.0, false); //for 181
 	subfolder = "beetle";
-	rcp->use2DInteg = true;
+	rcp->use2DInteg = false;
 
-	//std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false); //181
 	std::shared_ptr<RayCastingParameters> rcpMini = rcp;// std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 
-	//dims = make_int3(32, 32, 32);
-	//spacing = make_float3(1, 1, 1);
-	//rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
-	//subfolder = "181";
-
 	inputVolume = std::make_shared<Volume>(true);
-
 	
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
@@ -126,10 +117,10 @@ Window::Window()
 		reader4.reset();
 	}
 
-	labelVolCUDA = std::make_shared<VolumeCUDA>();
-	labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
-	labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
-	memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
+	//labelVolCUDA = std::make_shared<VolumeCUDA>();
+	//labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
+	//labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
+	//memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -143,18 +134,7 @@ Window::Window()
 	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 
-	//////////////ScreenMarker, ViewpointEvaluator
-	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
-	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
-	//ve->initDownSampledResultVolume(make_int3(40, 40, 40));
-	ve->setSpherePoints();
-	ve->setLabel(labelVolCUDA);
 
-	if (channelSkelViewReady){
-		std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
-		reader3->OutputToParticleDataArrays(ve->skelViews);
-		reader3.reset();
-	}
 
 
 	/********GL widget******/
@@ -186,22 +166,28 @@ Window::Window()
 
 
 	//////////////////////////////// Renderable ////////////////////////////////	
-	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
-	volumeRenderable->rcp = rcp;
-	openGL->AddRenderable("1volume", volumeRenderable.get());
-	volumeRenderable->setScreenMarker(sm);
+	//volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
+	//volumeRenderable->rcp = rcp;
+	//openGL->AddRenderable("1volume", volumeRenderable.get());
+	////volumeRenderable->setScreenMarker(sm);
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
 
-	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	//openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
+	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
 
-	if (channelSkelViewReady){
-		infoGuideRenderable = std::make_shared<InfoGuideRenderable>(ve, matrixMgr);
-		openGL->AddRenderable("3infoGuide", infoGuideRenderable.get());
-	}
+
+
+
+	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+	std::shared_ptr<MeshReader> meshReader = std::make_shared<MeshReader>();
+	meshReader->LoadPLY(polyDataPath.c_str());
+
+	polyRenderable = std::make_shared<PolyRenderable>(meshReader.get());
+	openGL->AddRenderable("mm", polyRenderable.get());
+
 
 
 	//////////////////////////////// Interactor ////////////////////////////////
@@ -218,9 +204,9 @@ Window::Window()
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
 	
-	sbInteractor = std::make_shared<ScreenBrushInteractor>();
-	sbInteractor->setScreenMarker(sm);
-	openGL->AddInteractor("3screenMarker", sbInteractor.get());
+	//sbInteractor = std::make_shared<ScreenBrushInteractor>();
+	////sbInteractor->setScreenMarker(sm);
+	//openGL->AddInteractor("3screenMarker", sbInteractor.get());
 	
 
 #ifdef USE_LEAP
@@ -458,10 +444,6 @@ Window::Window()
 	matrixMgrRenderableMini->renderPart = 2;
 	openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
 
-	//ve->createOneParticleFormOfViewSamples(); 
-	//ve->allViewSamples->initForRendering(10, 1);
-	//glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
-	//openGLMini->AddRenderable("2glyphRenderable", glyphRenderable.get());
 
 
 
@@ -552,8 +534,7 @@ Window::Window()
 
 Window::~Window()
 {
-	if (labelVolLocal)
-		delete[]labelVolLocal;
+
 }
 
 void Window::init()
@@ -650,9 +631,7 @@ void Window::isBrushingClicked()
 
 void Window::moveToOptimalBtnClicked()
 {
-	//ve->compute_UniformSampling(VPMethod::JS06Sphere);
-	matrixMgr->moveEyeInLocalByModeMat(make_float3(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
-	//ve->saveResultVol("labelEntro.raw");
+
 }
 
 void Window::SlotOriVolumeRb(bool b)
@@ -718,21 +697,12 @@ void Window::zSliderValueChanged(int v)
 
 void Window::updateLabelVolBtnClicked()
 {
-	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
-	std::cout << std::endl << "The lable volume has been updated" << std::endl << std::endl;
 
-	ve->currentMethod = VPMethod::LabelVisibility;
-	ve->compute_SkelSampling(VPMethod::LabelVisibility);
-	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy << std::endl;
-	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 }
 
 void Window::findGeneralOptimalBtnClicked()
 {
-	ve->currentMethod = VPMethod::Tao09Detail;
-	ve->compute_SkelSampling(VPMethod::Tao09Detail);
-	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy<< std::endl;
-	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+
 }
 
 
@@ -743,11 +713,7 @@ void Window::turnOffGlobalGuideBtnClicked()
 
 void Window::redrawBtnClicked()
 {
-	if (labelVolLocal){
-		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
-		labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
-	}
-	helper.valSet = false;
+
 }
 
 void Window::doTourBtnClicked()

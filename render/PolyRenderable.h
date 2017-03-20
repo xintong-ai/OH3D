@@ -11,8 +11,6 @@ public:
 	PolyRenderable(MeshReader* _m) { m = _m; }
 
 	~PolyRenderable(){
-		if (m != nullptr)
-			delete m;
 	}
 
     void GenVertexBuffer(int nv);

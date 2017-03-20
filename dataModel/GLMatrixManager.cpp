@@ -19,8 +19,7 @@ GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 	UpdateModelMatrixFromDetail();
 
 	float3 dataRange = posMax - posMin;
-	float initEyePos = max(max(dataRange.x, dataRange.y), dataRange.z) * 3;
-	//float initEyePos = 300;
+	float initEyePos = min(max(max(dataRange.x, dataRange.y), dataRange.z) * 3, max(max(dataRange.x, dataRange.y), dataRange.z) + 100);	//float initEyePos = 300;
 
 	eyeInWorld = QVector3D(0, 0, initEyePos); //may need adjust wisely. for data whose range is small, 300 is a number which is too big
 	//eyeInWorld = QVector3D(0, 0, 30);
@@ -47,7 +46,11 @@ void GLMatrixManager::setDefaultForImmersiveMode()
 	eyeInWorld = QVector3D(0.0f, 0.0f, 0.0f);
 	viewMat.setToIdentity(); //identity view matrix is close to what VR device provided. it is equivalent to seeing from (0,0,0) to the direction of (0,0,-1), with up (0,1,0)
 	
-	transVec = -QVector3D(64, 109, 107);
+	float3 dataRange = dataMax - dataMin;
+	transVec = -QVector3D(dataRange.x / 2, dataRange.y / 2, dataRange.z / 2);
+
+	//	transVec = -QVector3D(64, 109, 107);//for 181
+
 	rotMat.setToIdentity();			
 	rotMat.rotate(-90, QVector3D(1,0,0));  //this rotation makes (0,0,1) in local overlap with the upvecinWorld
 	UpdateModelMatrixFromDetail();

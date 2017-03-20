@@ -2,7 +2,7 @@
 #include "GridMesh.h"
 #include "LineSplitGridMesh.h"
 
-#include "myDefine.h"
+//#include "myDefineRayCasting.h"
 #include "Volume.h"
 #include "Particle.h"
 #include "Lens.h"

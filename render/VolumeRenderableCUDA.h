@@ -9,6 +9,7 @@
 #include <QOpenGLFunctions>
 #include <QOpenGLShaderProgram>
 
+struct RayCastingParameters;
 class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT

@@ -3,11 +3,11 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include "myDefine.h"
 #include <memory>
 #include <vector>
 
 #include "Volume.h"
+#include "myDefineRayCasting.h"
 
 class Particle;
 
@@ -32,8 +32,7 @@ struct SpherePoint {
 	}
 };
 
-class Volume;
-class VolumeCUDA;
+
 class ViewpointEvaluator
 {
 public:
@@ -65,7 +64,9 @@ public:
 	void computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir, VPMethod m);
 
 	std::vector<std::shared_ptr<Particle>> skelViews;
-	
+	std::shared_ptr<Particle> allViewSamples = 0;
+	void createOneParticleFormOfViewSamples();
+
 	bool useHist = true;  //most papers do not use histogram to compute entropy. however we mostly use histogram. if true, each bin will be computed a probability; if false, each pixel will be computed a probability
 	int maxLabel = 1; //!! data dependant
 

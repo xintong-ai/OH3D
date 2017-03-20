@@ -1,7 +1,6 @@
 #include "LabelVolumeProcessor.h"
 #include "ScreenMarker.h"
 #include "VolumeRenderableCUDAKernel.h"
-#include "myDefine.h"
 #include "transformFunc.h"
 
 bool LabelVolumeProcessor::process(float modelview[16], float projection[16], int winW, int winH)

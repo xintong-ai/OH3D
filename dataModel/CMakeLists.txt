@@ -19,6 +19,8 @@ set(HDRS Volume.h Particle.h Processor.h myDefine.h GLMatrixManager.h ColorGradi
 	LabelVolumeProcessor.h
 	AnimationByMatrixProcessor.h
 	MatrixManager.h
+	myDefineRayCasting.h
+	PolyMesh.h
 )
 add_library(dataModel STATIC ${HDRS} ${SRCS})
 

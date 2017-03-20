@@ -39,6 +39,18 @@ ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r,
 	cubeInfo.resize(6);
 }
 
+void ViewpointEvaluator::createOneParticleFormOfViewSamples()
+{
+	std::vector<float4> pos;
+	std::vector<float> val;
+	for (int i = 0; i < skelViews.size(); i++){
+		for (int j = 0; j < skelViews[i]->numParticles; j++){
+			pos.push_back(skelViews[i]->pos[j]);
+			val.push_back(skelViews[i]->val[j]);
+		}
+	}
+	allViewSamples = std::make_shared<Particle>(pos, val);
+}
 
 void ViewpointEvaluator::initDownSampledResultVolume(int3 sampleSize)
 {

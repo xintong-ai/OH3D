@@ -21,6 +21,7 @@
 #include "ScreenMarker.h"
 
 #include "PositionBasedDeformProcessor.h"
+#include "myDefineRayCasting.h"
 
 VolumeRenderableImmerCUDA::VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vlabel, std::shared_ptr<PositionBasedDeformProcessor> p)
 {
@@ -104,7 +105,7 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 	q_mvp.copyDataTo(MVPMatrix);
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing));
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing), rcp.get());
 	if (!isFixed){
 		recordFixInfo(q_mvp, q_modelview);
 	}
@@ -129,11 +130,11 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 
 	//compute the dvr
 	if (blendPreviousImage){
+		//it is better that when blendPreviousImage, the label volume can still be involved as in VolumeRender_renderImmer
 		VolumeRender_renderWithDepthInput(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, densityBonus);
 	}
 	else{
-		//compute the dvr
-		VolumeRender_renderImmer(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, sm->dev_isPixelSelected, positionBasedDeformProcessor.get(), rcpTrans.get());
+		VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, sm->dev_isPixelSelected, rcp.get());
 	}
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
