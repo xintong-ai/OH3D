@@ -83,7 +83,9 @@ int main(int argc, char **argv)
 	std::string subfolder;
 	
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
-	
+	DataType volDataType = RawVolumeReader::dtUint16;
+	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType);
+
 	shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
@@ -96,12 +98,7 @@ int main(int argc, char **argv)
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
-		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos || std::string(dataPath).find("bloodCell") != std::string::npos){
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
-		}
-		else{
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
-		}
+		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, volDataType);
 		reader->OutputToVolumeByNormalizedValue(inputVolume);
 		reader.reset();
 	}

@@ -35,6 +35,14 @@ public:
 	void OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v);
 	void OutputToVolumeCUDAUnsignedShort(std::shared_ptr<VolumeCUDA>);
 
+	static void rawFileReadingInfo(std::string dataPath, DataType & volDataType)
+	{
+		if (std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("181") != std::string::npos || std::string(dataPath).find("Bucky") != std::string::npos || std::string(dataPath).find("bloodCell") != std::string::npos || std::string(dataPath).find("Lobster") != std::string::npos || std::string(dataPath).find("Orange") != std::string::npos || std::string(dataPath).find("Tomato") != std::string::npos || std::string(dataPath).find("Neghip") != std::string::npos)
+			volDataType = dtUint8;
+		else
+			volDataType = dtUint16;
+	};
+
 protected:
 	std::string datafilename;
 	int3 dataSizes;

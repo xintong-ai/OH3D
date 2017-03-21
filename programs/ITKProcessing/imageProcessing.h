@@ -68,7 +68,8 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		StructuringElementType;
 	StructuringElementType structuringElement;
 	//int radius = 4;//for 181
-	int radius = 1;//for engine
+	int radius = 3;//for tomato
+	//int radius = 1;//for engine
 	//int radius = 1;//for bloodCell
 	//int radius = 0;
 	ImageType::Pointer openedImage;
@@ -104,11 +105,34 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 
 	}
 
+
+	//currently only for Tomato data
+	std::shared_ptr<Volume> segVolume = std::make_shared<Volume>(false);
+	std::shared_ptr<RawVolumeReader> readerSeg;
+	readerSeg = std::make_shared<RawVolumeReader>("D:/Data/volume/Tomato_Seg.img", dims, RawVolumeReader::dtUint16);
+	readerSeg->OutputToVolumeByNormalizedValue(segVolume);
+	readerSeg.reset();
+	for (int k = 0; k < dims.z; k++){
+		for (int j = 0; j < dims.y; j++){
+			for (int i = 0; i < dims.x; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				if (segVolume->values[k*dims.x*dims.y + j*dims.x + i]>0.5){
+					openedImage->SetPixel(pixelIndex, 0);
+				}
+			}
+		}
+	}
+
+
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(openedImage);
 	writer->SetFileName("opened.hdr");
 	writer->Update();
 #endif
+
 
 	//////////////compute connected components
 	typedef itk::ConnectedComponentImageFilter <ImageType, ImageType >
@@ -231,7 +255,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	}
 	cleanedChannelVolume->saveRawToFile("cleanedChannel.raw");
 
-	/*
+	
 	// do not filter out boundary componenets for data:  bloodCell
 	////then, filter out boundary componenets
 	for (int k = 0; k < dims.z; k++){
@@ -248,7 +272,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 			}
 		}
 	}
-	*/
+	
 
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(connectedImg);
@@ -537,7 +561,8 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 
 			//////////////////method 2, consider each branch of the mst
 			//float lengthThr = 3.9; //for 181
-			float lengthThr = 10; //for cell
+			//float lengthThr = 10; //for cell
+			float lengthThr = 3; //for tomato
 
 			int curNode = 0;//randomly use node 0 as start
 			std::vector<bool> hasTraversed(mst->V, false);

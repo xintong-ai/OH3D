@@ -11,6 +11,7 @@
 #include "PolyRenderable.h"
 #include <QMatrix4x4>
 #include "MeshReader.h"
+#include "PolyMesh.h"
 
 void PolyRenderable::init()
 {
@@ -20,9 +21,8 @@ void PolyRenderable::init()
 
 	//glEnable(GL_DEPTH_TEST);
 
-	GenVertexBuffer(m->numElements,
-		m->Faces_Triangles,
-		m->Normals);
+//	GenVertexBuffer(m->numElements, m->Faces_Triangles, m->Normals);
+	GenVertexBuffer(polyMesh->vertexcount, polyMesh->vertexCoords,polyMesh->vertexNorms);
 }
 
 void PolyRenderable::loadShaders()
@@ -211,6 +211,6 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 	m_vao->release();
 }
 
-float3 PolyRenderable::GetPolyCenter(){
-	return m->center;
-}
+//float3 PolyRenderable::GetPolyCenter(){
+//	//return m->center;
+//}

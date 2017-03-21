@@ -38,6 +38,7 @@ class DeformFrameRenderable;
 class GlyphRenderable;
 struct RayCastingParameters;
 class PolyRenderable;
+class PolyMesh;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -67,6 +68,8 @@ private:
 	std::vector<float3> views;
 
 	std::shared_ptr<RayCastingParameters> rcp;
+	
+	std::shared_ptr<PolyMesh> polyMesh;
 
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test

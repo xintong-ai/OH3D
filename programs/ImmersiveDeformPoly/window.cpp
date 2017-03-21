@@ -29,6 +29,7 @@
 #include "SphereRenderable.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
+#include "PolyMesh.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -183,10 +184,15 @@ Window::Window()
 
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 	std::shared_ptr<MeshReader> meshReader = std::make_shared<MeshReader>();
-	meshReader->LoadPLY(polyDataPath.c_str());
+	//meshReader->LoadPLY(polyDataPath.c_str());
 
+	polyMesh = std::make_shared<PolyMesh>();
+	polyMesh->read(polyDataPath.c_str());
+	
 	polyRenderable = std::make_shared<PolyRenderable>(meshReader.get());
-	openGL->AddRenderable("mm", polyRenderable.get());
+	polyRenderable->polyMesh = polyMesh;
+	
+	//openGL->AddRenderable("mm", polyRenderable.get());
 
 
 

@@ -38,6 +38,14 @@ public:
 class Volume
 {
 public:
+	Volume(bool _so = false){ originSaved = _so; };
+	//Volume(){ };
+
+	~Volume()
+	{
+		if (!values) delete values;
+		if (!gradient) delete gradient;
+	};
 
 	int3 size;
 	
@@ -67,16 +75,6 @@ public:
 		memset(values, 0, sizeof(float)*size.x*size.y*size.z);
 	};
 
-	Volume(bool _so = false){ originSaved = _so; };
-	//Volume(){ };
-
-	~Volume()
-	{
-		if (!values) delete values;
-		if (!gradient) delete gradient;
-	};
-
-
 	float3 spacing = make_float3(1.0,1.0,1.0);
 	float3 dataOrigin = make_float3(0, 0, 0);
 	void GetPosRange(float3& posMin, float3& posMax);
@@ -95,7 +93,7 @@ public:
 
 	void saveRawToFile(const char *);
 
-	static void rawFileInfo(std::string dataPath, int3 & dims, float3 &spacing, std::shared_ptr<RayCastingParameters> & rcp, std::string  &subfolder)
+	static void rawFileInfo(std::string dataPath, int3 & dims, float3 &spacing, std::shared_ptr<RayCastingParameters> & rcp, std::string &subfolder)
 	{
 		if (std::string(dataPath).find("MGHT2") != std::string::npos){
 			dims = make_int3(320, 320, 256);
@@ -136,14 +134,20 @@ public:
 		else if (std::string(dataPath).find("181") != std::string::npos){
 			dims = make_int3(181, 217, 181);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 256, 0.25f, 1.0, false); //for 181
+			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 256, 0.25f, 1.0, false); 
 			subfolder = "181";
 		}
 		else if (std::string(dataPath).find("bloodCell") != std::string::npos){
 			dims = make_int3(160, 224, 64);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false); //for 181
+			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false); 
 			subfolder = "bloodCell";
+		}
+		else if (std::string(dataPath).find("Tomato") != std::string::npos){
+			dims = make_int3(256, 256, 64);
+			spacing = make_float3(0.390625, 0.390625, 1);
+			rcp = std::make_shared<RayCastingParameters>(0.8, 0.3, 0.6, 0.37, 0.11, 4.2, 256, 0.125f, 1.0, true);
+			subfolder = "Tomato";
 		}
 		else{
 			std::cout << "volume data name not recognized" << std::endl;

@@ -27,12 +27,7 @@ typedef struct Face {
 	float u, v, w;
 } Face;
 
-char* string_list[] = {
-	"x", "y", "z", "u", "v", "w", "vertex_indices"
-};
 
-float cx, cy, cz;
-float x_min, x_max, y_min, y_max, z_min, z_max;
 
 
 class PolyMesh
@@ -46,7 +41,16 @@ public:
 	int vertexnormals = 0;
 	int facenormals = 0;
 	
-	
+	float* vertexCoords = 0;
+	float* vertexNorms = 0;
+	unsigned int* indices = 0;
+
+	~PolyMesh(){
+		if (vertexCoords) delete[]vertexCoords;
+		if (vertexNorms) delete[]vertexNorms;
+		if (indices) delete[]indices;
+	}
+
 	void read(const char* fname){
 		FILE * pFile = fopen(fname, "r");
 		if (pFile == NULL) {
@@ -74,15 +78,26 @@ public:
 		printf("geometry center = %f %f %f \n", cx, cy, cz);
 		printf("geometry bound = x: %f %f y: %f %f z: %f %f\n",
 			x_min, x_max, y_min, y_max, z_min, z_max);
+
+		reorganize();
 	}
 
-
-
-
+	
 private:
+
+
+
+	float cx, cy, cz;
+	float x_min, x_max, y_min, y_max, z_min, z_max;
+
 	void store_ply(PlyFile* input, Vertex ***vertices, Face ***faces,
 		unsigned int* vertexcount, unsigned int* facecount,
 		int* vertexnormals, int* facenormals) {
+
+		char* string_list[7] = {
+			"x", "y", "z", "u", "v", "w", "vertex_index"
+		};
+
 		int i, j;
 
 		// go through the element types
@@ -199,7 +214,7 @@ private:
 					PlyProperty* property = input->elems[i]->props[j];
 					PlyProperty setup;
 
-					if (strcmp("vertex_indices", property->name) == 0 &&
+					if (strcmp("vertex_index", property->name) == 0 &&
 						property->is_list == PLY_LIST) {
 
 						setup.name = string_list[6];
@@ -302,5 +317,25 @@ private:
 		miny = min_y; maxy = max_y;
 		minz = min_z; maxz = max_z;
 	}
+
+	void reorganize(){
+		vertexCoords = new float[3 * vertexcount];
+		vertexNorms = new float[3 * vertexcount];
+		indices = new unsigned[3 * facecount];
+		for (int i = 0; i < vertexcount; i++) {
+			vertexCoords[3 * i] = vertices[i]->x;
+			vertexCoords[3 * i + 1] = vertices[i]->y;
+			vertexCoords[3 * i + 2] = vertices[i]->z;
+			vertexNorms[3 * i] = vertices[i]->u;
+			vertexNorms[3 * i + 1] = vertices[i]->v;
+			vertexNorms[3 * i + 2] = vertices[i]->w;
+		}
+		for (int i = 0; i < facecount; i++) {
+			indices[3 * i] = faces[i]->vertices[0];
+			indices[3 * i + 1] = faces[i]->vertices[1];
+			indices[3 * i + 2] = faces[i]->vertices[2];
+		}
+	}
+
 };
 #endif

@@ -136,12 +136,29 @@ void GLMatrixManager::SaveState(const char* filename)
 	}
 	myfile << std::endl;
 
+	myfile << scaleEff << std::endl;
+
 	for (int i = 0; i < 3; i++) {
 		myfile << transVec[i] << " ";
 	}
 	myfile << std::endl;
 
-	myfile << scaleEff << std::endl;
+	for (int i = 0; i < 3; i++) {
+		myfile << eyeInWorld[i] << " ";
+	}
+	myfile << std::endl;
+
+	for (int i = 0; i < 3; i++) {
+		myfile << viewVecInWorld[i] << " ";
+	}
+	myfile << std::endl;
+
+	for (int i = 0; i < 3; i++) {
+		myfile << upVecInWorld[i] << " ";
+
+	}
+	myfile << std::endl;
+
 	myfile.close();
 }
 
@@ -153,11 +170,31 @@ void GLMatrixManager::LoadState(const char* filename)
 		ifs >> rotMat.data()[i];
 	}
 
+	ifs >> scaleEff;
+
 	ifs >> transVec[0];
 	ifs >> transVec[1];
 	ifs >> transVec[2];
 
-	ifs >> scaleEff;
+
+	ifs >> eyeInWorld[0];
+	ifs >> eyeInWorld[1];
+	ifs >> eyeInWorld[2];
+
+
+	ifs >> viewVecInWorld[0];
+	ifs >> viewVecInWorld[1];
+	ifs >> viewVecInWorld[2];
+
+
+	ifs >> upVecInWorld[0];
+	ifs >> upVecInWorld[1];
+	ifs >> upVecInWorld[2];
+
+	UpdateModelMatrixFromDetail();
+	UpdateViewMatrixFromDetail();
+	UpdateProjMatrixFromDetail();
+	updateDepthRange();
 
 	ifs.close();
 

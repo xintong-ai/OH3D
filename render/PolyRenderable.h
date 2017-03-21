@@ -2,6 +2,9 @@
 #define POLY_RENDERABLE_H
 
 #include "Renderable.h"
+#include <memory>
+
+class PolyMesh;
 
 class ShaderProgram;
 struct MeshReader;
@@ -12,6 +15,8 @@ public:
 
 	~PolyRenderable(){
 	}
+
+	std::shared_ptr<PolyMesh> polyMesh;
 
     void GenVertexBuffer(int nv);
 
@@ -37,7 +42,7 @@ public:
 		ka = make_float3(r, g, b);
 	}
 
-	float3 GetPolyCenter();
+	//float3 GetPolyCenter();
 	bool isSnapped = false;
 
 private:

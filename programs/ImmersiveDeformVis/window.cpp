@@ -56,30 +56,29 @@ Window::Window()
 	rcp = std::make_shared<RayCastingParameters>();
 
 	std::string subfolder;
+	DataType volDataType = RawVolumeReader::dtUint16;
 	
-	//Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
+	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	//rcp->useColor = false;
+	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType);
 
-	dims = make_int3(256, 256, 64);
+	 //for 181
+
+	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 256, 0.25f, 1.0, false);
+
+	//dims = make_int3(256, 256, 64);
 	//dims = make_int3(301, 324, 56);
 	//dims = make_int3(64, 64, 64);
-	//dims = make_int3(160, 224, 64);
-	spacing = make_float3(1, 1, 1);
-	rcp = std::make_shared<RayCastingParameters>(0.6, 0.0, 0.0, 0.29, 0.0, 0.35, 512, 0.25f, 1.0, false); //for 181
-	subfolder = "beetle";
-	rcp->use2DInteg = true;
+	////dims = make_int3(160, 224, 64);
+	//spacing = make_float3(1, 1, 1);
+	//rcp = std::make_shared<RayCastingParameters>(1.1, 0.0, 0.0, 0.29, 0.0, 1.0, 512, 0.25f/2, 1.0, false); //for 181
+	//subfolder = "beetle";
+	//rcp->use2DInteg = false;
 
 	//std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false); //181
 	std::shared_ptr<RayCastingParameters> rcpMini = rcp;// std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 
-	//dims = make_int3(32, 32, 32);
-	//spacing = make_float3(1, 1, 1);
-	//rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
-	//subfolder = "181";
-
 	inputVolume = std::make_shared<Volume>(true);
-
-	
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
@@ -91,19 +90,13 @@ Window::Window()
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
-		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos || std::string(dataPath).find("Bucky") != std::string::npos || std::string(dataPath).find("bloodCell") != std::string::npos || std::string(dataPath).find("Lobster") != std::string::npos || std::string(dataPath).find("Orange") != std::string::npos){
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
-		}
-		else{
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
-		}
+		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, volDataType);	
 		reader->OutputToVolumeByNormalizedValue(inputVolume);
 		reader.reset();
 	}
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
 	
-
 	if (rcp->use2DInteg){
 		inputVolume->computeGradient();
 		rcp->secondCutOffLow = 0.19f;
@@ -111,17 +104,19 @@ Window::Window()
 		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
 	}
 
-	bool channelSkelViewReady = false;
+	bool channelSkelViewReady = true;
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
 		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
+		channelVolume->spacing = spacing;
 		channelVolume->initVolumeCuda();
 		reader2.reset();
 
 		skelVolume = std::make_shared<Volume>();
 		std::shared_ptr<RawVolumeReader> reader4 = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
 		reader4->OutputToVolumeByNormalizedValue(skelVolume);
+		skelVolume->spacing = spacing;
 		skelVolume->initVolumeCuda();
 		reader4.reset();
 	}
@@ -139,7 +134,9 @@ Window::Window()
 	if (std::string(dataPath).find("engine") != std::string::npos){
 		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -20, 60));
 	}
-
+	if (std::string(dataPath).find("Tomato") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(182,78,33)*spacing);
+	}
 	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 
@@ -153,6 +150,18 @@ Window::Window()
 	if (channelSkelViewReady){
 		std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
 		reader3->OutputToParticleDataArrays(ve->skelViews);
+
+		//The skel view computation does not include spacing. scale by spacing here
+		for (int i = 0; i < ve->skelViews.size(); i++){
+			for (int j = 0; j < ve->skelViews[i]->numParticles; j++){
+				ve->skelViews[i]->pos[j].x *= spacing.x;
+				ve->skelViews[i]->pos[j].y *= spacing.y;
+				ve->skelViews[i]->pos[j].z *= spacing.z;
+				ve->skelViews[i]->posOrig[j].x *= spacing.x;
+				ve->skelViews[i]->posOrig[j].y *= spacing.y;
+				ve->skelViews[i]->posOrig[j].z *= spacing.z;
+			}
+		}
 		reader3.reset();
 	}
 
@@ -168,8 +177,7 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////
-	
-	
+		
 	if (channelSkelViewReady){
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
@@ -473,7 +481,7 @@ Window::Window()
 	regularInteractorMini->setMatrixMgr(matrixMgrMini);
 	openGLMini->AddInteractor("1regular", regularInteractorMini.get());
 
-	assistLayout->addWidget(openGLMini.get(), 3);
+	//assistLayout->addWidget(openGLMini.get(), 3);
 
 	//helper.setData(inputVolume, labelVolLocal);
 	//GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
@@ -565,10 +573,12 @@ void Window::init()
 
 void Window::SlotSaveState()
 {
+	matrixMgr->SaveState("state.txt");
 }
 
 void Window::SlotLoadState()
 {
+	matrixMgr->LoadState("state.txt");
 }
 
 void Window::applyEyePos()
@@ -657,8 +667,10 @@ void Window::moveToOptimalBtnClicked()
 
 void Window::SlotOriVolumeRb(bool b)
 {
-	if (b)
+	if (b){
 		volumeRenderable->setVolume(inputVolume);
+		volumeRenderable->rcp = rcp;
+	}
 }
 
 void Window::SlotChannelVolumeRb(bool b)
@@ -667,6 +679,7 @@ void Window::SlotChannelVolumeRb(bool b)
 	{
 		if (channelVolume){
 			volumeRenderable->setVolume(channelVolume);
+			volumeRenderable->rcp = rcpForChannelSkel;
 		}
 		else{
 			std::cout << "channelVolume not set!!" << std::endl;
@@ -682,6 +695,7 @@ void Window::SlotSkelVolumeRb(bool b)
 	{
 		if (skelVolume){
 			volumeRenderable->setVolume(skelVolume);
+			volumeRenderable->rcp = rcpForChannelSkel;
 		}
 		else{
 			std::cout << "skelVolume not set!!" << std::endl;

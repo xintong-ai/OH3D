@@ -25,7 +25,7 @@ public:
 		volume = ori;
 		matrixMgr = _m;		
 		channelVolume = ch;
-
+		spacing = volume->spacing;
 		InitCudaSupplies();		
 	};
 
@@ -36,10 +36,6 @@ public:
 
 	EYE_STATE lastEyeState = inCell;
 	VOLUME_STATE lastVolumeState = ORIGINAL;
-
-	//float3 transTunnelStart, transTunnelEnd;
-	//float3 transRectVerticalDir; 
-	// maybe equal to tunnelStart, tunnelEnd, rectVerticalDir?
 
 	float deformationScale = 5; // for rect, the width of opening
 	float deformationScaleVertical = 7; // for rectangular, it is the other side length
@@ -58,6 +54,7 @@ public:
 private:
 	VolumeCUDA volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 
+	float3 spacing;
 	bool inDeformedCell(float3 pos);
 
 	float lastOpenFinalDegree;

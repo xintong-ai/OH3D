@@ -95,7 +95,8 @@ __device__ float3 GetColourDiverge(float v)
 	while (pos < numColorTableItems - 1 && notFound) {
 		if (colorTable[pos][0] <= v && colorTable[pos + 1][0] >= v)
 			notFound = false;
-		pos++;
+		else
+			pos++;
 	}
 	float ratio = (v - colorTable[pos][0]) / (colorTable[pos + 1][0] - colorTable[pos][0]);
 
@@ -108,7 +109,63 @@ __device__ float3 GetColourDiverge(float v)
 	return(c);
 }
 
+__constant__ int numColorTableItemsTomato = 5;
+//__constant__ float colorTableTomato[7][4] = {
+//	0, 51 / 255.0, 8 / 255.0, 0,
+//	0.16, 102 / 255.0, 16 / 255.0, 0,
+//	0.33, 153 / 255.0, 23 / 255.0, 0,
+//	0.5, 204 / 255.0, 31 / 255.0, 0,
+//	0.67, 255 / 255.0, 39 / 255.0, 0,
+//	0.83, 255 / 255.0, 99 / 255.0, 71 / 255.0,
+//	1.0, 255 / 255.0, 99 / 255.0, 71 / 255.0
+//};
+__constant__ float colorTableTomato[5][4] = {
+	0, 0.0, 0.0, 0,
+	//30 / 255.0, 255 / 255.0, 99 / 255.0, 71 / 255.0,  
+	//30 / 255.0, 0 / 255.0, 156 / 255.0, 184 / 255.0,
+	30 / 255.0, 51 / 255.0, 8 / 255.0, 0 / 255.0,
 
+	//42 / 255.0, 255 / 255.0, 191 / 255.0, 71 / 255.0,
+	42 / 255.0, 255 / 255.0, 99 / 255.0, 71 / 255.0,
+	//68 / 255.0, 71 / 227.0, 8 / 255.0, 255.0 / 255.0, 
+	68 / 255.0, 255 / 227.0, 212 / 255.0, 204.0 / 255.0,
+	1.0, 1.0, 1.0, 1.0
+};
+
+__device__ float4 GetColourTomato(float v)
+{
+	//Now use cutOff
+	int pos = 0;
+	bool notFound = true;
+	while (pos < numColorTableItemsTomato - 1 && notFound) {
+		if (colorTableTomato[pos][0] <= v && colorTableTomato[pos + 1][0] >= v)
+			notFound = false;
+		else{
+			pos++;
+		}
+	}
+	float ratio = (v - colorTableTomato[pos][0]) / (colorTableTomato[pos + 1][0] - colorTableTomato[pos][0]);
+	float3 c;
+
+	if (pos > 0){
+		c = make_float3(
+			ratio*(colorTableTomato[pos + 1][1] - colorTableTomato[pos][1]) + colorTableTomato[pos][1],
+			ratio*(colorTableTomato[pos + 1][2] - colorTableTomato[pos][2]) + colorTableTomato[pos][2],
+			ratio*(colorTableTomato[pos + 1][3] - colorTableTomato[pos][3]) + colorTableTomato[pos][3]);	
+	}
+	else{
+		c = make_float3(colorTableTomato[pos][1], colorTableTomato[pos][2], colorTableTomato[pos][3]);
+	}
+
+	if (pos > 1){
+		return make_float4(c, 0.1);
+	}
+	else if (pos > 0){
+		return make_float4(c, 0.05);
+	}
+	else
+		return make_float4(c, 0);
+}
 
 void VolumeRender_setVolume(const VolumeCUDA *vol)
 {
@@ -395,6 +452,151 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 }
 
 
+//iossurface type rendering
+__global__ void d_render_preint_immer_iso(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, char* screenMark)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+
+	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
+	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
+	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
+	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
+	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)
+		//	if (!hit)
+	{
+		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		return;
+	}
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+	float lightingThr = 0.000001;
+
+	float fragDepth = 1.0;
+
+	const int isoConst = 3;
+	const float isoDis = 0.05;
+	const float isoList[isoConst] = { 0.294, 0.61, 0.99 + isoDis };
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		
+		//float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+		float funcRes = 0;
+		float colDensity = 0;
+
+		for (int j = 0; j < isoConst; j++){
+			if (abs(sample - isoList[j]) < isoDis){
+				//funcRes = sample;
+				funcRes = j*1.0 / (isoConst-1);
+
+				//funcRes = 1.0 - abs(sample - isoList[j]) / isoDis;
+				//funcRes = clamp(funcRes + j/10.0f, 0.0, 1.0);
+				//colDensity = 1.0;// clamp(funcRes + j / 10.0f, 0.0, 1.0);
+				colDensity = 1.0 - abs(sample - isoList[j]) / isoDis;
+				colDensity = clamp(colDensity + j / 10.0f, 0.0, 1.0);
+				//colDensity = (j+1.0 )/ isoConst;
+				break;
+			}
+			else if (sample < isoList[j]){
+				funcRes = j*1.0 / (isoConst - 1);
+				colDensity = j / 10.0f;
+				break;
+			}
+		}
+
+
+		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+
+		// lookup in transfer function texture
+		float4 col;
+
+		float3 cc;
+		unsigned short curlabel = 0;
+		if(useLabel)
+			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
+
+		//if (useColor)
+			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
+		//else{
+		//	cc = make_float3(funcRes, funcRes, funcRes);
+
+		//	if (useLabel && curlabel > 1)
+		//	{
+		//		cc = make_float3(funcRes, 0.0f, 0.0f);
+		//	}
+		//	else if (useLabel && curlabel > 0){
+		//		cc = make_float3(funcRes, funcRes, 0.0f);
+		//	}
+		//}
+
+		float3 posInWorld = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), colDensity);
+		}
+		else
+		{
+			col = make_float4(la*cc, colDensity);
+		}
+
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		t += tstep;
+
+		if (t > tfar){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		pos += step;
+	}
+
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+}
 
 __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH,  float3 eyeInLocal, int3 volumeSize, char* screenMark)
 {
@@ -454,14 +656,24 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 		float4 col;
 
 		float3 cc;
+		float colDensity = 0;
+
 		unsigned short curlabel = 0;
 		if(useLabel)
 			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
 
-		if (useColor)
-			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
+		if (useColor){
+			//float4 ret = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
+			float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
+			cc = make_float3(ret);
+			////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
+			//colDensity = ret.w;
+			colDensity = funcRes;
+
+		}
 		else{
-			cc = make_float3(funcRes, funcRes*0.2, funcRes*0.3);
+			colDensity = funcRes;
+			cc = make_float3(funcRes, funcRes, funcRes);
 
 			if (useLabel && curlabel > 1)
 			{
@@ -476,11 +688,11 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
+			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), colDensity);
 		}
 		else
 		{
-			col = make_float4(la*cc, funcRes);
+			col = make_float4(la*cc, colDensity);
 		}
 
 		col.w *= density;
@@ -653,6 +865,7 @@ void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
 	}
 	else{
 		d_render_preint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, screenMark);
+		//d_render_preint_immer_iso << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, screenMark); //for Neghip
 	}
 }
 

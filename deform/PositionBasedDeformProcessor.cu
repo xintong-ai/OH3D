@@ -106,7 +106,6 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 			float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
 			float3 dir = normalize(pos - prjPoint);
 			float dis = length(pos - prjPoint);
-			float3 samplePos = prjPoint + dir*(r - (r - dis) * 2);
 
 			if (dis < r){
 				float res = 0;
@@ -115,7 +114,8 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 			else if (dis < deformationScale){
 				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
 				float3 dir = normalize(pos - prjPoint);
-				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale; //!!! NOTE !!! spacing not considered yet!!!!
+				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale; 
+				samplePos /= spacing;
 
 				float res = tex3D(volumeTexInput, samplePos.x + 0.5, samplePos.y + 0.5, samplePos.z + 0.5);
 				surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
@@ -164,7 +164,6 @@ d_updateVolumebyMatrixInfo_tunnel_rect(cudaExtent volumeSize, float3 start, floa
 			float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
 			float3 dir = normalize(pos - prjPoint);
 			float dis = length(pos - prjPoint);
-			float3 samplePos = prjPoint + dir*(r - (r - dis) * 2);
 
 			if (dis < r / 2){
 				float res2 = 1;
@@ -173,8 +172,9 @@ d_updateVolumebyMatrixInfo_tunnel_rect(cudaExtent volumeSize, float3 start, floa
 			else if (dis < deformationScale){
 				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
 				float3 dir = normalize(pos - prjPoint);
-				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale; //!!! NOTE !!! spacing not considered yet!!!!
-
+				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale;
+				
+				samplePos /= spacing;
 				float res2 = tex3D(channelVolumeTex, samplePos.x, samplePos.y, samplePos.z);
 				surf3Dwrite(res2, channelVolumeSurface, x * sizeof(float), y, z);
 			}
@@ -280,12 +280,12 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 	float step = 0.5;
 	
 	tunnelEnd = centerPoint + tunnelAxis*step;
-	while (channelVolume->inRange(tunnelEnd) && channelVolume->getVoxel(tunnelEnd) < 0.5){
+	while (channelVolume->inRange(tunnelEnd / spacing) && channelVolume->getVoxel(tunnelEnd / spacing) < 0.5){
 		tunnelEnd += tunnelAxis*step;
 	}
 	
 	tunnelStart = centerPoint;
-	while (channelVolume->inRange(tunnelStart) && channelVolume->getVoxel(tunnelStart) < 0.5){
+	while (channelVolume->inRange(tunnelStart / spacing) && channelVolume->getVoxel(tunnelStart / spacing) < 0.5){
 		tunnelStart -= tunnelAxis*step;
 	}
 
@@ -321,7 +321,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 	float3 eyeInLocal = matrixMgr->getEyeInLocal();
 
 	if (lastVolumeState == ORIGINAL){
-		if (volume->inRange(eyeInLocal) && channelVolume->getVoxel(eyeInLocal) < 0.5){
+		if (volume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
 			// in solid area
 			// in this case, set the start of deformation
 			if (lastEyeState != inWall){
@@ -345,7 +345,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		}
 	}
 	else{ //lastVolumeState == Deformed
-		if (volume->inRange(eyeInLocal) && channelVolume->getVoxel(eyeInLocal) < 0.5){
+		if (volume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
 			//in area which is solid in the original volume
 			bool inchannel = inDeformedCell(eyeInLocal);
 			if (inchannel){
