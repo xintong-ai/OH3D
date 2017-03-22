@@ -70,6 +70,8 @@ public:
 	bool useHist = true;  //most papers do not use histogram to compute entropy. however we mostly use histogram. if true, each bin will be computed a probability; if false, each pixel will be computed a probability
 	int maxLabel = 1; //!! data dependant
 
+	std::string dataFolder;
+
 private:
 	std::shared_ptr<Volume> volume;
 	std::shared_ptr<RayCastingParameters> rcp;

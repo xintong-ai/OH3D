@@ -59,12 +59,11 @@ Window::Window()
 	DataType volDataType = RawVolumeReader::dtUint16;
 	
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
-	//rcp->useColor = false;
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType);
+	rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 465 / 2275, 1.25, 512, 0.25f, 1.3, false); //for brat
 
-	 //for 181
 
-	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 256, 0.25f, 1.0, false);
+	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
 
 	//dims = make_int3(256, 256, 64);
 	//dims = make_int3(301, 324, 56);
@@ -75,8 +74,9 @@ Window::Window()
 	//subfolder = "beetle";
 	//rcp->use2DInteg = false;
 
-	//std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 0.9, 0.1, 0.05, 512, 0.25f, 0.6, false); //181
-	std::shared_ptr<RayCastingParameters> rcpMini = rcp;// std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
+
+	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.5, 0.11, 0.6, 512, 0.25f, 1.0, false);
+	//std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
 
 	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
@@ -104,7 +104,7 @@ Window::Window()
 		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
 	}
 
-	bool channelSkelViewReady = true;
+	bool channelSkelViewReady = false;
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
 		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
@@ -134,8 +134,11 @@ Window::Window()
 	if (std::string(dataPath).find("engine") != std::string::npos){
 		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -20, 60));
 	}
-	if (std::string(dataPath).find("Tomato") != std::string::npos){
-		matrixMgr->moveEyeInLocalByModeMat(make_float3(182,78,33)*spacing);
+	else if (std::string(dataPath).find("Tomato") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(182, 78, 33)*spacing);
+	}
+	else if (std::string(dataPath).find("181") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(64, 109, 107)*spacing);
 	}
 	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
 
@@ -144,24 +147,13 @@ Window::Window()
 	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
 	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
 	//ve->initDownSampledResultVolume(make_int3(40, 40, 40));
+	ve->dataFolder = subfolder;
 	ve->setSpherePoints();
 	ve->setLabel(labelVolCUDA);
 
 	if (channelSkelViewReady){
 		std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
 		reader3->OutputToParticleDataArrays(ve->skelViews);
-
-		//The skel view computation does not include spacing. scale by spacing here
-		for (int i = 0; i < ve->skelViews.size(); i++){
-			for (int j = 0; j < ve->skelViews[i]->numParticles; j++){
-				ve->skelViews[i]->pos[j].x *= spacing.x;
-				ve->skelViews[i]->pos[j].y *= spacing.y;
-				ve->skelViews[i]->pos[j].z *= spacing.z;
-				ve->skelViews[i]->posOrig[j].x *= spacing.x;
-				ve->skelViews[i]->posOrig[j].y *= spacing.y;
-				ve->skelViews[i]->posOrig[j].z *= spacing.z;
-			}
-		}
 		reader3.reset();
 	}
 
@@ -462,33 +454,31 @@ Window::Window()
 	format2.setProfile(QSurfaceFormat::CoreProfile);
 	openGLMini->setFormat(format2);
 
-	matrixMgrRenderableMini = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	matrixMgrRenderableMini->renderPart = 2;
-	openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
-
+	//matrixMgrRenderableMini = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	//matrixMgrRenderableMini->renderPart = 2;
+	//openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
 	//ve->createOneParticleFormOfViewSamples(); 
 	//ve->allViewSamples->initForRendering(10, 1);
 	//glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
 	//openGLMini->AddRenderable("2glyphRenderable", glyphRenderable.get());
-
-
-
-	volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
-	volumeRenderableMini->rcp = rcpMini; 
-	volumeRenderableMini->setBlending(true, 50);
-	openGLMini->AddRenderable("4volume", volumeRenderableMini.get());
-	regularInteractorMini = std::make_shared<RegularInteractor>();
-	regularInteractorMini->setMatrixMgr(matrixMgrMini);
-	openGLMini->AddInteractor("1regular", regularInteractorMini.get());
-
+	//volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
+	//volumeRenderableMini->rcp = rcpMini; 
+	//volumeRenderableMini->setBlending(true, 50);
+	//openGLMini->AddRenderable("4volume", volumeRenderableMini.get());
+	//regularInteractorMini = std::make_shared<RegularInteractor>();
+	//regularInteractorMini->setMatrixMgr(matrixMgrMini);
+	//openGLMini->AddInteractor("1regular", regularInteractorMini.get());
 	//assistLayout->addWidget(openGLMini.get(), 3);
 
-	//helper.setData(inputVolume, labelVolLocal);
-	//GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
-	//assistLayout->addWidget(openGL2D, 0);
-	//QTimer *timer = new QTimer(this);
-	//connect(timer, &QTimer::timeout, openGL2D, &GLWidgetQtDrawing::animate);
-	//timer->start(5);
+
+
+	////////////////////2D slice view
+	helper.setData(inputVolume, labelVolLocal);
+	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
+	assistLayout->addWidget(openGL2D, 0);
+	QTimer *timer = new QTimer(this);
+	connect(timer, &QTimer::timeout, openGL2D, &GLWidgetQtDrawing::animate);
+	timer->start(5);
 
 
 	QLabel *zSliderLabelLit = new QLabel("Z index: ");
@@ -531,7 +521,7 @@ Window::Window()
 	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
 
 	mainLayout->addLayout(assistLayout, 1);
-//openGL->setFixedSize(600, 600);
+openGL->setFixedSize(600, 600);
 //openGLMini->setFixedSize(300, 300);
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -746,6 +736,7 @@ void Window::findGeneralOptimalBtnClicked()
 	ve->currentMethod = VPMethod::Tao09Detail;
 	ve->compute_SkelSampling(VPMethod::Tao09Detail);
 	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy<< std::endl;
+	std::cout << "The optimal view point: " << ve->optimalEyeInLocal.x << " " << ve->optimalEyeInLocal.y << " "<< ve->optimalEyeInLocal.z << std::endl << "The optimal view point in voxel: " << ve->optimalEyeInLocal.x / spacing.x << " " << ve->optimalEyeInLocal.y / spacing.y << " " << ve->optimalEyeInLocal.z / spacing.z << std::endl;
 	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 }
 

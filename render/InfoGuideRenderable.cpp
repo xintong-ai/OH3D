@@ -110,7 +110,8 @@ void InfoGuideRenderable::drawLocalGuide(int2 winSize)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	glColor4f(0.89f, 0.39f, 0.26f, transp);
+	//glColor4f(0.89f, 0.39f, 0.26f, transp);
+	glColor4f(0.29f, 0.39f, 0.86f, transp);
 
 
 	int maxInd = std::max_element(ve->cubeInfo.begin(), ve->cubeInfo.begin() + ve->cubeInfo.size()) - ve->cubeInfo.begin();
@@ -235,11 +236,6 @@ void InfoGuideRenderable::drawGlobalGuide(float modelview[16], float projection[
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); glLineWidth(1);
 		glBegin(GL_TRIANGLES);
 		for (int i = 0; i < glArrow.grids.size(); i++){
-			//if (i % 18 < 9)
-			//	glColor4f(0.89f, 0.89f, 0.26f, transp);
-			//else{
-			//	glColor4f(0.89f, 0.29f, 0.26f, transp);
-			//}
 			if (i % 18 < 9)
 				glColor4f(0.79f, 0.89f, 0.26f, transp);
 			else if (i % 18 < 15){

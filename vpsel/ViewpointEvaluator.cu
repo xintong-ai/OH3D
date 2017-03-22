@@ -134,7 +134,7 @@ void ViewpointEvaluator::initTao09Detail()
 	//fclose(fp);
 	
 	float* bilateralVolumeRes = new float[volume->size.x*volume->size.y*volume->size.z];
-	FILE * fp = fopen("bilat.raw", "rb");
+	FILE * fp = fopen((dataFolder+"/bilat.raw").c_str(), "rb");
 	fread(bilateralVolumeRes, sizeof(float), volume->size.x*volume->size.y*volume->size.z, fp);
 	fclose(fp);
 
@@ -533,6 +533,114 @@ __global__ void d_computeSphereColor(float density, float brightness,
 	}
 }
 
+//for certain method color is not needed. only use density to control when to stop the integration
+__global__ void d_computeSphereNoColor(float density,
+	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, float * r, int numSphereSample, float *sphereSamples, float *hist, int nbins, bool useHist, VPMethod vpmethod)
+{
+
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= numSphereSample)	return;
+
+	const float opacityThreshold = 0.95f;
+
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	eyeRay.d = make_float3(sphereSamples[3 * i], sphereSamples[3 * i + 1], sphereSamples[3 * i + 2]);
+
+	float tnear, tfar;
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+	intersectBox2(eyeRay, boxMin, boxMax, &tnear, &tfar);
+	tnear = 0.01f;	//!!!NOTE!!! this tnear is not in the clip space but in the original space
+
+	// march along ray from front to back, accumulating color
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+
+	float4 sum = make_float4(0.0f); //for JS
+	unsigned short label = 0; //for label count
+	float detailDescriptor = 0; //for TaoDetail
+
+	float lightingThr = 0.000001; //used for the threshold of TaoDetail
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeVal, coord.x, coord.y, coord.z);
+		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+		float colDensity = funcRes;
+		float4 col = make_float4(0, 0, 0, colDensity); //(0,0,0) as fake color
+
+		col.w *= density;
+
+		float visibility = 1.0f - sum.w;
+
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		if (vpmethod == Tao09Detail){ //if not Tao09Detail, the sampled texture may not be prepared
+			float curDetail = 0;
+			float3 normalOri = make_float3(tex3D(gradientTexOri, coord.x, coord.y, coord.z)) / spacing;
+			float3 normalFiltered = make_float3(tex3D(gradientTexFiltered, coord.x, coord.y, coord.z)) / spacing;
+			if (length(normalOri) > lightingThr){
+				if (length(normalFiltered) > lightingThr){
+					curDetail = 1 - dot(normalize(normalOri), normalize(normalFiltered));
+				}
+				else{
+					curDetail = 1;
+				}
+			}
+			detailDescriptor = detailDescriptor + curDetail*visibility;
+		}
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			break;
+		}
+		else if (vpmethod == LabelVisibility){
+			unsigned short curlabel = tex3D(volumeLabel, coord.x, coord.y, coord.z);
+			if (curlabel > label)
+			{
+				label = curlabel;
+			}
+		}
+
+		t += tstep;
+
+		if (t > tfar){
+			break;
+		}
+
+		pos += step;
+	}
+
+	if (vpmethod == Tao09Detail)
+	{
+		float uv = detailDescriptor + 1;
+		r[i] = uv;
+		// !!! this is true only when we know uv is in [0,2] !!!
+		int bin = min((int)((uv / 2)*nbins), nbins - 1);
+		atomicAdd(hist + bin, 1);
+	}
+	else if (vpmethod == LabelVisibility){
+		r[i] = label;
+		if (useHist){
+			int bin;
+			if (label > 0)
+				bin = 1;
+			else
+				bin = 0;
+			atomicAdd(hist + bin, 1);
+		}
+	}
+	else{
+//should be error
+		r[i] = -789; //for debug
+	}
+}
 
 struct is_solid
 {
@@ -551,7 +659,8 @@ float ViewpointEvaluator::computeLocalSphereEntropy(float3 eyeInLocal, VPMethod 
 
 	cudaMemset(d_hist, 0, sizeof(float)*nbins);
 
-	d_computeSphereColor << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, m);
+	//d_computeSphereColor << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, m);
+	d_computeSphereNoColor << <blocksPerGrid, threadsPerBlock >> >(rcp->density, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, d_r, numSphereSample, d_sphereSamples, d_hist, nbins, useHist, m);
 
 	float ret;
 	if (useHist){
@@ -736,6 +845,137 @@ __global__ void d_computeCubeColorHist(float density, float brightness,
 }
 
 
+__global__ void d_computeCubeNoColorHist(float density, float3 eyeInLocal, float3 viewVec, float3 upVec, int3 volumeSize, int maxSteps, float tstep, float * r, int numSphereSample, float *sphereSamples, float *hist0, float *hist1, float *hist2, float *hist3, float *hist4, float *hist5, int nbins, bool useHist, VPMethod vpmethod)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= numSphereSample)	return;
+
+	const float opacityThreshold = 0.95f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	eyeRay.d = make_float3(sphereSamples[3 * i], sphereSamples[3 * i + 1], sphereSamples[3 * i + 2]);
+
+	float tnear, tfar;
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+	intersectBox2(eyeRay, boxMin, boxMax, &tnear, &tfar);
+	tnear = 0.01f;	//!!!NOTE!!! this tnear is not in the clip space but in the original space
+
+	// march along ray from front to back, accumulating color
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+
+	float4 sum = make_float4(0.0f); //for JS
+	unsigned short label = 0; //for label count
+	float detailDescriptor = 0; //for TaoDetail
+
+	float lightingThr = 0.000001; //used for the threshold of TaoDetail
+
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeVal, coord.x, coord.y, coord.z);
+		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+		float colDensity = funcRes;
+		float4 col = make_float4(0,0,0, colDensity);
+
+		col.w *= density;
+
+		float visibility = 1.0f - sum.w;
+
+		sum = sum + col*(1.0f - sum.w);
+
+		if (vpmethod == Tao09Detail){ //if not Tao09Detail, the sampled texture may not be prepared
+			float curDetail = 0;
+			float3 normalOri = make_float3(tex3D(gradientTexOri, coord.x, coord.y, coord.z)) / spacing;
+			float3 normalFiltered = make_float3(tex3D(gradientTexFiltered, coord.x, coord.y, coord.z)) / spacing;
+			if (length(normalOri) > lightingThr){
+				if (length(normalFiltered) > lightingThr){
+					curDetail = 1 - dot(normalize(normalOri), normalize(normalFiltered));
+				}
+				else{
+					curDetail = 1;
+				}
+			}
+			detailDescriptor = detailDescriptor + curDetail*visibility;
+		}
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			break;
+		}
+		else if (vpmethod == LabelVisibility){
+			unsigned short curlabel = tex3D(volumeLabel, coord.x, coord.y, coord.z);
+			if (curlabel > label)
+			{
+				label = curlabel;
+			}
+		}
+
+		t += tstep;
+		if (t > tfar){
+			break;
+		}
+		pos += step;
+	}
+
+	int bin;
+
+	if (vpmethod == Tao09Detail)
+	{
+		float uv = detailDescriptor + 1;
+		r[i] = uv;
+		// !!! this is true only when we know uv is in [0,2] !!!
+		bin = min((int)((uv / 2)*nbins), nbins - 1);
+	}
+	else if (vpmethod == LabelVisibility){
+		r[i] = label;
+		if (useHist){
+			if (label > 0)
+				bin = 1;
+			else
+				bin = 0;
+		}
+	}
+	else{
+		//should be error
+	}
+
+	//suppose x coord is along viewVew, suppose upVec and viewVew are normalized and perpendicular
+	float3 sidevec = cross(upVec, viewVec);
+	float rayz = dot(eyeRay.d, upVec), rayx = dot(eyeRay.d, viewVec), rayy = dot(eyeRay.d, sidevec);
+
+	float xabs = abs(rayx), yabs = abs(rayy), zabs = abs(rayz);
+	if (xabs > yabs && xabs > zabs){
+		if (rayx > 0){ //front
+			atomicAdd(hist0 + bin, 1);
+		}
+		else{ //back
+			atomicAdd(hist1 + bin, 1);
+		}
+	}
+	else if (yabs > xabs && yabs > zabs){
+		if (rayy > 0){ //left
+			atomicAdd(hist2 + bin, 1);
+		}
+		else{ //right
+			atomicAdd(hist3 + bin, 1);
+		}
+	}
+	else{ //zabs is the max
+		if (rayz > 0){ //up
+			atomicAdd(hist4 + bin, 1);
+		}
+		else{ //below
+			atomicAdd(hist5 + bin, 1);
+		}
+	}
+}
+
 void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir, VPMethod m)
 {
 	if (m == Tao09Detail){
@@ -751,7 +991,8 @@ void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, f
 		checkCudaErrors(cudaBindTextureToArray(gradientTexOri, volumeGradient.content, volumeGradient.channelDesc));
 		checkCudaErrors(cudaBindTextureToArray(gradientTexFiltered, filteredVolumeGradient.content, filteredVolumeGradient.channelDesc));
 
-		d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
+	//	d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
+		d_computeCubeNoColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
 
 		checkCudaErrors(cudaUnbindTexture(gradientTexOri));
 		checkCudaErrors(cudaUnbindTexture(gradientTexFiltered));

@@ -128,7 +128,7 @@ __constant__ float colorTableTomato[5][4] = {
 	//42 / 255.0, 255 / 255.0, 191 / 255.0, 71 / 255.0,
 	42 / 255.0, 255 / 255.0, 99 / 255.0, 71 / 255.0,
 	//68 / 255.0, 71 / 227.0, 8 / 255.0, 255.0 / 255.0, 
-	68 / 255.0, 255 / 227.0, 212 / 255.0, 204.0 / 255.0,
+	68 / 255.0, 255 / 255.0, 212 / 255.0, 204.0 / 255.0,
 	1.0, 1.0, 1.0, 1.0
 };
 
@@ -663,18 +663,14 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
 
 		if (useColor){
-			//float4 ret = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
 			float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
 			cc = make_float3(ret);
 			////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
 			//colDensity = ret.w;
 			colDensity = funcRes;
-
 		}
 		else{
-			colDensity = funcRes;
 			cc = make_float3(funcRes, funcRes, funcRes);
-
 			if (useLabel && curlabel > 1)
 			{
 				cc = make_float3(funcRes, 0.0f, 0.0f);
@@ -682,6 +678,11 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			else if (useLabel && curlabel > 0){
 				cc = make_float3(funcRes, funcRes, 0.0f);
 			}
+
+			
+			//colDensity = funcRes;
+			
+			colDensity = clamp(funcRes + 0.05, 0.0f, 1.0f); //for brats!!
 		}
 
 		float3 posInWorld = mul(c_MVMatrix, pos);

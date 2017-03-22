@@ -33,6 +33,15 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 	painter->setBrush(circleBrush);
 	painter->setPen(circlePen);
 	//painter->rotate(elapsed * 0.030);
+	
+	float colorTableTomato[5][4] = {
+		0, 0.0, 0.0, 0,
+		30, 51 , 8, 0 ,
+		42 , 255 , 99, 71 ,
+		68 , 255 , 212 , 204.0,
+		1.0, 1.0, 1.0, 1.0
+	};
+
 
 	int sliceOffset = z*w * h;
 	QImage image(w*multiplier, h*multiplier, QImage::Format_RGB32);
@@ -41,7 +50,8 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 			if (labelVolLocal[sliceOffset + w*j + i]){
 				for (int ii = 0; ii < multiplier; ii++){
 					for (int jj = 0; jj < multiplier; jj++){
-						image.setPixel(i*multiplier + ii, j*multiplier + jj, 256 * 256 * 255 + 256 * 255 + 0);
+
+						image.setPixel(i*multiplier + ii, (h - 1 - j)*multiplier + jj, 256 * 256 * 255 + 256 * 255 + 0);
 					}
 				}
 			}
@@ -49,7 +59,32 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 				int vv = 255 * inputVolume->values[sliceOffset + j*w + i];
 				for (int ii = 0; ii < multiplier; ii++){
 					for (int jj = 0; jj < multiplier; jj++){
-						image.setPixel(i*multiplier + ii, j*multiplier + jj, 256 * 256 * vv + 256 * vv + vv);
+						image.setPixel(i*multiplier + ii, (h - 1 - j)*multiplier + jj, 256 * 256 * vv + 256 * vv + vv);
+
+
+						////for Tomato data
+						//int pos = 0;
+						//if (vv <= 30){
+						//	image.setPixel(i*multiplier + ii, (h-1-j)*multiplier + jj, 0);
+						//}
+						//else if(vv<=42){
+						//	pos = 1;
+						//}
+						//else if (vv <= 68){
+						//	pos = 2;
+						//}
+						//else{
+						//	pos = 3;
+						//}
+						//if (pos > 0){
+						//	float ratio = (vv - colorTableTomato[pos][0]) / (colorTableTomato[pos + 1][0] - colorTableTomato[pos][0]);
+						//	
+						//	int3 val = make_int3(
+						//		ratio*(colorTableTomato[pos + 1][1] - colorTableTomato[pos][1]) + colorTableTomato[pos][1],
+						//		ratio*(colorTableTomato[pos + 1][2] - colorTableTomato[pos][2]) + colorTableTomato[pos][2],
+						//		ratio*(colorTableTomato[pos + 1][3] - colorTableTomato[pos][3]) + colorTableTomato[pos][3]);
+						//	image.setPixel(i*multiplier + ii, (h-1-j)*multiplier + jj, 256 * 256 * val.x + 256 * val.y + val.z);
+						//}
 					}
 				}
 			}
