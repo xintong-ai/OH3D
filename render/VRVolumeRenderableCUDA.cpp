@@ -51,8 +51,7 @@ void VRVolumeRenderableCUDA::drawVR(float modelview[16], float projection[16], i
 	q_mvp.copyDataTo(MVPMatrix);
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
-	//VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &((volumeRenderable->rcp)->transFuncP1), &((volumeRenderable->rcp)->transFuncP2), &((volumeRenderable->rcp)->la), &((volumeRenderable->rcp)->ld), &((volumeRenderable->rcp)->ls), &(volumeRenderable->getVolume()->spacing));
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing));
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(volume->spacing), rcp.get());
 
 
 	////those should be well set already by volumeRenderable

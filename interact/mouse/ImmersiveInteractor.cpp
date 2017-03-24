@@ -8,15 +8,15 @@ void ImmersiveInteractor::mouseMoveMatrix(float fromX, float fromY, float toX, f
 {
 	if (!noMoveMode){
 		if (mouseKey == 1){
-			Rotate(fromX, fromY, toX, toY);
+			RotateLocal(fromX, fromY, toX, toY);
 		}
 		else if (mouseKey == 2){
-			Translate(toX - fromX, toY - fromY);
+			RotateEye(fromX, fromY, toX, toY);
 		}
 	}
 }
 
-void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
+void ImmersiveInteractor::RotateLocal(float fromX, float fromY, float toX, float toY)
 {
 	if (!isActive)
 		return;
@@ -26,45 +26,12 @@ void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 	float close = abs(QVector3D::dotProduct(upInLocal, targetUpVecInLocal));
 
 	float angthr = 0.5;
-	
-	// *rot = trackball->rotate(fromX, fromY, toX, toY);
-	//*rot = trackball->rotate(toX, toY, fromX, fromY);  //note the from and to is different from normal
+
 	*rot = trackball->rotate(toX, 0, fromX, 0);  //raising or lowering the head should be done by using the device
 	float m[16];
 	rot->matrix(m);
 	QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
 	
-
-	/*
-
-	float m[16];
-
-	*rot = trackball->rotate(toX, toY, toX, fromY);  //note the from and to is different from normal
-	rot->matrix(m);
-	QMatrix4x4 newRotationY = QMatrix4x4(m).transposed();
-
-	*rot = trackball->spin(toX, fromY, fromX, fromY);  //note the from and to is different from normal
-	rot->matrix(m);
-
-	QMatrix4x4 newRotationX = QMatrix4x4(m).transposed();
-
-	QMatrix4x4 newRotation = newRotationX*newRotationY;
-	//newRotation = newRotation2;
-	*/
-
-
-	/*
-	QMatrix4x4 newRotation1;
-	newRotation1.rotate(15 * (fromX - toX), upInLocal);
-	float3 sideInLocalf3 = cross(matrixMgr->getUpInLocal(), matrixMgr->getViewVecInLocal());
-	QVector3D sideInLocal = QVector3D(sideInLocalf3.x, sideInLocalf3.y, sideInLocalf3.z);
-	QMatrix4x4 newRotation2;
-	newRotation2.rotate(15 * (fromY - toY), sideInLocal);
-	newRotation = newRotation2*newRotation1;
-	*/
-
-
-
 	QMatrix4x4 oriRotMat;
 	matrixMgr->GetRotMatrix(oriRotMat);
 
@@ -78,11 +45,19 @@ void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
 	}
 };
 
-
-void ImmersiveInteractor::Translate(float x, float y)
+void ImmersiveInteractor::RotateEye(float fromX, float fromY, float toX, float toY)
 {
-	return;
-};
+	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
+	QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+	QVector3D viewVecInWorld = matrixMgr->getViewVecInWorld();
+
+	*rot = trackball->rotate(0, fromY, 0, toY);  //left or right the head has been done by RotateLocal()
+	float m[16];
+	rot->matrix(m);
+	QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
+
+	matrixMgr->setViewAndUpInWorld(QVector3D(newRotation*QVector4D(viewVecInWorld, 0)), QVector3D(newRotation*QVector4D(upVecInWorld, 0)));
+}
 
 
 void ImmersiveInteractor::mousePress(int x, int y, int modifier, int mouseKey)

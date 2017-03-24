@@ -138,7 +138,12 @@ public:
 			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 256, 0.25f, 1.0, false); 
 			subfolder = "181";
 		}
-		else if (std::string(dataPath).find("bloodCell") != std::string::npos){
+		else if (std::string(dataPath).find("Baseline") != std::string::npos){
+			dims = make_int3(256, 256, 51);
+			spacing = make_float3(1, 1, 2.6);
+			rcp = std::make_shared<RayCastingParameters>(1, 0.2, 0.3, 0.66, 940.0 / 3500.0, 1.8, 512, 0.25f, 1.3, false);
+			subfolder = "Baseline";
+		}else if (std::string(dataPath).find("bloodCell") != std::string::npos){
 			dims = make_int3(160, 224, 64);
 			spacing = make_float3(1, 1, 1);
 			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false); 

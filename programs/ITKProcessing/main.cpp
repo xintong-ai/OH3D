@@ -39,13 +39,13 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 			}
 		}
 	}
-	//channelV->initVolumeCuda();
+
 	std::cout << "finish computing channel volume..." << std::endl;
 	return;
 }
 
 
-void computeSkel(shared_ptr<Volume> channelVolume, shared_ptr<Volume> skelVolume, int3 dims, float3 spacing)
+void computeSkel(shared_ptr<Volume> channelVolume, shared_ptr<Volume> skelVolume, int3 dims, float3 spacing, int &maxComponentMark)
 {
 	//compute skeleton volume and itk skelComponented image from the beginning
 	std::cout << "computing skeletion volume..." << std::endl;
@@ -60,13 +60,10 @@ void computeSkel(shared_ptr<Volume> channelVolume, shared_ptr<Volume> skelVolume
 		}
 	}
 	ImageType::Pointer skelComponentedImg;
-	int maxComponentMark;
 	skelComputing(localBuffer, dims, spacing, skelVolume->values, skelComponentedImg, maxComponentMark);
 	//skelVolume->initVolumeCuda();
 	std::cout << "finish computing skeletion volume..." << std::endl;
 	skelVolume->saveRawToFile("skel.raw");
-
-
 	return;
 }
 
@@ -84,7 +81,8 @@ int main(int argc, char **argv)
 	
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	DataType volDataType = RawVolumeReader::dtUint16;
-	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType);
+	bool labelFromFile;
+	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, labelFromFile);
 
 	shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
@@ -115,7 +113,11 @@ int main(int argc, char **argv)
 	skelVolume->setSize(inputVolume->size);
 	skelVolume->dataOrigin = inputVolume->dataOrigin;
 	skelVolume->spacing = inputVolume->spacing;
-	computeSkel(channelVolume, skelVolume, dims, spacing);
+	
+	
+	int maxComponentMark; 
+	
+	computeSkel(channelVolume, skelVolume, dims, spacing, maxComponentMark);
 
 
 	
@@ -130,7 +132,7 @@ int main(int argc, char **argv)
 	readeritk->SetFileName("skelComponented.hdr");
 	readeritk->Update();
 	ImageType::Pointer connectedImg = readeritk->GetOutput();
-	int maxComponentMark = 55;
+	
 
 
 	std::vector<std::vector<float3>> viewArrays;

@@ -36,8 +36,8 @@ void InfoGuideRenderable::draw(float modelview[16], float projection[16])
 	int2 winSize = actor->GetWindowSize();
 
 	const float locationChangeThr = 1;
-	const float vecChangeThr = 0.9;
-	const float disThr = 5;
+	const float vecChangeThr = 0.99;
+	const float disThr = 3;
 	if (globalGuideOn && length(matrixMgr->getEyeInLocal() - ve->optimalEyeInLocal)>disThr){  //should do global guide
 		if (length(eyeInLocal - storedEyeLocal) > locationChangeThr || abs(dot(viewDir, storedViewDir)) < vecChangeThr || abs(dot(upDir, storedUpVector)) < vecChangeThr){
 

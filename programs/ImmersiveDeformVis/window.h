@@ -74,7 +74,8 @@ private:
 	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
-	bool useLabel;
+	//bool useLabel;
+	bool labelFromFile = false;
 	std::shared_ptr<VolumeCUDA> labelVolCUDA;
 	unsigned short* labelVolLocal = 0;
 

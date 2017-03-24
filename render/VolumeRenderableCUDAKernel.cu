@@ -110,24 +110,10 @@ __device__ float3 GetColourDiverge(float v)
 }
 
 __constant__ int numColorTableItemsTomato = 5;
-//__constant__ float colorTableTomato[7][4] = {
-//	0, 51 / 255.0, 8 / 255.0, 0,
-//	0.16, 102 / 255.0, 16 / 255.0, 0,
-//	0.33, 153 / 255.0, 23 / 255.0, 0,
-//	0.5, 204 / 255.0, 31 / 255.0, 0,
-//	0.67, 255 / 255.0, 39 / 255.0, 0,
-//	0.83, 255 / 255.0, 99 / 255.0, 71 / 255.0,
-//	1.0, 255 / 255.0, 99 / 255.0, 71 / 255.0
-//};
 __constant__ float colorTableTomato[5][4] = {
 	0, 0.0, 0.0, 0,
-	//30 / 255.0, 255 / 255.0, 99 / 255.0, 71 / 255.0,  
-	//30 / 255.0, 0 / 255.0, 156 / 255.0, 184 / 255.0,
 	30 / 255.0, 51 / 255.0, 8 / 255.0, 0 / 255.0,
-
-	//42 / 255.0, 255 / 255.0, 191 / 255.0, 71 / 255.0,
 	42 / 255.0, 255 / 255.0, 99 / 255.0, 71 / 255.0,
-	//68 / 255.0, 71 / 227.0, 8 / 255.0, 255.0 / 255.0, 
 	68 / 255.0, 255 / 255.0, 212 / 255.0, 204.0 / 255.0,
 	1.0, 1.0, 1.0, 1.0
 };
@@ -181,14 +167,13 @@ void VolumeRender_setLabelVolume(const VolumeCUDA *v)
 	volumeLabelValue.addressMode[2] = cudaAddressModeBorder;
 
 	checkCudaErrors(cudaBindTextureToArray(volumeLabelValue, v->content, v->channelDesc));
+	
 	bool trueVariable = true;
-
 	checkCudaErrors(cudaMemcpyToSymbol(useLabel, &trueVariable, sizeof(bool)));
-
 }
 
 
-void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, float* _transFuncP1, float* _transFuncP2, float* _la, float* _ld, float* _ls, float3* _spacing, RayCastingParameters* rcp)
+void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMatrix, float *invMVPMatrix, float* NormalMatrix, float3* _spacing, RayCastingParameters* rcp)
 {
 	size_t sizeof4x4Matrix = sizeof(float4)* 4;
 	checkCudaErrors(cudaMemcpyToSymbol(c_MVMatrix, MVMatrix, sizeof4x4Matrix));
@@ -197,11 +182,11 @@ void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMa
 	checkCudaErrors(cudaMemcpyToSymbol(c_invMVPMatrix, invMVPMatrix, sizeof4x4Matrix));
 	checkCudaErrors(cudaMemcpyToSymbol(c_NormalMatrix, NormalMatrix, sizeof(float3)* 3));
 
-	checkCudaErrors(cudaMemcpyToSymbol(transFuncP1, _transFuncP1, sizeof(float)));
-	checkCudaErrors(cudaMemcpyToSymbol(transFuncP2, _transFuncP2, sizeof(float)));
-	checkCudaErrors(cudaMemcpyToSymbol(la, _la, sizeof(float)));
-	checkCudaErrors(cudaMemcpyToSymbol(ld, _ld, sizeof(float)));
-	checkCudaErrors(cudaMemcpyToSymbol(ls, _ls, sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(transFuncP1, &(rcp->transFuncP1), sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(transFuncP2, &(rcp->transFuncP2), sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(la, &(rcp->la), sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(ld, &(rcp->ld), sizeof(float)));
+	checkCudaErrors(cudaMemcpyToSymbol(ls, &(rcp->ls), sizeof(float)));
 
 	checkCudaErrors(cudaMemcpyToSymbol(density, &(rcp->density), sizeof(float)));
 	checkCudaErrors(cudaMemcpyToSymbol(brightness, &(rcp->brightness), sizeof(float)));
@@ -658,7 +643,8 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 		float3 cc;
 		float colDensity = 0;
 
-		unsigned short curlabel = 0;
+		unsigned short curlabel = 1;
+		
 		if(useLabel)
 			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
 
@@ -676,13 +662,12 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 				cc = make_float3(funcRes, 0.0f, 0.0f);
 			}
 			else if (useLabel && curlabel > 0){
-				cc = make_float3(funcRes, funcRes, 0.0f);
+				cc = make_float3(0.0f, funcRes, funcRes);
 			}
-
 			
-			//colDensity = funcRes;
+			colDensity = funcRes;
 			
-			colDensity = clamp(funcRes + 0.05, 0.0f, 1.0f); //for brats!!
+			//colDensity = clamp(funcRes + 0.05, 0.0f, 1.0f); //for brats!!
 		}
 
 		float3 posInWorld = mul(c_MVMatrix, pos);

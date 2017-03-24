@@ -12,3 +12,4 @@ dVOLUME_DATA_PATH=D:/Data/volume/dataset-stagbeetle-416x416x247.img
 
 qVOLUME_DATA_PATH=D:/Dropbox/shareXin/bloodCellWall0032.raw
 VOLUME_DATA_PATH=D:/Data/volume/Tomato.raw
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/BaselineVolume.img

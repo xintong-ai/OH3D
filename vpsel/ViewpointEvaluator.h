@@ -68,7 +68,8 @@ public:
 	void createOneParticleFormOfViewSamples();
 
 	bool useHist = true;  //most papers do not use histogram to compute entropy. however we mostly use histogram. if true, each bin will be computed a probability; if false, each pixel will be computed a probability
-	int maxLabel = 1; //!! data dependant
+	int maxLabel = 2; //!! data dependant
+	//generally maxLabel needs to be less than nbins. or else may have segmentation fault
 
 	std::string dataFolder;
 

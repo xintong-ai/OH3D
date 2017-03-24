@@ -13,8 +13,8 @@ class ImmersiveInteractor :public MatrixInteractor
 	void moveViewHorizontally(int d);
 	void moveViewVertically(int d);
 
-	void Rotate(float fromX, float fromY, float toX, float toY);
-	void Translate(float x, float y);
+	void RotateLocal(float fromX, float fromY, float toX, float toY);
+	void RotateEye(float fromX, float fromY, float toX, float toY);
 
 public:
 	ImmersiveInteractor(){};

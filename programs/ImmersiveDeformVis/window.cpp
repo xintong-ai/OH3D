@@ -57,11 +57,13 @@ Window::Window()
 
 	std::string subfolder;
 	DataType volDataType = RawVolumeReader::dtUint16;
-	
-	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
-	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType);
-	rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 465 / 2275, 1.25, 512, 0.25f, 1.3, false); //for brat
 
+	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
+	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, labelFromFile);
+	
+	//rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 465 / 2275, 1.25, 512, 0.25f, 1.3, false); //for brats
+
+	 //Baseline
 
 	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
 
@@ -75,8 +77,8 @@ Window::Window()
 	//rcp->use2DInteg = false;
 
 
-	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.5, 0.11, 0.6, 512, 0.25f, 1.0, false);
-	//std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); //for 181
+	//std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.5, 0.11, 0.6, 512, 0.25f, 1.0, false);
+	std::shared_ptr<RayCastingParameters> rcpMini = rcp;// = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 0.6, 512, 0.25f, 1.0, false); //for 181
 
 	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
@@ -104,7 +106,7 @@ Window::Window()
 		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
 	}
 
-	bool channelSkelViewReady = false;
+	bool channelSkelViewReady = true;
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
 		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
@@ -121,10 +123,46 @@ Window::Window()
 		reader4.reset();
 	}
 
-	labelVolCUDA = std::make_shared<VolumeCUDA>();
-	labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
-	labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
-	memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
+	int maxLabel = 1;
+	if(labelFromFile){
+		unsigned char* labelVolRes = new unsigned char[dims.x*dims.y*dims.z];
+		FILE * fp = fopen(dataMgr->GetConfig("FEATURE_PATH").c_str(), "rb");
+		fread(labelVolRes, sizeof(unsigned char), dims.x*dims.y*dims.z, fp);
+		fclose(fp);
+		unsigned short *temp = new unsigned short[dims.x*dims.y*dims.z];
+		for (int i = 0; i < dims.x*dims.y*dims.z; i++){
+			//specific processing only for Baseline data
+			if (labelVolRes[i] >2)
+				temp[i] = 2;
+			else if (labelVolRes[i] >1)
+				temp[i] = 1;
+			else 
+				temp[i] = 0;
+		}
+		maxLabel = 2;
+
+		//for (int i = 0; i < dims.x*dims.y*dims.z; i++){
+		//	//specific processing only for Baseline data
+		//	if (labelVolRes[i] >2)
+		//		temp[i] = 1;
+		//	else
+		//		temp[i] = 0;
+		//}
+		//maxLabel = 1;
+
+		labelVolCUDA = std::make_shared<VolumeCUDA>();
+		labelVolCUDA->VolumeCUDA_init(dims, temp, 0, 1); //currently if from file, do not allow change
+
+		delete[] labelVolRes;
+		delete[] temp;
+	}
+	else{
+		labelVolCUDA = std::make_shared<VolumeCUDA>();
+		labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
+		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
+		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
+	}
+	
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -140,6 +178,9 @@ Window::Window()
 	else if (std::string(dataPath).find("181") != std::string::npos){
 		matrixMgr->moveEyeInLocalByModeMat(make_float3(64, 109, 107)*spacing);
 	}
+	else if (std::string(dataPath).find("Baseline") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(145, 114, 22)*spacing);
+	}
 	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 
@@ -150,6 +191,7 @@ Window::Window()
 	ve->dataFolder = subfolder;
 	ve->setSpherePoints();
 	ve->setLabel(labelVolCUDA);
+	ve->maxLabel = maxLabel;
 
 	if (channelSkelViewReady){
 		std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
@@ -188,19 +230,24 @@ Window::Window()
 	//////////////////////////////// Renderable ////////////////////////////////	
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
 	volumeRenderable->rcp = rcp;
-	openGL->AddRenderable("1volume", volumeRenderable.get());
+	openGL->AddRenderable("2volume", volumeRenderable.get());
 	volumeRenderable->setScreenMarker(sm);
+
+	//ve->createOneParticleFormOfViewSamples();
+	//ve->allViewSamples->initForRendering(10, 1);
+	//glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
+	//openGL->AddRenderable("2glyphOfViews", glyphRenderable.get());
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
 
 	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	//openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
+	//openGL->AddRenderable("3matrixMgr", matrixMgrRenderable.get()); 
 
 	if (channelSkelViewReady){
 		infoGuideRenderable = std::make_shared<InfoGuideRenderable>(ve, matrixMgr);
-		openGL->AddRenderable("3infoGuide", infoGuideRenderable.get());
+		openGL->AddRenderable("4infoGuide", infoGuideRenderable.get());
 	}
 
 
@@ -212,9 +259,7 @@ Window::Window()
 	regularInteractor->isActive = false;
 	immersiveInteractor->isActive = true;
 
-	if (channelSkelViewReady){
-		immersiveInteractor->noMoveMode = true;
-	}
+
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
 	
@@ -458,7 +503,7 @@ Window::Window()
 	//matrixMgrRenderableMini->renderPart = 2;
 	//openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
 	//ve->createOneParticleFormOfViewSamples(); 
-	//ve->allViewSamples->initForRendering(10, 1);
+	//ve->allViewSamples->initForRendering(50, 1);
 	//glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
 	//openGLMini->AddRenderable("2glyphRenderable", glyphRenderable.get());
 	//volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
@@ -473,7 +518,12 @@ Window::Window()
 
 
 	////////////////////2D slice view
-	helper.setData(inputVolume, labelVolLocal);
+	if (labelVolLocal!=0)
+		helper.setData(inputVolume, labelVolLocal);
+	else{
+		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z]; //should remove this part later
+		helper.setData(inputVolume, labelVolLocal);
+	}
 	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
 	assistLayout->addWidget(openGL2D, 0);
 	QTimer *timer = new QTimer(this);
@@ -521,7 +571,7 @@ Window::Window()
 	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
 
 	mainLayout->addLayout(assistLayout, 1);
-openGL->setFixedSize(600, 600);
+	openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
 //openGLMini->setFixedSize(300, 300);
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -535,8 +585,11 @@ openGL->setFixedSize(600, 600);
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	vrWidget->AddRenderable("2info", infoGuideRenderable.get());
-	
+	if (channelSkelViewReady){
+		immersiveInteractor->noMoveMode = true;
+		vrWidget->AddRenderable("2info", infoGuideRenderable.get());
+	}
+
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
 #endif
@@ -722,12 +775,15 @@ void Window::zSliderValueChanged(int v)
 
 void Window::updateLabelVolBtnClicked()
 {
-	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
-	std::cout << std::endl << "The lable volume has been updated" << std::endl << std::endl;
+	if (!labelFromFile){
+		labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
+		std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
+	}
 
 	ve->currentMethod = VPMethod::LabelVisibility;
 	ve->compute_SkelSampling(VPMethod::LabelVisibility);
 	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy << std::endl;
+	std::cout << "The optimal view point: " << ve->optimalEyeInLocal.x << " " << ve->optimalEyeInLocal.y << " " << ve->optimalEyeInLocal.z << std::endl << "The optimal view point in voxel: " << ve->optimalEyeInLocal.x / spacing.x << " " << ve->optimalEyeInLocal.y / spacing.y << " " << ve->optimalEyeInLocal.z / spacing.z << std::endl;
 	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 }
 

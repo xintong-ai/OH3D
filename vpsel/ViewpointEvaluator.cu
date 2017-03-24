@@ -213,13 +213,14 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 			for (int j = 0; j < skelViews[i]->numParticles; j++){
 				float3 eyeInLocal = make_float3(skelViews[i]->pos[j]);
 				float entroRes = computeLocalSphereEntropy(eyeInLocal, LabelVisibility);
-if (entroRes>maxEntropy){
+				if (entroRes>maxEntropy){
 					maxEntropy = entroRes;
 					optimalEyeInLocal = eyeInLocal;
 				}
 			}
 		}
-	}else if (m == Tao09Detail){
+	}
+	else if (m == Tao09Detail){
 		initTao09Detail();
 
 		checkCudaErrors(cudaBindTextureToArray(gradientTexOri, volumeGradient.content, volumeGradient.channelDesc));
@@ -629,10 +630,11 @@ __global__ void d_computeSphereNoColor(float density,
 		r[i] = label;
 		if (useHist){
 			int bin;
-			if (label > 0)
-				bin = 1;
-			else
-				bin = 0;
+			bin = label;
+			//if (label > 0)
+			//	bin = 1;
+			//else
+			//	bin = 0;
 			atomicAdd(hist + bin, 1);
 		}
 	}
@@ -935,10 +937,11 @@ __global__ void d_computeCubeNoColorHist(float density, float3 eyeInLocal, float
 	else if (vpmethod == LabelVisibility){
 		r[i] = label;
 		if (useHist){
-			if (label > 0)
-				bin = 1;
-			else
-				bin = 0;
+			//if (label > 0)
+			//	bin = 1;
+			//else
+			//	bin = 0;
+			bin = label;
 		}
 	}
 	else{
@@ -992,6 +995,40 @@ void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, f
 		checkCudaErrors(cudaBindTextureToArray(gradientTexFiltered, filteredVolumeGradient.content, filteredVolumeGradient.channelDesc));
 
 	//	d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
+		d_computeCubeNoColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
+
+		checkCudaErrors(cudaUnbindTexture(gradientTexOri));
+		checkCudaErrors(cudaUnbindTexture(gradientTexFiltered));
+
+		for (int i = 0; i < 6; i++){
+			if (useHist){
+				if (m == LabelVisibility){
+					cubeInfo[i] = computeVectorEntropy(cubeFaceHists[i], maxLabel + 1);
+				}
+				else{
+					cubeInfo[i] = computeVectorEntropy(cubeFaceHists[i], nbins);
+				}
+			}
+			else{
+				std::cout << "entropy computation not defined! " << std::endl;
+				exit(0);
+			}
+		}
+	}
+	else if (m == LabelVisibility){
+		initLabelVisibility();
+
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (numSphereSample + threadsPerBlock - 1) / threadsPerBlock;
+
+		for (int i = 0; i < 6; i++){
+			cudaMemset(cubeFaceHists[i], 0, sizeof(float)*nbins);
+		}
+
+		checkCudaErrors(cudaBindTextureToArray(gradientTexOri, volumeGradient.content, volumeGradient.channelDesc));
+		checkCudaErrors(cudaBindTextureToArray(gradientTexFiltered, filteredVolumeGradient.content, filteredVolumeGradient.channelDesc));
+
+		//	d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
 		d_computeCubeNoColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
 
 		checkCudaErrors(cudaUnbindTexture(gradientTexOri));

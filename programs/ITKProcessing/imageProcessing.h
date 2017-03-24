@@ -28,6 +28,18 @@ typedef itk::Image< PixelType, 3 > ImageType;
 typedef itk::ImportImageFilter< PixelType, 3 > ImportFilterType;
 
 
+//data related parameteres
+
+//int radius = 4;//for 181
+int radius = 3;//for tomato, baseline
+//int radius = 1;//for bloodCell
+//int radius = 0;//for engine
+
+bool addManualSeg = false; //for tomato
+bool removeBackground = true;	// do not filter out boundary componenets for data:  bloodCell
+bool removeBackgroundByComponent = false;
+
+
 void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* skelVolValues, ImageType::Pointer & retImgPointer, int & maxComponentMark)
 {
 
@@ -52,26 +64,22 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	importFilter->SetSpacing(_spacing);
 	importFilter->SetImportPointer(localBuffer, dims.x * dims.y * dims.z, importImageFilterWillOwnTheBuffer);
 	importFilter->Update();
+	ImageType::Pointer initChannelImg = importFilter->GetOutput();
 
 
 #ifdef WRITEIMAGETODISK
 	typedef itk::ImageFileWriter< ImageType > WriterType;
 	WriterType::Pointer writer = WriterType::New();
-	writer->SetInput(importFilter->GetOutput());
+	writer->SetInput(initChannelImg);
 	writer->SetFileName("channelVol.hdr");
 	writer->Update();
 #endif
-
 
 	//////////////////openining
 	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
 		StructuringElementType;
 	StructuringElementType structuringElement;
-	//int radius = 4;//for 181
-	int radius = 3;//for tomato
-	//int radius = 1;//for engine
-	//int radius = 1;//for bloodCell
-	//int radius = 0;
+
 	ImageType::Pointer openedImage;
 	if (radius > 0)
 	{
@@ -79,15 +87,36 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		structuringElement.CreateStructuringElement();
 		typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
 		OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
-		openingFilter->SetInput(importFilter->GetOutput());
+		openingFilter->SetInput(initChannelImg);
 		openingFilter->SetKernel(structuringElement);
 		openingFilter->Update();
 		openedImage = openingFilter->GetOutput();
-
 	}
 	else{
-		openedImage = importFilter->GetOutput();
+		openedImage = initChannelImg;
+		//for (int k = 0; k < dims.z; k++){
+		//	for (int j = 0; j < dims.y; j++){
+		//		for (int i = 0; i < dims.x; i++){
+		//			ImageType::IndexType pixelIndex;
+		//			pixelIndex[0] = i; // x position
+		//			pixelIndex[1] = j; // y position
+		//			pixelIndex[2] = k; // z position
+		//			int v = openedImage->GetPixel(pixelIndex);
+		//			if (v>0){
+		//				openedImage->SetPixel(pixelIndex, 1);
+		//			}
+		//		}
+		//	}
+		//}
+	}
 
+	if (addManualSeg){
+		//currently only for Tomato data
+		std::shared_ptr<Volume> segVolume = std::make_shared<Volume>(false);
+		std::shared_ptr<RawVolumeReader> readerSeg;
+		readerSeg = std::make_shared<RawVolumeReader>("D:/Data/volume/Tomato_Seg.img", dims, RawVolumeReader::dtUint16);
+		readerSeg->OutputToVolumeByNormalizedValue(segVolume);
+		readerSeg.reset();
 		for (int k = 0; k < dims.z; k++){
 			for (int j = 0; j < dims.y; j++){
 				for (int i = 0; i < dims.x; i++){
@@ -95,37 +124,13 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 					pixelIndex[0] = i; // x position
 					pixelIndex[1] = j; // y position
 					pixelIndex[2] = k; // z position
-					int v = openedImage->GetPixel(pixelIndex);
-					if (v>0){
-						openedImage->SetPixel(pixelIndex, 1);
+					if (segVolume->values[k*dims.x*dims.y + j*dims.x + i]>0.5){
+						openedImage->SetPixel(pixelIndex, 0);
 					}
 				}
 			}
 		}
-
 	}
-
-
-	//currently only for Tomato data
-	std::shared_ptr<Volume> segVolume = std::make_shared<Volume>(false);
-	std::shared_ptr<RawVolumeReader> readerSeg;
-	readerSeg = std::make_shared<RawVolumeReader>("D:/Data/volume/Tomato_Seg.img", dims, RawVolumeReader::dtUint16);
-	readerSeg->OutputToVolumeByNormalizedValue(segVolume);
-	readerSeg.reset();
-	for (int k = 0; k < dims.z; k++){
-		for (int j = 0; j < dims.y; j++){
-			for (int i = 0; i < dims.x; i++){
-				ImageType::IndexType pixelIndex;
-				pixelIndex[0] = i; // x position
-				pixelIndex[1] = j; // y position
-				pixelIndex[2] = k; // z position
-				if (segVolume->values[k*dims.x*dims.y + j*dims.x + i]>0.5){
-					openedImage->SetPixel(pixelIndex, 0);
-				}
-			}
-		}
-	}
-
 
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(openedImage);
@@ -154,50 +159,8 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	int numObj = connected->GetObjectCount();
 	std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
 
-	std::vector<bool> atOutside(numObj + 1, 0);
-	for (int k = 0; k < dims.z; k += dims.z - 1){
-		for (int j = 0; j < dims.y; j++){
-			for (int i = 0; i < dims.x; i++){
-				ImageType::IndexType pixelIndex;
-				pixelIndex[0] = i; // x position
-				pixelIndex[1] = j; // y position
-				pixelIndex[2] = k; // z position
-				int v = connectedImg->GetPixel(pixelIndex);
-				if (v>0){
-					atOutside[v] = true;
-				}
-			}
-		}
-	}
-	for (int k = 0; k < dims.z; k++){
-		for (int j = 0; j < dims.y; j += dims.y - 1){
-			for (int i = 0; i < dims.x; i++){
-				ImageType::IndexType pixelIndex;
-				pixelIndex[0] = i; // x position
-				pixelIndex[1] = j; // y position
-				pixelIndex[2] = k; // z position
-				int v = connectedImg->GetPixel(pixelIndex);
-				if (v>0){
-					atOutside[v] = true;
-				}
-			}
-		}
-	}
-	for (int k = 0; k < dims.z; k++){
-		for (int j = 0; j < dims.y; j++){
-			for (int i = 0; i < dims.x; i += dims.x - 1){
-				ImageType::IndexType pixelIndex;
-				pixelIndex[0] = i; // x position
-				pixelIndex[1] = j; // y position
-				pixelIndex[2] = k; // z position
-				int v = connectedImg->GetPixel(pixelIndex);
-				if (v>0){
-					atOutside[v] = true;
-				}
-			}
-		}
-	}
 
+	////first, filter out small componenets
 	std::vector<int> objCount(numObj + 1, 0);
 	for (int k = 0; k < dims.z; k++){
 		for (int j = 0; j < dims.y; j++){
@@ -217,7 +180,6 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	//	std::cout << objCount[i] << std::endl;
 	//}
 
-	////first, filter out small componenets
 	int thr = 1000;
 	for (int k = 0; k < dims.z; k++){
 		for (int j = 0; j < dims.y; j++){
@@ -234,7 +196,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		}
 	}
 
-	//save cleaned channel
+	//save cleaned channel, which is the cell volume used for ImmersiveDeformVis
 	std::shared_ptr<Volume> cleanedChannelVolume = std::make_shared<Volume>();
 	cleanedChannelVolume->setSize(dims);
 	cleanedChannelVolume->dataOrigin = make_float3(0, 0, 0);
@@ -255,25 +217,173 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	}
 	cleanedChannelVolume->saveRawToFile("cleanedChannel.raw");
 
-	
-	// do not filter out boundary componenets for data:  bloodCell
-	////then, filter out boundary componenets
-	for (int k = 0; k < dims.z; k++){
-		for (int j = 0; j < dims.y; j++){
-			for (int i = 0; i < dims.x; i++){
-				ImageType::IndexType pixelIndex;
-				pixelIndex[0] = i; // x position
-				pixelIndex[1] = j; // y position
-				pixelIndex[2] = k; // z position
-				int v = connectedImg->GetPixel(pixelIndex);
-				if (atOutside[v]){
-					connectedImg->SetPixel(pixelIndex, 0);
+	////then, filter out boundary componenets by components
+	if (removeBackground && removeBackgroundByComponent){
+		std::vector<bool> atOutside(numObj + 1, 0);
+		for (int k = 0; k < dims.z; k += dims.z - 1){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					int v = connectedImg->GetPixel(pixelIndex);
+					if (v>0){
+						atOutside[v] = true;
+					}
+				}
+			}
+		}
+		for (int k = 0; k < dims.z; k++){
+			for (int j = 0; j < dims.y; j += dims.y - 1){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					int v = connectedImg->GetPixel(pixelIndex);
+					if (v>0){
+						atOutside[v] = true;
+					}
+				}
+			}
+		}
+		for (int k = 0; k < dims.z; k++){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i += dims.x - 1){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					int v = connectedImg->GetPixel(pixelIndex);
+					if (v>0){
+						atOutside[v] = true;
+					}
+				}
+			}
+		}
+
+		for (int k = 0; k < dims.z; k++){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					int v = connectedImg->GetPixel(pixelIndex);
+					if (atOutside[v]){
+						connectedImg->SetPixel(pixelIndex, 0);
+					}
 				}
 			}
 		}
 	}
-	
+	else if (removeBackground && !removeBackgroundByComponent){
+		//currently for Baseline data
+		
+		unsigned short* foregroundSeg = new unsigned short[dims.x*dims.y*dims.z];
+		FILE * fp = fopen("D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img", "rb");
+		fread(foregroundSeg, sizeof(unsigned short), dims.x*dims.y*dims.z, fp);
+		fclose(fp);
+		for (int k = 1; k < dims.z-1; k++){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					if (foregroundSeg[k*dims.x*dims.y + j*dims.x + i] == 0) {
+						initChannelImg->SetPixel(pixelIndex, 0);
+					}
+				}
+			}
+		}
+		for (int k = 0; k < dims.z; k += dims.z-1){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					initChannelImg->SetPixel(pixelIndex, 0);	
+				}
+			}
+		}
 
+		//redo the opening, connecting and small component removal from the beginning
+		if (radius > 0)
+		{
+			structuringElement.SetRadius(radius);
+			structuringElement.CreateStructuringElement();
+			typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
+			OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
+			openingFilter->SetInput(initChannelImg);
+			openingFilter->SetKernel(structuringElement);
+			openingFilter->Update();
+			openedImage = openingFilter->GetOutput();
+		}
+		else{
+			openedImage = initChannelImg;
+		}
+
+//#ifdef WRITEIMAGETODISK
+//		writer->SetInput(openedImage);
+//		writer->SetFileName("opened.hdr");
+//		writer->Update();
+//#endif
+
+		connected->SetInput(openedImage);
+		connected->Update();
+//#ifdef WRITEIMAGETODISK
+//		writer->SetInput(connected->GetOutput());
+//		writer->SetFileName("cp.hdr");
+//		writer->Update();
+//#endif
+
+
+		////////////////filter out small and boundary componenets
+		connectedImg = connected->GetOutput();
+
+		numObj = connected->GetObjectCount();
+		std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
+		
+		////first, filter out small componenets
+		objCount.assign(numObj+1, 0);
+		for (int k = 0; k < dims.z; k++){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					int v = connectedImg->GetPixel(pixelIndex);
+					if (v>0){
+						objCount[v]++;
+					}
+				}
+			}
+		}
+		//for (int i = 0; i <= numObj; i++){
+		//	std::cout << objCount[i] << std::endl;
+		//}
+
+		int thr = 1000;
+		for (int k = 0; k < dims.z; k++){
+			for (int j = 0; j < dims.y; j++){
+				for (int i = 0; i < dims.x; i++){
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = i; // x position
+					pixelIndex[1] = j; // y position
+					pixelIndex[2] = k; // z position
+					int v = connectedImg->GetPixel(pixelIndex);
+					if (objCount[v] < thr){
+						connectedImg->SetPixel(pixelIndex, 0);
+					}
+				}
+			}
+		}
+
+	}
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(connectedImg);
 	writer->SetFileName("cpNew.hdr");
@@ -334,7 +444,7 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 	////////////order skeletons by length
 	std::vector<int> objCount(maxComponentMark + 1, 0);
 	std::fill(objCount.begin(), objCount.end(), 0);
-	objCount[0] = -1; //for background, make sure it is treated as the minumum size
+	objCount[0] = -1; //for background, make sure it is treated as the minimum size
 	for (int k = 0; k < dims.z; k++){
 		for (int j = 0; j < dims.y; j++){
 			for (int i = 0; i < dims.x; i++){
@@ -363,7 +473,7 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 
 
 
-	/////////do mst for the longest skel
+	/////////do mst for the each skel
 	std::cout << "computing the MST" << std::endl;
 	for (int skel = 0; skel < maxComponentMark + 1; skel++){
 		int cpId = idx[skel];
@@ -403,8 +513,8 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 		}
 		else{
 
+			//first build the tree
 			struct Graph* graph = createGraph(numNodes);
-
 			std::vector<int> voxelIdAssigned(dims.x*dims.y*dims.z, 0); //!!!!NOTE!!! the stored value is the assigned id plus 1, since 0 is used as a mark
 			std::vector<float3> posOfId(numNodes);
 			int nextAvailableNodeId = 0;
@@ -562,7 +672,8 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 			//////////////////method 2, consider each branch of the mst
 			//float lengthThr = 3.9; //for 181
 			//float lengthThr = 10; //for cell
-			float lengthThr = 3; //for tomato
+			//float lengthThr = 3; //for tomato
+			float lengthThr = 1.9; //for Baseline
 
 			int curNode = 0;//randomly use node 0 as start
 			std::vector<bool> hasTraversed(mst->V, false);

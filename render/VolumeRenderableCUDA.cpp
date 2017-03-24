@@ -97,7 +97,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 	q_mvp.copyDataTo(MVPMatrix);
 	q_modelview.copyDataTo(MVMatrix);
 	q_modelview.normalMatrix().copyDataTo(NMatrix);
-	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix, &(rcp->transFuncP1), &(rcp->transFuncP2), &(rcp->la), &(rcp->ld), &(rcp->ls), &(volume->spacing), rcp.get());
+	VolumeRender_setConstants(MVMatrix, MVPMatrix, invMVMatrix, invMVPMatrix, NMatrix,  &(volume->spacing), rcp.get());
 	if (!isFixed){
 		recordFixInfo(q_mvp, q_modelview);
 	}

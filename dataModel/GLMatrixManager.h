@@ -66,6 +66,7 @@ public:
 		eyeInWorld = invViewMat*QVector3D(0, 0, 0);
 		viewVecInWorld = QVector3D(invViewMat*QVector4D(0, 0, -1, 0));
 		upVecInWorld = QVector3D(invViewMat*QVector4D(0, 1, 0, 0));
+		updateDepthRange();
 	}
 	void applyPreRotMat(QMatrix4x4 r){ 
 		rotMat = r * rotMat; 
@@ -110,6 +111,12 @@ public:
 		eyeInWorld = _eyeVecInWorld;
 		UpdateViewMatrixFromDetail();
 	}
+	void setViewAndUpInWorld(QVector3D _viewVecInWorld, QVector3D _upVecInWorld)
+	{
+		viewVecInWorld = _viewVecInWorld;
+		upVecInWorld = _upVecInWorld;
+		UpdateViewMatrixFromDetail();
+	}
 
 	void moveEyeInLocalByModeMat(float3 newEyeInLocal){	
 		//moving eyeinlocal can be done in 2 ways, by changing modemat or by changing eyeinworld. need to specific
@@ -118,18 +125,13 @@ public:
 		UpdateModelMatrixFromDetail();
 	}
 
-	void GetModelMatrix(QMatrix4x4 &m){ m = modeMat;};
 	void GetRotMatrix(QMatrix4x4 &m){ m = rotMat; };
-
-	//void GetViewMatrix(QMatrix4x4 &v){
-	//	v = viewMat;
-	//};
-	void GetModelViewMatrix(QMatrix4x4 &mv){ mv = viewMat*modeMat; };
 	
+	void GetModelMatrix(QMatrix4x4 &m){ m = modeMat; };
+	void GetModelViewMatrix(QMatrix4x4 &mv){ mv = viewMat*modeMat; };
 	void GetModelViewMatrix(float mv[16]);
 	void GetProjection(float ret[16]);
 	//when asking the projection matrix with the width and height, compute the matrix using the given width and height, and modify the stored projMat
-
 
 	float3 DataCenter();
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
