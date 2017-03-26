@@ -4,12 +4,13 @@
 #include <vector>
 #include <ctime>
 #include <vector_types.h>
+#include <helper_timer.h>
 
 #include "Processor.h"
 #include "Volume.h"
 
-enum EYE_STATE { inCell, closeToWall, inWall };
-enum VOLUME_STATE {DEFORMED, ORIGINAL};
+enum EYE_STATE { inCell, inWall };
+enum VOLUME_STATE { ORIGINAL, DEFORMED};
 
 
 class MatrixManager;
@@ -27,10 +28,15 @@ public:
 		channelVolume = ch;
 		spacing = volume->spacing;
 		InitCudaSupplies();		
+		sdkCreateTimer(&timer);
+		sdkCreateTimer(&timerFrame);
 	};
 
 	~PositionBasedDeformProcessor(){
-	};
+		sdkDeleteTimer(&timer);
+		sdkDeleteTimer(&timerFrame);
+	};		
+
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
@@ -79,5 +85,10 @@ private:
 	double closeDuration = 3;
 
 	float3 targetUpVecInLocal = make_float3(0, 0, 1);	//note! the vector make_float3(0,0,1) may also be used in ImmersiveInteractor class
+
+	StopWatchInterface *timer = 0;
+	int fpsCount = 0;
+	StopWatchInterface *timerFrame = 0;
+
 };
 #endif

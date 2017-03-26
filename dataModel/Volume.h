@@ -119,7 +119,7 @@ public:
 		else if (std::string(dataPath).find("brat") != std::string::npos){
 			dims = make_int3(160, 216, 176);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false); //for brat
+			rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 0.25, 1.25, 512, 0.25f, 1.3, false);
 			subfolder = "brats";
 		}
 		else if (std::string(dataPath).find("engine") != std::string::npos){

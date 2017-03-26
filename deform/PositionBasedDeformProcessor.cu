@@ -353,11 +353,19 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				// in this case, no change
 			}
 			else{
+				//std::cout <<"Triggered "<< lastVolumeState << " " << lastEyeState << " " << hasOpenAnimeStarted << " " << hasCloseAnimeStarted << std::endl;
 				//even in the deformed volume, eye is still inside the solid region 
 				//eye should just move to a solid region
 
 				//volume->reset();
 				//channelVolume->reset();
+
+				sdkResetTimer(&timer);
+				sdkStartTimer(&timer);
+
+				sdkResetTimer(&timerFrame);
+				
+				fpsCount = 0;
 
 				lastOpenFinalDegree = closeStartingRadius;
 				lastDeformationDirVertical = rectVerticalDir;
@@ -384,15 +392,25 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 	}
 
 	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
+		//std::cout << "processing as wanted" << std::endl;
 		float r, rClose;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
 			//r = deformationScale;
 			hasOpenAnimeStarted = false;
 			hasCloseAnimeStarted = false;
-			//rClose = 0;
+
+			sdkStopTimer(&timer);
+			std::cout << "Mixed animation fps: " << fpsCount / (sdkGetAverageTimerValue(&timer) /	1000.f) << std::endl;
+
+			sdkStopTimer(&timer);
+			std::cout << "Mixed animation cost each frame: " << sdkGetAverageTimerValue(&timerFrame) <<" ms" << std::endl;
 		}
 		else{
+			sdkStartTimer(&timerFrame);
+
+			fpsCount++;
+
 			r = past / totalDuration*deformationScale/2;
 			if (past >= closeDuration){
 				hasCloseAnimeStarted = false;
@@ -403,6 +421,9 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				rClose = (1 - past / closeDuration)*closeStartingRadius;
 				doDeform2Tunnel(r, rClose);
 			}
+
+			sdkStopTimer(&timerFrame);
+
 		}
 	}
 	else if (hasOpenAnimeStarted){
@@ -411,6 +432,8 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		if (past >= totalDuration){
 			r = deformationScale;
 			hasOpenAnimeStarted = false;
+			//closeStartingRadius = r;
+			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
 		}
 		else{
 			r = past / totalDuration*deformationScale/2;
@@ -431,6 +454,8 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			doDeform(r);
 		}
 	}
+
+
 	return false;
 }
 

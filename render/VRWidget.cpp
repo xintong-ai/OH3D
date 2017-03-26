@@ -82,7 +82,7 @@ void VRWidget::computeFPS()
 	if (fpsCount == fpsLimit)
 	{
 		float ifps = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
-		qDebug() << "FPS: " << ifps;
+		//qDebug() << "FPS: " << ifps;
 		fpsCount = 0;
 		//        fpsLimit = (int)MAX(1.f, ifps);
 		sdkResetTimer(&timer);

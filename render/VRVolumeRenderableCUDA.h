@@ -11,7 +11,7 @@ class VolumeRenderableCUDA;
 class VRWidget;
 class Volume;
 class RayCastingParameters;
-
+class ScreenMarker;
 class VRVolumeRenderableCUDA : public Renderable
 {
 	Q_OBJECT
@@ -49,6 +49,8 @@ public:
 	void init() override;
 	void drawVR(float modelview[16], float projection[16], int eye) override;
 	std::shared_ptr<RayCastingParameters> rcp;
+
+	std::shared_ptr<ScreenMarker> sm;
 
 };
 #endif

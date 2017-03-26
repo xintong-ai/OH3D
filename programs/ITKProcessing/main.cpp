@@ -14,6 +14,7 @@
 
 #include "imageProcessing.h"
 #include <itkImage.h>
+#include <helper_timer.h>
 
 using namespace std;
 
@@ -70,6 +71,12 @@ void computeSkel(shared_ptr<Volume> channelVolume, shared_ptr<Volume> skelVolume
 
 int main(int argc, char **argv)
 {
+	StopWatchInterface *timer = 0;
+	sdkCreateTimer(&timer);
+	sdkResetTimer(&timer);
+
+	sdkStartTimer(&timer);
+
 	int3 dims;
 	float3 spacing;
 
@@ -119,8 +126,6 @@ int main(int argc, char **argv)
 	
 	computeSkel(channelVolume, skelVolume, dims, spacing, maxComponentMark);
 
-
-	
 	//then, read already computed skeleton volume and itk skelComponented image
 	std::cout << "reading skeletion volume..." << std::endl;
 	std::shared_ptr<RawVolumeReader> reader;
@@ -136,10 +141,22 @@ int main(int argc, char **argv)
 
 
 	std::vector<std::vector<float3>> viewArrays;
-	//find the views for the tour
+	//sample the skeleton to set the views
 	findViews(connectedImg, maxComponentMark, dims, spacing, viewArrays);
-	
-	//std::cout << "views: " << endl << views.size() << endl << views[5].x << " " << views[5].y << " " << views[5].z<<endl;
+
+
+	//compute the bilateralVolume
+	float* bilateralVolumeRes = 0;
+	inputVolume->computeBilateralFiltering(bilateralVolumeRes, 2, 0.2);
+	FILE * fp = fopen("bilat.raw", "wb");
+	fwrite(bilateralVolumeRes, sizeof(float), inputVolume->size.x*inputVolume->size.y*inputVolume->size.z, fp);
+	fclose(fp);
+	delete[]bilateralVolumeRes;
+
+	sdkStopTimer(&timer);
+
+	float timeCost = sdkGetAverageTimerValue(&timer) / 1000.f;
+	std::cout << "time cost for computing the preprocessing: " << timeCost << std::endl;
 
 	return 1;
 

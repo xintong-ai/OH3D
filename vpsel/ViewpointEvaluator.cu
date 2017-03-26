@@ -37,6 +37,9 @@ ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r,
 	}
 
 	cubeInfo.resize(6);
+
+	sdkCreateTimer(&timer);
+
 }
 
 void ViewpointEvaluator::createOneParticleFormOfViewSamples()
@@ -190,11 +193,18 @@ void ViewpointEvaluator::compute_UniformSampling(VPMethod m)
 
 void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 {
+	if ((m == JS06Sphere && !JS06SphereInited) || (m == LabelVisibility && !LabelVisibilityInited) || (
+		m == Tao09Detail && !Tao09DetailInited)){
+		std::cout << "NOTE! time cost for computing the global optimal includes initiation time: " << std::endl;
+	}
+
+
+	sdkResetTimer(&timer);
+	sdkStartTimer(&timer);
+
 	maxEntropy = -999;
 	//int3 sampleSize = resVol->size;
-	if (m == BS05){
-	}
-	else if (m == JS06Sphere){
+	if (m == JS06Sphere){
 		initJS06Sphere();
 		for (int i = 0; i < skelViews.size(); i++){
 			for (int j = 0; j < skelViews[i]->numParticles; j++){
@@ -240,6 +250,12 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 		checkCudaErrors(cudaUnbindTexture(gradientTexOri));
 		checkCudaErrors(cudaUnbindTexture(gradientTexFiltered));
 	}
+
+	sdkStopTimer(&timer);
+
+	float timeCost = sdkGetAverageTimerValue(&timer) / 1000.f;
+	std::cout << "time cost for computing the global optimal: " << timeCost <<std::endl;
+
 }
 
 void ViewpointEvaluator::saveResultVol(const char* fname)
@@ -508,7 +524,7 @@ __global__ void d_computeSphereColor(float density, float brightness,
 
 	if (vpmethod == Tao09Detail)
 	{
-		uv = detailDescriptor+1;
+		uv = detailDescriptor;
 		r[i] = uv;
 		// !!! this is true only when we know uv is in [0,2] !!!
 		int bin = min((int)((uv/2)*nbins), nbins - 1);
@@ -620,7 +636,7 @@ __global__ void d_computeSphereNoColor(float density,
 
 	if (vpmethod == Tao09Detail)
 	{
-		float uv = detailDescriptor + 1;
+		float uv = detailDescriptor;
 		r[i] = uv;
 		// !!! this is true only when we know uv is in [0,2] !!!
 		int bin = min((int)((uv / 2)*nbins), nbins - 1);
@@ -684,6 +700,7 @@ float ViewpointEvaluator::computeVectorEntropy(float* ary, int size)
 {
 	thrust::device_vector< float > iVec(ary, ary + size);
 
+	//for debug
 	std::vector<float> stl_vector(size);
 	thrust::copy(iVec.begin(), iVec.end(), stl_vector.begin());
 
@@ -794,7 +811,7 @@ __global__ void d_computeCubeColorHist(float density, float brightness,
 	r[i] = uv;
 	if (vpmethod == Tao09Detail)
 	{
-		uv = detailDescriptor + 1;
+		uv = detailDescriptor;
 		r[i] = uv;
 		// !!! this is true only when we know uv is in [0,2] !!!
 		bin = min((int)((uv / 2)*nbins), nbins - 1);
@@ -929,7 +946,7 @@ __global__ void d_computeCubeNoColorHist(float density, float3 eyeInLocal, float
 
 	if (vpmethod == Tao09Detail)
 	{
-		float uv = detailDescriptor + 1;
+		float uv = detailDescriptor;
 		r[i] = uv;
 		// !!! this is true only when we know uv is in [0,2] !!!
 		bin = min((int)((uv / 2)*nbins), nbins - 1);

@@ -143,10 +143,8 @@ private:
 		
     /****timing****/
     StopWatchInterface *timer = 0;
-    int m_frame;
-    int fpsCount = 0;        // FPS count for averaging
-    int fpsLimit = 64;        // FPS limit for sampling
-    unsigned int frameCount = 0;
+    int fpsCount = 0;
+    int fpsLimit = 64;
 	void computeFPS();
 	void TimerStart();
 	void TimerEnd();

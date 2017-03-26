@@ -173,6 +173,7 @@ private slots:
 	void redrawBtnClicked();
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
+	void alwaysLocalGuideBtnClicked();
 };
 
 #endif

@@ -35,9 +35,14 @@ int radius = 3;//for tomato, baseline
 //int radius = 1;//for bloodCell
 //int radius = 0;//for engine
 
-bool addManualSeg = false; //for tomato
 bool removeBackground = true;	// do not filter out boundary componenets for data:  bloodCell
+bool addManualSeg = false; //for tomato
 bool removeBackgroundByComponent = false;
+
+//float lengthThr = 3.9; //for 181
+//float lengthThr = 10; //for cell
+float lengthThr = 3; //for tomato
+//float lengthThr = 1.9; //for Baseline
 
 
 void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* skelVolValues, ImageType::Pointer & retImgPointer, int & maxComponentMark)
@@ -110,11 +115,11 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		//}
 	}
 
-	if (addManualSeg){
+	if (removeBackground && addManualSeg){
 		//currently only for Tomato data
 		std::shared_ptr<Volume> segVolume = std::make_shared<Volume>(false);
 		std::shared_ptr<RawVolumeReader> readerSeg;
-		readerSeg = std::make_shared<RawVolumeReader>("D:/Data/volume/Tomato_Seg.img", dims, RawVolumeReader::dtUint16);
+		readerSeg = std::make_shared<RawVolumeReader>("D:/Data/volume/Tomato_ManualSeg.img", dims, RawVolumeReader::dtUint16);
 		readerSeg->OutputToVolumeByNormalizedValue(segVolume);
 		readerSeg.reset();
 		for (int k = 0; k < dims.z; k++){
@@ -282,7 +287,8 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		//currently for Baseline data
 		
 		unsigned short* foregroundSeg = new unsigned short[dims.x*dims.y*dims.z];
-		FILE * fp = fopen("D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img", "rb");
+		//FILE * fp = fopen("D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img", "rb");
+		FILE * fp = fopen("D:/Data/volume/TomatoForeground.img", "rb");
 		fread(foregroundSeg, sizeof(unsigned short), dims.x*dims.y*dims.z, fp);
 		fclose(fp);
 		for (int k = 1; k < dims.z-1; k++){
@@ -340,14 +346,12 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 //		writer->Update();
 //#endif
 
-
-		////////////////filter out small and boundary componenets
 		connectedImg = connected->GetOutput();
 
 		numObj = connected->GetObjectCount();
 		std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
 		
-		////first, filter out small componenets
+		////filter out small componenets again
 		objCount.assign(numObj+1, 0);
 		for (int k = 0; k < dims.z; k++){
 			for (int j = 0; j < dims.y; j++){
@@ -382,6 +386,65 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 				}
 			}
 		}
+
+		////just for tomato data, remove by boundary again
+		//std::vector<bool> atOutside(numObj + 1, 0);
+		//for (int k = 0; k < dims.z; k += dims.z - 1){
+		//	for (int j = 0; j < dims.y; j++){
+		//		for (int i = 0; i < dims.x; i++){
+		//			ImageType::IndexType pixelIndex;
+		//			pixelIndex[0] = i; // x position
+		//			pixelIndex[1] = j; // y position
+		//			pixelIndex[2] = k; // z position
+		//			int v = connectedImg->GetPixel(pixelIndex);
+		//			if (v>0){
+		//				atOutside[v] = true;
+		//			}
+		//		}
+		//	}
+		//}
+		//for (int k = 0; k < dims.z; k++){
+		//	for (int j = 0; j < dims.y; j += dims.y - 1){
+		//		for (int i = 0; i < dims.x; i++){
+		//			ImageType::IndexType pixelIndex;
+		//			pixelIndex[0] = i; // x position
+		//			pixelIndex[1] = j; // y position
+		//			pixelIndex[2] = k; // z position
+		//			int v = connectedImg->GetPixel(pixelIndex);
+		//			if (v>0){
+		//				atOutside[v] = true;
+		//			}
+		//		}
+		//	}
+		//}
+		//for (int k = 0; k < dims.z; k++){
+		//	for (int j = 0; j < dims.y; j++){
+		//		for (int i = 0; i < dims.x; i += dims.x - 1){
+		//			ImageType::IndexType pixelIndex;
+		//			pixelIndex[0] = i; // x position
+		//			pixelIndex[1] = j; // y position
+		//			pixelIndex[2] = k; // z position
+		//			int v = connectedImg->GetPixel(pixelIndex);
+		//			if (v>0){
+		//				atOutside[v] = true;
+		//			}
+		//		}
+		//	}
+		//}
+		//for (int k = 0; k < dims.z; k++){
+		//	for (int j = 0; j < dims.y; j++){
+		//		for (int i = 0; i < dims.x; i++){
+		//			ImageType::IndexType pixelIndex;
+		//			pixelIndex[0] = i; // x position
+		//			pixelIndex[1] = j; // y position
+		//			pixelIndex[2] = k; // z position
+		//			int v = connectedImg->GetPixel(pixelIndex);
+		//			if (atOutside[v]){
+		//				connectedImg->SetPixel(pixelIndex, 0);
+		//			}
+		//		}
+		//	}
+		//}
 
 	}
 #ifdef WRITEIMAGETODISK
@@ -670,10 +733,6 @@ void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims,
 
 
 			//////////////////method 2, consider each branch of the mst
-			//float lengthThr = 3.9; //for 181
-			//float lengthThr = 10; //for cell
-			//float lengthThr = 3; //for tomato
-			float lengthThr = 1.9; //for Baseline
 
 			int curNode = 0;//randomly use node 0 as start
 			std::vector<bool> hasTraversed(mst->V, false);

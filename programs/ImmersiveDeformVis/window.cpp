@@ -61,10 +61,6 @@ Window::Window()
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, labelFromFile);
 	
-	//rcp = std::make_shared<RayCastingParameters>(1.0, 0.2, 0.7, 0.44, 465 / 2275, 1.25, 512, 0.25f, 1.3, false); //for brats
-
-	 //Baseline
-
 	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
 
 	//dims = make_int3(256, 256, 64);
@@ -346,6 +342,10 @@ Window::Window()
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
 	controlLayout->addWidget(saveScreenBtn);
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+	
+	QPushButton *alwaysLocalGuideBtn = new QPushButton("Always Compute Local Guide");
+	controlLayout->addWidget(alwaysLocalGuideBtn);
+	connect(alwaysLocalGuideBtn, SIGNAL(clicked()), this, SLOT(alwaysLocalGuideBtnClicked()));
 
 
 	///////////////ray casting settings
@@ -583,6 +583,7 @@ Window::Window()
 	vrWidget = std::make_shared<VRWidget>(matrixMgr);
 	vrWidget->setWindowFlags(Qt::Window);
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
+	vrVolumeRenderable->sm = sm;
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
 	if (channelSkelViewReady){
@@ -819,4 +820,8 @@ void Window::doTourBtnClicked()
 void Window::saveScreenBtnClicked()
 {
 	openGL->saveCurrentImage();
+}
+void Window::alwaysLocalGuideBtnClicked()
+{
+	infoGuideRenderable->isAlwaysLocalGuide = true;
 }

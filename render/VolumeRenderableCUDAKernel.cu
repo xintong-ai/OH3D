@@ -666,8 +666,6 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			}
 			
 			colDensity = funcRes;
-			
-			//colDensity = clamp(funcRes + 0.05, 0.0f, 1.0f); //for brats!!
 		}
 
 		float3 posInWorld = mul(c_MVMatrix, pos);

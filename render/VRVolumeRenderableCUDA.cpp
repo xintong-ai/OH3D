@@ -2,6 +2,7 @@
 #include "VolumeRenderableCUDA.h"
 #include "VRWidget.h"
 #include "VolumeRenderableCUDAKernel.h"
+#include "ScreenMarker.h"
 
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
@@ -40,7 +41,7 @@ void VRVolumeRenderableCUDA::drawVR(float modelview[16], float projection[16], i
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview).transposed();
 	QMatrix4x4 q_invMV = q_modelview.inverted();
 	QVector4D q_eye4 = q_invMV.map(QVector4D(0, 0, 0, 1));
-	float3 eyeInWorld = make_float3(q_eye4[0], q_eye4[1], q_eye4[2]);
+	float3 eyeInLocal = make_float3(q_eye4[0], q_eye4[1], q_eye4[2]);
 
 	QMatrix4x4 q_projection = QMatrix4x4(projection).transposed();
 	QMatrix4x4 q_mvp = q_projection*q_modelview;
@@ -60,9 +61,10 @@ void VRVolumeRenderableCUDA::drawVR(float modelview[16], float projection[16], i
 	//VolumeRender_setVolume(&(volume->volumeCuda));
 
 	//compute the dvr
-	//VolumeRender_render(d_output, winWidth, winHeight, (volumeRenderable->rcp)->density, (volumeRenderable->rcp)->brightness, eyeInWorld, volumeRenderable->getVolume()->size, (volumeRenderable->rcp)->maxSteps, (volumeRenderable->rcp)->tstep, (volumeRenderable->rcp)->useColor);
-	VolumeRender_render(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInWorld, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor);
+	//VolumeRender_render(d_output, winWidth, winHeight, (volumeRenderable->rcp)->density, (volumeRenderable->rcp)->brightness, eyeInLocal, volumeRenderable->getVolume()->size, (volumeRenderable->rcp)->maxSteps, (volumeRenderable->rcp)->tstep, (volumeRenderable->rcp)->useColor);
+	//VolumeRender_render(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor);
 
+	VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, sm->dev_isPixelSelected, rcp.get());
 
 	cudaMemcpy(pixelColor, d_output, winWidth*winHeight * sizeof(uint), cudaMemcpyDeviceToHost);
 	//glDrawPixels(winWidth, winHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixelColor);

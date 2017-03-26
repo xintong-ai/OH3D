@@ -21,9 +21,7 @@
 #define qgl	QOpenGLContext::currentContext()->functions()
 
 GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
-: QOpenGLWidget(parent)
-    , m_frame(0)
-	, matrixMgr(_matrixMgr)
+: QOpenGLWidget(parent), matrixMgr(_matrixMgr)
 {
     setFocusPolicy(Qt::StrongFocus);
     sdkCreateTimer(&timer);
@@ -79,14 +77,13 @@ void GLWidget::initializeGL()
 
 void GLWidget::computeFPS()
 {
-    frameCount++;
     fpsCount++;
     if (fpsCount == fpsLimit)
     {
         float ifps = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
-        //qDebug() << "FPS: "<<ifps;
+        //qDebug() << "Processor plus Renderer FPS: "<<ifps;
         fpsCount = 0;
-//        fpsLimit = (int)MAX(1.f, ifps);
+        fpsLimit = min(4*ifps, 100);
         sdkResetTimer(&timer);
     }
 }
@@ -98,15 +95,28 @@ void GLWidget::TimerStart()
 
 void GLWidget::TimerEnd()
 {
-	sdkStopTimer(&timer);
-	computeFPS();
+	fpsCount++;
+	if (fpsCount >= fpsLimit)
+	{
+		sdkStopTimer(&timer);
+
+		float ifps = 1.f*fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f);
+		qDebug() << "Overall FPS: "<<ifps;
+
+		fpsCount = 0;
+		sdkResetTimer(&timer);
+		sdkStartTimer(&timer);
+		fpsLimit = max(min(4 * ifps, 128), 16);
+	}
+
+	//computeFPS();
 }
 
 
 void GLWidget::paintGL() {
     /****transform the view direction*****/
 	makeCurrent();
-	TimerStart();
+	//TimerStart();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

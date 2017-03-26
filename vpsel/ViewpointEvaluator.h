@@ -5,6 +5,7 @@
 #include <cmath>
 #include <memory>
 #include <vector>
+#include <helper_timer.h>
 
 #include "Volume.h"
 #include "myDefineRayCasting.h"
@@ -46,6 +47,7 @@ public:
 				cudaFree(cubeFaceHists[i]);
 			}
 		}
+		sdkDeleteTimer(&timer);
 	};
 
 	VPMethod currentMethod = Tao09Detail;
@@ -111,6 +113,9 @@ private:
 
 	float3 indToLocal(int i, int j, int k);
 	bool spherePointSet = false;
+
+	StopWatchInterface *timer = 0;
+
 };
 
 

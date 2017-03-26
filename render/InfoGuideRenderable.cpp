@@ -63,26 +63,55 @@ void InfoGuideRenderable::draw(float modelview[16], float projection[16])
 
 	}
 	else{// should do local guide
-		if (length(eyeInLocal - storedEyeLocal) > locationChangeThr || abs(dot(viewDir, storedViewDir)) < vecChangeThr || abs(dot(upDir, storedUpVector)) < vecChangeThr){
+
+		if (isAlwaysLocalGuide){ //for fps test
 			ve->computeCubeEntropy(matrixMgr->getEyeInLocal(), matrixMgr->getViewVecInLocal(), matrixMgr->getUpInLocal(), ve->currentMethod);
 
-			//cout << "cube info " << ve->cubeInfo[0] << " " << ve->cubeInfo[1] << " " << ve->cubeInfo[2] << " " << ve->cubeInfo[3] << " " << ve->cubeInfo[4] << " " << ve->cubeInfo[5] << endl;
+			if (length(eyeInLocal - storedEyeLocal) > locationChangeThr || abs(dot(viewDir, storedViewDir)) < vecChangeThr || abs(dot(upDir, storedUpVector)) < vecChangeThr){
 
-			transp = maxTransparency;
-			startTime = std::clock();
-			storedEyeLocal = eyeInLocal;
-			storedViewDir = viewDir;
-			storedUpVector = upDir;
+				//cout << "cube info " << ve->cubeInfo[0] << " " << ve->cubeInfo[1] << " " << ve->cubeInfo[2] << " " << ve->cubeInfo[3] << " " << ve->cubeInfo[4] << " " << ve->cubeInfo[5] << endl;
+
+				transp = maxTransparency;
+				startTime = std::clock();
+				storedEyeLocal = eyeInLocal;
+				storedViewDir = viewDir;
+				storedUpVector = upDir;
+			}
+			else{
+				double past = (std::clock() - startTime) / (double)CLOCKS_PER_SEC;
+				if (past > durationFix){
+					if (past < durationFix + durationDecrease)
+					{
+						transp = (durationFix + durationDecrease - past) / durationDecrease*maxTransparency;
+					}
+					else{
+						transp = 0.1; //always draw
+					}
+				}
+			}
 		}
 		else{
-			double past = (std::clock() - startTime) / (double)CLOCKS_PER_SEC;
-			if (past>durationFix){
-				if (past < durationFix + durationDecrease)
-				{
-					transp = (durationFix + durationDecrease - past) / durationDecrease*maxTransparency;
-				}
-				else{
-					transp = 0;
+			if (length(eyeInLocal - storedEyeLocal) > locationChangeThr || abs(dot(viewDir, storedViewDir)) < vecChangeThr || abs(dot(upDir, storedUpVector)) < vecChangeThr){
+				ve->computeCubeEntropy(matrixMgr->getEyeInLocal(), matrixMgr->getViewVecInLocal(), matrixMgr->getUpInLocal(), ve->currentMethod);
+
+				//cout << "cube info " << ve->cubeInfo[0] << " " << ve->cubeInfo[1] << " " << ve->cubeInfo[2] << " " << ve->cubeInfo[3] << " " << ve->cubeInfo[4] << " " << ve->cubeInfo[5] << endl;
+
+				transp = maxTransparency;
+				startTime = std::clock();
+				storedEyeLocal = eyeInLocal;
+				storedViewDir = viewDir;
+				storedUpVector = upDir;
+			}
+			else{
+				double past = (std::clock() - startTime) / (double)CLOCKS_PER_SEC;
+				if (past > durationFix){
+					if (past < durationFix + durationDecrease)
+					{
+						transp = (durationFix + durationDecrease - past) / durationDecrease*maxTransparency;
+					}
+					else{
+						transp = 0;
+					}
 				}
 			}
 		}

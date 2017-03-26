@@ -76,5 +76,8 @@ public:
 		startTime = std::clock();
 		transp = maxTransparency;
 	};
+
+	bool isAlwaysLocalGuide = false;
+
 };
 #endif
