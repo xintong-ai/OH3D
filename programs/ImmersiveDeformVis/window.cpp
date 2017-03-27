@@ -59,17 +59,11 @@ Window::Window()
 	DataType volDataType = RawVolumeReader::dtUint16;
 
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
-	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, labelFromFile);
+	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	
 	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
 
-	//dims = make_int3(256, 256, 64);
-	//dims = make_int3(301, 324, 56);
-	//dims = make_int3(64, 64, 64);
-	////dims = make_int3(160, 224, 64);
-	//spacing = make_float3(1, 1, 1);
-	//rcp = std::make_shared<RayCastingParameters>(1.1, 0.0, 0.0, 0.29, 0.0, 1.0, 512, 0.25f/2, 1.0, false); //for 181
-	//subfolder = "beetle";
+
 	//rcp->use2DInteg = false;
 
 
@@ -120,7 +114,7 @@ Window::Window()
 	}
 
 	int maxLabel = 1;
-	if(labelFromFile){
+	if (hasLabelFromFile){
 		unsigned char* labelVolRes = new unsigned char[dims.x*dims.y*dims.z];
 		FILE * fp = fopen(dataMgr->GetConfig("FEATURE_PATH").c_str(), "rb");
 		fread(labelVolRes, sizeof(unsigned char), dims.x*dims.y*dims.z, fp);
@@ -176,6 +170,9 @@ Window::Window()
 	}
 	else if (std::string(dataPath).find("Baseline") != std::string::npos){
 		matrixMgr->moveEyeInLocalByModeMat(make_float3(145, 114, 22)*spacing);
+	}
+	else if (std::string(dataPath).find("colon") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(177, 152, 32)*spacing);
 	}
 	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
 
@@ -533,7 +530,7 @@ Window::Window()
 
 	QLabel *zSliderLabelLit = new QLabel("Z index: ");
 	QSlider *zSlider = new QSlider(Qt::Horizontal);
-	zSlider->setRange(0, inputVolume->size.z);
+	zSlider->setRange(0, inputVolume->size.z-1);
 	zSlider->setValue(helper.z);
 	connect(zSlider, SIGNAL(valueChanged(int)), this, SLOT(zSliderValueChanged(int)));
 	QHBoxLayout *zLayout = new QHBoxLayout;
@@ -541,9 +538,19 @@ Window::Window()
 	zLayout->addWidget(zSlider);
 	assistLayout->addLayout(zLayout);
 
+	QHBoxLayout *manualFeatureLayout = new QHBoxLayout;
+
 	QPushButton *redrawBtn = new QPushButton("Redraw the Label");
-	assistLayout->addWidget(redrawBtn);
+	manualFeatureLayout->addWidget(redrawBtn);
 	connect(redrawBtn, SIGNAL(clicked()), this, SLOT(redrawBtnClicked()));
+	QPushButton *featureGrowingBtn = new QPushButton("Feature Growing");
+	manualFeatureLayout->addWidget(featureGrowingBtn);
+	connect(featureGrowingBtn, SIGNAL(clicked()), this, SLOT(featureGrowingBtnClicked()));
+	QPushButton *save2dScreenBtn = new QPushButton("Save screen");
+	manualFeatureLayout->addWidget(save2dScreenBtn);
+	connect(save2dScreenBtn, SIGNAL(clicked()), this, SLOT(save2dScreenBtnClicked()));
+	assistLayout->addLayout(manualFeatureLayout);
+
 
 	QPushButton *updateLabelVolBtn = new QPushButton("Find optimal for Label");
 	assistLayout->addWidget(updateLabelVolBtn);
@@ -776,7 +783,7 @@ void Window::zSliderValueChanged(int v)
 
 void Window::updateLabelVolBtnClicked()
 {
-	if (!labelFromFile){
+	if (!hasLabelFromFile){
 		labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
 		std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
 	}
@@ -812,6 +819,14 @@ void Window::redrawBtnClicked()
 	helper.valSet = false;
 }
 
+void Window::featureGrowingBtnClicked()
+{
+	helper.featureGrowing();
+}
+void Window::save2dScreenBtnClicked()
+{
+	helper.saveScreen();
+}
 void Window::doTourBtnClicked()
 {
 	animationByMatrixProcessor->startAnimation();

@@ -124,30 +124,26 @@ void ViewpointEvaluator::initTao09Detail()
 	setSpherePoints();
 	cudaMalloc(&d_r, sizeof(float)*numSphereSample);
 	
-	float* gradient = 0;
-	volume->computeGradient(gradient);
-	volumeGradient.VolumeCUDA_deinit();
-	volumeGradient.VolumeCUDA_init(volume->size, gradient, 0, 4);
-	delete[] gradient;
+	if (!noBilat){
+		float* gradient = 0;
+		volume->computeGradient(gradient);
+		volumeGradient.VolumeCUDA_deinit();
+		volumeGradient.VolumeCUDA_init(volume->size, gradient, 0, 4);
+		delete[] gradient;
 
-	//float* bilateralVolumeRes = 0;
-	//volume->computeBilateralFiltering(bilateralVolumeRes, 2, 0.2);
-	//FILE * fp = fopen("bilat.raw", "wb");
-	//fwrite(bilateralVolumeRes, sizeof(float), volume->size.x*volume->size.y*volume->size.z, fp);
-	//fclose(fp);
-	
-	float* bilateralVolumeRes = new float[volume->size.x*volume->size.y*volume->size.z];
-	FILE * fp = fopen((dataFolder+"/bilat.raw").c_str(), "rb");
-	fread(bilateralVolumeRes, sizeof(float), volume->size.x*volume->size.y*volume->size.z, fp);
-	fclose(fp);
+		float* bilateralVolumeRes = new float[volume->size.x*volume->size.y*volume->size.z];
+		FILE * fp = fopen((dataFolder + "/bilat.raw").c_str(), "rb");
+		fread(bilateralVolumeRes, sizeof(float), volume->size.x*volume->size.y*volume->size.z, fp);
+		fclose(fp);
 
-	float* bGradient = 0;
-	volume->computeGradient(bilateralVolumeRes, volume->size, bGradient);
-	filteredVolumeGradient.VolumeCUDA_deinit();
-	filteredVolumeGradient.VolumeCUDA_init(volume->size, bGradient, 0, 4);
-	delete[] bGradient;
-	delete[] bilateralVolumeRes;
-		
+		float* bGradient = 0;
+		volume->computeGradient(bilateralVolumeRes, volume->size, bGradient);
+		filteredVolumeGradient.VolumeCUDA_deinit();
+		filteredVolumeGradient.VolumeCUDA_init(volume->size, bGradient, 0, 4);
+		delete[] bGradient;
+		delete[] bilateralVolumeRes;
+	}
+
 	gradientTexOri.normalized = false;
 	gradientTexOri.filterMode = cudaFilterModeLinear;
 	gradientTexOri.addressMode[0] = cudaAddressModeBorder;
@@ -231,6 +227,10 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 		}
 	}
 	else if (m == Tao09Detail){
+		if (noBilat){
+			return;
+		}
+
 		initTao09Detail();
 
 		checkCudaErrors(cudaBindTextureToArray(gradientTexOri, volumeGradient.content, volumeGradient.channelDesc));
@@ -999,6 +999,10 @@ __global__ void d_computeCubeNoColorHist(float density, float3 eyeInLocal, float
 void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir, VPMethod m)
 {
 	if (m == Tao09Detail){
+		if (noBilat){
+			return;
+		}
+
 		initTao09Detail();
 
 		int threadsPerBlock = 64;
@@ -1042,14 +1046,8 @@ void ViewpointEvaluator::computeCubeEntropy(float3 eyeInLocal, float3 viewDir, f
 			cudaMemset(cubeFaceHists[i], 0, sizeof(float)*nbins);
 		}
 
-		checkCudaErrors(cudaBindTextureToArray(gradientTexOri, volumeGradient.content, volumeGradient.channelDesc));
-		checkCudaErrors(cudaBindTextureToArray(gradientTexFiltered, filteredVolumeGradient.content, filteredVolumeGradient.channelDesc));
-
 		//	d_computeCubeColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, rcp->brightness, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
 		d_computeCubeNoColorHist << <blocksPerGrid, threadsPerBlock >> >(rcp->density, eyeInLocal, viewDir, upDir, volume->size, rcp->maxSteps, rcp->tstep, d_r, numSphereSample, d_sphereSamples, cubeFaceHists[0], cubeFaceHists[1], cubeFaceHists[2], cubeFaceHists[3], cubeFaceHists[4], cubeFaceHists[5], nbins, useHist, m);
-
-		checkCudaErrors(cudaUnbindTexture(gradientTexOri));
-		checkCudaErrors(cudaUnbindTexture(gradientTexFiltered));
 
 		for (int i = 0; i < 6; i++){
 			if (useHist){

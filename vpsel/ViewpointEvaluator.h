@@ -74,6 +74,7 @@ public:
 	//generally maxLabel needs to be less than nbins. or else may have segmentation fault
 
 	std::string dataFolder;
+	bool noBilat = true;//just for colon
 
 private:
 	std::shared_ptr<Volume> volume;

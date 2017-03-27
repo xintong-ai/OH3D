@@ -153,6 +153,35 @@ __device__ float4 GetColourTomato(float v)
 		return make_float4(c, 0);
 }
 
+
+__constant__ int numColorTableItemsColon = 2;
+__constant__ float colorTableColon[2][4] = {
+	-0.0001, 254 / 255.0, 133 / 255.0, 90 / 255.0,
+	1.00001, 200 / 255.0, 83 / 255.0, 63 / 255.0
+};
+
+
+__device__ float3 GetColourColon(float v)
+{
+	int pos = 0;
+	bool notFound = true;
+	while (pos < numColorTableItemsColon - 1 && notFound) {
+		if (colorTableColon[pos][0] <= v && colorTableColon[pos + 1][0] >= v)
+			notFound = false;
+		else
+			pos++;
+	}
+	float ratio = (v - colorTableColon[pos][0]) / (colorTableColon[pos + 1][0] - colorTableColon[pos][0]);
+
+
+	float3 c = make_float3(
+		ratio*(colorTableColon[pos + 1][1] - colorTableColon[pos][1]) + colorTableColon[pos][1],
+		ratio*(colorTableColon[pos + 1][2] - colorTableColon[pos][2]) + colorTableColon[pos][2],
+		ratio*(colorTableColon[pos + 1][3] - colorTableColon[pos][3]) + colorTableColon[pos][3]);
+
+	return(c);
+}
+
 void VolumeRender_setVolume(const VolumeCUDA *vol)
 {
 	checkCudaErrors(cudaBindTextureToArray(volumeTexValueForRC, vol->content, vol->channelDesc));
@@ -649,14 +678,26 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
 
 		if (useColor){
-			float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
-			cc = make_float3(ret);
-			////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
-			//colDensity = ret.w;
+			////for tomato
+			//float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
+			//cc = make_float3(ret);
+			//////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
+			////colDensity = ret.w;
+			//colDensity = funcRes;
+
+
+			//for colon
+			if (useLabel && curlabel > 0){
+				cc = make_float3(0.0f, funcRes, funcRes);
+			}
+			else{
+				cc = GetColourColon(funcRes);
+			}
 			colDensity = funcRes;
 		}
 		else{
 			cc = make_float3(funcRes, funcRes, funcRes);
+			//for baseline
 			if (useLabel && curlabel > 1)
 			{
 				cc = make_float3(funcRes, 0.0f, 0.0f);
@@ -664,7 +705,7 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			else if (useLabel && curlabel > 0){
 				cc = make_float3(0.0f, funcRes, funcRes);
 			}
-			
+
 			colDensity = funcRes;
 		}
 

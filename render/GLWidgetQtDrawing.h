@@ -19,13 +19,18 @@ public:
 	int multiplier = 1;
 public:
 	void paint(QPainter *painter, QPaintEvent *event, int elapsed);
-	void mousePress(int x, int y);
+	void brushPoint(int x, int y);
 	void setData(std::shared_ptr<Volume> _v, unsigned short* _l);
+	void featureGrowing();
+	void saveScreen(){
+		needSaveImage = true;
+	};
 
 private:
 	std::shared_ptr<Volume> inputVolume;
 
 	float val;
+	bool needSaveImage = false;
 
 	QBrush background;
 	QBrush circleBrush;

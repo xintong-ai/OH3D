@@ -42,7 +42,6 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 		1.0, 1.0, 1.0, 1.0
 	};
 
-
 	int sliceOffset = z*w * h;
 	QImage image(w*multiplier, h*multiplier, QImage::Format_RGB32);
 	for (int i = 0; i<w; ++i) {
@@ -50,8 +49,7 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 			if (labelVolLocal[sliceOffset + w*j + i]){
 				for (int ii = 0; ii < multiplier; ii++){
 					for (int jj = 0; jj < multiplier; jj++){
-
-						image.setPixel(i*multiplier + ii, (h - 1 - j)*multiplier + jj, 256 * 256 * 255 + 256 * 255 + 0);
+						image.setPixel(i*multiplier + ii, (h - 1 - j)*multiplier + jj, 256 * 256 * 0 + 256 * 255 + 255);
 					}
 				}
 			}
@@ -60,8 +58,6 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 				for (int ii = 0; ii < multiplier; ii++){
 					for (int jj = 0; jj < multiplier; jj++){
 						image.setPixel(i*multiplier + ii, (h - 1 - j)*multiplier + jj, 256 * 256 * vv + 256 * vv + vv);
-
-
 						////for Tomato data
 						//int pos = 0;
 						//if (vv <= 30){
@@ -110,12 +106,66 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 	painter->setPen(textPen);
 	painter->setFont(textFont);
 	//painter->drawText(QRect(-50, -50, 100, 100), Qt::AlignCenter, QStringLiteral("Qt"));
+
+
+	if (needSaveImage){
+		SYSTEMTIME st;
+		GetSystemTime(&st);
+		std::string fname = "2dScreenShot_" + std::to_string(st.wMinute) + std::to_string(st.wSecond) + std::to_string(st.wMilliseconds) + ".png";
+		std::cout << "saving screen shot to file: " << fname << std::endl;
+		image.save(fname.c_str());
+		needSaveImage = false;
+		std::cout << "finish saving image" << std::endl;
+	}
 }
 
-void Helper::mousePress(int _x, int _y)
+void Helper::featureGrowing()
+{
+	if (!valSet){
+		return;
+	}
+
+	int3 sixNb[6] = { make_int3(-1, 0, 0), make_int3(0, -1, 0), make_int3(0, 0, -1),
+		make_int3(1, 0, 0), make_int3(0, 1, 0), make_int3(0, 0, 1) };
+
+	int3 size = inputVolume->size;
+	for (int k = 0; k < size.z; k++){
+		for (int j = 0; j < size.y; j++){
+			for (int i = 0; i < size.x; i++){
+				//if (abs(val - inputVolume->values[k*w*h + j*w + i]) >= 0.1){
+				//	continue;
+				//}
+				if (inputVolume->values[k*w*h + j*w + i] - val >= 0.1 || inputVolume->values[k*w*h + j*w + i] < 0.1){ //here 0.1 is the transfer function cut off value
+					continue;
+				}
+
+
+				bool notFound = true;
+
+				for (int tt = 0; tt < 6 && notFound; tt++){
+					int xq = i + sixNb[tt].x, yq = j + sixNb[tt].y, zq = k + sixNb[tt].z;
+					if (xq >= 0 && xq < size.x && yq >= 0 && yq < size.y && zq >= 0 && zq < size.z){
+						if (labelVolLocal[zq*w*h + yq*w + xq] == 1){
+							labelVolLocal[k*w*h + j*w + i] = 2;
+							notFound = true;
+						}
+					}
+				}
+			}
+		}
+	}
+	for (int i = 0; i < size.z*size.y*size.x; i++){
+		if (labelVolLocal[i] == 2)
+			labelVolLocal[i] = 1;
+	}
+	std::cout << "region growing for one voxel"<< std::endl;
+
+}
+
+void Helper::brushPoint(int _x, int _y)
 {
 	const int cons = 3;
-	int x = _x / multiplier, y = _y / multiplier;
+	int x = _x / multiplier, y = h - 1 - _y / multiplier;
 
 	if (!valSet){
 		val = inputVolume->values[z*w*h + y*w + x];
@@ -125,7 +175,7 @@ void Helper::mousePress(int _x, int _y)
 	int sliceOffset = z*w * h;
 	for (int xx = x - cons; xx <= x + cons; xx++){
 		for (int yy = y - cons; yy <= y + cons; yy++){
-			if (xx >= 0 && xx < w && yy >= 0 && yy < h && abs(val - inputVolume->values[z*w*h + yy*w + xx])<0.01){
+			if (xx >= 0 && xx < w && yy >= 0 && yy < h && abs(val - inputVolume->values[z*w*h + yy*w + xx])<0.05){
 				labelVolLocal[sliceOffset + w*yy + xx] = 1;
 			}
 		}
@@ -165,7 +215,7 @@ void GLWidgetQtDrawing::mousePressEvent(QMouseEvent *event)
 		pressed = true;
 
 //		std::cout << point.x() << " " << point.y() << std::endl;
-		helper->mousePress(point.x(), point.y());
+		helper->brushPoint(point.x(), point.y());
 	}
 }
 
@@ -174,7 +224,7 @@ void GLWidgetQtDrawing::mouseMoveEvent(QMouseEvent *event)
 	if (pressed) {
 		QPoint point = event->pos();
 		//std::cout << point.x() << " " << point.y() << std::endl;
-		helper->mousePress(point.x(), point.y());
+		helper->brushPoint(point.x(), point.y());
 	}
 }
 

@@ -75,7 +75,7 @@ private:
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
 	//bool useLabel;
-	bool labelFromFile = false;
+	bool hasLabelFromFile = false;
 	std::shared_ptr<VolumeCUDA> labelVolCUDA;
 	unsigned short* labelVolLocal = 0;
 
@@ -171,6 +171,8 @@ private slots:
 	void findGeneralOptimalBtnClicked();
 	void turnOffGlobalGuideBtnClicked();
 	void redrawBtnClicked();
+	void featureGrowingBtnClicked();
+	void save2dScreenBtnClicked();
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
 	void alwaysLocalGuideBtnClicked();

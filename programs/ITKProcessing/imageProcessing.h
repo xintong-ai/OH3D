@@ -31,17 +31,17 @@ typedef itk::ImportImageFilter< PixelType, 3 > ImportFilterType;
 //data related parameteres
 
 //int radius = 4;//for 181
-int radius = 3;//for tomato, baseline
+int radius = 3;//for tomato, baseline, colon
 //int radius = 1;//for bloodCell
 //int radius = 0;//for engine
 
 bool removeBackground = true;	// do not filter out boundary componenets for data:  bloodCell
 bool addManualSeg = false; //for tomato
-bool removeBackgroundByComponent = false;
+bool removeBackgroundByComponent = true;
 
 //float lengthThr = 3.9; //for 181
 //float lengthThr = 10; //for cell
-float lengthThr = 3; //for tomato
+float lengthThr = 3; //for tomato, colon
 //float lengthThr = 1.9; //for Baseline
 
 
@@ -274,7 +274,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 					ImageType::IndexType pixelIndex;
 					pixelIndex[0] = i; // x position
 					pixelIndex[1] = j; // y position
-					pixelIndex[2] = k; // z position
+					 pixelIndex[2] = k; // z position
 					int v = connectedImg->GetPixel(pixelIndex);
 					if (atOutside[v]){
 						connectedImg->SetPixel(pixelIndex, 0);

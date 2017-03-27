@@ -96,9 +96,6 @@ int main(int argc, char **argv)
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
 		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
-		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
-		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
 		reader.reset();
 	}
 	else{

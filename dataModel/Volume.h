@@ -155,6 +155,12 @@ public:
 			rcp = std::make_shared<RayCastingParameters>(0.8, 0.3, 0.6, 0.37, 0.11, 4.2, 256, 0.125f, 1.0, true);
 			subfolder = "Tomato";
 		}
+		else if (std::string(dataPath).find("colon") != std::string::npos){
+			dims = make_int3(351, 257, 257);
+			spacing = make_float3(0.7813, 0.7813, 1.6);
+			rcp = std::make_shared<RayCastingParameters>(1.1, 1, 0.3, 0.19, 0.1, 1.05, 1024, 0.125f, 0.4, true);
+			subfolder = "colon";
+		}
 		else{
 			std::cout << "volume data name not recognized" << std::endl;
 			exit(0);
