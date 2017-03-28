@@ -28,7 +28,7 @@ private:
 	//bool highlightingMinorSide = false;
 
 
-	float2 lastPos;
+	float3 lastPos;
 
 	inline bool outOfDomain(float3 p, float3 posMin, float3 posMax)
 	{
@@ -48,6 +48,7 @@ private:
 	//the two functions are copied from ImmersiveInteractor.h
 	void moveViewHorizontally(int d);
 	void moveViewVertically(int d);
+	void moveViewForwardBackward(int d);
 
 public:
 	MatrixLeapInteractor(std::shared_ptr<GLMatrixManager> m){ matrixMgr = m; };
@@ -57,6 +58,7 @@ public:
 	//void SetFingerIndicator(std::shared_ptr<Particle> p){ leapFingerIndicators = p; }
 
 	bool SlotLeftHandChanged(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap) override;
-	
+	bool SlotRightHandChanged(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap, float &f) override;
+
 };
 #endif

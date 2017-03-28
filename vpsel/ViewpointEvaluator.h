@@ -52,11 +52,12 @@ public:
 
 	VPMethod currentMethod = Tao09Detail;
 
-	void setSpherePoints(int n = 512);
+	void setSpherePoints(int n = 2048);
 	void setLabel(std::shared_ptr<VolumeCUDA> labelVol);
 	void initDownSampledResultVolume(int3 sampleSize);	
 	void compute_UniformSampling(VPMethod m);
 	void compute_SkelSampling(VPMethod m);
+	void compute_NextSkelSampling(VPMethod m);
 	void saveResultVol(const char*);
 
 	float maxEntropy;
@@ -64,8 +65,13 @@ public:
 
 	std::vector<float> cubeInfo;
 	void computeCubeEntropy(float3 eyeInLocal, float3 viewDir, float3 upDir, VPMethod m);
-
+	void setViews(std::vector<std::shared_ptr<Particle>> v){
+		skelViews = v;
+		skelViewsConsidered.assign(v.size(), true);
+	};
 	std::vector<std::shared_ptr<Particle>> skelViews;
+	std::vector<bool> skelViewsConsidered;
+	int lastSkelOfOptimal;
 	std::shared_ptr<Particle> allViewSamples = 0;
 	void createOneParticleFormOfViewSamples();
 
@@ -74,7 +80,7 @@ public:
 	//generally maxLabel needs to be less than nbins. or else may have segmentation fault
 
 	std::string dataFolder;
-	bool noBilat = true;//just for colon
+	bool noBilat = false;//only true for colon
 
 private:
 	std::shared_ptr<Volume> volume;

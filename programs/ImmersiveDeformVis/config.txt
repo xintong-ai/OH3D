@@ -10,6 +10,6 @@ eVOLUME_DATA_PATH=D:/Dropbox/shareXin/bloodCellWall0032.raw
 aVOLUME_DATA_PATH=D:/Data/volume/Tomato.raw
 eVOLUME_DATA_PATH=D:/Dropbox/shareXin/BaselineVolume.img
 
-VOLUME_DATA_PATH=D:/Data/colon/DOI/colon1Crop.img
+eVOLUME_DATA_PATH=D:/Data/colon/DOI/colon1Crop.img
 
 FEATURE_PATH=D:/Dropbox/shareXin/BaselineVolume-MaskNew.raw

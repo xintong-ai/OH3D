@@ -40,14 +40,16 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 		setObjectName(QString::number(f.id()));
 
 
-		Leap::Vector thumbTipLeft, thumbTipRight, indexTipLeft, indexTipRight, indexDir;
+		Leap::Vector thumbTipRight, indexTipRight, middleTipRight, ringTipRight, indexDir;
+		Leap::Vector thumbTipLeft, indexTipLeft, middleTipLeft, ringTipLeft, indexDirLeft;
+
 		Leap::Hand rightMostHand = f.hands().rightmost();
 		Leap::Hand leftMostHand = f.hands().leftmost();
 		//std::cout << "num of hands:" << f.hands().count() << std::endl;
 		if (1 == f.hands().count())
 		{
-			Leap::Vector middleTipRight, ringTipRight;
 			GetFingers(rightMostHand, thumbTipRight, indexTipRight, middleTipRight, ringTipRight);
+			GetFingers(leftMostHand, thumbTipLeft, indexTipLeft, middleTipLeft, ringTipLeft);
 			//emit UpdateHandsNew(Leap2QVector(thumbTipRight), Leap2QVector(indexTipRight), QVector3D(0, 0, 0), QVector3D(0, 0, 0), Leap2QVector(middleTipRight), Leap2QVector(ringTipRight), 1);
 			
 			float force = 800;
@@ -56,14 +58,15 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 			float3 rightIndexTip = Leap2float3(indexTipRight);
 			float3 rightMiddleTip = Leap2float3(middleTipRight);
 			float3 rightRingTip = Leap2float3(ringTipRight);
-
+			
 			float3 leftThumbTip = Leap2float3(thumbTipLeft);
-			float3 leftIndexTip = Leap2float3(indexTipRight);
-			float3 leftMiddleTip = Leap2float3(middleTipRight);
-			float3 leftRingTip = Leap2float3(ringTipRight);
+			float3 leftIndexTip = Leap2float3(indexTipLeft);
+			float3 leftMiddleTip = Leap2float3(middleTipLeft);
+			float3 leftRingTip = Leap2float3(ringTipLeft);
 
+			//if (f.hands().isRight()){}//for future version of leap
 			for (auto interactor : interactors){
-				interactor.second->SlotRightHandChanged(rightThumbTip, rightIndexTip, rightMiddleTip, rightRingTip, force);
+				//interactor.second->SlotRightHandChanged(rightThumbTip, rightIndexTip, rightMiddleTip, rightRingTip, force);
 				interactor.second->SlotLeftHandChanged(leftThumbTip, leftIndexTip, leftMiddleTip, leftRingTip);
 			}
 		}
@@ -72,6 +75,23 @@ void LeapListener::onFrame(const Leap::Controller & ctl)
 		else if (2 == f.hands().count()){
 			GetFingers(leftMostHand, thumbTipLeft, indexTipLeft, indexDir);
 			GetFingers(rightMostHand, thumbTipRight, indexTipRight, indexDir);
+
+			float3 rightThumbTip = Leap2float3(thumbTipRight);
+			float3 rightIndexTip = Leap2float3(indexTipRight);
+			float3 rightMiddleTip = Leap2float3(middleTipRight);
+			float3 rightRingTip = Leap2float3(ringTipRight);
+
+			float3 leftThumbTip = Leap2float3(thumbTipLeft);
+			float3 leftIndexTip = Leap2float3(indexTipLeft);
+			float3 leftMiddleTip = Leap2float3(middleTipLeft);
+			float3 leftRingTip = Leap2float3(ringTipLeft);
+
+			for (auto interactor : interactors){
+				float temp = 0;
+				interactor.second->SlotRightHandChanged(rightThumbTip, rightIndexTip, rightMiddleTip, rightRingTip, temp);
+				interactor.second->SlotLeftHandChanged(leftThumbTip, leftIndexTip, leftMiddleTip, leftRingTip);
+			}
+
 		}
 
 		timer->restart();

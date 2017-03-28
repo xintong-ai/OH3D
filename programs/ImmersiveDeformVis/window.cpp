@@ -67,8 +67,7 @@ Window::Window()
 	//rcp->use2DInteg = false;
 
 
-	//std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.5, 0.11, 0.6, 512, 0.25f, 1.0, false);
-	std::shared_ptr<RayCastingParameters> rcpMini = rcp;// = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 0.6, 512, 0.25f, 1.0, false); //for 181
+	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 1.0, 0.1, 0.03, 512, 0.25f, 0.6, false);
 
 	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
@@ -188,7 +187,10 @@ Window::Window()
 
 	if (channelSkelViewReady){
 		std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
-		reader3->OutputToParticleDataArrays(ve->skelViews);
+		std::vector<std::shared_ptr<Particle>> views;
+
+		reader3->OutputToParticleDataArrays(views);
+		ve->setViews(views);
 		reader3.reset();
 	}
 
@@ -499,10 +501,10 @@ Window::Window()
 	//matrixMgrRenderableMini = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//matrixMgrRenderableMini->renderPart = 2;
 	//openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
-	//ve->createOneParticleFormOfViewSamples(); 
-	//ve->allViewSamples->initForRendering(50, 1);
-	//glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
-	//openGLMini->AddRenderable("2glyphRenderable", glyphRenderable.get());
+	////ve->createOneParticleFormOfViewSamples(); 
+	////ve->allViewSamples->initForRendering(50, 1);
+	////glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
+	////openGLMini->AddRenderable("2glyphRenderable", glyphRenderable.get());
 	//volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	//volumeRenderableMini->rcp = rcpMini; 
 	//volumeRenderableMini->setBlending(true, 50);
@@ -560,6 +562,11 @@ Window::Window()
 	assistLayout->addWidget(findGeneralOptimalBtn);
 	connect(findGeneralOptimalBtn, SIGNAL(clicked()), this, SLOT(findGeneralOptimalBtnClicked()));
 
+	//only for 181
+	//QPushButton *findNextOptimalBtn = new QPushButton("Find next optimal");
+	//assistLayout->addWidget(findNextOptimalBtn);
+	//connect(findNextOptimalBtn, SIGNAL(clicked()), this, SLOT(findNextOptimalBtnClicked()));
+
 	//QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
 	//isBrushingCb->setChecked(sbInteractor->isActive);
 	//assistLayout->addWidget(isBrushingCb);
@@ -578,7 +585,8 @@ Window::Window()
 	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
 
 	mainLayout->addLayout(assistLayout, 1);
-	openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
+	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
+	openGL->setFixedSize(600,600);
 //openGLMini->setFixedSize(300, 300);
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -804,6 +812,14 @@ void Window::findGeneralOptimalBtnClicked()
 	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 }
 
+void Window::findNextOptimalBtnClicked()
+{
+	ve->currentMethod = VPMethod::Tao09Detail;
+	ve->compute_NextSkelSampling(VPMethod::Tao09Detail);
+	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy << std::endl;
+	std::cout << "The optimal view point: " << ve->optimalEyeInLocal.x << " " << ve->optimalEyeInLocal.y << " " << ve->optimalEyeInLocal.z << std::endl << "The optimal view point in voxel: " << ve->optimalEyeInLocal.x / spacing.x << " " << ve->optimalEyeInLocal.y / spacing.y << " " << ve->optimalEyeInLocal.z / spacing.z << std::endl;
+	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+}
 
 void Window::turnOffGlobalGuideBtnClicked()
 {

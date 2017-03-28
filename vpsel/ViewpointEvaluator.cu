@@ -186,6 +186,14 @@ void ViewpointEvaluator::compute_UniformSampling(VPMethod m)
 	}
 }
 
+void ViewpointEvaluator::compute_NextSkelSampling(VPMethod m) // !!!NOTE !!! currently only work for m==Tao09
+{
+	if (lastSkelOfOptimal<0 || lastSkelOfOptimal>=skelViews.size())
+		return;
+
+	skelViewsConsidered[lastSkelOfOptimal] = false;
+	compute_SkelSampling(m);
+}
 
 void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 {
@@ -209,6 +217,7 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 				if (entroRes>maxEntropy){
 					maxEntropy = entroRes;
 					optimalEyeInLocal = eyeInLocal;
+					lastSkelOfOptimal = i;
 				}
 			}
 		}
@@ -222,6 +231,7 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 				if (entroRes>maxEntropy){
 					maxEntropy = entroRes;
 					optimalEyeInLocal = eyeInLocal;
+					lastSkelOfOptimal = i;
 				}
 			}
 		}
@@ -237,12 +247,15 @@ void ViewpointEvaluator::compute_SkelSampling(VPMethod m)
 		checkCudaErrors(cudaBindTextureToArray(gradientTexFiltered, filteredVolumeGradient.content, filteredVolumeGradient.channelDesc));
 
 		for (int i = 0; i < skelViews.size(); i++){
+			if (!skelViewsConsidered[i])
+				continue; 
 			for (int j = 0; j < skelViews[i]->numParticles; j++){
 				float3 eyeInLocal = make_float3(skelViews[i]->pos[j]);
 				float entroRes = computeLocalSphereEntropy(eyeInLocal, Tao09Detail);
 				if (entroRes>maxEntropy){
 					maxEntropy = entroRes;
 					optimalEyeInLocal = eyeInLocal;
+					lastSkelOfOptimal = i;
 				}
 			}
 		}
@@ -493,7 +506,7 @@ __global__ void d_computeSphereColor(float density, float brightness,
 					curDetail = 1;
 				}
 			}
-			detailDescriptor = detailDescriptor + curDetail*visibility;
+			detailDescriptor = detailDescriptor + curDetail*col.w*visibility;
 		}
 
 		// exit early if opaque
@@ -610,7 +623,7 @@ __global__ void d_computeSphereNoColor(float density,
 					curDetail = 1;
 				}
 			}
-			detailDescriptor = detailDescriptor + curDetail*visibility;
+			detailDescriptor = detailDescriptor + curDetail*col.w*visibility;
 		}
 
 		// exit early if opaque
@@ -783,7 +796,7 @@ __global__ void d_computeCubeColorHist(float density, float brightness,
 					curDetail = 1;
 				}
 			}
-			detailDescriptor = detailDescriptor + curDetail*visibility;
+			detailDescriptor = detailDescriptor + curDetail*col.w*visibility;
 		}
 
 		// exit early if opaque
@@ -920,7 +933,7 @@ __global__ void d_computeCubeNoColorHist(float density, float3 eyeInLocal, float
 					curDetail = 1;
 				}
 			}
-			detailDescriptor = detailDescriptor + curDetail*visibility;
+			detailDescriptor = detailDescriptor + curDetail*col.w*visibility;
 		}
 
 		// exit early if opaque

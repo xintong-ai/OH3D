@@ -267,11 +267,15 @@ void InfoGuideRenderable::drawGlobalGuide(float modelview[16], float projection[
 		for (int i = 0; i < glArrow.grids.size(); i++){
 			if (i % 18 < 9)
 				glColor4f(0.79f, 0.89f, 0.26f, transp);
-			else if (i % 18 < 15){
-				glColor4f(0.89f, 0.79f, 0.06f, transp);
-			}
+			//else if (i % 18 < 15){
+			//	glColor4f(0.89f, 0.79f, 0.06f, transp*10);
+			//}
 			else{
-				glColor4f(0.99f, 0.99f, 0.06f, transp);
+				if (transp>0.1)
+					glColor4f(0.99f, 0.99f, 0.06f, 1.0);
+				else{
+					glColor4f(0.99f, 0.99f, 0.06f, transp);
+				}
 			}
 			QVector3D newp = rotateMat*QVector3D(glArrow.grids[i].x, glArrow.grids[i].y, glArrow.grids[i].z*arrowLength) - initPoint;
 			float3 p = startpos + make_float3(newp.x(), newp.y(), newp.z());

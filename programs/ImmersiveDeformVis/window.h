@@ -169,6 +169,7 @@ private slots:
 	void zSliderValueChanged(int v);
 	void updateLabelVolBtnClicked();
 	void findGeneralOptimalBtnClicked();
+	void findNextOptimalBtnClicked();
 	void turnOffGlobalGuideBtnClicked();
 	void redrawBtnClicked();
 	void featureGrowingBtnClicked();
