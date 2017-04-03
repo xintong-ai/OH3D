@@ -119,11 +119,21 @@ void VRWidget::paintGL() {
 			
 			OSVR_SurfaceCount surfaces = display->getViewer(viewer).getEye(eye).getNumSurfaces();
 			for (OSVR_SurfaceCount surface = 0; surface < surfaces; ++surface) {
-				auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
+				/*auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
 				qgl->glViewport(static_cast<GLint>(viewport.left),
 					static_cast<GLint>(viewport.bottom),
 					static_cast<GLsizei>(viewport.width),
-					static_cast<GLsizei>(viewport.height));
+					static_cast<GLsizei>(viewport.height));*/
+				if (eye  == 0)
+				qgl->glViewport(static_cast<GLint>(0),
+					static_cast<GLint>(0),
+					static_cast<GLsizei>(width/2),
+					static_cast<GLsizei>(height));
+				else
+					qgl->glViewport(static_cast<GLint>(width / 2),
+					static_cast<GLint>(0),
+					static_cast<GLsizei>(width / 2),
+					static_cast<GLsizei>(height));
 
 				/// Set the OpenGL projection matrix based on the one we computed.
 				QMatrix4x4 projMat;
@@ -159,7 +169,7 @@ void VRWidget::resizeGL(int w, int h)
 {
 	width = w;
 	height = h;
-	std::cout << "OpenGL window size:" << w << "x" << h << std::endl;
+	std::cout << "VR OpenGL window size:" << w << "x" << h << std::endl;
 	for (auto renderer : renderers)
 		renderer.second->resize(w, h);
 

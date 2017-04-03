@@ -563,30 +563,30 @@ Window::Window()
 	connect(findGeneralOptimalBtn, SIGNAL(clicked()), this, SLOT(findGeneralOptimalBtnClicked()));
 
 	//only for 181
-	//QPushButton *findNextOptimalBtn = new QPushButton("Find next optimal");
-	//assistLayout->addWidget(findNextOptimalBtn);
-	//connect(findNextOptimalBtn, SIGNAL(clicked()), this, SLOT(findNextOptimalBtnClicked()));
+	QPushButton *findNextOptimalBtn = new QPushButton("Find next optimal");
+	assistLayout->addWidget(findNextOptimalBtn);
+	connect(findNextOptimalBtn, SIGNAL(clicked()), this, SLOT(findNextOptimalBtnClicked()));
 
-	//QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
-	//isBrushingCb->setChecked(sbInteractor->isActive);
-	//assistLayout->addWidget(isBrushingCb);
-	//connect(isBrushingCb, SIGNAL(clicked()), this, SLOT(isBrushingClicked()));
+	QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
+	isBrushingCb->setChecked(sbInteractor->isActive);
+	assistLayout->addWidget(isBrushingCb);
+	connect(isBrushingCb, SIGNAL(clicked()), this, SLOT(isBrushingClicked()));
 
 	QPushButton *moveToOptimalBtn = new QPushButton("Move to the Optimal Viewpoint");
 	assistLayout->addWidget(moveToOptimalBtn);
 	connect(moveToOptimalBtn, SIGNAL(clicked()), this, SLOT(moveToOptimalBtnClicked()));
 
-	//QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
-	//assistLayout->addWidget(doTourBtn);
-	//connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
+	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
+	assistLayout->addWidget(doTourBtn);
+	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
 
 	QPushButton *turnOffGlobalGuideBtn = new QPushButton("Turn Off GLobal Guide");
 	assistLayout->addWidget(turnOffGlobalGuideBtn);
 	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
 
 	mainLayout->addLayout(assistLayout, 1);
-	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
-	openGL->setFixedSize(600,600);
+	openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
+	//openGL->setFixedSize(600,600);
 //openGLMini->setFixedSize(300, 300);
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -609,6 +609,10 @@ Window::Window()
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
 #endif
+
+
+	immersiveInteractor->ve = ve.get();
+	immersiveInteractor->infoGuideRenderable = infoGuideRenderable.get();
 
 }
 

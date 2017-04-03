@@ -146,7 +146,7 @@ void InfoGuideRenderable::drawLocalGuide(int2 winSize)
 	int maxInd = std::max_element(ve->cubeInfo.begin(), ve->cubeInfo.begin() + ve->cubeInfo.size()) - ve->cubeInfo.begin();
 	float maxInfo = ve->cubeInfo[maxInd];
 
-	float thrRatio = 1.05;
+	float thrRatio = 1.1;
 	const float tipRatio = 0.1;
 	const float sideRatio = 0.2;
 	if (maxInfo > thrRatio*ve->cubeInfo[0]){

@@ -678,22 +678,22 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
 
 		if (useColor){
-			//for tomato
-			float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
-			cc = make_float3(ret);
-			////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
-			//colDensity = ret.w;
-			colDensity = funcRes;
-
-
-			////for colon
-			//if (useLabel && curlabel > 0){
-			//	cc = make_float3(0.0f, funcRes, funcRes);
-			//}
-			//else{
-			//	cc = GetColourColon(funcRes);
-			//}
+			////for tomato
+			//float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
+			//cc = make_float3(ret);
+			//////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
+			////colDensity = ret.w;
 			//colDensity = funcRes;
+
+
+			//for colon
+			if (useLabel && curlabel > 0){
+				cc = make_float3(0.0f, funcRes, funcRes);
+			}
+			else{
+				cc = GetColourColon(funcRes);
+			}
+			colDensity = funcRes;
 		}
 		else{
 			cc = make_float3(funcRes, funcRes, funcRes);

@@ -30,19 +30,20 @@ typedef itk::ImportImageFilter< PixelType, 3 > ImportFilterType;
 
 //data related parameteres
 
-//int radius = 4;//for 181
-int radius = 3;//for tomato, baseline, colon
+int radius = 4;//for 181
+//int radius = 3;//for tomato, baseline, colon
 //int radius = 1;//for bloodCell
 //int radius = 0;//for engine
 
 bool removeBackground = true;	// do not filter out boundary componenets for data:  bloodCell
-bool addManualSeg = false; //for tomato
+bool addManualSeg = false; //previously for tomato, but later not used
 bool removeBackgroundByComponent = true;
+char foregroundFile[] = "D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img";
+//char foregroundFile[] = "D:/Data/volume/TomatoForeground.img";
 
-//float lengthThr = 3.9; //for 181
 //float lengthThr = 10; //for cell
 float lengthThr = 3; //for tomato, colon
-//float lengthThr = 1.9; //for Baseline
+
 
 
 void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* skelVolValues, ImageType::Pointer & retImgPointer, int & maxComponentMark)
@@ -287,8 +288,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		//currently for Baseline data
 		
 		unsigned short* foregroundSeg = new unsigned short[dims.x*dims.y*dims.z];
-		//FILE * fp = fopen("D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img", "rb");
-		FILE * fp = fopen("D:/Data/volume/TomatoForeground.img", "rb");
+		FILE * fp = fopen(foregroundFile, "rb");
 		fread(foregroundSeg, sizeof(unsigned short), dims.x*dims.y*dims.z, fp);
 		fclose(fp);
 		for (int k = 1; k < dims.z-1; k++){

@@ -77,7 +77,7 @@ public:
 		transp = maxTransparency;
 	};
 
-	bool isAlwaysLocalGuide = false;
+	bool isAlwaysLocalGuide = false; //true when doing performance test
 
 };
 #endif

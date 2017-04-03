@@ -4,6 +4,9 @@
 #include <QVector3D>
 #include <QMatrix4x4>
 
+#include <InfoGuideRenderable.h>
+#include <ViewpointEvaluator.h>
+
 #include "MatrixInteractor.h"
 
 class ImmersiveInteractor :public MatrixInteractor
@@ -15,7 +18,6 @@ class ImmersiveInteractor :public MatrixInteractor
 
 	void RotateLocal(float fromX, float fromY, float toX, float toY);
 	void RotateEye(float fromX, float fromY, float toX, float toY);
-
 public:
 	ImmersiveInteractor(){};
 	~ImmersiveInteractor(){};
@@ -28,5 +30,9 @@ public:
 	void mouseMoveMatrix(float fromX, float fromY, float toX, float toY, int modifier, int mouseKey) override;
 
 	bool noMoveMode = false;
+	
+	InfoGuideRenderable *infoGuideRenderable;
+	ViewpointEvaluator *ve;
+
 };
 #endif
