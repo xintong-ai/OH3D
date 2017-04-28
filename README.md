@@ -31,7 +31,9 @@ Cheng Li, email: li dot 4076 at gmail dot com
 
 This program is used for the following publication. Citing it will be appreciated if you use the code for your publication.
 
+
 X. Tong; C. Li; H. W. Shen, "GlyphLens: View-dependent Occlusion Management in the Interactive Glyph Visualization," in IEEE Transactions on Visualization and Computer Graphics ( Volume: 23, Issue: 1, Jan. 2017, Page(s): 891 - 900)
 doi: 10.1109/TVCG.2016.2599049
 keywords: {Context;Data visualization;Lenses;Probes;Shape;Three-dimensional displays;Visualization;View-dependent visualization;focus + context techniques;glyph-based techniques;human-computer interaction;manipulation and deformation},
 URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7539643&isnumber=4359476
+
