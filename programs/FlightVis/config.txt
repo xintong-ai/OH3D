@@ -1,3 +1,0 @@
-DATA_PATH=D:/Dropbox/data/flight/flight_data.csv
-a= /Users/xin/Dropbox/data/flight/flight_data.csv
-d=/media/User/Dropbox/data/flight/flight_data.csv
