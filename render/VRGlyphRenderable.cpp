@@ -1,5 +1,5 @@
-#include <VRGlyphRenderable.h>
-#include <GlyphRenderable.h>
+#include "VRGlyphRenderable.h"
+#include "GlyphRenderable.h"
 
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
@@ -20,11 +20,11 @@
 
 void VRGlyphRenderable::init()
 {
-	glProg = new ShaderProgram;
+	//glProg = new ShaderProgram;
 	glyphRenderable->LoadShaders(glProg);
 }
 
-void VRGlyphRenderable::draw(float modelview[16], float projection[16])
+void VRGlyphRenderable::drawVR(float modelview[16], float projection[16], int eye)
 {
 	if (!visible) 
 		return;

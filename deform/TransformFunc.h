@@ -11,8 +11,12 @@
 //{
 //	return VECTOR2(pos[0], pos[1]);
 //}
-#include <defines.h>
+#include "myMat.h"
 
+inline int iDivUp(int a, int b)
+{
+	return (a % b != 0) ? (a / b + 1) : (a / b);
+}
 
 template <typename T>
 __device__ __host__
@@ -289,6 +293,50 @@ inline float4 mat4mulvec4(T *a, float4 b)
 	return c;
 }
 
+// transform vector by matrix with translation
+__device__
+inline float4 mul(const float4x4 &M, const float4 &v)
+{
+	float4 r;
+	r.w = dot(v, M.m[3]);
+	r.x = dot(v, M.m[0]);
+	r.y = dot(v, M.m[1]);
+	r.z = dot(v, M.m[2]);
+
+	return r;
+}
+
+__device__
+inline float3 mul(const float4x4 &M, const float3 &v)
+{
+	float4 v4 = make_float4(v, 1.0);
+	float3 r;
+	r.x = dot(v4, M.m[0]);
+	r.y = dot(v4, M.m[1]);
+	r.z = dot(v4, M.m[2]);
+	return r;
+}
+
+__device__
+inline float3 mul(const float3x3 &M, const float3 &v)
+{
+	float3 r;
+	r.x = dot(v, M.m[0]);
+	r.y = dot(v, M.m[1]);
+	r.z = dot(v, M.m[2]);
+	return r;
+}
+
+
+
+__device__
+inline float4 divW(float4 v)
+{
+	float invW = 1 / v.w;
+	return(make_float4(v.x * invW, v.y * invW, v.z * invW, 1.0f));
+}
+
+
 inline __device__ __host__ float2 GetXY(float4 pos)
 {
 	return make_float2(pos.x, pos.y);
@@ -378,6 +426,19 @@ __device__ __host__ inline float4 Object2CameraGlobal(float4 pos, T* modelView)/
 //	return pos2;
 //}
 
+//multiply modelview matrix
+template <typename T>
+__device__ __host__ inline float4 Camera2Object(float4 pos, T* invModelView)//, float modelview[16], float projection[16])
+{
+	float4 pos2;
+	float4 v_screen = mat4mulvec4(invModelView, pos);//projection * modelview * v;
+	pos2.x = v_screen.x / v_screen.w;
+	pos2.y = v_screen.y / v_screen.w;
+	pos2.z = v_screen.z / v_screen.w;
+	pos2.w = 1.0;
+	//return v_screen;
+	return pos2;
+}
 template <typename T>
 __host__ __device__ inline float4 Clip2ObjectGlobal(float4 p, T* invModelView, T* invProjection)//, float modelview[16], float projection[16])
 {
@@ -389,27 +450,16 @@ __host__ __device__ inline float4 Clip2ObjectGlobal(float4 p, T* invModelView, T
 	return p;
 }
 
-//template <typename T>
-//__device__ inline VECTOR4 Clip2ObjectGlobal(VECTOR4 p, T* invModelView, T* invProjection)//, float modelview[16], float projection[16])
-//{
-//	p = mat4mulvec4(invModelView, mat4mulvec4(invProjection, p));
-//	p[0] /= p[3];
-//	p[1] /= p[3];
-//	p[2] /= p[3];
-//	p[3] = 1.0;
-//	return p;
-//}
-
-//template <typename T>
-//__device__ inline VECTOR4 Clip2Camera(VECTOR4 p, T* invProjection)//, float modelview[16], float projection[16])
-//{
-//	p = mat4mulvec4(invProjection, p);
-//	p[0] /= p[3];
-//	p[1] /= p[3];
-//	p[2] /= p[3];
-//	p[3] = 1.0;
-//	return p;
-//}
+template <typename T>
+__host__ __device__ inline float4 Clip2Camera(float4 p, T* invProjection)//, float modelview[16], float projection[16])
+{
+	p = mat4mulvec4(invProjection, p);
+	p.x /= p.w;
+	p.y /= p.w;
+	p.z /= p.w;
+	p.w = 1.0;
+	return p;
+}
 
 template <typename T>
 __device__ __host__ inline float4 Object2Clip(float4 pos, T* modelView, T* projection)//, float modelview[16], float projection[16])
@@ -492,14 +542,24 @@ inline __device__ __host__ float2 Object2Screen(float4 p, T* mv, T* pj, int widt
 	return Clip2ScreenGlobal(GetXY(Object2Clip(p, mv, pj)), width, height);
 }
 
+template <typename T>
+inline __device__ __host__ float2 Camera2Screen(float4 p, T* pj, int width, int height)
+{
+	return Clip2ScreenGlobal(GetXY(Camera2ClipGlobal(p, pj)), width, height);
+}
+
 __device__ inline bool within_device(float v)
 {
 	return v >= 0 && v <= 1;
 }
 
+inline bool within(float v)
+{
+	return v >= 0 && v <= 1;
+}
 
-__device__
-inline float Determinant4x4_device(const float4& v0,
+__device__ __host__
+inline float Determinant4x4(const float4& v0,
 const float4& v1,
 const float4& v2,
 const float4& v3)
@@ -524,8 +584,8 @@ const float4& v3)
 	return det;
 }
 
-__device__
-inline float4 GetBarycentricCoordinate_device(const float3& v0_,
+__device__ __host__
+inline float4 GetBarycentricCoordinate(const float3& v0_,
 const float3& v1_,
 const float3& v2_,
 const float3& v3_,
@@ -537,16 +597,51 @@ const float3& p0_)
 	float4 v3 = make_float4(v3_, 1);
 	float4 p0 = make_float4(p0_, 1);
 	float4 barycentricCoord = float4();
-	const float det0 = Determinant4x4_device(v0, v1, v2, v3);
-	const float det1 = Determinant4x4_device(p0, v1, v2, v3);
-	const float det2 = Determinant4x4_device(v0, p0, v2, v3);
-	const float det3 = Determinant4x4_device(v0, v1, p0, v3);
-	const float det4 = Determinant4x4_device(v0, v1, v2, p0);
+	const float det0 = Determinant4x4(v0, v1, v2, v3);
+	const float det1 = Determinant4x4(p0, v1, v2, v3);
+	const float det2 = Determinant4x4(v0, p0, v2, v3);
+	const float det3 = Determinant4x4(v0, v1, p0, v3);
+	const float det4 = Determinant4x4(v0, v1, v2, p0);
 	barycentricCoord.x = (det1 / det0);
 	barycentricCoord.y = (det2 / det0);
 	barycentricCoord.z = (det3 / det0);
 	barycentricCoord.w = (det4 / det0);
 	return barycentricCoord;
+}
+
+
+
+//normalize the tet coord before computing
+__device__ __host__
+inline float4 GetBarycentricCoordinate2(const float3& v0_,
+const float3& v1_,
+const float3& v2_,
+const float3& v3_,
+const float3& p0_)
+{
+	float3 ave = (v0_ + v1_ + v2_ + v3_) / 4;
+	float3 v0 = v0_ - ave;
+	float3 v1 = v1_ - ave; 
+	float3 v2 = v2_ - ave; 
+	float3 v3 = v3_ - ave; 
+	float3 p0 = p0_ - ave;
+
+	//float matB2C[16] = { v0_.x, v0_.y, v0_.z, 1.0,
+	//	v1_.x, v1_.y, v1_.z, 1.0,
+	//	v2_.x, v2_.y, v2_.z, 1.0,
+	//	v3_.x, v3_.y, v3_.z, 1.0 };//baricentric coord 2 cartisan coord
+	float matB2C[16] = { v0.x, v0.y, v0.z, 1.0,
+		v1.x, v1.y, v1.z, 1.0,
+		v2.x, v2.y, v2.z, 1.0,
+		v3.x, v3.y, v3.z, 1.0 };//baricentric coord 2 cartisan coord
+
+	float matC2B[16];
+	invertMatrix(matB2C, matC2B);
+	//float4 barycentricCoord = mat4mulvec4(matC2B, make_float4(p0_, 1.0));
+	float4 barycentricCoord = mat4mulvec4(matC2B, make_float4(p0, 1.0));
+	
+	return barycentricCoord;
+
 }
 
 #endif //TRANSFORM_FUNC_H

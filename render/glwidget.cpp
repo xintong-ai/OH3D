@@ -1,33 +1,22 @@
 #include "glwidget.h"
-#include "vector_types.h"
-#include "vector_functions.h"
-#include "helper_math.h"
+#include <vector_types.h>
+#include <vector_functions.h>
+#include <helper_math.h>
 #include <iostream>
 #include <fstream>
 #include <helper_timer.h>
-#include <Renderable.h>
-#include <GlyphRenderable.h>
-#include <VRWidget.h>
-#include <GLMatrixManager.h>
+
+#include "Renderable.h"
+#include "VRWidget.h"
+#include "GLMatrixManager.h"
+#include "Processor.h"
+#include "mouse/Interactor.h"
 
 GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 : QOpenGLWidget(parent)
     , m_frame(0)
 	, matrixMgr(_matrixMgr)
 {
-
-//    QSurfaceFormat format;
-//    format.setStencilBufferSize(8);
-//    format.setVersion(4, 1);
-//    format.setProfile(QSurfaceFormat::CoreProfile);
-//    setFormat(format);
-
-//    QSurfaceFormat format;
-//    format.setDepthBufferSize(24);
-//    format.setStencilBufferSize(8);
-//    format.setVersion(4, 1);
-//    format.setProfile(QSurfaceFormat::CoreProfile);
-//    openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
     setFocusPolicy(Qt::StrongFocus);
     sdkCreateTimer(&timer);
@@ -40,9 +29,19 @@ GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 void GLWidget::AddRenderable(const char* name, void* r)
 {
 	renderers[name] = (Renderable*)r;
-	((Renderable*)r)->SetAllRenderable(&renderers);
 	((Renderable*)r)->SetActor(this);
-	//((Renderable*)r)->SetWindowSize(width, height);
+}
+
+void GLWidget::AddProcessor(const char* name, void* r)
+{
+	processors[name] = (Processor*)r;
+	//((Processor*)r)->SetActor(this); //not sure if needed. better not rely on actor
+}
+
+void GLWidget::AddInteractor(const char* name, void* r)
+{
+	interactors[name] = (Interactor*)r;
+	((Interactor*)r)->SetActor(this);
 }
 
 GLWidget::~GLWidget()
@@ -64,7 +63,10 @@ void GLWidget::initializeGL()
 {
 	makeCurrent();
 	initializeOpenGLFunctions();
+	//glClearColor(0.2f, 0.2f, 0.4f, 1.0f);
+	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
 	glEnable(GL_DEPTH_TEST);
 }
 
@@ -84,17 +86,13 @@ void GLWidget::computeFPS()
 
 void GLWidget::TimerStart()
 {
-#if ENABLE_TIMER
     sdkStartTimer(&timer);
-#endif
 }
 
 void GLWidget::TimerEnd()
 {
-#if ENABLE_TIMER
 	sdkStopTimer(&timer);
 	computeFPS();
-#endif
 }
 
 
@@ -102,24 +100,62 @@ void GLWidget::paintGL() {
     /****transform the view direction*****/
 	makeCurrent();
 	TimerStart();
-    //glMatrixMode(GL_MODELVIEW);
-    //glLoadIdentity();
 
-    //glGetFloatv(GL_PROJECTION_MATRIX, projection);
-	//glViewport(0, 0, (GLint)width, (GLint)height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(true);
 	GLfloat modelview[16];
 	GLfloat projection[16];
-	matrixMgr->GetModelView(modelview);
+	matrixMgr->GetModelViewMatrix(modelview);
 	matrixMgr->GetProjection(projection, width, height);
+
+
+	for (auto processor : processors)
+	{
+		processor.second->process(modelview, projection, width, height);
+	}
+
+
+#ifdef USE_LEAP
+	if (blendOthers){ //only used for USE_LEAP
+		for (auto renderer : renderers)
+		{
+			renderer.second->DrawBegin();
+
+			if (std::string(renderer.first).find("Leap") != std::string::npos || std::string(renderer.first).find("lenses") != std::string::npos) //not a good design to use renderable names...
+			{
+				renderer.second->draw(modelview, projection);
+				renderer.second->DrawEnd(renderer.first.c_str());
+			}
+			else
+			{
+				glEnable(GL_BLEND);
+				glBlendColor(0.0f, 0.0f, 0.0f, 0.5f);
+				glBlendFunc(GL_CONSTANT_ALPHA, GL_CONSTANT_ALPHA);
+
+				renderer.second->draw(modelview, projection);
+				renderer.second->DrawEnd(renderer.first.c_str());
+
+				glDisable(GL_BLEND);
+			}
+		}
+	}
+	else{
+		for (auto renderer : renderers)
+		{
+			renderer.second->DrawBegin();
+			renderer.second->draw(modelview, projection);
+			renderer.second->DrawEnd(renderer.first.c_str());
+		}
+	}
+#else		
 	for (auto renderer : renderers)
 	{
 		renderer.second->DrawBegin();
 		renderer.second->draw(modelview, projection);
 		renderer.second->DrawEnd(renderer.first.c_str());
 	}
+#endif
+
 
     TimerEnd();
 #ifdef USE_OSVR
@@ -131,6 +167,8 @@ void GLWidget::paintGL() {
 #ifdef USE_CONTROLLER
 	emit SignalPaintGL();
 #endif
+	
+	UpdateGL();
 }
 
 
@@ -140,6 +178,10 @@ void GLWidget::resizeGL(int w, int h)
     width = w;
     height = h;
 	std::cout << "OpenGL window size:" << w << "x" << h << std::endl;
+
+	for (auto processor : processors)
+		processor.second->resize(w, h);
+
 	for (auto renderer : renderers)
 		renderer.second->resize(w, h);
 
@@ -165,16 +207,24 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 		if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
 			QPointF from = pixelPosToViewPos(prevPos);
 			QPointF to = pixelPosToViewPos(pos);
-			matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
+
+			for (auto interactor : interactors)
+				interactor.second->Rotate(from.x(), from.y(), to.x(), to.y());
+			//matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
 		}
 		else if (event->buttons() & Qt::RightButton) {
 			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
-			matrixMgr->Translate(diff.x(), diff.y());
+
+			for (auto interactor : interactors)
+				interactor.second->Translate(diff.x(), diff.y());
+			//matrixMgr->Translate(diff.x(), diff.y());
 		}
 	}
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	for (auto renderer : renderers)
-		renderer.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	//for (auto renderer : renderers)
+		//renderer.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	for (auto interactor : interactors)
+		interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
     prevPos = pos;
     update();
@@ -182,17 +232,19 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
-	//std::cout << "mousePressEvent:" <<  std::endl;
-
 	QPointF pos = event->pos();
 	QPoint posGL = pixelPosToGLPos(event->pos());
 	//lastPt = make_int2(posGL.x(), posGL.y());
 
 	//if (pinching)
 	//	return;
+
 	makeCurrent();
-	for (auto renderer : renderers)
-		renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	//for (auto renderer : renderers)
+		//	renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+
+	for (auto interactor : interactors)
+		interactor.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
     prevPos = pos;
 }
@@ -205,22 +257,29 @@ void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 	pinched = false;
 
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	for (auto renderer : renderers)
-		renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
-
+	//for (auto renderer : renderers)
+	//	renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	for (auto interactor : interactors)
+		interactor.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 }
 
 void GLWidget::wheelEvent(QWheelEvent * event)
 {
 	bool doTransform = true;
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	for (auto renderer : renderers){
+	/*for (auto renderer : renderers){
 		if (renderer.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
 			doTransform = false;
 	}
+	*/
+	for (auto interactor : interactors){
+		if (interactor.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
+			doTransform = false;
+	}
 	if (doTransform){
-		matrixMgr->Scale(event->delta());
-		//transScale *= exp(event->delta() * -0.001);
+		for (auto interactor : interactors)
+			interactor.second->wheelEvent(event->delta());
+		//matrixMgr->Scale(event->delta());
 	}
 	update();
 }
@@ -321,7 +380,7 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 				- pixelPosToViewPos(gesture->lastCenterPoint());
 			//transVec[0] += diff.x();
 			//transVec[1] += diff.y();
-			matrixMgr->Translate(diff.x(), diff.y());
+			matrixMgr->TranslateInWorldSpace(diff.x(), diff.y());
 			update();
 		}
 
@@ -354,15 +413,6 @@ QPoint GLWidget::pixelPosToGLPos(const QPointF& p)
 	return QPoint(p.x(), height - 1 - p.y());
 }
 
-Renderable* GLWidget::GetRenderable(const char* name)
-{
-	if (renderers.find(name) == renderers.end()) {
-		std::cout << "No renderer named : " << name << std::endl;
-		exit(1);
-	}
-	return renderers[name];
-}
-
 
 
 void GLWidget::UpdateGL()
@@ -377,9 +427,14 @@ float3 GLWidget::DataCenter()
 	return matrixMgr->DataCenter();
 }
 
+void GLWidget::GetPosRange(float3 &pmin, float3 &pmax)
+{
+	matrixMgr->GetVol(pmin, pmax);
+}
+
 void GLWidget::GetModelview(float* m)
 {
-	matrixMgr->GetModelView(m);
+	matrixMgr->GetModelViewMatrix(m);
 }
 
 void GLWidget::GetProjection(float* m)
@@ -390,5 +445,5 @@ void GLWidget::GetProjection(float* m)
 void GLWidget::SetInteractMode(INTERACT_MODE v)
 { 
 	interactMode = v; 
-	std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; 
+	//std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; 
 }

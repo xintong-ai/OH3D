@@ -9,29 +9,35 @@ message("interact is already defined")
 
 else()
 
-include_directories(${SHARED_LIB_INCLUDE_DIR})
+include_directories(${SHARED_LIB_INCLUDE_DIR}
+	${CMAKE_BINARY_DIR}
+)
 
-set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h )
-set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp )
 
-if(USE_DEFORM)
-	set(HDRS ${HDRS} Lens.h)
-	set(SRCS ${SRCS} Lens.cpp)
-endif()
+set(HDRS	mouse/QuatVector.h mouse/Rotation.h mouse/trackball.h 
+mouse/Interactor.h mouse/ImmersiveInteractor.h mouse/RegularInteractor.h 
+mouse/MatrixInteractor.h 
+mouse/LensInteractor.h mouse/GlyphInteractor.h
+)
+
+set(SRCS mouse/QuatVector.cpp mouse/Rotation.cpp mouse/trackball.cpp 
+mouse/ImmersiveInteractor.cpp 
+mouse/RegularInteractor.cpp
+mouse/LensInteractor.cpp mouse/GlyphInteractor.cpp
+)
 
 add_definitions(-DEXPORT_QT)
 
-option(USE_LEAP "Enable Leap Motion motion camera" OFF)
+
+
 if(USE_LEAP)
-	set(HDRS ${HDRS} leap/LeapInteraction.h	leap/LeapListener.h)
-	set(SRCS ${SRCS} leap/LeapListener.cpp)
-	include_directories(${LEAP_INCLUDE_DIR})
-#	find_package(Qt5Widgets REQUIRED)
-	#qt5_use_modules(render OpenGL Gui Widgets)
+	find_package(Leap)
+	include_directories(${Leap_ROOT_DIR}/include)
+	set( HDRS ${HDRS} leap/LeapInteraction.h leap/LeapListener.h 
+		leap/LeapInteractor.h leap/LensLeapInteractor.h)
+	set( SRCS ${SRCS} leap/LeapListener.cpp leap/LensLeapInteractor.cpp)
 endif()
 
-
-option(USE_CONTROLLER "Enable VIVE controller" OFF)
 if(USE_CONTROLLER)
 #	find_package(Qt5Widgets REQUIRED)
 	include_directories(${Boost_INCLUDE_DIR})
@@ -39,21 +45,16 @@ if(USE_CONTROLLER)
 	set(SRCS ${SRCS} controller/Controller.cpp controller/QController.cpp)
 endif()
 
-option(USE_TOUCHSCREEN "Enable touch screen interaction" OFF)
 if(USE_TOUCHSCREEN)
+	set( HDRS ${HDRS} touch/TouchInteractor.h touch/LensTouchInteractor.h)
+	set( SRCS ${SRCS} touch/LensTouchInteractor.cpp)
 endif()
 
 #qt5_use_modules(${PROJECT_NAME} Qt5::Widgets)
 SET(CMAKE_AUTOMOC ON)
 
 add_library(interact STATIC ${HDRS} ${SRCS})
-if(USE_LEAP)
-	target_link_libraries(${PROJECT_NAME} ${Leap_IMPORT_LIB_DEBUG})
-endif()
 
-#if(USE_LEAP)
-	target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
-#endif
 
 #if(USE_CONTROLLER)
 	target_link_libraries(${PROJECT_NAME} Qt5::Widgets)

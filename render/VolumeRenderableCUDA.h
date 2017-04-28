@@ -11,9 +11,7 @@
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class Fiber;
-class ModelVolumeDeformer;
 class Lens;
-class ModelGrid;
 
 enum DEFORM_METHOD{
 	PRINCIPLE_DIRECTION,
@@ -21,7 +19,6 @@ enum DEFORM_METHOD{
 	PROJECTIVE_DYNAMIC
 };
 enum VIS_METHOD{
-	UNTOUCHED,
 	CUTAWAY,
 	DEFORM
 };
@@ -31,24 +28,15 @@ class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
 	
-	ModelGrid *modelGrid;
-	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
+	//the volume to render 
+	std::shared_ptr<Volume> volume = 0;
 
-
+	VIS_METHOD vis_method = VIS_METHOD::DEFORM;
+	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
+	
 public:
-
-	void SetModelGrid(ModelGrid* _modelGrid){ modelGrid = _modelGrid; }
-	void SetModelVolumeDeformer(std::shared_ptr<ModelVolumeDeformer> _modelVolumeDeformer){ modelVolumeDeformer = _modelVolumeDeformer; }
-
-	std::vector<Lens*> *lenses;
-	std::shared_ptr<Volume> volume;
-
-
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
 	~VolumeRenderableCUDA();
-
-	VIS_METHOD vis_method = VIS_METHOD::UNTOUCHED;
-	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
 
 	//cutaway or deform paramteres
 	bool isFixed = false;
@@ -56,38 +44,48 @@ public:
 	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
 	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
 	
+	//NEK
 	//lighting
-	float la = 1.0, ld = 1.0, ls = 1.0;
-
+	float la = 1.0, ld = 0.2, ls = 0.1;
 	////MGHT2
 	//transfer function
 	float transFuncP1 = 0.55;
 	float transFuncP2 = 0.13;
-	float density = 0.3;
+	float density = 1;
 	//ray casting
-	int maxSteps = 1024;
+	int maxSteps = 768;
 	float tstep = 0.25f;
 	float brightness = 1.0;
 
 
-	void resetVolume();
+	////////MGHT2
+	////lighting
+	//float la = 1.0, ld = 0.2, ls = 0.7;
+	////transfer function
+	//float transFuncP1 = 0.44;// 0.55;
+	//float transFuncP2 = 0.29;// 0.13;
+	//float density = 1.25;
+	////ray casting
+	//int maxSteps = 512;
+	//float tstep = 0.25f;
+	//float brightness = 1.3;
+
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	void mousePress(int x, int y, int modifier) override;
-	void mouseRelease(int x, int y, int modifier) override;
-	void mouseMove(int x, int y, int modifier) override;
-	bool MouseWheel(int x, int y, int modifier, int delta)  override;
 	void resize(int width, int height)override;
 
 	bool useColor = false;
 
+	std::shared_ptr<Volume> getVolume(){
+		return volume;
+	}
 
 private:
+	VolumeCUDA volumeCUDAGradient;
+
 	void initTextureAndCudaArrayOfScreen();
 	void deinitTextureAndCudaArrayOfScreen();
-
-	void ComputeDisplace(float _mv[16], float _pj[16]);
 
 	//texture and array for 2D screen
 	GLuint pbo = 0;           // OpenGL pixel buffer object

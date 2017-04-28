@@ -41,6 +41,11 @@ class QuatVector
 
   void set(float x, float y, float z, float w = 1.0);
   void set(const float src[4]);
+  void getValue(float &x, float &y, float &z){
+	  x = m_vec[0] / m_vec[3];
+	  y = m_vec[1] / m_vec[3];
+	  z = m_vec[2] / m_vec[3];
+  };
 
   void copy(const QuatVector &src);
   void add(const QuatVector &vec1, const QuatVector &vec2);

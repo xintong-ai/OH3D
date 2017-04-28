@@ -8,54 +8,47 @@ class SolidSphere;
 class LensRenderable :public Renderable
 {
 	Q_OBJECT
-	
-	std::vector<Lens*> lenses;
-	int pickedLens = -1;
+
+	std::vector<Lens*> *lenses;
+
+	float3 lastLensCenter;
+	float lastLensRatio = 0.3;
+	bool lastLensCenterRecorded = false;
+
 	int2 lastPt = make_int2(0, 0);
 	SolidSphere* lensCenterSphere;
 
-	void ChangeLensCenterbyLeap(float3 p);
+	bool highlightingCenter = false;
+	bool highlightingMajorSide = false;
+	bool highlightingMinorSide = false;
+	bool highlightingCuboidFrame = false;
+
 public:
 
-	std::vector<Lens*>* GetLensesAddr() { return &lenses; }//temperary solution. should put lenses outside of LensRenderable
-
-	float3 snapPos;
-	void SnapLastLens();
-
+	bool drawFullRetractor = false;	
+	bool drawInsicionOnCenterFace = false;
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
-	void UpdateData() override;
-	LensRenderable();
-	std::vector<Lens*> GetLenses() { return lenses; }
-	float3 GetBackLensCenter();
-	float GetBackLensFocusRatio();
-	float GetBackLensObjectRadius();
+	LensRenderable(std::vector<Lens*>* _l);
+	~LensRenderable();
+
 	void AddCircleLens();
+	void AddCircleLens3D();
 	void AddLineLens();
-	void AddCurveBLens();
+	void AddLineLens3D();
+	void AddCurveLens();
+	void DelLens();
 
-	void mousePress(int x, int y, int modifier) override;
-	void mouseRelease(int x, int y, int modifier) override;
-	void mouseMove(int x, int y, int modifier) override;
-	bool MouseWheel(int x, int y, int modifier, int delta)  override;
-	void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) override;
-	void ChangeLensDepth(float v);
-	bool InsideALens(int x, int y);
-	bool TwoPointsInsideALens(int2 p1, int2 p2);
-	bool OnLensInnerBoundary(int2 p1, int2 p2);
-	void UpdateLensTwoFingers(int2 p1, int2 p2);
 
-	bool isSnapToGlyph = false;
-	bool isSnapToFeature = false;
+
+	void SaveState(const char* filename);
+	void LoadState(const char* filename);
 
 public slots:
-	void SlotFocusSizeChanged(int v);
-	void SlotSideSizeChanged(int v);
-	void SlotDelLens();
-	void SlotOneHandChanged(float3 p);
-	void SlotTwoHandChanged(float3 l, float3 r);
+	//for keyboard
 	void adjustOffset();
 	void RefineLensBoundary();
+
 };
 #endif

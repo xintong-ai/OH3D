@@ -189,7 +189,7 @@ void Rotation::normalize()
 } // normalize()
 
 //! Build inverse rotation matrix from the internal quaternion vector
-void Rotation::matrix(float m[16])
+const void Rotation::matrix(float m[16])
 {
   m[0] = 1.0 - 2.0 * (m_quat[1] * m_quat[1] + m_quat[2] * m_quat[2]);
   m[1] = 2.0 * (m_quat[0] * m_quat[1] + m_quat[2] * m_quat[3]);

@@ -230,6 +230,16 @@ inline void GetFingers(Leap::Hand hand, Leap::Vector &thumbTip, Leap::Vector &in
 	indexDir = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().direction().normalized();
 }
 
+inline void GetFingers(Leap::Hand hand, Leap::Vector &thumbTip, Leap::Vector &indexTip, Leap::Vector &middleTip, Leap::Vector &ringTip)
+{
+	thumbTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_THUMB).frontmost().stabilizedTipPosition();
+	//indexTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().stabilizedTipPosition();
+	indexTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().stabilizedTipPosition();
+	//indexDir = hand.fingers().fingerType(Leap::Finger::Type::TYPE_INDEX).frontmost().direction().normalized();
+	middleTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_MIDDLE).frontmost().stabilizedTipPosition();
+	ringTip = hand.fingers().fingerType(Leap::Finger::Type::TYPE_RING).frontmost().stabilizedTipPosition();
+}
+
 //inline void GetTwoFingers(Leap::Hand hand, Leap::Vector &leftIndexTip, Leap::Vector &rightIndexTip, int &numHands)
 //{
 //	

@@ -5,7 +5,7 @@
 
 #include <vector_functions.h>
 
-#include <defines.h>
+#include "myMat.h"
 
 class GLWidget;
 #define USE_PBO 0
@@ -36,10 +36,7 @@ inline void GetNormalMatrix(float modelview[16], float NormalMatrix[9])
 
 class Renderable: public QObject
 {
-	/****timing****/
-	StopWatchInterface *timer = 0;
-	int fpsCount = 0;        // FPS count for averaging
-	int fpsLimit = 128;        // FPS limit for sampling
+
 
 public:
 	Renderable();
@@ -50,14 +47,9 @@ public:
     virtual void resize(int width, int height);
 
     virtual void draw(float modelview[16], float projection[16]);
+	virtual void drawVR(float modelview[16], float projection[16], int eye){};//eye==0 for left, ==1 for right
 
 	virtual void animate() {}
-	virtual void mousePress(int x, int y, int modifier) {}
-	virtual void mouseRelease(int x, int y, int modifier) {}
-	virtual void mouseMove(int x, int y, int modifier) {}
-	virtual void PinchScaleFactorChanged(float x, float y, float totalScaleFactor) {}
-
-	virtual void UpdateData() {}
 
 	void RecordMatrix(float* modelview, float* projection){
 		memcpy(&matrix_mv.v[0].x, modelview, sizeof(float4) * 4);
@@ -84,11 +76,6 @@ public:
     //    ProjectionMatrix = ProjectionMatrix.transposed();
     //}
 
-	virtual bool MouseWheel(int x, int y, int modifier, int delta){ return false; };// {cameraChanged = true; }
-
-	void SetAllRenderable(std::map<std::string, Renderable*>* _allrenderer) {
-		allrenderer = _allrenderer;
-	}
 
 	void SetActor(GLWidget* _actor) {
 		actor = _actor;
@@ -117,13 +104,19 @@ protected:
 
     bool cameraChanged = false;
 
-	std::map<std::string, Renderable*>* allrenderer;
-
 	GLWidget* actor;
 
 	bool visible = true;
 
 	//bool drawScreenSpace = false;
+
+
+	/****timing****/
+	StopWatchInterface *timer = 0;
+	int fpsCount = 0;        // FPS count for averaging
+	int fpsLimit = 128;        // FPS limit for sampling
+	void StartRenderableTimer();
+	void StopRenderableTimer();
 
 private:
     void AllocOutImage();

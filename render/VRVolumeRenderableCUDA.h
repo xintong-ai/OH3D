@@ -1,4 +1,5 @@
-//maybe this class can be combined with VRGlyphRenderable.h to form a uniform VRRenderable
+//!!!NOTE!!!
+//the current function uses glDrawPixels, which does not work well together with opengl viewport. as aa result, the image of the right eye currently does not render. should switch to use textures quads in the future
 
 #ifndef VR_VOLUME_RENDERABLE_CUDA_H
 #define VR_VOLUME_RENDERABLE_CUDA_H
@@ -34,7 +35,7 @@ class VRVolumeRenderableCUDA : public Renderable
 
 protected:
 	void init() override;
-	void draw(float modelview[16], float projection[16]) override;
+	void drawVR(float modelview[16], float projection[16], int eye) override;
 
 	VRWidget* vractor;
 

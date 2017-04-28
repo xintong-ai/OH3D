@@ -34,6 +34,7 @@
 #include "vector_functions.h"
 #include "helper_math.h"
 #include "helper_cuda.h"
+#include <math.h>       /* cos */
 
 #define GRAVITY			-9.8
 #define RADIUS_SQUARED	0.002//0.01
@@ -202,7 +203,7 @@ __device__ bool PointInsideExtendedLineLensRegion(float3 p, float3 lensCen, floa
 	float lensCen2PProj = dot(lenCen2P, lensDir);
 	if (lensCen2PProj > 0){
 		float lensCen2PMajorProj = dot(lenCen2P, majorAxis);
-		const float majorDirectionTransitionCoeff = 1.0;
+		const float majorDirectionTransitionCoeff = 1.05;
 		if (abs(lensCen2PMajorProj)<lSemiMajorAxis*majorDirectionTransitionCoeff){
 			float3 minorAxis = cross(lensDir, majorAxis);
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
@@ -229,14 +230,11 @@ __device__ inline bool PointAtXYBoundaryOrZBottom(const int x, const int y, cons
 	else
 		return false;
 }
-__global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, const float radius)
+__global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more_fixed, const int number, const float3 lensCen, const float3 lensDir,	const float focusRatio, const float radius)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+	
 	//float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 vertOrig = make_float3(X_Orig[i * 3], X_Orig[i * 3 + 1], X_Orig[i * 3 + 2]);
 	//we have to use the original position here, otherwise the points will vibrate.
@@ -252,14 +250,12 @@ __global__ void Set_Fixed_By_Lens(float* X, float* X_Orig, float* V, float *more
 }
 
 
-__global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float *more_fixed, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis,int3 nStep)
+__global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float *more_fixed, const int number, float3 lensCen, float3 lensDir,
+ const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis,int3 nStep)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+	
 	//float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 vertOrig = make_float3(X_Orig[i * 3], X_Orig[i * 3 + 1], X_Orig[i * 3 + 2]);
 	//we have to use the original position here, otherwise the points will vibrate.
@@ -283,21 +279,18 @@ __global__ void Set_Fixed_By_Lens_Line(float* X, float* X_Orig, float* V, float 
 		X[i * 3 + 1] = X_Orig[i * 3 + 1];
 		X[i * 3 + 2] = X_Orig[i * 3 + 2];
 	}
-	//else if (!PointInsideExtendedLineLensRegion(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
-	//	more_fixed[i] = 10000000;
-	//	X[i * 3 + 0] = X_Orig[i * 3 + 0];
-	//	X[i * 3 + 1] = X_Orig[i * 3 + 1];
-	//	X[i * 3 + 2] = X_Orig[i * 3 + 2];
-	//}
+	else if (!PointInsideExtendedLineLensRegion(vertOrig, lensCen, lensDir, majorAxis, lSemiMajorAxis, lSemiMinorAxis, focusRatio)){
+		more_fixed[i] = 10000000;
+		X[i * 3 + 0] = X_Orig[i * 3 + 0];
+		X[i * 3 + 1] = X_Orig[i * 3 + 1];
+		X[i * 3 + 2] = X_Orig[i * 3 + 2];
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Basic update kernel
 ///////////////////////////////////////////////////////////////////////////////////////////
-__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z
-	, const float focusRatio, const float radius)
+__global__ void Update_Kernel(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number, const float3 lensCen, const float3 lensDir, const float focusRatio, const float radius)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if(i>=number)	return;
@@ -312,8 +305,7 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 	V[i*3+2]*=damping;
 	//Apply force
 	float3 lensForce = make_float3(0, 0, 0);
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
+
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	float3 lensCenFront = lensCen + lensDir * radius;
 	//float3 lensCenBack = lensCen - lensDir * radius;
@@ -353,10 +345,9 @@ __global__ void Update_Kernel(float* X, float* V, const float *fixed, const floa
 }
 
 
-__global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number
-	, const float cen_x, const float cen_y, const float cen_z
-	, const float dir_x, const float dir_y, const float dir_z
-	, const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep, int cutY, float deformForce)
+__global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, const float *more_fixed, const float damping, const float t, const int number,
+	float3 lensCen, float3 lensDir,
+	const float focusRatio, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, int3 nStep, int cutY, float deformForce)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= number)	return;
@@ -386,12 +377,8 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 	V[i * 3 + 2] *= damping;
 	//Apply force
 	float3 lensForce = make_float3(0, 0, 0);
-
-	float3 lensCen = make_float3(cen_x, cen_y, cen_z);// make_float3(0, 0, 5);
-	float3 lensDir = make_float3(dir_x, dir_y, dir_z);
 	float3 vert = make_float3(X[i * 3], X[i * 3 + 1], X[i * 3 + 2]);
 	
-
 	float3 lenCen2P = vert - lensCen;
 	float lensCen2PProj = dot(lenCen2P, lensDir);
 	if (lensCen2PProj > 0){
@@ -403,18 +390,29 @@ __global__ void Update_Kernel_LineLens(float* X, float* V, const float *fixed, c
 
 			float lensCen2PMinorProj = dot(lenCen2P, minorAxis);
 
-			if (abs(lensCen2PMinorProj) < lSemiMinorAxis){
-				if ((lensCen2PMinorProj>0 && i < nStep.x * nStep.y * nStep.z && y!=cutY) || (i >= nStep.x * nStep.y * nStep.z))
-					lensForce = moveDir;
-				else
-					lensForce = -moveDir;
-			}
-			//else if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio){
-			//	if (lensCen2PMinorProj>0)
-			//		lensForce = (1 - (lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
-			//	else
-			//		lensForce = -(1 - (-lensCen2PMinorProj - lSemiMinorAxis) / (lSemiMinorAxis / focusRatio - lSemiMinorAxis)) * moveDir;
+			//if (abs(lensCen2PMinorProj) < lSemiMinorAxis / focusRatio / 2){
+			//	if (i >= nStep.x * nStep.y * nStep.z)
+			//		lensForce = moveDir;
+			//	else if (y == cutY && x>0 && x<nStep.x - 1)
+			//		lensForce = -moveDir;
 			//}
+
+			float r = abs(lensCen2PMinorProj) / (lSemiMinorAxis / focusRatio);
+			if (r<0.55){
+				if (r<0.45){
+					if (i >= nStep.x * nStep.y * nStep.z)
+						lensForce = moveDir;
+					else if (y == cutY && x>0 && x<nStep.x - 1)
+						lensForce = -moveDir;
+				}
+				else{
+					float rrr = (cos((r-0.45)/0.1*3.1415926) + 1) / 2;
+					if (i >= nStep.x * nStep.y * nStep.z)
+						lensForce = moveDir*rrr;
+					else if (y == cutY && x>0 && x<nStep.x - 1)
+						lensForce = -moveDir*rrr;
+				}
+			}
 		}
 	}
 
@@ -574,26 +572,25 @@ class CUDA_PROJECTIVE_TET_MESH: public TET_MESH<TYPE>
 {
 public:
 	
-  using TET_MESH<TYPE>::tet_number;
-  using TET_MESH<TYPE>::number;
-  using TET_MESH<TYPE>::Tet;
-  using TET_MESH<TYPE>::inv_Dm;
-  using TET_MESH<TYPE>::Vol;
-  using TET_MESH<TYPE>::X;
-  using TET_MESH<TYPE>::Dm;
-  using TET_MESH<TYPE>::max_number;
-  using TET_MESH<TYPE>::M;
-  using TET_MESH<TYPE>::t_number;
-  using TET_MESH<TYPE>::T;
-  using TET_MESH<TYPE>::VN;
-  using TET_MESH<TYPE>::TN;
-  using TET_MESH<TYPE>::l_number;
-  using TET_MESH<TYPE>::L;
+  //using TET_MESH<TYPE>::tet_number;
+  //using TET_MESH<TYPE>::number;
+  //using TET_MESH<TYPE>::Tet;
+  //using TET_MESH<TYPE>::inv_Dm;
+  //using TET_MESH<TYPE>::Vol;
+  //using TET_MESH<TYPE>::X;
+  //using TET_MESH<TYPE>::Dm;
+  //using TET_MESH<TYPE>::max_number;
+  //using TET_MESH<TYPE>::M;
+  //using TET_MESH<TYPE>::t_number;
+  //using TET_MESH<TYPE>::T;
+  //using TET_MESH<TYPE>::VN;
+  //using TET_MESH<TYPE>::TN;
+  //using TET_MESH<TYPE>::l_number;
+  //using TET_MESH<TYPE>::L;
 
 	TYPE	cost[8];
 	int		cost_ptr;
 	TYPE	fps;
-	TYPE*	old_X;
 	TYPE*	V;
 	TYPE*	fixed;
 
@@ -632,8 +629,6 @@ public:
 	int*	dev_VTT;
 	int*	dev_vtt_num;
 
-	TYPE*	error;
-	TYPE*	dev_error;
 
 	//by Xin
 	TYPE* EL;
@@ -643,13 +638,14 @@ public:
 	int* cellVerts = 0;
 	int* cellTets = 0;
 	float* tetVolumeOriginal = 0;
+	float* dev_tetVolumeOriginal = 0;
 
   //template <class TYPE>
 	CUDA_PROJECTIVE_TET_MESH(int maxNum) :TET_MESH<TYPE>(maxNum)
+		//only used for GridMesh
 	{
 		cost_ptr= 0;
 
-		old_X	= new TYPE	[max_number*3];
 		V		= new TYPE	[max_number*3];
 		fixed	= new TYPE	[max_number  ];
 
@@ -660,7 +656,6 @@ public:
 		VTT		= new int	[max_number*4];
 		vtt_num	= new int	[max_number  ];
 
-		error	= new TYPE	[max_number*3];
 
 		EL = new TYPE[max_number * 5];
 
@@ -695,13 +690,111 @@ public:
 		dev_MD			= 0;
 		dev_VTT			= 0;
 		dev_vtt_num		= 0;
-
-		dev_error		= 0;
 	}
-	
+
+
+	CUDA_PROJECTIVE_TET_MESH() :TET_MESH<TYPE>()
+	{
+		cost_ptr = 0;
+
+		V = 0;
+		fixed = 0;
+
+		MD = 0;
+		TQ = 0;
+		Tet_Temp = 0;
+
+		VTT = 0;
+		vtt_num = 0;
+
+
+		EL = 0;
+
+		fps = 0;
+		//elasticity	= 3000000; //5000000
+		control_mag = 10;
+		rho = 0.9992;
+		damping = 0.9995;
+
+		// GPU data
+		dev_X = 0;
+		dev_X_Orig = 0;
+		dev_E = 0;
+		dev_V = 0;
+		dev_next_X = 0;
+		dev_prev_X = 0;
+		dev_fixed = 0;
+		dev_more_fixed = 0;
+		dev_init_B = 0;
+
+		dev_EL = 0;
+		dev_Dm = 0;
+		dev_inv_Dm = 0;
+		dev_Vol = 0;
+		dev_Tet = 0;
+		dev_TQ = 0;
+		dev_Tet_Temp = 0;
+		dev_VC = 0;
+		dev_MD = 0;
+		dev_VTT = 0;
+		dev_vtt_num = 0;
+
+	}
+	//template <class TYPE>
+	void initLocalMem_CUDA_PROJECTIVE_TET_MESH()
+	{
+		initLocalMem_TET_MESH();
+
+		cost_ptr = 0;
+
+		V = new TYPE[number * 3];
+		fixed = new TYPE[number];
+
+		MD = new TYPE[number];
+		TQ = new TYPE[tet_number * 4];
+		Tet_Temp = new TYPE[tet_number * 12];
+
+		VTT = new int[tet_number * 4];
+		vtt_num = new int[number + 1];
+
+		EL = new TYPE[tet_number];
+
+		fps = 0;
+		//elasticity	= 3000000; //5000000
+		control_mag = 10;
+		rho = 0.9992;
+		damping = 0.9995;
+
+		memset(V, 0, sizeof(TYPE)*number * 3);
+		memset(fixed, 0, sizeof(int)*number);
+
+		// GPU data
+		dev_X = 0;
+		dev_X_Orig = 0;
+		dev_E = 0;
+		dev_V = 0;
+		dev_next_X = 0;
+		dev_prev_X = 0;
+		dev_fixed = 0;
+		dev_more_fixed = 0;
+		dev_init_B = 0;
+
+		dev_EL = 0;
+		dev_Dm = 0;
+		dev_inv_Dm = 0;
+		dev_Vol = 0;
+		dev_Tet = 0;
+		dev_TQ = 0;
+		dev_Tet_Temp = 0;
+		dev_VC = 0;
+		dev_MD = 0;
+		dev_VTT = 0;
+		dev_vtt_num = 0;
+	}
+
+
 	~CUDA_PROJECTIVE_TET_MESH()
 	{
-		if(old_X)			delete[] old_X;
 		if(V)				delete[] V;
 		if(fixed)			delete[] fixed;
 		if(MD)				delete[] MD;
@@ -709,7 +802,6 @@ public:
 		if(Tet_Temp)		delete[] Tet_Temp;
 		if(VTT)				delete[] VTT;
 		if(vtt_num)			delete[] vtt_num;
-		if(error)			delete[] error;
 		
 		if (cellVerts)		delete[] cellVerts;
 		if (cellTets)		delete[] cellTets;
@@ -738,8 +830,9 @@ public:
 		if(dev_VTT)			cudaFree(dev_VTT);
 		if(dev_vtt_num)		cudaFree(dev_vtt_num);
 
-		if(dev_error)		cudaFree(dev_error);
-	}
+
+		if (dev_tetVolumeOriginal) cudaFree(dev_tetVolumeOriginal);
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //  Initialize functions
@@ -863,11 +956,15 @@ public:
 
 		cudaMalloc((void**)&dev_Tet, sizeof(int)*tet_number * 4);
 		cudaMemcpy(dev_Tet, Tet, sizeof(int)*tet_number * 4, cudaMemcpyHostToDevice);
+
+		is_Allocate_GPU_Memory_InAdvance_executed = true;
 	}
 
 
 	void Allocate_GPU_Memory()
 	{
+		// !!!NOTE!!! make sure the elasity EL has been well set. Or else once update later, need to reset dev_EL
+
 		//may allocate the GPU memory for some arrays in advance, to provide easier computation for needed processes
 		if (!is_Allocate_GPU_Memory_InAdvance_executed){
 			Allocate_GPU_Memory_InAdvance();
@@ -896,7 +993,6 @@ public:
 		cudaMalloc((void**)&dev_VTT,		sizeof(int )*tet_number*4);
 		cudaMalloc((void**)&dev_vtt_num,	sizeof(int )*(number+1));
 
-		cudaMalloc((void**)&dev_error,		sizeof(TYPE)*3*number);
 
 		//Copy data into CUDA memory
 		
@@ -936,7 +1032,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////
 	
 	//for circle lens
-	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], TYPE focusRatio, TYPE radius)
+	void Update(TYPE t, int iterations, float3 lensCen, float3 lenDir, TYPE focusRatio, TYPE radius)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -947,13 +1043,13 @@ public:
 		// Step 0 by Xin
 		Set_Fixed_By_Lens << <blocksPerGrid, threadsPerBlock >> >(
 			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, radius);
+			, lensCen
+			, lenDir, focusRatio, radius);
 
 		// Step 1: Basic update
 		Update_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, radius);
+			, lensCen
+			, lenDir, focusRatio, radius);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock>> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1/t, number);
@@ -991,7 +1087,7 @@ public:
 
 
 	//for line lens
-	void Update(TYPE t, int iterations, TYPE lensCen[], TYPE lenDir[3], float3 meshCenter, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
+	void UpdateLineMesh(TYPE t, int iterations, float3 lensCen, float3 lensDir, int cutY, int* nStep, float lSemiMajorAxis, float lSemiMinorAxis, TYPE focusRatio, float3 majorAxis, float deformForce)
 	{
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
@@ -1000,17 +1096,17 @@ public:
 
 		int3 nstep_forDevice = make_int3(nStep[0], nStep[1], nStep[2]);//cannot directly give local pointer to cuda
 		TIMER timer;
+
 		// Step 0 by Cheng Li
 		Set_Fixed_By_Lens_Line << <blocksPerGrid, threadsPerBlock >> >(
-			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice);
+			dev_X, dev_X_Orig, dev_V, dev_more_fixed, number,
+			lensCen, lensDir,
+			focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice);
 
 		
 		// Step 1: Basic update
 		Update_Kernel_LineLens << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_V, dev_fixed, dev_more_fixed, damping, t, number
-			, lensCen[0], lensCen[1], lensCen[2]
-			, lenDir[0], lenDir[1], lenDir[2], focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice, cutY, deformForce);
+			, lensCen, lensDir, focusRatio, lSemiMajorAxis, lSemiMinorAxis, majorAxis, nstep_forDevice, cutY, deformForce);
 
 		// Step 2: Set up X data
 		Constraint_0_Kernel << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_init_B, dev_VC, dev_fixed, dev_more_fixed, 1 / t, number);

@@ -1,5 +1,4 @@
 #include "GridRenderable.h"
-#include "DeformGlyphRenderable.h"
 #include "glwidget.h"
 
 GridRenderable::GridRenderable(int n)
@@ -11,7 +10,6 @@ GridRenderable::GridRenderable(int n)
 
 void GridRenderable::UpdateGrid()
 {
-	((DeformGlyphRenderable*)actor->GetRenderable("glyph"))->DisplacePoints(grid);
 }
 
 void GridRenderable::resize(int width, int height)

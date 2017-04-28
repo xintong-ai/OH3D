@@ -14,33 +14,19 @@ class QSlider;
 class Renderable;
 class QCheckBox;
 class QLabel;
-class DeformGlyphRenderable;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
-class GridRenderable;
 class DataMgr;
 class GLMatrixManager;
-class ModelGridRenderable;
-class ModelGrid;
+class MeshRenderable;
+class MeshDeformProcessor;
 class Volume;
-class ModelVolumeDeformer;
+class PhysicalVolumeDeformProcessor;
 class VolumeRenderableCUDA;
-
-#ifdef USE_LEAP
-class LeapListener;
-namespace Leap{
-	class Controller;
-}
-#endif
-
-#ifdef USE_NEW_LEAP
-class LeapListener;
-namespace Leap{
-	class Controller;
-}
-#endif
-
+class Lens;
+class RegularInteractor;
+class LensInteractor;
 
 #ifdef USE_OSVR
 class VRWidget;
@@ -58,7 +44,6 @@ public:
 private:
 	std::shared_ptr<DeformGLWidget> openGL;
 	QTimer *aTimer;
-	const int nScale = 20;
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
@@ -68,47 +53,41 @@ private:
 
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
-
-	QCheckBox* usingGlyphSnappingCheck;
-	QCheckBox* usingGlyphPickingCheck;
-
+	
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
-	std::shared_ptr<DeformGlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
-	std::shared_ptr<GridRenderable> gridRenderable;
-	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
+	std::shared_ptr<MeshRenderable> meshRenderable;
+
+	std::shared_ptr<RegularInteractor> rInteractor;
+	std::shared_ptr<LensInteractor> lensInteractor;
+
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
-	QPushButton *addCurveBLensBtn;
-	std::shared_ptr<ModelGrid> modelGrid;
+	QPushButton *addCurveLensBtn;
+	std::shared_ptr<MeshDeformProcessor> meshDeformer;
 	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<ModelVolumeDeformer> modelVolumeDeformer;
+	std::shared_ptr<PhysicalVolumeDeformProcessor> modelVolumeDeformer;
+	std::vector<Lens*> lenses; //can change Lens* to shared pointer, to avoid manually deleting
 
-	QLabel *deformForceLabel;
 	QLabel *laLabel, *ldLabel, *lsLabel;
 	QLabel *transFuncP1Label, *transFuncP2Label, *brLabel, *dsLabel;
+	QLabel *deformForceLabel;
+	QLabel *meshResLabel;
+
+	float deformForceConstant = 100;
+	int meshResolution = 20;
 
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
-	std::shared_ptr<VRVolumeRenderableCUDA> vrGlyphRenderable;
+	std::shared_ptr<VRVolumeRenderableCUDA> vrVolumeRenderable;
 #endif
-#ifdef USE_LEAP
-	LeapListener* listener;
-	Leap::Controller* controller;
-#endif
-#ifdef USE_NEW_LEAP
-	LeapListener* listener;
-	Leap::Controller* controller;
-#endif
+
 private slots:
 	void AddLens();
 	void AddLineLens();
-	void AddCurveBLens(); 
+	void AddCurveLens(); 
 	void SlotToggleGrid(bool b);
-	void SlotToggleUdbe(bool b);
-	void SlotToggleUsingGlyphSnapping(bool b);
-	void SlotTogglePickingGlyph(bool b);
-	void SlotToggleGlyphPickingFinished();
+	void SlotToggleBackFace(bool b);
 	void SlotDeformModeChanged(bool clicked);
 	void SlotSaveState();
 	void SlotLoadState();
@@ -122,14 +101,17 @@ private slots:
 	void ldSliderValueChanged(int);
 	void lsSliderValueChanged(int);
 
+	void SlotRbUniformChanged(bool);
+	void SlotRbDensityChanged(bool);
+	void SlotRbTransferChanged(bool);
+	void SlotRbGradientChanged(bool);
+	
+	void SlotDelLens();
 
+	void SlotAddMeshRes();
+	void SlotMinusMeshRes();
+	void SlotToggleCbDrawInsicionOnCenterFace(bool b);
 
-#ifdef USE_LEAP
-	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
-#endif
-#ifdef USE_NEW_LEAP
-	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
-#endif
 };
 
 #endif

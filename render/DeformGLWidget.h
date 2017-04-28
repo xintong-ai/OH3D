@@ -24,13 +24,9 @@ protected:
 private:
 	void UpdateDepthRange();
 
-	//int2 lastPt = make_int2(0,0);
-
 	float2 depthRange;
 
-
-
-	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE; //
+	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE;
 	bool insideLens = false;
 
 private slots:

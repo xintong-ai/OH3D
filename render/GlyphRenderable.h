@@ -6,66 +6,42 @@
 class ShaderProgram;
 class QOpenGLContext;
 class StopWatchInterface;
-//enum struct COLOR_MAP;
-#include <ColorGradient.h>
+
+class Particle;
+enum COLOR_MAP;
 
 class GlyphRenderable: public Renderable
 {
 	Q_OBJECT
-	bool frameBufferObjectInitialized = false;
 
 public:
-	//used for feature freezing rendering
-	bool isFreezingFeature = false;
-	std::vector<char> feature;
-	std::vector<float3> featureCenter;
+	~GlyphRenderable();
 
-	//used for feature snapping
-	bool isPickingFeature = false;
-	int GetSnappedFeatureId(){ return snappedFeatureId; }
-	void SetSnappedFeatureId(int s){ snappedFeatureId = s; }
-	bool findClosetFeature(float3 aim, float3 & result, int & resid);
+	void resize(int width, int height) override;
 
-	//used for picking and snapping
-	bool isPickingGlyph = false;
-	int GetSnappedGlyphId(){ return snappedGlyphId; }
-	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
+	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) {};
+	bool colorByFeature = false;//when the particle has multi attributes or features, choose which attribute or color is used for color. currently a simple solution using bool
+	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
+	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
 
-
-	virtual void resetColorMap(COLOR_MAP cm) = 0;
 
 protected:
-	std::vector<float4> pos; 
-	std::vector<float4> posOrig;
-	std::vector<float> glyphSizeScale;
-	std::vector<float> glyphBright;
-	float glyphSizeAdjust = 1.0f;
-	ShaderProgram* glProg = nullptr;
-	//bool displaceOn = true;
-	void mouseMove(int x, int y, int modifier) override;
-	void resize(int width, int height) override;
-	GlyphRenderable(std::vector<float4>& _pos);
+	GlyphRenderable(std::shared_ptr<Particle> _particle);
 
+	std::shared_ptr<Particle> particle;
+
+	//used for drawing
+	ShaderProgram* glProg = nullptr;
+	
 	//used for picking and snapping
 	unsigned int vbo_vert_picking, vbo_indices_picking;
 	ShaderProgram *glPickingProg;
 	unsigned int framebuffer, renderbuffer[2];
 	virtual void initPickingDrawingObjects() = 0;
 	virtual void drawPicking(float modelview[16], float projection[16], bool isForGlyph) = 0; //if isForGlyph=false, then it is for feature
-	int snappedGlyphId = -1;
-	int snappedFeatureId = -1;
 
-public:
-	~GlyphRenderable();
-	virtual void LoadShaders(ShaderProgram*& shaderProg) = 0;
-	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) = 0;
-	//void SetDispalceOn(bool b) { displaceOn = b; }
-	void SetGlyphSizeAdjust(float v){ glyphSizeAdjust = v; }
-
-	int GetNumOfGlyphs(){ return pos.size(); }
-
-public slots:
-	void SlotGlyphSizeAdjustChanged(int v);
+private:
+	bool frameBufferObjectInitialized = false;
 
 signals:
 	void glyphPickingFinished();

@@ -12,6 +12,19 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+__global__ void d_moveMeshNodes(float* X, float* X_Orig, int number, float3 moveDir)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= number)	return;
+	int idx = i*3;
+	X[idx + 0] = X[idx + 0] + moveDir.x;
+	X[idx + 1] = X[idx + 1] + moveDir.y;
+	X[idx + 2] = X[idx + 2] + moveDir.z;
+	X_Orig[idx + 0] = X_Orig[idx + 0] + moveDir.x;
+	X_Orig[idx + 1] = X_Orig[idx + 1] + moveDir.y;
+	X_Orig[idx + 2] = X_Orig[idx + 2] + moveDir.z;
+}
+
 template <class TYPE>
 class LineSplitGridMesh : public CUDA_PROJECTIVE_TET_MESH<TYPE>
 {
@@ -69,35 +82,69 @@ class LineSplitGridMesh : public CUDA_PROJECTIVE_TET_MESH<TYPE>
 
 
 public:
-	using TET_MESH<TYPE>::tet_number;
-	using TET_MESH<TYPE>::number;
-	using TET_MESH<TYPE>::Tet;
-	using TET_MESH<TYPE>::inv_Dm;
-	using TET_MESH<TYPE>::Vol;
-	using TET_MESH<TYPE>::X;
-	using TET_MESH<TYPE>::Dm;
-	using CUDA_PROJECTIVE_TET_MESH<TYPE>::control_mag;
-	using TET_MESH<TYPE>::max_number;
-	using TET_MESH<TYPE>::M;
-	using TET_MESH<TYPE>::t_number;
-	using TET_MESH<TYPE>::T;
-	using TET_MESH<TYPE>::VN;
-	using TET_MESH<TYPE>::TN;
-	using TET_MESH<TYPE>::l_number;
-	using TET_MESH<TYPE>::L;
-	using CUDA_PROJECTIVE_TET_MESH<TYPE>::damping;
+	//using TET_MESH<TYPE>::tet_number;
+	//using TET_MESH<TYPE>::number;
+	//using TET_MESH<TYPE>::Tet;
+	//using TET_MESH<TYPE>::inv_Dm;
+	//using TET_MESH<TYPE>::Vol;
+	//using TET_MESH<TYPE>::X;
+	//using TET_MESH<TYPE>::Dm;
+	//using CUDA_PROJECTIVE_TET_MESH<TYPE>::control_mag;
+	//using TET_MESH<TYPE>::max_number;
+	//using TET_MESH<TYPE>::M;
+	//using TET_MESH<TYPE>::t_number;
+	//using TET_MESH<TYPE>::T;
+	//using TET_MESH<TYPE>::VN;
+	//using TET_MESH<TYPE>::TN;
+	//using TET_MESH<TYPE>::l_number;
+	//using TET_MESH<TYPE>::L;
+	//using CUDA_PROJECTIVE_TET_MESH<TYPE>::damping;
 
 
-	float3 gridMin, gridMax;
 	int nStep[3];
 	float step;
 
-	float3 meshCenter;
 	int cutY;
-	float3 oriMeshCenter;
 
 	float3 lensSpaceOriginInWorld;
 
+
+
+
+	//used for temperary mesh
+	LineSplitGridMesh() : CUDA_PROJECTIVE_TET_MESH<TYPE>()
+	{
+		number = 0;
+		tet_number = 0;
+		return;
+	}
+
+	~LineSplitGridMesh(){};
+
+
+	LineSplitGridMesh(float ztop, float zbottom, int meshRes, float3 lensCenter, float lSemiMajorAxis, float lSemiWidth, float3 majorAxis, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>()
+	{
+		//computeShapeInfo and computeInitCoord define a mesh that covers the lens region and nearby region
+		computeShapeInfo(ztop, zbottom, meshRes, lensCenter, lSemiMajorAxis, lSemiWidth, majorAxis, lensDir);
+
+		initLocalMem_CUDA_PROJECTIVE_TET_MESH();
+
+		computeInitCoord(majorAxis, lensDir, meshTransMat);
+
+		BuildTet();
+		Build_Boundary_Lines();
+
+
+		//printf("N: %d, %d\n", number, tet_number);
+
+		control_mag = 500;		//500
+		damping = 0.9;
+
+		Allocate_GPU_Memory_InAdvance();
+
+		return;
+
+	}
 
 	void Build_Boundary_Lines(){
 		l_number = tet_number * 6;
@@ -143,41 +190,8 @@ public:
 		}
 	}
 
-	//used for temperary mesh
-	void computeTempShapeInfo(float dataMin[3], float dataMax[3], int n)
-	{
-		float3 rangeDiff;
-		float gridMinInit[3];
-		float gridMaxInit[3];
-		//float marginScale = 0.1;
-		float marginScale = (length(make_float3(dataMax[0], dataMax[1], dataMax[2]) - make_float3(dataMin[0], dataMin[1], dataMin[2])) / (dataMax[2] - dataMin[2]) - 1) / 2; //make sure the z-dim of the mesh can cover the volume all the time
-		for (int i = 0; i < 3; i++){
-			float marginSize = (dataMax[i] - dataMin[i]) * marginScale;
-			gridMinInit[i] = dataMin[i] - marginSize;
-			gridMaxInit[i] = dataMax[i] + marginSize;
-		}
-		rangeDiff = make_float3(
-			gridMaxInit[0] - gridMinInit[0],
-			gridMaxInit[1] - gridMinInit[1],
-			gridMaxInit[2] - gridMinInit[2]);
-		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
-		//step = (maxDiff / n) * 1.01;
-		step = (maxDiff / n);
-
-		for (int i = 0; i < 3; i++){
-			nStep[i] = ceil((gridMaxInit[i] - gridMinInit[i]) / step) + 1;
-		}
-		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
-		gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
-		gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
-
-		cutY = nStep[1] / 2;
-		oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);	
-	}
-
 	void BuildTet()
 	{
-		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
 		
 		tetVolumeOriginal = new float[tet_number];
 		float tetVolumeCandidate1 = step*step*step / 6, tetVolumeCandidate2 = step*step*step / 3;
@@ -326,81 +340,28 @@ public:
 				}
 			}
 		}
+		cudaMalloc((void**)&dev_tetVolumeOriginal, sizeof(float)* tet_number);
+		cudaMemcpy(dev_tetVolumeOriginal, tetVolumeOriginal, sizeof(float)* tet_number, cudaMemcpyHostToDevice);
 	}
 
-	//used for temperary mesh
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n) : CUDA_PROJECTIVE_TET_MESH<TYPE>((n + 1) * (n + 1) * (n + 1)*5)
+
+
+	void computeShapeInfo(float ztop, float zbottom, int meshRes, float3 lensCenter, float lSemiMajorAxis, float lSemiWidth, float3 majorAxis, float3 lensDir)
 	{
-
-		computeTempShapeInfo(dataMin, dataMax, n);
-		BuildTet();
-		Build_Boundary_Lines();
-
-
-		printf("N: %d, %d\n", number, tet_number);
-
-		control_mag = 500;		//500
-		damping = 0.9;
-		return;
-	}
-
-	void computeShapeInfo(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir)
-	{
-		float volumeCornerx[2], volumeCornery[2], volumeCornerz[2];
-		volumeCornerx[0] = dataMin[0];
-		volumeCornery[0] = dataMin[1];
-		volumeCornerz[0] = dataMin[2];
-		volumeCornerx[1] = dataMax[0];
-		volumeCornery[1] = dataMax[1];
-		volumeCornerz[1] = dataMax[2];
-
-		float rx1, rx2, ry1, ry2;
-		float rz1, rz2;//at the direction lensDir shooting from lensCenter, the range to cover the whole region
-		rx1 = FLT_MAX, rx2 = -FLT_MAX;
-		ry1 = FLT_MAX, ry2 = -FLT_MAX;
-		rz1 = FLT_MAX, rz2 = -FLT_MAX;
-
 		float3 minorAxis = cross(lensDir, majorAxis);
-
-		//currently computing r1 and r2 aggressively. cam be more improved later
-		for (int k = 0; k < 2; k++){
-			for (int j = 0; j < 2; j++){
-				for (int i = 0; i < 2; i++){
-					float3 dir = make_float3(volumeCornerx[i], volumeCornery[j], volumeCornerz[k]) - lensCenter;
-					//float curx = dot(dir, majorAxis);
-					//if (curx < rx1)
-					//	rx1 = curx;
-					//if (curx > rx2)
-					//	rx2 = curx;
-
-					//float cury = dot(dir, minorAxis);
-					//if (cury < ry1)
-					//	ry1 = cury;
-					//if (cury > ry2)
-					//	ry2 = cury;
-
-					float curz = dot(dir, lensDir);
-					if (curz < rz1)
-						rz1 = curz;
-					if (curz > rz2)
-						rz2 = curz;
-				}
-			}
-		}
-		float zdifori = rz2 - rz1;
-		rz2 = rz2 + zdifori*0.001;
-		rz1 = rz1 - zdifori*0.001;  //to avoid numerical error
-
-		float3 rangeDiff = make_float3(2.1* lSemiMajorAxis, 2* lSemiMinorAxis / focusRatio, rz2 - rz1);
+		float3 rangeDiff = make_float3(2.1* lSemiMajorAxis, 2 * lSemiWidth, ztop - zbottom);
 		float maxDiff = std::max(rangeDiff.x, std::max(rangeDiff.y, rangeDiff.z));
 
-		const int mimNumStepEachDim = 5;
+		//the following will make the mesh satisfy two conditions:
+		//1, mimNumStepEachDim is satisfied
+		//2, at least one dimension achieves the required resolution meshRes
+		const int mimNumStepEachDim = 7;
 		bool ismeshillegal = true;
 		while (ismeshillegal){
-			step = (maxDiff / n);
-			nStep[0] = floor(rangeDiff.x / step) + 1;
-			nStep[1] = floor(rangeDiff.y / step) + 1;
-			nStep[2] = floor(rangeDiff.z / step) + 1;
+			step = (maxDiff / meshRes);
+			nStep[0] = floor(rangeDiff.x / step) + 1; nStep[0] = nStep[0] > meshRes ? meshRes : nStep[0];
+			nStep[1] = floor(rangeDiff.y / step) + 1; nStep[1] = nStep[1] > meshRes ? meshRes : nStep[1];
+			nStep[2] = floor(rangeDiff.z / step) + 1; nStep[2] = nStep[2] > meshRes ? meshRes : nStep[2];
 			if (nStep[0] >= mimNumStepEachDim && nStep[1] >= mimNumStepEachDim && nStep[2] >= mimNumStepEachDim){
 				ismeshillegal = false;
 				if (nStep[1] % 2 != 1){
@@ -412,24 +373,19 @@ public:
 			}
 			else
 			{
-				n++;
+				meshRes++;
 			}
 		}
-		std::cout << "final mesh size " << nStep[0] << " " << nStep[1] << " " << nStep[2] << "with step length " << step << std::endl;
+
+		std::cout << "final mesh size " << nStep[0] << " " << nStep[1] << " " << nStep[2] << ", with step length " << step << std::endl;
 		
 		number = nStep[0] * nStep[1] * nStep[2] + (nStep[0] - 2)*nStep[2];
-		
+		tet_number = (nStep[0] - 1) * (nStep[1] - 1) * (nStep[2] - 1) * 5;
 		cutY = nStep[1] / 2;
-
-		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis - rangeDiff.z / 2.0 * lensDir;
-
-		//gridMin = make_float3(gridMinInit[0], gridMinInit[1], gridMinInit[2]);
-		//gridMax = make_float3(gridMinInit[0] + (nStep[0] - 1) * step, gridMinInit[1] + (nStep[1] - 1) * step, gridMinInit[2] + (nStep[2] - 1) * step);
-
-		//oriMeshCenter = make_float3((gridMin.x + gridMax.x) / 2, gridMin.y + cutY * step, (gridMin.z + gridMax.z) / 2);
+		lensSpaceOriginInWorld = lensCenter - rangeDiff.x / 2.0 * majorAxis - rangeDiff.y / 2.0 * minorAxis + zbottom * lensDir;
 	}
 
-	void computeInitCoord(float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat)
+	void computeInitCoord(float3 majorAxis, float3 lensDir, glm::mat4 &meshTransMat)
 	{
 
 		float3 minorAxis = cross(lensDir, majorAxis);
@@ -459,6 +415,13 @@ public:
 				for (int k = 0; k < nStep[2]; k++){
 					idx = i * nStep[1] * nStep[2] + j * nStep[2] + k;
 
+					////code for drawing mesh with incision
+					//glm::vec4 res;
+					//if (j == cutY && i > 0 && i < nStep[0] - 1)
+					//	res = meshTransMat*glm::vec4(i * step, j * step - step*0.1, k * step, 1.0f);
+					//else
+					//	res = meshTransMat*glm::vec4(i * step, j * step, k * step, 1.0f);
+
 					glm::vec4 res = meshTransMat*glm::vec4(i * step, j * step, k * step, 1.0f);
 
 					X[3 * idx + 0] = res.x;
@@ -472,6 +435,9 @@ public:
 				for (int k = 0; k < nStep[2]; k++){
 					idx = nStep[0] * nStep[1] * nStep[2] + k* (nStep[0] - 2) + i;
 
+					////code for drawing mesh with incision
+					//glm::vec4 res = meshTransMat*glm::vec4((i + 1) * step, cutY * step + step*0.1, k * step, 1.0f);
+
 					glm::vec4 res = meshTransMat*glm::vec4((i + 1) * step, cutY * step, k * step, 1.0f);
 
 					X[3 * idx + 0] = res.x;
@@ -480,31 +446,29 @@ public:
 				}
 			}
 		}
-
-
 	}
 
 
-	LineSplitGridMesh(float dataMin[3], float dataMax[3], int n, float3 lensCenter, float lSemiMajorAxis, float lSemiMinorAxis, float3 majorAxis, float focusRatio, float3 lensDir, glm::mat4 &meshTransMat) : CUDA_PROJECTIVE_TET_MESH<TYPE>(((n + 1) * (n + 1) * (n + 1) +(n+1)*(n-1))* 5)
+
+	void MoveMesh(float3 moveDir)
 	{
-		//computeShapeInfo and computeInitCoord define a mesh that covers the lens region and nearby region
-		computeShapeInfo(dataMin, dataMax, n, lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir);
-		computeInitCoord(lensCenter, lSemiMajorAxis, lSemiMinorAxis, majorAxis, focusRatio, lensDir, meshTransMat);
-
-		BuildTet();
-		Build_Boundary_Lines();
-
-
-		printf("N: %d, %d\n", number, tet_number);
-
-		control_mag = 500;		//500
-		damping = 0.9;
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (number + threadsPerBlock - 1) / threadsPerBlock;
 		
-		Allocate_GPU_Memory_InAdvance();
-		is_Allocate_GPU_Memory_InAdvance_executed = true;
-		
-		return;
+		d_moveMeshNodes << <blocksPerGrid, threadsPerBlock >> >(dev_X, dev_X_Orig, number, moveDir);
 
+		for (int i = 0; i < number; i++){	
+			int idx = i * 3;
+			X[idx + 0] = X[idx + 0] + moveDir.x;
+			X[idx + 1] = X[idx + 1] + moveDir.y;
+			X[idx + 2] = X[idx + 2] + moveDir.z;
+		}
+	}
+
+	void UpdateMeshDevElasticity()
+	{
+		//does not work well. maybe more inner variables, which are decided by elasticity, need to be updated too
+		cudaMemcpy(dev_EL, EL, sizeof(float)*tet_number, cudaMemcpyHostToDevice);
 	}
 };
 

@@ -29,7 +29,6 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allow
 		channelDesc = cudaCreateChannelDesc(32, 32, 0, 0, cudaChannelFormatKindFloat);
 	}
 
-
 	checkCudaErrors(cudaMalloc3DArray(&content, &channelDesc, size, allowStore ? cudaArraySurfaceLoadStore : 0));
 
 	// copy data to 3D array
@@ -63,7 +62,14 @@ void Volume::GetPosRange(float3& posMin, float3& posMax)
 	posMax = dataOrigin + spacing*make_float3(size);
 }
 
-void Volume::initVolumeCuda(int allowStore){
+void Volume::initVolumeCuda(){
 	volumeCuda.VolumeCUDA_deinit();
-	volumeCuda.VolumeCUDA_init(size, values, allowStore, 1);
+	volumeCuda.VolumeCUDA_init(size, values, 1, 1); //the third parameter means allowStore or not
+	volumeCudaOri.VolumeCUDA_deinit();
+	volumeCudaOri.VolumeCUDA_init(size, values, 0, 1);
+}
+
+void Volume::reset(){
+	volumeCuda.VolumeCUDA_deinit();
+	volumeCuda.VolumeCUDA_init(size, values, 1, 1);
 }

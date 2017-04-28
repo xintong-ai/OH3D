@@ -1,41 +1,29 @@
 #ifndef SPHERE_RENDERABLE_H
 #define SPHERE_RENDERABLE_H
 
-#include <CMakeConfig.h>
-#ifdef USE_DEFORM
-#include "DeformGlyphRenderable.h"
-#else
 #include "GlyphRenderable.h"
-#endif
-
-#include <QObject>
-#include <memory>
 
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class GLSphere;
-enum COLOR_MAP;
-#ifdef USE_DEFORM
-class SphereRenderable :public DeformGlyphRenderable
-#else
+
+
 class SphereRenderable :public GlyphRenderable
-#endif
 {
 public:
 	void init() override;
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	void draw(float modelview[16], float projection[16]) override;
-	void UpdateData() override;
-	SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val);
+	SphereRenderable(std::shared_ptr<Particle> _particle);
 
-	virtual void resetColorMap(COLOR_MAP cm) override;
+	virtual void setColorMap(COLOR_MAP cm, bool isReversed = false) override;
 
 protected:
 	void initPickingDrawingObjects();
 	void drawPicking(float modelview[16], float projection[16], bool isForGlyph);
 
 private:
-	std::vector<float> val;// = nullptr;
+	//std::vector<float> val;// = nullptr;
 	std::vector<float3> sphereColor;
 	void GenVertexBuffer(int nv, float* vertex);
 	virtual void LoadShaders(ShaderProgram*& shaderProg) override;

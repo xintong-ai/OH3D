@@ -1,5 +1,3 @@
-#include "SphereRenderable.h"
-#include "glwidget.h"
 //TODO:
 //The corrent performance bottle neck is the rendering but not the displacement
 //a more efficient way to draw sphere 
@@ -8,9 +6,13 @@
 //http://tubafun.bplaced.net/public/sphere_shader.zip
 //
 
+
+#include "SphereRenderable.h"
+#include "glwidget.h"
+
 //removing the following lines will cause runtime error
 #ifdef WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 //using namespace std;
@@ -21,6 +23,7 @@
 #include "GLSphere.h"
 #include <helper_math.h>
 #include <ColorGradient.h>
+#include "Particle.h"
 
 //for linux
 #include <float.h>
@@ -28,67 +31,50 @@
 //void LoadPickingShaders(ShaderProgram*& shaderProg)
 
 
-SphereRenderable::SphereRenderable(std::vector<float4> _spherePos, std::vector<float> _val)
-//SphereRenderable::SphereRenderable(float4* _spherePos, int _sphereCnt, float* _val)
-#ifdef USE_DEFORM
-:DeformGlyphRenderable(_spherePos)
-#else
-: GlyphRenderable(_spherePos)
-#endif
+
+SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
+: GlyphRenderable(_particle)
 {
-	val = _val;
-	sphereColor.assign(_spherePos.size(), make_float3(1.0f, 1.0f, 1.0f));
-	ColorGradient cg;
-	float vMax = -FLT_MAX;
-	float vMin = FLT_MAX;
-	int n = pos.size();
-	float v = 0;
-	for (int i = 0; i < n; i++) {
-		v = val[i];
-		if (v > vMax)
-			vMax = v;
-		if (v < vMin)
-			vMin = v;
-	}
-	vMax = vMax - 0.2 * (vMax - vMin);
-	for (int i = 0; i < _spherePos.size(); i++) {
-		float valScaled = (val[i] - vMin) / (vMax - vMin);
-		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
-	}
+	sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
+	setColorMap(COLOR_MAP::RDYIGN);
 }
 
-void SphereRenderable::resetColorMap(COLOR_MAP cm)
+void SphereRenderable::setColorMap(COLOR_MAP cm, bool isReversed)
 {
-	ColorGradient cg(cm);
-	float vMax = -FLT_MAX;
-	float vMin = FLT_MAX;
-	int n = val.size();
-	float v = 0;
-	for (int i = 0; i < n; i++) {
-		v = val[i];
-		if (v > vMax)
-			vMax = v;
-		if (v < vMin)
-			vMin = v;
+	ColorGradient cg(cm, isReversed);
+	if (colorByFeature){
+		float vMax = particle->featureMax;
+		float vMin = particle->featureMin;
+		for (int i = 0; i < particle->feature.size(); i++) {
+			float valScaled = (particle->feature[i] - vMin) / (vMax - vMin);
+			cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
+		}
 	}
-	for (int i = 0; i < val.size(); i++) {
-		float valScaled = (val[i] - vMin) / (vMax - vMin);
-		cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
+	else{
+		float vMax = particle->valMax;
+		float vMin = particle->valMin;
+		for (int i = 0; i < particle->val.size(); i++) {
+			float valScaled = (particle->val[i] - vMin) / (vMax - vMin);
+			//valScaled = clamp(valScaled * 2.5-1.5, 0.0f, 1.0f); //for phi of cosmology
+			cg.getColorAtValue(valScaled, sphereColor[i].x, sphereColor[i].y, sphereColor[i].z);
+		}
 	}
 }
 
 void SphereRenderable::init()
 {
 	GlyphRenderable::init();
-	LoadShaders(glProg);
-	//m_vao = std::make_shared<QOpenGLVertexArrayObject>();
-	//m_vao->create();
+
+    m_vao = std::make_shared<QOpenGLVertexArrayObject>();
+    m_vao->create();
 
 	glyphMesh = std::make_shared<GLSphere>(1, 8);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	
+    m_vao->bind();
+    LoadShaders(glProg);
 
-	GenVertexBuffer(glyphMesh->GetNumVerts(),
-		glyphMesh->GetVerts());
+	GenVertexBuffer(glyphMesh->GetNumVerts(), glyphMesh->GetVerts());
+
 
 	initPickingDrawingObjects();
 }
@@ -149,6 +135,7 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 	void main() {
 		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+		//FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 0.5);
 	}
 	);
 
@@ -190,19 +177,22 @@ void SphereRenderable::GenVertexBuffer(int nv, float* vertex)
 
 void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
 {
+	//glBindBuffer(GL_ARRAY_BUFFER, vbo_vert), glVertexAttribPointer,glEnableVertexAttribArray, glDisableVertexAttribArray, and glBindBuffer(GL_ARRAY_BUFFER, 0) cannot be commented since they are used by VR!!!!!!!!!!!!
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
 	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
+	m_vao->bind();
 
-	for (int i = 0; i < pos.size(); i++) {
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
+	for (int i = 0; i < particle->numParticles; i++) {
 		glPushMatrix();
 
-		float4 shift = pos[i];
-		//float scale = pow(sphereSize[i], 0.333) * 0.01;
-
-		//std::cout << sphereSize[i] << " ";
-
-		//m_vao->bind();
+		float4 shift = particle->pos[i];
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -211,11 +201,11 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 
 		if (snappedGlyphId != i){
 			qgl->glUniform3fv(glProg->uniform("Ka"), 1, &sphereColor[i].x);
-			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i]);
 		}
 		else{
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.95f, 0.95f, 0.95f);
-			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * glyphSizeAdjust * 2);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+			qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * 2);
 		}
 
 		qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
@@ -233,6 +223,8 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 		//m_vao->release();
 		glPopMatrix();
 	}
+	m_vao->release();
+
 
 	qgl->glDisableVertexAttribArray(glProg->attribute("VertexPosition"));
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -242,28 +234,19 @@ void SphereRenderable::DrawWithoutProgram(float modelview[16], float projection[
 void SphereRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!updated) {
-		UpdateData();
 		updated = true;
 	}
 
-
 	RecordMatrix(modelview, projection);
-
 
 	if (!visible)
 		return;
-#ifdef USE_DEFORM
-	ComputeDisplace(modelview, projection);
-#endif
+
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
 }
 
-
-void SphereRenderable::UpdateData()
-{
-}
 
 void SphereRenderable::initPickingDrawingObjects()
 {
@@ -330,7 +313,13 @@ void SphereRenderable::drawPicking(float modelview[16], float projection[16], bo
 	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	for (int i = 0; i < pos.size(); i++) {
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
+	for (int i = 0; i < particle->numParticles; i++) {
 		//glPushMatrix();
 
 		int r, g, b;
@@ -340,18 +329,18 @@ void SphereRenderable::drawPicking(float modelview[16], float projection[16], bo
 			b = ((i + 1) & 0x00FF0000) >> 16;
 		}
 		else{
-			char c = feature[i];
+			char c = particle->feature[i];
 			r = ((c)& 0x000000FF) >> 0;
 			g = ((c)& 0x0000FF00) >> 8;
 			b = ((c)& 0x00FF0000) >> 16;
 		}
 
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 
-		qgl->glUniform1f(glPickingProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);
+		qgl->glUniform1f(glPickingProg->uniform("Scale"), glyphSizeScale[i]);
 		qgl->glUniform3fv(glPickingProg->uniform("Transform"), 1, &shift.x);
 		qgl->glUniformMatrix4fv(glPickingProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
 		qgl->glUniformMatrix4fv(glPickingProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);

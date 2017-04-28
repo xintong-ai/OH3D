@@ -1,30 +1,25 @@
 #include "ArrowRenderable.h"
-//#include <teem/ten.h>
-//http://www.sci.utah.edu/~gk/vissym04/index.html
-#include <QOpenGLFunctions>
-#include <QOpenGLVertexArrayObject>
+#include "glwidget.h"
+
 
 //removing the following lines will cause runtime error
 #ifdef WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
-#include "ShaderProgram.h"
 
-#include <memory>
-#include "glwidget.h"
-#include "helper_math.h"
+#include <QOpenGLFunctions>
+#include <QOpenGLVertexArrayObject>
+#include "ShaderProgram.h"
 #include "GLArrow.h"
+#include <helper_math.h>
 #include "ColorGradient.h"
+#include "Particle.h"
 
 using namespace std;
 
-ArrowRenderable::ArrowRenderable(vector<float4> _pos, vector<float3> _vec, vector<float> _val) :
-#ifdef USE_DEFORM
-DeformGlyphRenderable(_pos)
-#else
-GlyphRenderable(_pos)
-#endif
+ArrowRenderable::ArrowRenderable(vector<float3> _vec, std::shared_ptr<Particle> _particle) :
+GlyphRenderable(_particle)
 {
 	vecs = _vec;
 	//val = &_val; //consider about the color later
@@ -33,10 +28,10 @@ GlyphRenderable(_pos)
 	glyphMesh = std::make_shared<GLArrow>();
 	float3 orientation = glyphMesh->orientation;
 
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->numParticles; i++) {
 
 		float l = length(_vec[i]);
-		val.push_back(l);
+		particle->val.push_back(l);
 		if (l>lMax)
 			lMax = l;
 		if (l < lMin)
@@ -68,9 +63,9 @@ GlyphRenderable(_pos)
 	}
 
 	ColorGradient cg;
-	cols.resize(pos.size());
-	for (int i = 0; i < pos.size(); i++) {
-		float valRate = (val[i] - lMin) / (lMax - lMin);
+	cols.resize(particle->numParticles);
+	for (int i = 0; i < particle->numParticles; i++) {
+		float valRate = (particle->val[i] - lMin) / (lMax - lMin);
 		cg.getColorAtValue(valRate, cols[i].x, cols[i].y, cols[i].z);
 	}
 }
@@ -79,7 +74,7 @@ GlyphRenderable(_pos)
 void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 {
 
-#define GLSL(shader) "#version 150\n" #shader
+#define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 
 
@@ -127,11 +122,9 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		uniform float Shininess;
 		in vec4 eyeCoords;
 		in vec4 fragColor;
-
-		uniform float Bright;
-
 		smooth in vec3 tnorm;
 		layout(location = 0) out vec4 FragColor;
+		uniform float Bright;
 
 		vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
 			vec3 s = normalize(vec3(LightPosition - position));
@@ -153,6 +146,7 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		}
 	);
 
+	shaderProg = new ShaderProgram;
 	shaderProg->initFromStrings(vertexVS, vertexFS);
 
 	shaderProg->addAttribute("VertexPosition");
@@ -177,12 +171,15 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 
 void ArrowRenderable::init()
 {
-	if (initialized)
-		return;
 	GlyphRenderable::init();
-	glProg = new ShaderProgram;
-	LoadShaders(glProg);
 
+	m_vao = std::make_shared<QOpenGLVertexArrayObject>();
+	m_vao->create();
+
+	m_vao->bind();
+	LoadShaders(glProg);
+	
+	//GenVertexBuffer
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
 	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -212,7 +209,6 @@ void ArrowRenderable::init()
 
 	initPickingDrawingObjects();
 
-	initialized = true;
 }
 
 void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp)
@@ -230,9 +226,16 @@ void ArrowRenderable::DrawWithoutProgram(float modelview[16], float projection[1
 	qgl->glEnableVertexAttribArray(sp->attribute("VertexColor"));
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
 
-	for (int i = 0; i < pos.size(); i++) {
 
-		float4 shift = pos[i];
+	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
+	float* glyphBright = &(particle->glyphBright[0]);
+	bool isFreezingFeature = particle->isFreezingFeature;
+	int snappedGlyphId = particle->snappedGlyphId;
+	int snappedFeatureId = particle->snappedFeatureId;
+
+	for (int i = 0; i < particle->numParticles; i++) {
+
+		float4 shift = particle->pos[i];
 
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
@@ -277,27 +280,19 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
-	//if (!initialized)
-	//	return;
-
 	RecordMatrix(modelview, projection);
-#ifdef USE_DEFORM
-	ComputeDisplace(modelview, projection);
-#endif
+	
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
 }
-void ArrowRenderable::UpdateData()
-{
 
-}
 
 void ArrowRenderable::initPickingDrawingObjects()
 {
 
 	//init shader
-#define GLSL(shader) "#version 150\n" #shader
+#define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 	//using two sides shading
 	const char* vertexVS =
@@ -370,7 +365,7 @@ void ArrowRenderable::drawPicking(float modelview[16], float projection[16], boo
 	qgl->glVertexAttribPointer(glPickingProg->attribute("VertexPosition"), 4, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
 
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->numParticles; i++) {
 		//glPushMatrix();
 
 		int r, g, b;
@@ -380,13 +375,13 @@ void ArrowRenderable::drawPicking(float modelview[16], float projection[16], boo
 			b = ((i + 1) & 0x00FF0000) >> 16;
 		}
 		else{
-			char c = feature[i];
+			char c = particle->feature[i];
 			r = ((c)& 0x000000FF) >> 0;
 			g = ((c)& 0x0000FF00) >> 8;
 			b = ((c)& 0x00FF0000) >> 16;
 		}
 
-		float4 shift = pos[i];
+		float4 shift = particle->pos[i];
 		QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 		q_modelview = q_modelview.transposed();
 
@@ -399,7 +394,7 @@ void ArrowRenderable::drawPicking(float modelview[16], float projection[16], boo
 		qgl->glUniform1f(glPickingProg->uniform("b"), b / 255.0f);
 
 		float maxScaleInv = 8;
-		qgl->glUniform1f(glPickingProg->uniform("Scale"), val[i] / lMax * maxScaleInv);
+		qgl->glUniform1f(glPickingProg->uniform("Scale"), particle->val[i] / lMax * maxScaleInv);
 
 
 		glDrawArrays(GL_TRIANGLES, 0, glyphMesh->GetNumVerts());

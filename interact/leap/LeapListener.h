@@ -6,16 +6,15 @@
 #include <QVector3D>
 #include <Leap.h>
 
+
+#include "LeapInteractor.h"
+
 typedef QVector<QVector<QVector3D>> TypeArray2;
 typedef QVector<QVector3D> TypeArray;
 
-#ifdef EXPORT_QT
-#define TEST_COMMON_DLLSPEC Q_DECL_EXPORT
-#else
-#define TEST_COMMON_DLLSPEC Q_DECL_IMPORT
-#endif
+class LeapInteractor;
 
-class TEST_COMMON_DLLSPEC LeapListener : public QObject, public Leap::Listener {
+class LeapListener : public QObject, public Leap::Listener {
 	Q_OBJECT
 
 signals:
@@ -24,7 +23,9 @@ signals:
 	//void UpdatePlane(QVector3D origin, QVector3D normal);
 	void UpdateSkeletonHand(TypeArray2 fingers, TypeArray palm, float sphereRadius);
 	void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
-	void UpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
+	//void UpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);//original
+	void UpdateHands(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, int numHands);
+	void UpdateHandsNew(QVector3D rightThumbTip, QVector3D rightIndexTip, QVector3D leftThumbTip, QVector3D leftIndexTip, QVector3D rightMiddleTip, QVector3D rightRingTip, int numHands);
 	void translate2(float v);
 	void UpdateGesture(int gesture);
 
@@ -34,14 +35,18 @@ public:
 		//timer = new QTimer(this);
 		timer = new QElapsedTimer();
 		timer->start();
-	}
+	};
+
+	~LeapListener(){};
 
 	virtual void onFrame(const Leap::Controller & ctl);
 
+	void AddLeapInteractor(const char* name, void* r);
+
 private:
 	QElapsedTimer *timer;
-
-
+protected:
+	std::map<std::string, LeapInteractor*> interactors;
 };
 
 #endif	//LEAP_LISTENER_H

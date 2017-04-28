@@ -51,3 +51,22 @@ Renderable::Renderable()
 {
 	sdkCreateTimer(&timer);
 }
+
+
+void Renderable::StartRenderableTimer()
+{
+	sdkStartTimer(&timer);
+}
+
+
+void Renderable::StopRenderableTimer()
+{
+	sdkStopTimer(&timer);
+	fpsCount++;
+	if (fpsCount == fpsLimit)
+	{
+		qDebug() << "Deform time (ms):\t" << sdkGetAverageTimerValue(&timer);
+		fpsCount = 0;
+		sdkResetTimer(&timer);
+	}
+}

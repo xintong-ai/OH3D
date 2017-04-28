@@ -1,13 +1,18 @@
-DATA_PATH=D:/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
-DATA_PATH_TENSOR=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
-FEATURE_PATH=D:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
-ventricles=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
-tumor1=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_293_region_1.ply
-tumor2=D:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_295_region_3.ply
+DATA_PATH=D:/Data/FPM/smoothinglength_0.44/run11/119.vtu
+DATA_PATHdf=D:/Data/Cosmology/particle_pos
+DATA_PATH51=D:/Data/FPM/smoothinglength_0.44/run06/119.vtu
+DATA_PATH_TENSOR=F:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
+FEATURE_PATH=F:/onedrive/data/WhiteMatterExplorationData/isosurface/maskNew.raw
+ventricles=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_7_mass.ply
+tumor1=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_293_region_1.ply
+tumor2=F:/onedrive/data/WhiteMatterExplorationData/isosurface/Model_295_region_3.ply
 
 b= TYPE_VECTOR,,TYPE_TENSOR,TYPE_SCALAR
 a=D:/onedrive/data/plume/15plume3d421-126x126x512.vec
 c=D:/onedrive/data/particle/smoothinglength_0.44/run11/119.vtu
 d=D:/onedrive/data/WhiteMatterExplorationData/DTIVolume.nhdr
 e=D:/onedrive/data/WhiteMatterExplorationData/isosurface/mask.raw
-DATA_PATH222=D:/Data/FPM/smoothinglength_0.44/run11/119.vtu
+f=/media/User/OneDrive/data/particle/smoothinglength_0.44/run11/119.vtu
+gDATA_PATH=D:/Onedrive/Data/particle/smoothinglength_0.44/run15/099.vtu
+DATA_PATHs=D:/Dropbox/ShareXin/particle_pos
+DATA_PATHr=C:/Users/lc/Data/Cosmology/particle_pos2

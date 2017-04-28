@@ -8,6 +8,8 @@
 //for linux
 #include <float.h>
 #include <stdexcept>
+#include <memory>
+
 // a simple class to encapsulate a single timestep;
 // the constructor loads the timestep data from the specified file
 // into three vectors
@@ -90,7 +92,8 @@ void SolutionParticleReader::Load()
 	ts = new timestep(datafilename.c_str());
 
 	for (int i = 0; i < ts->size; i++) {
-		if (ts->concentration[i] <130 )//|| ts->concentration[i] > 147)
+		//if (ts->concentration[i] <130 )//|| ts->concentration[i] > 147)
+		if (ts->concentration[i] <thr)
 			continue;
 		//Particle p(ts->position[3 * i], ts->position[3 * i + 1], ts->position[3 * i + 2], ts->concentration[i]);
 		//particles.push_back(p);
@@ -98,4 +101,18 @@ void SolutionParticleReader::Load()
 		val.push_back(ts->concentration[i]);
 	}
 	delete ts;
+}
+
+
+void SolutionParticleReader::OutputToParticleData(std::shared_ptr<Particle> v)
+{
+	v->clear();
+
+	v->pos = pos;
+	v->posOrig = pos;
+	v->val = val;
+
+	v->numParticles = pos.size();
+	GetValRange(v->valMin, v->valMax);
+	GetPosRange(v->posMin, v->posMax);
 }

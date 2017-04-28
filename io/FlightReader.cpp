@@ -124,11 +124,11 @@ struct timestep
 	}
 };
 
-void FlightReader::Load()
+void FlightReader::Load(const char* filename)
 {
 	//ts = new timestep(datafilename.c_str());
 
-	std::ifstream       file(datafilename.c_str());
+	std::ifstream       file(filename);
 
 	CSVRow              row;
 	file >> row;
