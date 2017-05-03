@@ -37,7 +37,7 @@ class InfoGuideRenderable;
 class DeformFrameRenderable;
 class GlyphRenderable;
 struct RayCastingParameters;
-
+class ImageComputer;
 #ifdef USE_LEAP
 class LeapListener;
 namespace Leap{
@@ -66,48 +66,22 @@ private:
 	std::vector<float3> views;
 
 	std::shared_ptr<RayCastingParameters> rcp;
-	std::shared_ptr<RayCastingParameters> rcpForChannelSkel;
 
 	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
-	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
-	
-	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
-
-	//bool useLabel;
-	bool hasLabelFromFile = false;
-	std::shared_ptr<VolumeCUDA> labelVolCUDA;
-	unsigned short* labelVolLocal = 0;
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
-	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
 	std::shared_ptr<RegularInteractor> regularInteractor;
 
-	std::shared_ptr<LabelVolumeProcessor> lvProcessor;
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
-
-	std::shared_ptr<ViewpointEvaluator> ve;
 
 	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
 
-
-	//for miniature
-	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<RegularInteractor> regularInteractorMini;
-	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderableMini;
-	std::shared_ptr<GlyphRenderable> glyphRenderable;
-
-
-
 	//for main view
-	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
-	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
-	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
-	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
+	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
+	std::shared_ptr<ImageComputer> imageComputer;
 
 	//for 2d view
 	Helper helper;
@@ -155,28 +129,14 @@ private slots:
 	void ldSliderValueChanged(int);
 	void lsSliderValueChanged(int);
 
-	void isDeformEnabledClicked(bool b);
-	void isBrushingClicked();
-	void moveToOptimalBtnClicked();
-
-	void SlotOriVolumeRb(bool);
-	void SlotChannelVolumeRb(bool);
-	void SlotSkelVolumeRb(bool);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);
 
-	void zSliderValueChanged(int v);
-	void updateLabelVolBtnClicked();
-	void findGeneralOptimalBtnClicked();
-	void findNextOptimalBtnClicked();
-	void turnOffGlobalGuideBtnClicked();
-	void redrawBtnClicked();
-	void featureGrowingBtnClicked();
-	void save2dScreenBtnClicked();
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
-	void alwaysLocalGuideBtnClicked();
+	void createImgBtnClicked();
+
 };
 
 #endif

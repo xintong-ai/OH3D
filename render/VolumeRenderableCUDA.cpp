@@ -125,7 +125,7 @@ void VolumeRenderableCUDA::draw(float modelview[16], float projection[16])
 		VolumeRender_renderWithDepthInput(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, densityBonus);
 	}
 	else{
-		VolumeRender_render(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor);
+		VolumeRender_render(d_output, winWidth, winHeight, eyeInLocal, volume->size);
 	}
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));

@@ -14,7 +14,14 @@ texture<float4, 3, cudaReadModeElementType>  gradientTexFiltered;
 
 ViewpointEvaluator::ViewpointEvaluator(std::shared_ptr<RayCastingParameters> _r, std::shared_ptr<Volume> v)
 {
-	rcp = _r;
+	rcp = std::make_shared<RayCastingParameters>();
+	rcp->la = _r->la, rcp->ld = _r->ld, rcp->ls = _r->ls;
+	rcp->transFuncP1 = _r->transFuncP1, rcp->transFuncP2 = _r->transFuncP2;
+	rcp->density = _r->density;
+	rcp->maxSteps = _r->maxSteps;
+	rcp->tstep = _r->tstep; rcp->brightness = _r->brightness;
+	rcp->useColor = _r->useColor;
+
 
 	volume = v;
 

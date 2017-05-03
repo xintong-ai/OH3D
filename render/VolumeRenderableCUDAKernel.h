@@ -14,9 +14,8 @@ extern "C" {
 	void VolumeRender_init();
 	void VolumeRender_deinit();
 
-	void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
-		float density, float brightness,
-		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor);
+	void VolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);
+	void OmniVolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);
 
 	void VolumeRender_renderWithDepthInput(uint *d_output, uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, float densityBonus);
 

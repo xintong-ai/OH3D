@@ -450,9 +450,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 
 
 
-void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
-	float density, float brightness,
-	float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor)
+void VolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
 {
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
@@ -463,6 +461,161 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH,
 
 	//checkCudaErrors(cudaUnbindTexture(volumeTexValueForRC));
 	//checkCudaErrors(cudaUnbindTexture(volumeTexGradient));
+}
+
+
+__global__ void d_OmniVolumeRender_preint(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float r_eyeCircle = 0.5;
+	//const float f = 5; //focal length
+	const float r_cylinder = 10;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+
+	Ray eyeRay;
+
+	//this treatment is putting MVMatrix as seeing from the middle of left eye and right eye
+	float thetaDif = acos(r_eyeCircle / r_cylinder);//the rotation angle between  .. and ..
+	float3 viewDir = normalize(make_float3(mul(c_invMVMatrix, make_float4(0, 0, -1, 0))));
+	float3 upDir = normalize(make_float3(mul(c_invMVMatrix, make_float4(0, 1, 0, 0))));
+	float3 sideDir = cross(viewDir, upDir);
+	if (y < imageH / 2){
+		//start the image from the invert direction of viewDir
+		float rho = 2 * 3.1415926*x / (float)imageW;
+		float theta = 3.1415926 * y / (float)(imageH/2) * 0.9; //intentionally times 0.9 to avoid distraction
+
+		float3 dirFromCenter = cos(theta)*upDir + sin(theta) * (cos(rho)*(-viewDir) + sin(rho)*(-sideDir));
+		float3 pointOnCylinder = eyeInLocal + r_cylinder * dirFromCenter;
+		float3 leftEyeDirFromCenter = cos(theta)*upDir + sin(theta) * (cos(rho + thetaDif)*(-viewDir) + sin(rho + thetaDif)*(-sideDir));
+		float3 leftEye = eyeInLocal + r_eyeCircle * leftEyeDirFromCenter;
+
+		eyeRay.o = leftEye;
+		eyeRay.d = normalize(pointOnCylinder - eyeRay.o);
+	}
+	else{
+		//start the image from the invert direction of viewDir
+		float rho = 2 * 3.1415926*x / (float)imageW;
+		float theta = 3.1415926 * (y - imageH / 2) / (float)(imageH / 2) * 0.9; //intentionally times 0.9 to avoid distraction
+
+		float3 dirFromCenter = cos(theta)*upDir + sin(theta) * (cos(rho)*(-viewDir) + sin(rho)*(-sideDir));
+		float3 pointOnCylinder = eyeInLocal + r_cylinder * dirFromCenter;
+		float3 leftEyeDirFromCenter = cos(theta)*upDir + sin(theta) * (cos(rho - thetaDif)*(-viewDir) + sin(rho - thetaDif)*(-sideDir));
+		float3 leftEye = eyeInLocal + r_eyeCircle * leftEyeDirFromCenter;
+
+		eyeRay.o = leftEye;
+		eyeRay.d = normalize(pointOnCylinder - eyeRay.o);
+	}
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)//	if (!hit)
+	{
+		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		return;
+	}
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+	float3 step = eyeRay.d*tstep;
+	float lightingThr = 0.000001;
+
+	float fragDepth = 1.0;
+
+
+	for (int i = 0; i<maxSteps; i++)
+	{
+		float3 coord = pos / spacing;
+		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+
+		// lookup in transfer function texture
+		float4 col;
+
+		float3 cc;
+		float colDensity = 0;
+
+		if (useColor){
+			//for tomato
+			float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
+			cc = make_float3(ret);
+			////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
+			//colDensity = ret.w;
+			colDensity = funcRes;
+
+			////for colon
+			//	cc = GetColourColon(funcRes);
+			//colDensity = funcRes;
+		}
+		else{
+			cc = make_float3(funcRes, funcRes, funcRes);
+			colDensity = funcRes;
+		}
+
+		float3 posInWorld = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), colDensity);
+		}
+		else
+		{
+			col = make_float4(la*cc, colDensity);
+		}
+
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		t += tstep;
+
+		if (t > tfar){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		pos += step;
+	}
+
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+}
+
+void OmniVolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
+{
+	dim3 blockSize = dim3(16, 16, 1);
+	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
+
+	d_OmniVolumeRender_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);
 }
 
 
@@ -678,22 +831,22 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
 
 		if (useColor){
-			////for tomato
-			//float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
-			//cc = make_float3(ret);
-			//////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
-			////colDensity = ret.w;
-			//colDensity = funcRes;
-
-
-			//for colon
-			if (useLabel && curlabel > 0){
-				cc = make_float3(0.0f, funcRes, funcRes);
-			}
-			else{
-				cc = GetColourColon(funcRes);
-			}
+			//for tomato
+			float4 ret = GetColourTomato(clamp(sample, 0.0f, 1.0f));
+			cc = make_float3(ret);
+			////cc = GetColourTomato(clamp(funcRes, 0.0f, 1.0f));
+			//colDensity = ret.w;
 			colDensity = funcRes;
+
+
+			////for colon
+			//if (useLabel && curlabel > 0){
+			//	cc = make_float3(0.0f, funcRes, funcRes);
+			//}
+			//else{
+			//	cc = GetColourColon(funcRes);
+			//}
+			//colDensity = funcRes;
 		}
 		else{
 			cc = make_float3(funcRes, funcRes, funcRes);

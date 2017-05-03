@@ -85,6 +85,8 @@ void GLMatrixManager::UpdateModelMatrixFromDetail()
 	modeMat = modeMat * rotMat;
 	modeMat.scale(scaleEff);
 	modeMat.translate(transVec);
+
+	//std::cout << getEyeInLocal().x << " " << getEyeInLocal().y << " " << getEyeInLocal().z<<std::endl;
 	//justChanged = true;
 	updateDepthRange();
 }
