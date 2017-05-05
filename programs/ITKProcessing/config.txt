@@ -1,13 +1,13 @@
 sVOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
-sVOLUME_DATA_PATH=D:/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
 
 eVOLUME_DATA_PATH=D:/Dropbox/shareXin/MGHT2.raw
 dVOLUME_DATA_PATH=D:/Dropbox/shareXin/engine.raw
 
 dVOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec
-yVOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
+sVOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
 
 qVOLUME_DATA_PATH=D:/Dropbox/shareXin/bloodCellWall0032.raw
 sVOLUME_DATA_PATH=D:/Data/volume/Tomato.raw
-sVOLUME_DATA_PATH=D:/Dropbox/shareXin/BaselineVolume.img
-VOLUME_DATA_PATH=D:/Data/colon/DOI/colon1Crop.img
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/BaselineVolume.img
+rVOLUME_DATA_PATH=D:/Data/colon/DOI/colon1Crop.img

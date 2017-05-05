@@ -16,9 +16,12 @@
 #include <itkImage.h>
 #include <helper_timer.h>
 
+
 using namespace std;
 
-void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> channelV, std::shared_ptr<RayCastingParameters> rcp)
+const int PHASES_COUNT = 3; //phase 1 is for creating cell volume; phase 2 is for creating skeletion; phase 3 is for creating bilateral volume
+
+void computeInitCellVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> resVolume, std::shared_ptr<RayCastingParameters> rcp)
 {
 	std::cout << "computing channel volume..." << std::endl;
 
@@ -32,10 +35,10 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 			{
 				int ind = k*dataSizes.y * dataSizes.x + j*dataSizes.x + i;
 				if (v->values[ind] < rcp->transFuncP2){
-					channelV->values[ind] = 1;
+					resVolume->values[ind] = 1;
 				}
 				else{
-					channelV->values[ind] = 0;
+					resVolume->values[ind] = 0;
 				}
 			}
 		}
@@ -46,28 +49,40 @@ void computeChannelVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> cha
 }
 
 
-void computeSkel(shared_ptr<Volume> channelVolume, shared_ptr<Volume> skelVolume, int3 dims, float3 spacing, int &maxComponentMark)
+ImageType::Pointer createITKImageFromVolume(shared_ptr<Volume> volume)
 {
 	//compute skeleton volume and itk skelComponented image from the beginning
 	std::cout << "computing skeletion volume..." << std::endl;
-	const unsigned int numberOfPixels = dims.x * dims.y * dims.z;
+	const unsigned int numberOfPixels = volume->size.x * volume->size.y * volume->size.z;
 	PixelType * localBuffer = new PixelType[numberOfPixels];
 	for (int i = 0; i < numberOfPixels; i++){
-		if (channelVolume->values[i] > 0.5){
-			localBuffer[i] = 1;
-		}
-		else{
-			localBuffer[i] = 0;
-		}
+		localBuffer[i] = volume->values[i];
 	}
-	ImageType::Pointer skelComponentedImg;
-	skelComputing(localBuffer, dims, spacing, skelVolume->values, skelComponentedImg, maxComponentMark);
-	//skelVolume->initVolumeCuda();
-	std::cout << "finish computing skeletion volume..." << std::endl;
-	skelVolume->saveRawToFile("skel.raw");
-	return;
-}
+	
+	///////////////import to itk image
+	const bool importImageFilterWillOwnTheBuffer = false; //probably can change to true for faster speed?
+	typedef itk::BinaryThinningImageFilter3D< ImageType, ImageType > ThinningFilterType;
+	ImportFilterType::Pointer importFilter = ImportFilterType::New();
 
+	ImageType::SizeType imsize;
+	imsize[0] = volume->size.x;
+	imsize[1] = volume->size.y;
+	imsize[2] = volume->size.z;
+	ImportFilterType::IndexType start;
+	start.Fill(0);
+	ImportFilterType::RegionType region;
+	region.SetIndex(start);
+	region.SetSize(imsize);
+	importFilter->SetRegion(region);
+	const itk::SpacePrecisionType origin[3] = { imsize[0], imsize[1], imsize[2] };
+	importFilter->SetOrigin(origin);
+	const itk::SpacePrecisionType _spacing[3] = { volume->spacing.x, volume->spacing.y, volume->spacing.z };
+	importFilter->SetSpacing(_spacing);
+	importFilter->SetImportPointer(localBuffer, volume->size.x *  volume->size.y *  volume->size.z, importImageFilterWillOwnTheBuffer);
+	importFilter->Update();
+
+	return importFilter->GetOutput();
+}
 
 int main(int argc, char **argv)
 {
@@ -77,15 +92,18 @@ int main(int argc, char **argv)
 
 	sdkStartTimer(&timer);
 
+
+	//reading data
 	int3 dims;
 	float3 spacing;
 
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
+	//const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH")
+	dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
 	std::string subfolder;
-	
+
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	DataType volDataType = RawVolumeReader::dtUint16;
 	bool labelFromFile;
@@ -106,40 +124,39 @@ int main(int argc, char **argv)
 	}
 	inputVolume->spacing = spacing;
 
+	setParameter();
+	//computing cell volume
 
-	shared_ptr<Volume> channelVolume = std::make_shared<Volume>();
-	channelVolume->setSize(inputVolume->size);
-	channelVolume->dataOrigin = inputVolume->dataOrigin;
-	channelVolume->spacing = inputVolume->spacing;
-	computeChannelVolume(inputVolume, channelVolume, rcp);
+	shared_ptr<Volume> initCellVolume = std::make_shared<Volume>();
+	initCellVolume->setSize(inputVolume->size);
+	initCellVolume->dataOrigin = inputVolume->dataOrigin;
+	initCellVolume->spacing = inputVolume->spacing;
+	computeInitCellVolume(inputVolume, initCellVolume, rcp);
 
-	shared_ptr<Volume> skelVolume = std::make_shared<Volume>();
-	skelVolume->setSize(inputVolume->size);
-	skelVolume->dataOrigin = inputVolume->dataOrigin;
-	skelVolume->spacing = inputVolume->spacing;
-	
-	
-	int maxComponentMark; 
-	
-	computeSkel(channelVolume, skelVolume, dims, spacing, maxComponentMark);
+	ImageType::Pointer initCellImg = createITKImageFromVolume(initCellVolume);
 
-	//then, read already computed skeleton volume and itk skelComponented image
-	std::cout << "reading skeletion volume..." << std::endl;
-	std::shared_ptr<RawVolumeReader> reader;
-	reader = std::make_shared<RawVolumeReader>("skel.raw", dims, RawVolumeReader::dtFloat32);
-	reader->OutputToVolumeByNormalizedValue(skelVolume);
-	reader.reset();
-	typedef itk::ImageFileReader<ImageType> ReaderType;
-	ReaderType::Pointer readeritk = ReaderType::New();
-	readeritk->SetFileName("skelComponented.hdr");
-	readeritk->Update();
-	ImageType::Pointer connectedImg = readeritk->GetOutput();
-	
+	ImageType::Pointer connectedImg;
+		
+	int maxComponentMark;
+	refineCellVolume(initCellImg, dims, spacing, connectedImg, maxComponentMark);
 
+	if (PHASES_COUNT == 1){
+		return 1;
+	}
+
+
+	//compute skeletons
+	ImageType::Pointer skelComponentedImg;
+	std::cout << "finish computing skeletion volume..." << std::endl;
+	skelComputing(connectedImg, initCellImg, dims, spacing, skelComponentedImg, maxComponentMark);
 
 	std::vector<std::vector<float3>> viewArrays;
 	//sample the skeleton to set the views
-	findViews(connectedImg, maxComponentMark, dims, spacing, viewArrays);
+	findViews(skelComponentedImg, maxComponentMark, dims, spacing, viewArrays);
+
+	if (PHASES_COUNT == 2){
+		return 1;
+	}
 
 
 	//compute the bilateralVolume

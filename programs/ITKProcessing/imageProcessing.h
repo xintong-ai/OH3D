@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory>
 #include <numeric>
+#include <fstream>
+
 //#include <itkBinaryMorphologicalOpeningImageFilter.h>
 #include <itkBinaryBallStructuringElement.h>
 #include <itkImageFileWriter.h>
@@ -17,73 +19,91 @@
 #include "MSTAdjList.h"
 #include "Volume.h"
 
-
 #define WRITEIMAGETODISK
-
-
 
 //for itk
 typedef unsigned short PixelType;
 typedef itk::Image< PixelType, 3 > ImageType;
 typedef itk::ImportImageFilter< PixelType, 3 > ImportFilterType;
 
+std::string dataPath;
 
 //data related parameteres
 
-int radius = 4;//for 181
-//int radius = 3;//for tomato, baseline, colon
+//int radius = 4;//for 181
+int radius = 3;//for tomato, baseline, colon
 //int radius = 1;//for bloodCell
 //int radius = 0;//for engine
-
+float lengthThr = 3; //for tomato, colon
 bool removeBackground = true;	// do not filter out boundary componenets for data:  bloodCell
-bool addManualSeg = false; //previously for tomato, but later not used
-bool removeBackgroundByComponent = true;
-char foregroundFile[] = "D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img";
+bool removeBackgroundByComponent = false;  //if false, then remove background using the foreground image file, generated in other programs by other methods (e.g., Otsu’s method)
+char foregroundFile[200];
+//char foregroundFile[] = "D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img";
 //char foregroundFile[] = "D:/Data/volume/TomatoForeground.img";
 
-//float lengthThr = 10; //for cell
-float lengthThr = 3; //for tomato, colon
 
-
-
-void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* skelVolValues, ImageType::Pointer & retImgPointer, int & maxComponentMark)
+void saveITKImageAsRaw(ImageType::Pointer img, const char *fname)
 {
+	ImageType::SizeType size = img->GetLargestPossibleRegion().GetSize();
+	float* values = new float[size[0] * size[1] * size[2]];
+	for (int k = 0; k < size[2]; k++){
+		for (int j = 0; j < size[1]; j++){
+			for (int i = 0; i < size[0]; i++){
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = i; // x position
+				pixelIndex[1] = j; // y position
+				pixelIndex[2] = k; // z position
+				int v = img->GetPixel(pixelIndex);
+				if (v>0){
+					values[k*size[1] * size[0] + j*size[0] + i] = 1;
+				}
+			}
+		}
+	}
+	FILE * fp = fopen(fname, "wb");
+	std::fwrite(values, sizeof(float), size[0] * size[1] * size[2], fp);
+	fclose(fp);
+	delete[] values;
+}
 
-	///////////////import to itk image
-	const bool importImageFilterWillOwnTheBuffer = false; //probably can change to true for faster speed?
-	typedef itk::BinaryThinningImageFilter3D< ImageType, ImageType > ThinningFilterType;
-	ImportFilterType::Pointer importFilter = ImportFilterType::New();
+void setParameter()
+{
+	if (std::string(dataPath).find("181") != std::string::npos){
+		radius = 4;
+		removeBackground = true;
+		removeBackgroundByComponent = true;
+	}
+	else if (std::string(dataPath).find("Baseline") != std::string::npos){
+		radius = 3;
+		removeBackground = true;
+		removeBackgroundByComponent = false;
+		strcpy(foregroundFile, "D:/Data/MRI/DiffusionMRIData/SlicerTutorial/BaselineVolume-Foreground.img");
+	}
+	if (std::string(dataPath).find("Tomato") != std::string::npos){
+		radius = 3;
+		removeBackground = true;
+		removeBackgroundByComponent = false;
+		strcpy(foregroundFile, "D:/Data/volume/TomatoForeground.img");
+	}
+	else if (std::string(dataPath).find("colon") != std::string::npos){
+		radius = 3;
+		removeBackground = true;
+		removeBackgroundByComponent = true;
+	}
+}
 
-	ImageType::SizeType imsize;
-	imsize[0] = dims.x;
-	imsize[1] = dims.y;
-	imsize[2] = dims.z;
-	ImportFilterType::IndexType start;
-	start.Fill(0);
-	ImportFilterType::RegionType region;
-	region.SetIndex(start);
-	region.SetSize(imsize);
-	importFilter->SetRegion(region);
-	const itk::SpacePrecisionType origin[3] = { imsize[0], imsize[1], imsize[2] };
-	importFilter->SetOrigin(origin);
-	const itk::SpacePrecisionType _spacing[3] = { spacing.x, spacing.y, spacing.z };
-	importFilter->SetSpacing(_spacing);
-	importFilter->SetImportPointer(localBuffer, dims.x * dims.y * dims.z, importImageFilterWillOwnTheBuffer);
-	importFilter->Update();
-	ImageType::Pointer initChannelImg = importFilter->GetOutput();
-
-
+void refineCellVolume(ImageType::Pointer initCellImg, int3 dims, float3 spacing, ImageType::Pointer &connectedImg, int & maxComponentMark)
+{
 #ifdef WRITEIMAGETODISK
 	typedef itk::ImageFileWriter< ImageType > WriterType;
 	WriterType::Pointer writer = WriterType::New();
-	writer->SetInput(initChannelImg);
+	writer->SetInput(initCellImg);
 	writer->SetFileName("channelVol.hdr");
 	writer->Update();
 #endif
 
 	//////////////////openining
-	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>
-		StructuringElementType;
+	typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension> StructuringElementType;
 	StructuringElementType structuringElement;
 
 	ImageType::Pointer openedImage;
@@ -93,49 +113,13 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 		structuringElement.CreateStructuringElement();
 		typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
 		OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
-		openingFilter->SetInput(initChannelImg);
+		openingFilter->SetInput(initCellImg);
 		openingFilter->SetKernel(structuringElement);
 		openingFilter->Update();
 		openedImage = openingFilter->GetOutput();
 	}
 	else{
-		openedImage = initChannelImg;
-		//for (int k = 0; k < dims.z; k++){
-		//	for (int j = 0; j < dims.y; j++){
-		//		for (int i = 0; i < dims.x; i++){
-		//			ImageType::IndexType pixelIndex;
-		//			pixelIndex[0] = i; // x position
-		//			pixelIndex[1] = j; // y position
-		//			pixelIndex[2] = k; // z position
-		//			int v = openedImage->GetPixel(pixelIndex);
-		//			if (v>0){
-		//				openedImage->SetPixel(pixelIndex, 1);
-		//			}
-		//		}
-		//	}
-		//}
-	}
-
-	if (removeBackground && addManualSeg){
-		//currently only for Tomato data
-		std::shared_ptr<Volume> segVolume = std::make_shared<Volume>(false);
-		std::shared_ptr<RawVolumeReader> readerSeg;
-		readerSeg = std::make_shared<RawVolumeReader>("D:/Data/volume/Tomato_ManualSeg.img", dims, RawVolumeReader::dtUint16);
-		readerSeg->OutputToVolumeByNormalizedValue(segVolume);
-		readerSeg.reset();
-		for (int k = 0; k < dims.z; k++){
-			for (int j = 0; j < dims.y; j++){
-				for (int i = 0; i < dims.x; i++){
-					ImageType::IndexType pixelIndex;
-					pixelIndex[0] = i; // x position
-					pixelIndex[1] = j; // y position
-					pixelIndex[2] = k; // z position
-					if (segVolume->values[k*dims.x*dims.y + j*dims.x + i]>0.5){
-						openedImage->SetPixel(pixelIndex, 0);
-					}
-				}
-			}
-		}
+		openedImage = initCellImg;
 	}
 
 #ifdef WRITEIMAGETODISK
@@ -148,23 +132,22 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	//////////////compute connected components
 	typedef itk::ConnectedComponentImageFilter <ImageType, ImageType >
 		ConnectedComponentImageFilterType;
-	ConnectedComponentImageFilterType::Pointer connected =
+	ConnectedComponentImageFilterType::Pointer connectedFilter =
 		ConnectedComponentImageFilterType::New();
-	connected->SetInput(openedImage);
-	connected->Update();
+	connectedFilter->SetInput(openedImage);
+	connectedFilter->Update();
 #ifdef WRITEIMAGETODISK
-	writer->SetInput(connected->GetOutput());
+	writer->SetInput(connectedFilter->GetOutput());
 	writer->SetFileName("cp.hdr");
 	writer->Update();
 #endif
 
 
 	////////////////filter out small and boundary componenets
-	ImageType::Pointer connectedImg = connected->GetOutput();
+	connectedImg = connectedFilter->GetOutput();
 
-	int numObj = connected->GetObjectCount();
-	std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
-
+	int numObj = connectedFilter->GetObjectCount();
+	std::cout << "Number of objects: " << numObj << std::endl;
 
 	////first, filter out small componenets
 	std::vector<int> objCount(numObj + 1, 0);
@@ -203,28 +186,18 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 	}
 
 	//save cleaned channel, which is the cell volume used for ImmersiveDeformVis
-	std::shared_ptr<Volume> cleanedChannelVolume = std::make_shared<Volume>();
-	cleanedChannelVolume->setSize(dims);
-	cleanedChannelVolume->dataOrigin = make_float3(0, 0, 0);
-	cleanedChannelVolume->spacing = spacing;
-	for (int k = 0; k < dims.z; k++){
-		for (int j = 0; j < dims.y; j++){
-			for (int i = 0; i < dims.x; i++){
-				ImageType::IndexType pixelIndex;
-				pixelIndex[0] = i; // x position
-				pixelIndex[1] = j; // y position
-				pixelIndex[2] = k; // z position
-				int v = connectedImg->GetPixel(pixelIndex);
-				if (v>0){
-					cleanedChannelVolume->values[k*dims.x*dims.y + j*dims.x + i] = 1;
-				}
-			}
-		}
-	}
-	cleanedChannelVolume->saveRawToFile("cleanedChannel.raw");
+	
+	saveITKImageAsRaw(connectedImg, "cleanedChannel.raw");
 
+	maxComponentMark = numObj;
+}
+
+void skelComputing(ImageType::Pointer connectedImg, ImageType::Pointer initCellImg, int3 dims, float3 spacing, ImageType::Pointer & retImgPointer, int & numObj)
+{
 	////then, filter out boundary componenets by components
-	if (removeBackground && removeBackgroundByComponent){
+
+	if (removeBackground && removeBackgroundByComponent){  //directly remove components connecting to the boundary
+		std::cout << "removing background by components..." << std::endl;
 		std::vector<bool> atOutside(numObj + 1, 0);
 		for (int k = 0; k < dims.z; k += dims.z - 1){
 			for (int j = 0; j < dims.y; j++){
@@ -275,7 +248,7 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 					ImageType::IndexType pixelIndex;
 					pixelIndex[0] = i; // x position
 					pixelIndex[1] = j; // y position
-					 pixelIndex[2] = k; // z position
+					pixelIndex[2] = k; // z position
 					int v = connectedImg->GetPixel(pixelIndex);
 					if (atOutside[v]){
 						connectedImg->SetPixel(pixelIndex, 0);
@@ -284,75 +257,95 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 			}
 		}
 	}
-	else if (removeBackground && !removeBackgroundByComponent){
-		//currently for Baseline data
-		
+	else if (removeBackground){ 
+		//this case, remove background using the foreground image file, generated in other programs by other methods (e.g., Otsu’s method)
 		unsigned short* foregroundSeg = new unsigned short[dims.x*dims.y*dims.z];
 		FILE * fp = fopen(foregroundFile, "rb");
 		fread(foregroundSeg, sizeof(unsigned short), dims.x*dims.y*dims.z, fp);
 		fclose(fp);
-		for (int k = 1; k < dims.z-1; k++){
-			for (int j = 0; j < dims.y; j++){
-				for (int i = 0; i < dims.x; i++){
-					ImageType::IndexType pixelIndex;
-					pixelIndex[0] = i; // x position
-					pixelIndex[1] = j; // y position
-					pixelIndex[2] = k; // z position
-					if (foregroundSeg[k*dims.x*dims.y + j*dims.x + i] == 0) {
-						initChannelImg->SetPixel(pixelIndex, 0);
+		
+		//modify the initCellImg to exclude background, then redo the opening, componenet-analysis, and small-component-filtering again
+		//the reason we redo the processings again is that the foreground mask may cut one component in the connectImg into separated pieces
+		if (std::string(dataPath).find("Baseline") != std::string::npos || std::string(dataPath).find("Tomato") != std::string::npos){
+			for (int k = 1; k < dims.z - 1; k++){
+				for (int j = 0; j < dims.y; j++){
+					for (int i = 0; i < dims.x; i++){
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = i; // x position
+						pixelIndex[1] = j; // y position
+						pixelIndex[2] = k; // z position
+						if (foregroundSeg[k*dims.x*dims.y + j*dims.x + i] == 0) {
+							initCellImg->SetPixel(pixelIndex, 0);
+						}
+					}
+				}
+			}
+
+			//for these tow datasets, Otsu’s method gives too many false positive voxels at the topmost and the bottommost z slices, because the scanned objects are cut off there. Also even for the true positive voxels, they still cannot represent actual shape because they are cutted off, so we do not want this to affect the skeletonization, since it will lead to useless skeleton
+			for (int k = 0; k < dims.z; k += dims.z - 1){
+				for (int j = 0; j < dims.y; j++){
+					for (int i = 0; i < dims.x; i++){
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = i; // x position
+						pixelIndex[1] = j; // y position
+						pixelIndex[2] = k; // z position
+						initCellImg->SetPixel(pixelIndex, 0);
 					}
 				}
 			}
 		}
-		for (int k = 0; k < dims.z; k += dims.z-1){
-			for (int j = 0; j < dims.y; j++){
-				for (int i = 0; i < dims.x; i++){
-					ImageType::IndexType pixelIndex;
-					pixelIndex[0] = i; // x position
-					pixelIndex[1] = j; // y position
-					pixelIndex[2] = k; // z position
-					initChannelImg->SetPixel(pixelIndex, 0);	
+		else{
+			for (int k = 0; k < dims.z; k++){
+				for (int j = 0; j < dims.y; j++){
+					for (int i = 0; i < dims.x; i++){
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = i; // x position
+						pixelIndex[1] = j; // y position
+						pixelIndex[2] = k; // z position
+						if (foregroundSeg[k*dims.x*dims.y + j*dims.x + i] == 0) {
+							initCellImg->SetPixel(pixelIndex, 0);
+						}
+					}
 				}
 			}
 		}
+		
 
 		//redo the opening, connecting and small component removal from the beginning
+		ImageType::Pointer openedImage;
 		if (radius > 0)
 		{
+			typedef itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension> StructuringElementType;
+			StructuringElementType structuringElement;
+			typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
+
 			structuringElement.SetRadius(radius);
 			structuringElement.CreateStructuringElement();
 			typedef itk::GrayscaleMorphologicalOpeningImageFilter< ImageType, ImageType, StructuringElementType > OpeningFilterType;
 			OpeningFilterType::Pointer openingFilter = OpeningFilterType::New();
-			openingFilter->SetInput(initChannelImg);
+			openingFilter->SetInput(initCellImg);
 			openingFilter->SetKernel(structuringElement);
 			openingFilter->Update();
 			openedImage = openingFilter->GetOutput();
 		}
 		else{
-			openedImage = initChannelImg;
+			openedImage = initCellImg;
 		}
-
-//#ifdef WRITEIMAGETODISK
-//		writer->SetInput(openedImage);
-//		writer->SetFileName("opened.hdr");
-//		writer->Update();
-//#endif
-
-		connected->SetInput(openedImage);
-		connected->Update();
-//#ifdef WRITEIMAGETODISK
-//		writer->SetInput(connected->GetOutput());
-//		writer->SetFileName("cp.hdr");
-//		writer->Update();
-//#endif
-
-		connectedImg = connected->GetOutput();
-
-		numObj = connected->GetObjectCount();
-		std::cout << "Number of objects: " << connected->GetObjectCount() << std::endl;
 		
+		typedef itk::ConnectedComponentImageFilter <ImageType, ImageType >
+			ConnectedComponentImageFilterType;
+		ConnectedComponentImageFilterType::Pointer connectedFilter =
+			ConnectedComponentImageFilterType::New();
+		connectedFilter->SetInput(openedImage);
+		connectedFilter->Update();
+
+		connectedImg = connectedFilter->GetOutput();
+
+		numObj = connectedFilter->GetObjectCount();
+		std::cout << "Number of objects: " << numObj << std::endl;
+
 		////filter out small componenets again
-		objCount.assign(numObj+1, 0);
+		std::vector<int> objCount(numObj + 1, 0);
 		for (int k = 0; k < dims.z; k++){
 			for (int j = 0; j < dims.y; j++){
 				for (int i = 0; i < dims.x; i++){
@@ -367,9 +360,10 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 				}
 			}
 		}
-		//for (int i = 0; i <= numObj; i++){
-		//	std::cout << objCount[i] << std::endl;
-		//}
+		std::cout << "before skeletonization, component count: " << std::endl;
+		for (int i = 0; i <= numObj; i++){
+			std::cout << objCount[i] << std::endl;
+		}
 
 		int thr = 1000;
 		for (int k = 0; k < dims.z; k++){
@@ -386,93 +380,91 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 				}
 			}
 		}
-
-		////just for tomato data, remove by boundary again
-		//std::vector<bool> atOutside(numObj + 1, 0);
-		//for (int k = 0; k < dims.z; k += dims.z - 1){
-		//	for (int j = 0; j < dims.y; j++){
-		//		for (int i = 0; i < dims.x; i++){
-		//			ImageType::IndexType pixelIndex;
-		//			pixelIndex[0] = i; // x position
-		//			pixelIndex[1] = j; // y position
-		//			pixelIndex[2] = k; // z position
-		//			int v = connectedImg->GetPixel(pixelIndex);
-		//			if (v>0){
-		//				atOutside[v] = true;
-		//			}
-		//		}
-		//	}
-		//}
-		//for (int k = 0; k < dims.z; k++){
-		//	for (int j = 0; j < dims.y; j += dims.y - 1){
-		//		for (int i = 0; i < dims.x; i++){
-		//			ImageType::IndexType pixelIndex;
-		//			pixelIndex[0] = i; // x position
-		//			pixelIndex[1] = j; // y position
-		//			pixelIndex[2] = k; // z position
-		//			int v = connectedImg->GetPixel(pixelIndex);
-		//			if (v>0){
-		//				atOutside[v] = true;
-		//			}
-		//		}
-		//	}
-		//}
-		//for (int k = 0; k < dims.z; k++){
-		//	for (int j = 0; j < dims.y; j++){
-		//		for (int i = 0; i < dims.x; i += dims.x - 1){
-		//			ImageType::IndexType pixelIndex;
-		//			pixelIndex[0] = i; // x position
-		//			pixelIndex[1] = j; // y position
-		//			pixelIndex[2] = k; // z position
-		//			int v = connectedImg->GetPixel(pixelIndex);
-		//			if (v>0){
-		//				atOutside[v] = true;
-		//			}
-		//		}
-		//	}
-		//}
-		//for (int k = 0; k < dims.z; k++){
-		//	for (int j = 0; j < dims.y; j++){
-		//		for (int i = 0; i < dims.x; i++){
-		//			ImageType::IndexType pixelIndex;
-		//			pixelIndex[0] = i; // x position
-		//			pixelIndex[1] = j; // y position
-		//			pixelIndex[2] = k; // z position
-		//			int v = connectedImg->GetPixel(pixelIndex);
-		//			if (atOutside[v]){
-		//				connectedImg->SetPixel(pixelIndex, 0);
-		//			}
-		//		}
-		//	}
-		//}
-
+		
+		if (std::string(dataPath).find("Tomato") != std::string::npos){
+			//just for tomato data, remove by boundary again, since otsu's method not perfect
+			std::vector<bool> atOutside(numObj + 1, 0);
+			for (int k = 0; k < dims.z; k += dims.z - 1){
+				for (int j = 0; j < dims.y; j++){
+					for (int i = 0; i < dims.x; i++){
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = i; // x position
+						pixelIndex[1] = j; // y position
+						pixelIndex[2] = k; // z position
+						int v = connectedImg->GetPixel(pixelIndex);
+						if (v>0){
+							atOutside[v] = true;
+						}
+					}
+				}
+			}
+			for (int k = 0; k < dims.z; k++){
+				for (int j = 0; j < dims.y; j += dims.y - 1){
+					for (int i = 0; i < dims.x; i++){
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = i; // x position
+						pixelIndex[1] = j; // y position
+						pixelIndex[2] = k; // z position
+						int v = connectedImg->GetPixel(pixelIndex);
+						if (v>0){
+							atOutside[v] = true;
+						}
+					}
+				}
+			}
+			for (int k = 0; k < dims.z; k++){
+				for (int j = 0; j < dims.y; j++){
+					for (int i = 0; i < dims.x; i += dims.x - 1){
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = i; // x position
+						pixelIndex[1] = j; // y position
+						pixelIndex[2] = k; // z position
+						int v = connectedImg->GetPixel(pixelIndex);
+						if (v>0){
+							atOutside[v] = true;
+						}
+					}
+				}
+			}
+			for (int k = 0; k < dims.z; k++){
+				for (int j = 0; j < dims.y; j++){
+					for (int i = 0; i < dims.x; i++){
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = i; // x position
+						pixelIndex[1] = j; // y position
+						pixelIndex[2] = k; // z position
+						int v = connectedImg->GetPixel(pixelIndex);
+						if (atOutside[v]){
+							connectedImg->SetPixel(pixelIndex, 0);
+						}
+					}
+				}
+			}
+		}
 	}
 #ifdef WRITEIMAGETODISK
+	typedef itk::ImageFileWriter< ImageType > WriterType;
+	WriterType::Pointer writer = WriterType::New();
 	writer->SetInput(connectedImg);
-	writer->SetFileName("cpNew.hdr");
+	writer->SetFileName("cpNoBackground.hdr");
 	writer->Update();
 #endif
 
+	
 
 	////////////////compute skeleton
+	typedef itk::BinaryThinningImageFilter3D< ImageType, ImageType > ThinningFilterType;
 	ThinningFilterType::Pointer thinningFilter = ThinningFilterType::New();
-	thinningFilter->SetInput(connectedImg); //note that connectedImg is not binary 
+	thinningFilter->SetInput(connectedImg); //note that connectedImg is not binary
 	thinningFilter->Update();
 #ifdef WRITEIMAGETODISK
 	writer->SetInput(thinningFilter->GetOutput());
 	writer->SetFileName("skel.hdr");
 	writer->Update();
 #endif
+	retImgPointer = thinningFilter->GetOutput(); //now the skeleton image is binary image
 
-	/////////////set function output
-
-	ImageType::Pointer skelImg = thinningFilter->GetOutput();
-	PixelType* skelRes = skelImg->GetBufferPointer();
-	for (int i = 0; i < dims.x*dims.y*dims.z; i++)
-	{
-		skelVolValues[i] = skelRes[i];
-	}
-
+	saveITKImageAsRaw(retImgPointer, "skel.raw");
 
 
 	//////////////componented skeleton image
@@ -483,24 +475,22 @@ void skelComputing(PixelType * localBuffer, int3 dims, float3 spacing, float* sk
 				pixelIndex[0] = i; // x position
 				pixelIndex[1] = j; // y position
 				pixelIndex[2] = k; // z position
-				if (skelImg->GetPixel(pixelIndex) < 1){
-					connectedImg->SetPixel(pixelIndex, 0);
+				//if (skelImg->GetPixel(pixelIndex) < 1){
+				//	connectedImg->SetPixel(pixelIndex, 0);
+				//}
+				if (retImgPointer->GetPixel(pixelIndex) > 0){
+					retImgPointer->SetPixel(pixelIndex, connectedImg->GetPixel(pixelIndex));
 				}
 			}
 		}
 	}
 #ifdef WRITEIMAGETODISK
-	writer->SetInput(connectedImg);
+	writer->SetInput(retImgPointer);
 	writer->SetFileName("skelComponented.hdr");
 	writer->Update();
 #endif
 
-
-
-	retImgPointer = connectedImg;
-	maxComponentMark = numObj;
 }
-
 
 void findViews(ImageType::Pointer connectedImg, int maxComponentMark, int3 dims, float3 spacing, std::vector<std::vector<float3>> &viewArrays)
 {
