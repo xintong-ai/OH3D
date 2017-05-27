@@ -43,6 +43,8 @@
 #include "VolumeRenderableCUDAKernel.h"
 
 
+bool channelSkelViewReady = false;
+
 Window::Window()
 {
 	setWindowTitle(tr("Egocentric VR Volume Visualization"));
@@ -99,7 +101,6 @@ Window::Window()
 		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
 	}
 
-	bool channelSkelViewReady = true;
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
 		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);

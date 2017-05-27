@@ -1,6 +1,7 @@
 #ifndef POLYMESH_H
 #define POLYMESH_H
 
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,29 +14,12 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 
-#include "ply.h"
-
-
-typedef struct Vertex {
-	float x, y, z;
-	float u, v, w;
-} Vertex;
-
-typedef struct Face {
-	unsigned int count;
-	unsigned int *vertices;
-	float u, v, w;
-} Face;
-
-
-
+//currently only support triangles
 
 class PolyMesh
 {
 public:
 
-	Vertex** vertices = 0;
-	Face** faces = 0;
 	unsigned int vertexcount;
 	unsigned int facecount;
 	int vertexnormals = 0;
@@ -51,245 +35,13 @@ public:
 		if (indices) delete[]indices;
 	}
 
-	void read(const char* fname){
-		FILE * pFile = fopen(fname, "r");
-		if (pFile == NULL) {
-			perror("Error opening file");
-			exit(EXIT_SUCCESS);
-		}
-		
-		PlyFile* input;
+	void read(const char* fname);
 
-		// get the ply structure and open the file
-		input = read_ply(pFile);
-
-		// read in the data
-		store_ply(input,
-			&vertices, &faces,
-			&vertexcount, &facecount,
-			&vertexnormals, &facenormals);
-
-		// close the file
-		close_ply(input);
-
-
-		find_center(cx, cy, cz, x_min, x_max,
-			y_min, y_max, z_min, z_max);
-		printf("geometry center = %f %f %f \n", cx, cy, cz);
-		printf("geometry bound = x: %f %f y: %f %f z: %f %f\n",
-			x_min, x_max, y_min, y_max, z_min, z_max);
-
-		reorganize();
-	}
-
-	
 private:
-
-
-
 	float cx, cy, cz;
 	float x_min, x_max, y_min, y_max, z_min, z_max;
 
-	void store_ply(PlyFile* input, Vertex ***vertices, Face ***faces,
-		unsigned int* vertexcount, unsigned int* facecount,
-		int* vertexnormals, int* facenormals) {
-
-		char* string_list[7] = {
-			"x", "y", "z", "u", "v", "w", "vertex_index"
-		};
-
-		int i, j;
-
-		// go through the element types
-		for (i = 0; i < input->num_elem_types; i = i + 1) {
-			int count;
-
-			// setup the element for reading and get the element count
-			char* element = setup_element_read_ply(input, i, &count);
-
-			// get vertices
-			if (strcmp("vertex", element) == 0) {
-				*vertices = (Vertex**)malloc(sizeof(Vertex)* count);
-				*vertexcount = count;
-
-				// run through the properties and store them
-				for (j = 0; j < input->elems[i]->nprops; j = j + 1) {
-					PlyProperty* property = input->elems[i]->props[j];
-					PlyProperty setup;
-
-					if (strcmp("x", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[0];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Vertex, x);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-					}
-					else if (strcmp("y", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[1];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Vertex, y);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-					}
-					else if (strcmp("z", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[2];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Vertex, z);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-					}
-					else if (strcmp("u", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[3];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Vertex, u);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-						*vertexnormals = 1;
-					}
-					else if (strcmp("v", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[4];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Vertex, v);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-						*vertexnormals = 1;
-					}
-					else if (strcmp("w", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[5];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Vertex, w);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-						*vertexnormals = 1;
-					}
-					// dunno what it is
-					else {
-						fprintf(stderr, "unknown property type found in %s: %s\n",
-							element, property->name);
-					}
-				}
-
-				// do this if you want to grab the other data
-				// list_pointer = get_other_properties_ply
-				//                (input, offsetof(Vertex, struct_pointer));
-
-				// copy the data
-				for (j = 0; j < count; j = j + 1) {
-					(*vertices)[j] = (Vertex*)malloc(sizeof(Vertex));
-
-					get_element_ply(input, (void*)((*vertices)[j]));
-				}
-			}
-			// get faces
-			else if (strcmp("face", element) == 0) {
-				*faces = (Face**)malloc(sizeof(Face)* count);
-				*facecount = count;
-
-				// run through the properties and store them
-				for (j = 0; j < input->elems[i]->nprops; j = j + 1) {
-					PlyProperty* property = input->elems[i]->props[j];
-					PlyProperty setup;
-
-					if (strcmp("vertex_index", property->name) == 0 &&
-						property->is_list == PLY_LIST) {
-
-						setup.name = string_list[6];
-						setup.internal_type = Uint32;
-						setup.offset = offsetof(Face, vertices);
-						setup.count_internal = Uint32;
-						setup.count_offset = offsetof(Face, count);
-
-						setup_property_ply(input, &setup);
-					}
-					else if (strcmp("u", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[3];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Face, u);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-						*facenormals = 1;
-					}
-					else if (strcmp("v", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[4];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Face, v);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-						*facenormals = 1;
-					}
-					else if (strcmp("w", property->name) == 0 &&
-						property->is_list == PLY_SCALAR) {
-
-						setup.name = string_list[5];
-						setup.internal_type = Float32;
-						setup.offset = offsetof(Face, w);
-						setup.count_internal = 0;
-						setup.count_offset = 0;
-
-						setup_property_ply(input, &setup);
-						*facenormals = 1;
-					}
-					// dunno what it is
-					else {
-						fprintf(stderr, "unknown property type found in %s: %s\n",
-							element, property->name);
-					}
-				}
-
-				// do this if you want to grab the other data
-				// list_pointer = get_other_properties_ply
-				//                (input, offsetof(Face, struct_pointer));
-
-				// copy the data
-				for (j = 0; j < count; j = j + 1) {
-					(*faces)[j] = (Face*)malloc(sizeof(Face));
-
-					get_element_ply(input, (void*)((*faces)[j]));
-				}
-			}
-			// who knows?
-			else {
-				fprintf(stderr, "unknown element type found: %s\n", element);
-			}
-		}
-
-		// if you want to grab the other data do this
-		// get_other_element_ply(input);
-	}
-
-
+	/*
 	void find_center(float& cx, float& cy, float& cz,
 		float& minx, float& maxx, float&miny,
 		float &maxy, float &minz, float & maxz)
@@ -317,25 +69,7 @@ private:
 		miny = min_y; maxy = max_y;
 		minz = min_z; maxz = max_z;
 	}
-
-	void reorganize(){
-		vertexCoords = new float[3 * vertexcount];
-		vertexNorms = new float[3 * vertexcount];
-		indices = new unsigned[3 * facecount];
-		for (int i = 0; i < vertexcount; i++) {
-			vertexCoords[3 * i] = vertices[i]->x;
-			vertexCoords[3 * i + 1] = vertices[i]->y;
-			vertexCoords[3 * i + 2] = vertices[i]->z;
-			vertexNorms[3 * i] = vertices[i]->u;
-			vertexNorms[3 * i + 1] = vertices[i]->v;
-			vertexNorms[3 * i + 2] = vertices[i]->w;
-		}
-		for (int i = 0; i < facecount; i++) {
-			indices[3 * i] = faces[i]->vertices[0];
-			indices[3 * i + 1] = faces[i]->vertices[1];
-			indices[3 * i + 2] = faces[i]->vertices[2];
-		}
-	}
+	*/
 
 };
 #endif

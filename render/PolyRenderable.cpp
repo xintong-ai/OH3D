@@ -134,7 +134,6 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 
 	glMatrixMode(GL_MODELVIEW);
 
-
 	glProg->use();
 	m_vao->bind();
 
@@ -156,8 +155,9 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 	qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
-	glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
+	//glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
 	//glDrawElements(GL_TRIANGLES, m->numElements, GL_UNSIGNED_INT, m->indices);
+	glDrawElements(GL_TRIANGLES, polyMesh->facecount*3, GL_UNSIGNED_INT, polyMesh->indices);
 
 	//glBindVertexArray(0);
 	m_vao->release();

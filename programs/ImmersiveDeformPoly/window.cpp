@@ -192,7 +192,7 @@ Window::Window()
 	polyRenderable = std::make_shared<PolyRenderable>(meshReader.get());
 	polyRenderable->polyMesh = polyMesh;
 	
-	//openGL->AddRenderable("mm", polyRenderable.get());
+	openGL->AddRenderable("mm", polyRenderable.get());
 
 
 
@@ -295,134 +295,7 @@ Window::Window()
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
 
-	///////////////ray casting settings
-	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
-	//controlLayout->addWidget(transFuncP1SliderLabelLit);
-	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
-	transFuncP1LabelSlider->setRange(0, 100);
-	transFuncP1LabelSlider->setValue(rcp->transFuncP1 * 100);
-	connect(transFuncP1LabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP1LabelSliderValueChanged(int)));
-	transFuncP1Label = new QLabel(QString::number(rcp->transFuncP1));
-	QHBoxLayout *transFuncP1Layout = new QHBoxLayout;
-	transFuncP1Layout->addWidget(transFuncP1LabelSlider);
-	transFuncP1Layout->addWidget(transFuncP1Label);
-	//controlLayout->addLayout(transFuncP1Layout);
-
-	QLabel *transFuncP2SliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
-	//controlLayout->addWidget(transFuncP2SliderLabelLit);
-	QSlider *transFuncP2LabelSlider = new QSlider(Qt::Horizontal);
-	transFuncP2LabelSlider->setRange(0, 100);
-	transFuncP2LabelSlider->setValue(rcp->transFuncP2 * 100);
-	connect(transFuncP2LabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP2LabelSliderValueChanged(int)));
-	transFuncP2Label = new QLabel(QString::number(rcp->transFuncP2));
-	QHBoxLayout *transFuncP2Layout = new QHBoxLayout;
-	transFuncP2Layout->addWidget(transFuncP2LabelSlider);
-	transFuncP2Layout->addWidget(transFuncP2Label);
-	//controlLayout->addLayout(transFuncP2Layout);
-
-	QLabel *brLabelLit = new QLabel("Brightness of the volume: ");
-	//controlLayout->addWidget(brLabelLit);
-	QSlider* brSlider = new QSlider(Qt::Horizontal);
-	brSlider->setRange(0, 40);
-	brSlider->setValue(rcp->brightness * 20);
-	connect(brSlider, SIGNAL(valueChanged(int)), this, SLOT(brSliderValueChanged(int)));
-	brLabel = new QLabel(QString::number(rcp->brightness));
-	QHBoxLayout *brLayout = new QHBoxLayout;
-	brLayout->addWidget(brSlider);
-	brLayout->addWidget(brLabel);
-	//controlLayout->addLayout(brLayout);
-
-	QLabel *dsLabelLit = new QLabel("Density of the volume: ");
-	//controlLayout->addWidget(dsLabelLit);
-	QSlider* dsSlider = new QSlider(Qt::Horizontal);
-	dsSlider->setRange(0, 100);
-	dsSlider->setValue(rcp->density * 20);
-	connect(dsSlider, SIGNAL(valueChanged(int)), this, SLOT(dsSliderValueChanged(int)));
-	dsLabel = new QLabel(QString::number(rcp->density));
-	QHBoxLayout *dsLayout = new QHBoxLayout;
-	dsLayout->addWidget(dsSlider);
-	dsLayout->addWidget(dsLabel);
-	//controlLayout->addLayout(dsLayout);
-
-	QLabel *laSliderLabelLit = new QLabel("Coefficient for Ambient Lighting: ");
-	//controlLayout->addWidget(laSliderLabelLit);
-	QSlider* laSlider = new QSlider(Qt::Horizontal);
-	laSlider->setRange(0, 50);
-	laSlider->setValue(rcp->la * 10);
-	connect(laSlider, SIGNAL(valueChanged(int)), this, SLOT(laSliderValueChanged(int)));
-	laLabel = new QLabel(QString::number(rcp->la));
-	QHBoxLayout *laLayout = new QHBoxLayout;
-	laLayout->addWidget(laSlider);
-	laLayout->addWidget(laLabel);
-	//controlLayout->addLayout(laLayout);
-
-	QLabel *ldSliderLabelLit = new QLabel("Coefficient for Diffusial Lighting: ");
-	//controlLayout->addWidget(ldSliderLabelLit);
-	QSlider* ldSlider = new QSlider(Qt::Horizontal);
-	ldSlider->setRange(0, 50);
-	ldSlider->setValue(rcp->ld * 10);
-	connect(ldSlider, SIGNAL(valueChanged(int)), this, SLOT(ldSliderValueChanged(int)));
-	ldLabel = new QLabel(QString::number(rcp->ld));
-	QHBoxLayout *ldLayout = new QHBoxLayout;
-	ldLayout->addWidget(ldSlider);
-	ldLayout->addWidget(ldLabel);
-	//controlLayout->addLayout(ldLayout);
-
-	QLabel *lsSliderLabelLit = new QLabel("Coefficient for Specular Lighting: ");
-	//controlLayout->addWidget(lsSliderLabelLit);
-	QSlider* lsSlider = new QSlider(Qt::Horizontal);
-	lsSlider->setRange(0, 50);
-	lsSlider->setValue(rcp->ls * 10);
-	connect(lsSlider, SIGNAL(valueChanged(int)), this, SLOT(lsSliderValueChanged(int)));
-	lsLabel = new QLabel(QString::number(rcp->ls));
-	QHBoxLayout *lsLayout = new QHBoxLayout;
-	lsLayout->addWidget(lsSlider);
-	lsLayout->addWidget(lsLabel);
-	//controlLayout->addLayout(lsLayout);
-
-	QLabel *transFuncP1SecondSliderLabelLit = new QLabel("Second Higher Cut Off");
-	QSlider *transFuncP1SecondLabelSlider = new QSlider(Qt::Horizontal);
-	transFuncP1SecondLabelSlider->setRange(0, 100);
-	transFuncP1SecondLabelSlider->setValue(rcp->secondCutOffHigh * 100);
-	connect(transFuncP1SecondLabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP1SecondLabelSliderValueChanged(int)));
-	transFuncP1SecondLabel = new QLabel(QString::number(rcp->secondCutOffHigh));
-	QHBoxLayout *transFuncP1SecondLayout = new QHBoxLayout;
-	transFuncP1SecondLayout->addWidget(transFuncP1SecondLabelSlider);
-	transFuncP1SecondLayout->addWidget(transFuncP1SecondLabel);
-
-	QLabel *transFuncP2SecondSliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
-	QSlider *transFuncP2SecondLabelSlider = new QSlider(Qt::Horizontal);
-	transFuncP2SecondLabelSlider->setRange(0, 100);
-	transFuncP2SecondLabelSlider->setValue(rcp->secondCutOffLow* 100);
-	connect(transFuncP2SecondLabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP2SecondLabelSliderValueChanged(int)));
-	transFuncP2SecondLabel = new QLabel(QString::number(rcp->secondCutOffLow));
-	QHBoxLayout *transFuncP2SecondLayout = new QHBoxLayout;
-	transFuncP2SecondLayout->addWidget(transFuncP2SecondLabelSlider);
-	transFuncP2SecondLayout->addWidget(transFuncP2SecondLabel);
-
-	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
-	QVBoxLayout *rcLayout = new QVBoxLayout;
-	rcLayout->addWidget(transFuncP1SliderLabelLit);
-	rcLayout->addLayout(transFuncP1Layout);
-	rcLayout->addWidget(transFuncP2SliderLabelLit);
-	rcLayout->addLayout(transFuncP2Layout);
-	rcLayout->addWidget(brLabelLit);
-	rcLayout->addLayout(brLayout);
-	rcLayout->addWidget(dsLabelLit);
-	rcLayout->addLayout(dsLayout);
-	rcLayout->addWidget(laSliderLabelLit);
-	rcLayout->addLayout(laLayout);
-	rcLayout->addWidget(ldSliderLabelLit);
-	rcLayout->addLayout(ldLayout);
-	rcLayout->addWidget(lsSliderLabelLit);
-	rcLayout->addLayout(lsLayout);
-	rcGroupBox->setLayout(rcLayout);
-	rcLayout->addWidget(transFuncP1SecondSliderLabelLit);
-	rcLayout->addLayout(transFuncP1SecondLayout);
-	rcLayout->addWidget(transFuncP2SecondSliderLabelLit);
-	rcLayout->addLayout(transFuncP2SecondLayout);
-
-	controlLayout->addWidget(rcGroupBox);
+	
 
 	controlLayout->addStretch();
 
@@ -432,87 +305,7 @@ Window::Window()
 
 
 
-	//////////////////////////miniature
-	QVBoxLayout *assistLayout = new QVBoxLayout;
-	QLabel *miniatureLabel = new QLabel("miniature");
-	//assistLayout->addWidget(miniatureLabel);
-
-	openGLMini = std::make_shared<GLWidget>(matrixMgrMini);
-
-	QSurfaceFormat format2;
-	format2.setDepthBufferSize(24);
-	format2.setStencilBufferSize(8);
-	format2.setVersion(2, 0);
-	format2.setProfile(QSurfaceFormat::CoreProfile);
-	openGLMini->setFormat(format2);
-
-	matrixMgrRenderableMini = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	matrixMgrRenderableMini->renderPart = 2;
-	openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
-
-
-
-
-	volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
-	volumeRenderableMini->rcp = rcpMini; 
-	volumeRenderableMini->setBlending(true, 50);
-	openGLMini->AddRenderable("4volume", volumeRenderableMini.get());
-	regularInteractorMini = std::make_shared<RegularInteractor>();
-	regularInteractorMini->setMatrixMgr(matrixMgrMini);
-	openGLMini->AddInteractor("1regular", regularInteractorMini.get());
-
-	assistLayout->addWidget(openGLMini.get(), 3);
-
-	//helper.setData(inputVolume, labelVolLocal);
-	//GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
-	//assistLayout->addWidget(openGL2D, 0);
-	//QTimer *timer = new QTimer(this);
-	//connect(timer, &QTimer::timeout, openGL2D, &GLWidgetQtDrawing::animate);
-	//timer->start(5);
-
-
-	QLabel *zSliderLabelLit = new QLabel("Z index: ");
-	QSlider *zSlider = new QSlider(Qt::Horizontal);
-	zSlider->setRange(0, inputVolume->size.z);
-	zSlider->setValue(helper.z);
-	connect(zSlider, SIGNAL(valueChanged(int)), this, SLOT(zSliderValueChanged(int)));
-	QHBoxLayout *zLayout = new QHBoxLayout;
-	zLayout->addWidget(zSliderLabelLit);
-	zLayout->addWidget(zSlider);
-	assistLayout->addLayout(zLayout);
-
-	QPushButton *redrawBtn = new QPushButton("Redraw the Label");
-	assistLayout->addWidget(redrawBtn);
-	connect(redrawBtn, SIGNAL(clicked()), this, SLOT(redrawBtnClicked()));
-
-	QPushButton *updateLabelVolBtn = new QPushButton("Find optimal for Label");
-	assistLayout->addWidget(updateLabelVolBtn);
-	connect(updateLabelVolBtn, SIGNAL(clicked()), this, SLOT(updateLabelVolBtnClicked()));
-
-	QPushButton *findGeneralOptimalBtn = new QPushButton("Find general optimal");
-	assistLayout->addWidget(findGeneralOptimalBtn);
-	connect(findGeneralOptimalBtn, SIGNAL(clicked()), this, SLOT(findGeneralOptimalBtnClicked()));
-
-	//QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
-	//isBrushingCb->setChecked(sbInteractor->isActive);
-	//assistLayout->addWidget(isBrushingCb);
-	//connect(isBrushingCb, SIGNAL(clicked()), this, SLOT(isBrushingClicked()));
-
-	QPushButton *moveToOptimalBtn = new QPushButton("Move to the Optimal Viewpoint");
-	assistLayout->addWidget(moveToOptimalBtn);
-	connect(moveToOptimalBtn, SIGNAL(clicked()), this, SLOT(moveToOptimalBtnClicked()));
-
-	//QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
-	//assistLayout->addWidget(doTourBtn);
-	//connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
-
-	QPushButton *turnOffGlobalGuideBtn = new QPushButton("Turn Off GLobal Guide");
-	assistLayout->addWidget(turnOffGlobalGuideBtn);
-	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
-
-	mainLayout->addLayout(assistLayout, 1);
-//openGL->setFixedSize(600, 600);
-//openGLMini->setFixedSize(300, 300);
+	
 
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);
