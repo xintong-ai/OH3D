@@ -10,6 +10,7 @@
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 #include "ShaderProgram.h"
+#include "Particle.h"
 
 #include <memory>
 #include "glwidget.h"
@@ -153,7 +154,7 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 	int firstVertex = 0;
 	int firstIndex = 0;
 
-	for (int i = 0; i < pos.size(); i++) {
+	for (int i = 0; i < particle->pos.size(); i++) {
 		glPushMatrix();
 		//m_vao->bind();
 
@@ -162,8 +163,8 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 
 		float3 cen = actor->DataCenter();
 		qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, std::max(std::max(cen.x, cen.y), cen.z) * 2, 1);
-		//qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
-		if (i == snappedGlyphId)
+		
+		/*if (i == snappedGlyphId)
 			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 1.0f, 0.3f);
 		else if (isFreezingFeature && snappedFeatureId <= 0 && feature[i] > 0){
 			qgl->glUniform3f(glProg->uniform("Ka"), 1.0f, 0.3f, 1.0f);
@@ -186,7 +187,7 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 			//}
 			//qgl->glUniform3f(glProg->uniform("Ka"), kar, kag, kab);
 		}
-		else
+		else*/
 			qgl->glUniform3f(glProg->uniform("Ka"), 0.8f, 0.8f, 0.8f);
 
 
@@ -194,9 +195,11 @@ void SQRenderable::DrawWithoutProgram(float modelview[16], float projection[16],
 		qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 		qgl->glUniform1f(glProg->uniform("Shininess"), 1);
 
-		qgl->glUniform1f(glProg->uniform("Bright"), glyphBright[i]);
-		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &pos[i].x);
-		qgl->glUniform1f(glProg->uniform("Scale"), glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
+		qgl->glUniform1f(glProg->uniform("Bright"), particle->glyphBright[i]);
+		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &particle->pos[i].x);
+
+		float glyphSizeAdjust = 1.0f;//glyphSizeAdjust is used when a particle is picked or highlighted, change its size?
+		qgl->glUniform1f(glProg->uniform("Scale"), particle->glyphSizeScale[i] * (1 - glyphSizeAdjust) + glyphSizeAdjust);// 1);///*sphereSize[i] * */glyphSizeScale[i]);
 		//the data() returns array in column major, so there is no need to do transpose.
 		qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, q_modelview.data());
 		qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
@@ -232,8 +235,6 @@ void SQRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
-	ComputeDisplace(modelview, projection);
-
 	glProg->use();
 	DrawWithoutProgram(modelview, projection, glProg);
 	glProg->disable();
@@ -245,14 +246,19 @@ void SQRenderable::UpdateData()
 
 }
 
-SQRenderable::SQRenderable(vector<float4> _pos, vector<float> _val) :
-GlyphRenderable(_pos)
+SQRenderable::SQRenderable(std::shared_ptr<TensorParticle> p) :
+GlyphRenderable(p)
+//SQRenderable::SQRenderable(vector<float4> _pos, vector<float> _val) :
+//GlyphRenderable(_pos)
 {
-	val = _val;
+	//deal with it later
+	//sphereColor.assign(particle->numParticles, make_float3(1.0f, 1.0f, 1.0f));
+	//setColorMap(COLOR_MAP::RDYIGN);
+
 	/* input variables */
-	for (int i = 0; i < pos.size(); i++) {
-		double ten[7] = { val[7 * i], val[7 * i + 1], val[7 * i + 2], 
-			val[7 * i + 3], val[7 * i + 4], val[7 * i + 5], val[7 * i + 6] }; /* tensor coefficients */
+	for (int i = 0; i < p->pos.size(); i++) {
+		double ten[7] = { p->tensorVal[7 * i], p->tensorVal[7 * i + 1], p->tensorVal[7 * i + 2],
+			p->tensorVal[7 * i + 3], p->tensorVal[7 * i + 4], p->tensorVal[7 * i + 5], p->tensorVal[7 * i + 6] }; /* tensor coefficients */
 		double eps = 1e-4; /* small value >0; defines the smallest tensor
 						   * norm at which tensor orientation is still meaningful */
 
@@ -392,7 +398,7 @@ void SQRenderable::initPickingDrawingObjects()
 }
 
 void SQRenderable::drawPicking(float modelview[16], float projection[16], bool isForGlyph)
-{
+{/*
 	RecordMatrix(modelview, projection);
 
 	glPickingProg->use();
@@ -451,5 +457,5 @@ void SQRenderable::drawPicking(float modelview[16], float projection[16], bool i
 
 
 	glPickingProg->disable();
-	
+	*/
 }

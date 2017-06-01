@@ -3,7 +3,9 @@
 
 #include "TeemVolumeReader.h"
 #include <vector>
+#include <memory>
 
+class TensorParticle;
 class DTIVolumeReader :public TeemVolumeReader
 {
 public:
@@ -27,6 +29,8 @@ public:
 	void GetSamples(std::vector<float4>& _pos, std::vector<float>& _val);
 	void GetSamplesWithFeature(std::vector<float4>& _pos, std::vector<float>& _val, std::vector<char>& _feature);
 	//float* GetEigenValue();
+	void OutputToParticleData(std::shared_ptr<TensorParticle> v);
+
 private:
 	void EigenAnalysis();
 
@@ -35,6 +39,9 @@ private:
 	float3* majorEigenvec = nullptr;
 	float* fracAnis = nullptr;
 	float3* colors = nullptr;
+
+
+	
 };
 
 #endif

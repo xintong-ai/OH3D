@@ -4,7 +4,11 @@
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
-#include "Displace.h"
+#include "ScreenLensDisplaceProcessor.h"// "Displace.h"
+#include "Lens.h"
+
+
+//#define USE_PARTICLE
 
 #ifdef USE_PARTICLE
 #include "SphereRenderable.h"
@@ -16,11 +20,12 @@
 //#include "VecReader.h"
 //#include "ArrowRenderable.h"
 #include "DataMgr.h"
-#include "ModelGridRenderable.h"
-#include <ModelGrid.h>
+//#include "ModelGridRenderable.h"
+//#include <ModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "MeshReader.h"
+#include "Particle.h"
 
 #ifdef USE_LEAP
 #include <LeapListener.h>
@@ -56,18 +61,10 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 	
 	//QSizePolicy fixedPolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-	std::shared_ptr<Reader> reader;
+	std::shared_ptr<DTIVolumeReader> reader;
 
-	//DATA_TYPE dataType = DATA_TYPE::TYPE_PARTICLE; //DATA_TYPE::TYPE_VECTOR;//DATA_TYPE::TYPE_TENSOR; //
-	//if ("TYPE_PARTICLE" == dataMgr->GetConfig("DATA_TYPE")){
-	//	dataType = DATA_TYPE::TYPE_PARTICLE;
-	//}
-	//else if ("TYPE_VECTOR" == dataMgr->GetConfig("DATA_TYPE")){
-	//	dataType = DATA_TYPE::TYPE_VECTOR;
-	//}
-	//else if ("TYPE_TENSOR" == dataMgr->GetConfig("DATA_TYPE")){
-	//	dataType = DATA_TYPE::TYPE_TENSOR;
-	//}
+	inputParticle = std::make_shared<TensorParticle>();
+
 #ifdef USE_PARTICLE
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
 	reader = std::make_shared<ParticleReader>(dataPath.c_str());
@@ -81,17 +78,19 @@ Window::Window()
 	std::vector<float4> pos;
 	std::vector<float> val;
 
-	//if (((DTIVolumeReader*)reader.get())->LoadFeature(dataMgr->GetConfig("FEATURE_PATH").c_str())){
-	if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
-			std::vector<char> feature;
+	if (false){//existing in old prog
+	//if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
+		/*std::vector<char> feature;
 		((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
 		glyphRenderable = std::make_shared<SQRenderable>(pos, val);
-		glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);
+		glyphRenderable->SetFeature(feature, ((DTIVolumeReader*)reader.get())->featureCenter);*/
 	}
 	else
 	{
-		((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		glyphRenderable = std::make_shared<SQRenderable>(pos, val);
+		//((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
+		((DTIVolumeReader*)reader.get())->OutputToParticleData(inputParticle);
+		
+		glyphRenderable = std::make_shared<SQRenderable>(inputParticle);
 	}
 
 	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
@@ -107,16 +106,21 @@ Window::Window()
 
 	//	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 	//}
-	std::cout << "number of rendered glyphs: " << glyphRenderable->GetNumOfGlyphs() << std::endl;
+	std::cout << "number of rendered glyphs: " << inputParticle->pos.size() << std::endl;
 
 	/********GL widget******/
+	float3 posMin, posMax;
+	reader->GetPosRange(posMin, posMax);
+	gridRenderable = std::make_shared<GridRenderable>(64);
+	//matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
 #else
-	matrixMgr = std::make_shared<GLMatrixManager>(false);
+	//matrixMgr = std::make_shared<GLMatrixManager>(false);
+	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 #endif
 	openGL = std::make_shared<GLWidget>(matrixMgr);
-	lensRenderable = std::make_shared<LensRenderable>();
+	lensRenderable = std::make_shared<LensRenderable>(&lenses);
 	//lensRenderable->SetDrawScreenSpace(false);
 #ifdef USE_OSVR
 		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
@@ -134,18 +138,15 @@ Window::Window()
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
 
-	float3 posMin, posMax;
-	reader->GetPosRange(posMin, posMax);
-	gridRenderable = std::make_shared<GridRenderable>(64);
-	matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
-	modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
-	modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
-	glyphRenderable->SetModelGrid(modelGrid.get());
+	
+	//modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
+	//modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
+	//glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddRenderable("lenses", lensRenderable.get());
 	openGL->AddRenderable("grid", gridRenderable.get());
-	openGL->AddRenderable("model", modelGridRenderable.get());
+	//openGL->AddRenderable("model", modelGridRenderable.get());
 #ifndef USE_PARTICLE
 	MeshReader *meshReader;
 	meshReader = new MeshReader();
@@ -272,13 +273,13 @@ void Window::AddLens()
 
 void Window::AddLineLens()
 {
-	lensRenderable->AddLineBLens();
+	lensRenderable->AddLineLens();
 }
 
 
 void Window::AddCurveBLens()
 {
-	lensRenderable->AddCurveBLens();
+	lensRenderable->AddCurveLens();
 }
 
 //void Window::animate()
@@ -292,7 +293,7 @@ void Window::AddCurveBLens()
 
 void Window::SlotToggleGrid(bool b)
 {
-	modelGridRenderable->SetVisibility(b);
+	//modelGridRenderable->SetVisibility(b);
 }
 
 Window::~Window() {
@@ -329,64 +330,64 @@ void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, in
 #endif
 void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
-	lensRenderable->isSnapToGlyph = b;
-	if (!b){
-		glyphRenderable->SetSnappedGlyphId(-1);
-	}
-	else{
-		usingFeatureSnappingCheck->setChecked(false);
-		SlotToggleUsingFeatureSnapping(false);
-		usingFeaturePickingCheck->setChecked(false);
-		SlotTogglePickingFeature(false);
-	}
+	//lensRenderable->isSnapToGlyph = b;
+	//if (!b){
+	//	glyphRenderable->SetSnappedGlyphId(-1);
+	//}
+	//else{
+	//	usingFeatureSnappingCheck->setChecked(false);
+	//	SlotToggleUsingFeatureSnapping(false);
+	//	usingFeaturePickingCheck->setChecked(false);
+	//	SlotTogglePickingFeature(false);
+	//}
 }
 
 void Window::SlotTogglePickingGlyph(bool b)
 {
-	glyphRenderable->isPickingGlyph = b;
-	if (b){
-		usingFeatureSnappingCheck->setChecked(false);
-		SlotToggleUsingFeatureSnapping(false);
-		usingFeaturePickingCheck->setChecked(false);
-		SlotTogglePickingFeature(false);
-	}
+	//glyphRenderable->isPickingGlyph = b;
+	//if (b){
+	//	usingFeatureSnappingCheck->setChecked(false);
+	//	SlotToggleUsingFeatureSnapping(false);
+	//	usingFeaturePickingCheck->setChecked(false);
+	//	SlotTogglePickingFeature(false);
+	//}
 }
 
 void Window::SlotToggleFreezingFeature(bool b)
 {
-	glyphRenderable->isFreezingFeature = b;
-	glyphRenderable->RecomputeTarget();
+	//glyphRenderable->isFreezingFeature = b;
+	//glyphRenderable->RecomputeTarget();
 }
 
 void Window::SlotToggleUsingFeatureSnapping(bool b)
 {
-	lensRenderable->isSnapToFeature = b;
-	if (!b){
-		glyphRenderable->SetSnappedFeatureId(-1);
-		glyphRenderable->RecomputeTarget();
-	}
-	else{
-		usingGlyphSnappingCheck->setChecked(false);
-		SlotToggleUsingGlyphSnapping(false);
-		usingGlyphPickingCheck->setChecked(false);
-		SlotTogglePickingGlyph(false);
-	}
+	//lensRenderable->isSnapToFeature = b;
+	//if (!b){
+	//	glyphRenderable->SetSnappedFeatureId(-1);
+	//	glyphRenderable->RecomputeTarget();
+	//}
+	//else{
+	//	usingGlyphSnappingCheck->setChecked(false);
+	//	SlotToggleUsingGlyphSnapping(false);
+	//	usingGlyphPickingCheck->setChecked(false);
+	//	SlotTogglePickingGlyph(false);
+	//}
 }
 
 void Window::SlotTogglePickingFeature(bool b)
 {
-	glyphRenderable->isPickingFeature = b;
-	if (b){
-		usingGlyphSnappingCheck->setChecked(false);
-		SlotToggleUsingGlyphSnapping(false);
-		usingGlyphPickingCheck->setChecked(false);
-		SlotTogglePickingGlyph(false);
-		featuresLw->setEnabled(true);
-	}
-	else{
-		featuresLw->clearSelection();
-		featuresLw->setEnabled(false);
-	}
+	//glyphRenderable->isPickingFeature = b;
+	//if (b){
+	//	usingGlyphSnappingCheck->setChecked(false);
+	//	SlotToggleUsingGlyphSnapping(false);
+	//	usingGlyphPickingCheck->setChecked(false);
+	//	SlotTogglePickingGlyph(false);
+	//	featuresLw->setEnabled(true);
+	//}
+	//else{
+	//	featuresLw->clearSelection();
+	//	featuresLw->setEnabled(false);
+	//}
 }
 
 void Window::SlotSaveState()
@@ -412,43 +413,43 @@ void Window::SlotToggleFeaturePickingFinished()
 
 void Window::SlotDeformModeChanged(bool clicked)
 {
-	if (radioDeformScreen->isChecked()){
-		openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
-	}
-	else if (radioDeformObject->isChecked()){
-		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
-	}
+	//if (radioDeformScreen->isChecked()){
+	//	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
+	//}
+	//else if (radioDeformObject->isChecked()){
+	//	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+	//}
 }
 
 void Window::SlotFeaturesLwRowChanged(int currentRow)
 {
-	if (currentRow == 0){
-		polyFeature0->isSnapped = true;
-		polyFeature1->isSnapped = false;
-		polyFeature2->isSnapped = false;
-		glyphRenderable->SetSnappedFeatureId(1);
-		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow];// polyFeature0->GetPolyCenter();
-		lensRenderable->SnapLastLens();
-	}
-	else if (currentRow == 1){
-		polyFeature0->isSnapped = false;
-		polyFeature1->isSnapped = true;
-		polyFeature2->isSnapped = false;
-		glyphRenderable->SetSnappedFeatureId(2);
-		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature1->GetPolyCenter();
-		lensRenderable->SnapLastLens();
-	}
-	else if (currentRow == 2){
-		polyFeature0->isSnapped = false;
-		polyFeature1->isSnapped = false;
-		polyFeature2->isSnapped = true;
-		glyphRenderable->SetSnappedFeatureId(3); 
-		lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature2->GetPolyCenter();
-		lensRenderable->SnapLastLens();
-	}
-	glyphRenderable->RecomputeTarget();
-	featuresLw->setCurrentRow(-1);
-	usingFeaturePickingCheck->setChecked(false);
-	featuresLw->setEnabled(false);
+	//if (currentRow == 0){
+	//	polyFeature0->isSnapped = true;
+	//	polyFeature1->isSnapped = false;
+	//	polyFeature2->isSnapped = false;
+	//	glyphRenderable->SetSnappedFeatureId(1);
+	//	lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow];// polyFeature0->GetPolyCenter();
+	//	lensRenderable->SnapLastLens();
+	//}
+	//else if (currentRow == 1){
+	//	polyFeature0->isSnapped = false;
+	//	polyFeature1->isSnapped = true;
+	//	polyFeature2->isSnapped = false;
+	//	glyphRenderable->SetSnappedFeatureId(2);
+	//	lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature1->GetPolyCenter();
+	//	lensRenderable->SnapLastLens();
+	//}
+	//else if (currentRow == 2){
+	//	polyFeature0->isSnapped = false;
+	//	polyFeature1->isSnapped = false;
+	//	polyFeature2->isSnapped = true;
+	//	glyphRenderable->SetSnappedFeatureId(3); 
+	//	lensRenderable->snapPos = glyphRenderable->featureCenter[currentRow]; //lensRenderable->snapPos = polyFeature2->GetPolyCenter();
+	//	lensRenderable->SnapLastLens();
+	//}
+	//glyphRenderable->RecomputeTarget();
+	//featuresLw->setCurrentRow(-1);
+	//usingFeaturePickingCheck->setChecked(false);
+	//featuresLw->setEnabled(false);
 }
 

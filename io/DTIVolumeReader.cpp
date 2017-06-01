@@ -1,4 +1,5 @@
 #include "DTIVolumeReader.h"
+#include "Particle.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <helper_math.h>
@@ -147,4 +148,20 @@ void DTIVolumeReader::GetSamplesWithFeature(std::vector<float4>& _pos, std::vect
 			}
 		}
 	}
+}
+
+void DTIVolumeReader::OutputToParticleData(std::shared_ptr<TensorParticle> v)
+{
+	v->clear();
+
+	GetSamples(v->pos, v->tensorVal);
+	v->posOrig = v->pos;
+
+	//v->pos = pos;
+	//v->posOrig = pos;
+	//v->val = val;
+	v->val.resize(v->pos.size(), 1.0f); //dummy values
+
+	v->numParticles = v->pos.size();
+	v->updateMaxMinValAndPos();
 }

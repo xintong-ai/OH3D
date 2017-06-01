@@ -28,6 +28,8 @@ class ModelGridRenderable;
 class ModelGrid;
 class PolyRenderable;
 class QListWidget;
+class TensorParticle;
+class Lens;
 
 //#define USE_PARTICLE
 
@@ -49,6 +51,7 @@ public:
 
 private:
     std::shared_ptr<GLWidget> openGL;
+	std::shared_ptr<TensorParticle> inputParticle;
 	Cubemap* cubemap;
 	QTimer *aTimer;
 	const int nScale = 20;
@@ -88,6 +91,9 @@ private:
 
 	PolyRenderable * polyFeature0, *polyFeature1, *polyFeature2;
 	QListWidget *featuresLw = NULL;
+
+	std::vector<Lens*> lenses; //can change Lens* to shared pointer, to avoid manually deleting
+
 private slots:
 	void AddLens();
 	void AddLineLens();

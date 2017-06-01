@@ -121,7 +121,7 @@ target_link_libraries(${PROJECT_NAME}
 endif()
 
 if(USE_OSVR)
-	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
+	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)d
 endif()
 
 endif()

@@ -65,4 +65,12 @@ public:
 private:
 
 };
+
+
+class TensorParticle :public Particle
+{
+public:
+	std::vector<float> tensorVal; //the size is 7 times the commonly used std::vector<float> val
+};
+
 #endif

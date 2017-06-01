@@ -4,11 +4,12 @@
 #include "GlyphRenderable.h"
 #include <memory>
 
+class TensorParticle;
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class SQRenderable :public GlyphRenderable
 {
-	std::vector < float > val; // the 7 floating point number tensor values.
+	//std::vector < float > val; // the 7 floating point number tensor values.
 	std::vector<float4> verts;
 	std::vector<int> nVerts;
 	std::vector<float3> normals;
@@ -21,11 +22,12 @@ class SQRenderable :public GlyphRenderable
 	unsigned int vbo_normals;
 
 public:
-	SQRenderable(std::vector<float4> _pos, std::vector < float > _val);
+	//SQRenderable(std::vector<float4> _pos, std::vector < float > _val);
+	SQRenderable(std::shared_ptr<TensorParticle> p);
 	void init() override;
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	void draw(float modelview[16], float projection[16]) override;
-	void UpdateData() override;
+	void UpdateData();// override;
 
 
 protected:
