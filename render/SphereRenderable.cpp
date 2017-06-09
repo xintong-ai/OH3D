@@ -30,8 +30,6 @@
 
 //void LoadPickingShaders(ShaderProgram*& shaderProg)
 
-
-
 SphereRenderable::SphereRenderable(std::shared_ptr<Particle> _particle)
 : GlyphRenderable(_particle)
 {
@@ -87,56 +85,57 @@ void SphereRenderable::LoadShaders(ShaderProgram*& shaderProg)
 	const char* vertexVS =
 		GLSL(
 		layout(location = 0) in vec3 VertexPosition;
-	//layout(location = 1) in vec3 VertexNormal;
-	smooth out vec3 tnorm;
-	out vec4 eyeCoords;
+		//layout(location = 1) in vec3 VertexNormal;
+		smooth out vec3 tnorm;
+		out vec4 eyeCoords;
 
-	uniform mat4 ModelViewMatrix;
-	uniform mat3 NormalMatrix;
-	uniform mat4 ProjectionMatrix;
-	uniform vec3 Transform;
-	uniform float Scale;
-	void main()
-	{
-		mat4 MVP = ProjectionMatrix * ModelViewMatrix;
-		eyeCoords = ModelViewMatrix *
-			vec4(VertexPosition, 1.0);
-		tnorm = normalize(NormalMatrix * VertexPosition);
-		gl_Position = MVP * vec4(VertexPosition * (Scale * 0.08) + Transform, 1.0);
-	}
+		uniform mat4 ModelViewMatrix;
+		uniform mat3 NormalMatrix;
+		uniform mat4 ProjectionMatrix;
+
+		uniform vec3 Transform;
+		uniform float Scale;
+		
+		void main()
+		{
+			mat4 MVP = ProjectionMatrix * ModelViewMatrix;
+			eyeCoords = ModelViewMatrix * vec4(VertexPosition, 1.0);
+			tnorm = normalize(NormalMatrix * VertexPosition);
+			gl_Position = MVP * vec4(VertexPosition * (Scale * 0.08) + Transform, 1.0);
+		}
 	);
 
 	const char* vertexFS =
 		GLSL(
 		uniform vec4 LightPosition; // Light position in eye coords.
-	uniform vec3 Ka; // Diffuse reflectivity
-	uniform vec3 Kd; // Diffuse reflectivity
-	uniform vec3 Ks; // Diffuse reflectivity
-	uniform float Shininess;
-	in vec4 eyeCoords;
-	smooth in vec3 tnorm;
-	layout(location = 0) out vec4 FragColor;
-	uniform float Bright;
+		uniform vec3 Ka; // Diffuse reflectivity
+		uniform vec3 Kd; // Diffuse reflectivity
+		uniform vec3 Ks; // Diffuse reflectivity
+		uniform float Shininess;
+		in vec4 eyeCoords;
+		smooth in vec3 tnorm;
+		//layout(location = 0) 
+		out	vec4 FragColor;
+		uniform float Bright;
 
+		vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
+			vec3 s = normalize(vec3(LightPosition - position));
+			vec3 v = normalize(-position.xyz);
+			vec3 r = reflect(-s, normal);
+			vec3 ambient = a;// Ka * 0.8;
+			float sDotN = max(dot(s, normal), 0.0);
+			vec3 diffuse = Kd * sDotN;
+			vec3 spec = vec3(0.0);
+			if (sDotN > 0.0)
+				spec = Ks *
+				pow(max(dot(r, v), 0.0), Shininess);
+			return ambient + diffuse + spec;
+		}
 
-	vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
-		vec3 s = normalize(vec3(LightPosition - position));
-		vec3 v = normalize(-position.xyz);
-		vec3 r = reflect(-s, normal);
-		vec3 ambient = a;// Ka * 0.8;
-		float sDotN = max(dot(s, normal), 0.0);
-		vec3 diffuse = Kd * sDotN;
-		vec3 spec = vec3(0.0);
-		if (sDotN > 0.0)
-			spec = Ks *
-			pow(max(dot(r, v), 0.0), Shininess);
-		return ambient + diffuse + spec;
-	}
-
-	void main() {
-		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
-		//FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 0.5);
-	}
+		void main() {
+			FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+			//FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 0.5);
+		}
 	);
 
 	shaderProg = new ShaderProgram;
@@ -246,7 +245,7 @@ void SphereRenderable::draw(float modelview[16], float projection[16])
 
 void SphereRenderable::initPickingDrawingObjects()
 {
-
+	/*
 	//init shader
 #define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
@@ -296,6 +295,7 @@ void SphereRenderable::initPickingDrawingObjects()
 	qgl->glBufferData(GL_ARRAY_BUFFER, glyphMesh->GetNumVerts() * sizeof(float) * 3, glyphMesh->GetVerts(), GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+	*/
 }
 
 

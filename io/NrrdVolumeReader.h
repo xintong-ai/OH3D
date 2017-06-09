@@ -22,13 +22,13 @@ inline float3 operator*(matrix3x3 a, float3 b)
 	return ret;
 }
 
-class TeemVolumeReader
+class NrrdVolumeReader
 {
 public:
 	void LoadNRRD(const char* filename);
 	void Load();
 
-	TeemVolumeReader(const char* filename);
+	NrrdVolumeReader(const char* filename);
 	
 	int GetNumFields() { return numFields; }
 	
@@ -77,7 +77,7 @@ public:
 
 	float3 GetDataPos(int3 p);
 
-	~TeemVolumeReader();
+	~NrrdVolumeReader();
 
 	//related to feature input
 	bool useFeature;

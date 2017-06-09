@@ -1,86 +1,88 @@
 #include "SQRenderable.h"
+#include "glwidget.h"
+
 #include <teem/ten.h>
 //http://www.sci.utah.edu/~gk/vissym04/index.html
-#include <QOpenGLFunctions>
-#include <QOpenGLVertexArrayObject>
 
 //removing the following lines will cause runtime error
 #ifdef WIN32
 #include "windows.h"
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
+
+#include <QOpenGLFunctions>
+#include <QOpenGLVertexArrayObject>
 #include "ShaderProgram.h"
 #include "Particle.h"
 
 #include <memory>
-#include "glwidget.h"
+
 using namespace std;
 
 void SQRenderable::LoadShaders(ShaderProgram*& shaderProg) 
 {
 
-#define GLSL(shader) "#version 150\n" #shader
+#define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 
 
 	const char* vertexVS =
 		GLSL(
-	in vec4 VertexPosition;
-	in vec3 VertexNormal;
-	smooth out vec3 tnorm;
-	out vec4 eyeCoords;
+		layout(location = 0) in vec4 VertexPosition;
+		layout(location = 1) in vec3 VertexNormal;
+		smooth out vec3 tnorm;
+		out vec4 eyeCoords;
 
-	uniform mat4 ModelViewMatrix;
-	uniform mat3 NormalMatrix;
-	uniform mat4 ProjectionMatrix;
-	uniform mat4 SQRotMatrix;
-	
-	uniform vec3 Transform;
-	uniform float Scale;
+		uniform mat4 ModelViewMatrix;
+		uniform mat3 NormalMatrix;
+		uniform mat4 ProjectionMatrix;
+		uniform mat4 SQRotMatrix;
+		uniform vec3 Transform;
+		uniform float Scale;
 
-	vec4 DivZ(vec4 v){
-		return vec4(v.x / v.w, v.y / v.w, v.z / v.w, 1.0f);
-	}
+		vec4 DivZ(vec4 v){
+			return vec4(v.x / v.w, v.y / v.w, v.z / v.w, 1.0f);
+		}
 
-	void main()
-	{
-		mat4 MVP = ProjectionMatrix * ModelViewMatrix;
-		eyeCoords = ModelViewMatrix * VertexPosition;
-		tnorm = normalize(NormalMatrix * /*vec3(VertexPosition) + 0.001 * */VertexNormal);
-		gl_Position = MVP * vec4(vec3(DivZ(SQRotMatrix * VertexPosition)) * 1000 * Scale + Transform, 1.0);
-	}
+		void main()
+		{
+			mat4 MVP = ProjectionMatrix * ModelViewMatrix;
+			eyeCoords = ModelViewMatrix * VertexPosition;
+			tnorm = normalize(NormalMatrix * /*vec3(VertexPosition) + 0.001 * */VertexNormal);
+			gl_Position = MVP * vec4(vec3(DivZ(SQRotMatrix * VertexPosition)) * 1000 * Scale + Transform, 1.0);
+		}
 	);
 
 	const char* vertexFS =
 		GLSL(
+
 		uniform vec4 LightPosition; // Light position in eye coords.
-	uniform vec3 Ka; // Diffuse reflectivity
-	uniform vec3 Kd; // Diffuse reflectivity
-	uniform vec3 Ks; // Diffuse reflectivity
-	uniform float Shininess;
-	in vec4 eyeCoords;
-	smooth in vec3 tnorm;
-	layout(location = 0) out vec4 FragColor;
-	uniform float Scale;
-	uniform float Bright;
+		uniform vec3 Ka; // Diffuse reflectivity
+		uniform vec3 Kd; // Diffuse reflectivity
+		uniform vec3 Ks; // Diffuse reflectivity
+		uniform float Shininess;
+		in vec4 eyeCoords;
+		smooth in vec3 tnorm;
+		out vec4 FragColor; //layout(location = 0) out vec4 FragColor;
+		uniform float Bright;
 
-	vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
-		vec3 s = normalize(vec3(LightPosition - position));
-		vec3 v = normalize(-position.xyz);
-		vec3 r = reflect(-s, normal);
-		vec3 ambient = a;// Ka * 0.8;
-		float sDotN = max(dot(s, normal), 0.0);
-		vec3 diffuse = Kd * sDotN;
-		vec3 spec = vec3(0.0);
-		if (sDotN > 0.0)
-			spec = Ks *
-			pow(max(dot(r, v), 0.0), Shininess);
-		return ambient + diffuse + spec;
-	}
+		vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
+			vec3 s = normalize(vec3(LightPosition - position));
+			vec3 v = normalize(-position.xyz);
+			vec3 r = reflect(-s, normal);
+			vec3 ambient = a;// Ka * 0.8;
+			float sDotN = max(dot(s, normal), 0.0);
+			vec3 diffuse = Kd * sDotN;
+			vec3 spec = vec3(0.0);
+			if (sDotN > 0.0)
+				spec = Ks *
+				pow(max(dot(r, v), 0.0), Shininess);
+			return ambient + diffuse + spec;
+		}
 
-	void main() {
-		FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
-	}
+		void main() {
+			FragColor = vec4(Bright * phongModel(Ka * 0.5, eyeCoords, tnorm), 1.0);
+		}
 	);
 
 	shaderProg = new ShaderProgram;
@@ -246,7 +248,7 @@ void SQRenderable::UpdateData()
 
 }
 
-SQRenderable::SQRenderable(std::shared_ptr<TensorParticle> p) :
+SQRenderable::SQRenderable(std::shared_ptr<Particle> p) :
 GlyphRenderable(p)
 //SQRenderable::SQRenderable(vector<float4> _pos, vector<float> _val) :
 //GlyphRenderable(_pos)
@@ -257,8 +259,8 @@ GlyphRenderable(p)
 
 	/* input variables */
 	for (int i = 0; i < p->pos.size(); i++) {
-		double ten[7] = { p->tensorVal[7 * i], p->tensorVal[7 * i + 1], p->tensorVal[7 * i + 2],
-			p->tensorVal[7 * i + 3], p->tensorVal[7 * i + 4], p->tensorVal[7 * i + 5], p->tensorVal[7 * i + 6] }; /* tensor coefficients */
+		double ten[7] = { p->valTuple[7 * i], p->valTuple[7 * i + 1], p->valTuple[7 * i + 2],
+			p->valTuple[7 * i + 3], p->valTuple[7 * i + 4], p->valTuple[7 * i + 5], p->valTuple[7 * i + 6] }; /* tensor coefficients */
 		double eps = 1e-4; /* small value >0; defines the smallest tensor
 						   * norm at which tensor orientation is still meaningful */
 
@@ -299,8 +301,6 @@ GlyphRenderable(p)
 		}
 		nIndices.push_back(lpd->indxNum);
 
-		
-
 		double absevals[3];
 		for (int k = 0; k<3; k++)
 			absevals[k] = fabs(evals[k]);
@@ -333,7 +333,7 @@ GlyphRenderable(p)
 }
 
 void SQRenderable::initPickingDrawingObjects()
-{
+{/*
 #define GLSL(shader) "#version 150\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
 
@@ -395,6 +395,8 @@ void SQRenderable::initPickingDrawingObjects()
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices_picking);
 	qgl->glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)* indices.size(), &indices[0], GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	*/
 }
 
 void SQRenderable::drawPicking(float modelview[16], float projection[16], bool isForGlyph)

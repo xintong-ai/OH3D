@@ -1,4 +1,5 @@
-#include <PolyMesh.h>
+#include "PlyVTKReader.h"
+#include "PolyMesh.h"
 
 #include <vtkPolyData.h>
 #include <vtkPLYReader.h>
@@ -15,12 +16,8 @@
 #include <vtkPointData.h>
 #include <vtkSphereSource.h>
 
-//VTK/Examples/Cxx/PolyData/PolyDataExtractNormals
-void TestPointNormals(vtkPolyData* polydata);
-bool GetPointNormals(vtkPolyData* polydata);
 
-
-void PolyMesh::read(const char* fname)
+void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 {
 	vtkSmartPointer<vtkPLYReader> reader =
 		vtkSmartPointer<vtkPLYReader>::New();
@@ -29,11 +26,10 @@ void PolyMesh::read(const char* fname)
 	vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
 	data = reader->GetOutput();
 	reader->Update();
-	
 
 	std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
-
-	std::cout << "In TestPointNormals: " << data->GetNumberOfPoints() << std::endl;
+	std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
+	
 	// Try to read normals directly
 	bool hasPointNormals = GetPointNormals(data);
 
@@ -63,9 +59,9 @@ void PolyMesh::read(const char* fname)
 		*/
 		normalGenerator->SetSplitting(0);
 		normalGenerator->SetConsistency(1);
-		
+
 		normalGenerator->Update();
-		
+
 		data = normalGenerator->GetOutput();
 
 		// Try to read normals again
@@ -83,52 +79,46 @@ void PolyMesh::read(const char* fname)
 	}
 
 
-	vertexcount = data->GetNumberOfPoints();
-	facecount = data->GetNumberOfCells();
-			
-	std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
+	polyMesh->vertexcount = data->GetNumberOfPoints();
+	polyMesh->facecount = data->GetNumberOfCells();
 
-	vertexcount = data->GetNumberOfPoints();
-	vertexCoords = new float[3 * vertexcount];
-	vertexNorms = new float[3 * vertexcount];
+	polyMesh->vertexCoords = new float[3 * polyMesh->vertexcount];
+	polyMesh->vertexNorms = new float[3 * polyMesh->vertexcount];
 
 	vtkFloatArray* normalDataFloat = vtkFloatArray::SafeDownCast(data->GetPointData()->GetArray("Normals"));
 
-	for (int i = 0; i < vertexcount; i++) {
+	for (int i = 0; i < polyMesh->vertexcount; i++) {
 		double coord[3];
 		data->GetPoint(i, coord);
 
-		vertexCoords[3 * i] = coord[0];
-		vertexCoords[3 * i + 1] = coord[1];
-		vertexCoords[3 * i + 2] = coord[2];
-		//vertexNorms[3 * i] = vertices[i]->u;
-		//vertexNorms[3 * i + 1] = vertices[i]->v;
-		//vertexNorms[3 * i + 2] = vertices[i]->w;
-		vertexNorms[3 * i] = normalDataFloat->GetComponent(i, 0);
-		vertexNorms[3 * i + 1] = normalDataFloat->GetComponent(i, 1);
-		vertexNorms[3 * i + 2] = normalDataFloat->GetComponent(i, 2);
+		polyMesh->vertexCoords[3 * i] = coord[0];
+		polyMesh->vertexCoords[3 * i + 1] = coord[1];
+		polyMesh->vertexCoords[3 * i + 2] = coord[2];
+		polyMesh->vertexNorms[3 * i] = normalDataFloat->GetComponent(i, 0);
+		polyMesh->vertexNorms[3 * i + 1] = normalDataFloat->GetComponent(i, 1);
+		polyMesh->vertexNorms[3 * i + 2] = normalDataFloat->GetComponent(i, 2);
 	}
 
-	indices = new unsigned[3 * facecount];
+	polyMesh->indices = new unsigned[3 * polyMesh->facecount];
 
-	for (int i = 0; i < facecount; i++) {
+	for (int i = 0; i < polyMesh->facecount; i++) {
 		if (data->GetCell(i)->GetNumberOfPoints() != 3){
 			std::cout << "readed PLY data contains non-triangles. the current program cannot handle" << std::endl;
 			exit(0);
 		}
 
-		indices[3 * i] = data->GetCell(i)->GetPointId(0);
-		indices[3 * i + 1] = data->GetCell(i)->GetPointId(1);
-		indices[3 * i + 2] = data->GetCell(i)->GetPointId(2);
+		polyMesh->indices[3 * i] = data->GetCell(i)->GetPointId(0);
+		polyMesh->indices[3 * i + 1] = data->GetCell(i)->GetPointId(1);
+		polyMesh->indices[3 * i + 2] = data->GetCell(i)->GetPointId(2);
 	}
 }
 
 
 
-bool GetPointNormals(vtkPolyData* polydata)
+bool PlyVTKReader::GetPointNormals(vtkPolyData* polydata)
 {
-	std::cout << "In GetPointNormals: " << polydata->GetNumberOfPoints() << std::endl;
-	std::cout << "Looking for point normals..." << std::endl;
+	//std::cout << "In GetPointNormals: " << polydata->GetNumberOfPoints() << std::endl;
+	//std::cout << "Looking for point normals..." << std::endl;
 
 	// Count points
 	vtkIdType numPoints = polydata->GetNumberOfPoints();

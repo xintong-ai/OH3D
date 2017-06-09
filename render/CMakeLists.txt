@@ -28,14 +28,6 @@ include_directories(
 	#${CUDA_SDK_ROOT_DIR}/common/inc
 	required)
 
-if(USE_SUPERQUADRIC)
-	include_directories(
-		${Teem_INCLUDE_DIRS} 
-	)
-	link_directories(${Teem_LIBRARY_DIRS})
-endif()
-
-
 set( Srcs 
 	glwidget.cpp 
 	Renderable.cpp 
@@ -46,7 +38,6 @@ set( Srcs
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
-	CosmoRenderable.cpp
 	GridRenderable.cpp
 	VolumeRenderableImmerCUDA.cpp
 	VolumeRenderableCUDA.cpp
@@ -70,7 +61,6 @@ set( Hdrs
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
-	CosmoRenderable.h
 	VolumeRenderableImmerCUDA.h
 	VolumeRenderableCUDA.h
 	VolumeRenderableCUDAKernel.h
@@ -82,17 +72,23 @@ set( Hdrs
 		DeformFrameRenderable.h
 	)
 
+if(USE_SUPERQUADRIC)
+	set(Hdrs ${Hdrs} SQRenderable.h)
+	set(Srcs ${Srcs} SQRenderable.cpp)
+	include_directories(${Teem_INCLUDE_DIRS})
+
+	IF (WIN32)
+		link_directories(${Teem_LIBRARY_DIRS}/Release)
+	ELSE()
+		link_directories(${Teem_LIBRARY_DIRS})
+	ENDIF()
+endif()
 
 if(USE_OSVR)
 	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h VRVolumeRenderableCUDA.h)
 	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp VRVolumeRenderableCUDA.cpp)
 endif()
 
-
-if(USE_SUPERQUADRIC)
-	set(Hdrs ${Hdrs} SQRenderable.h)
-	set(Srcs ${Srcs} SQRenderable.cpp)
-endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
@@ -107,21 +103,21 @@ target_link_libraries(${PROJECT_NAME}
 	${OPENGL_LIBRARIES} 
 	interact
 	dataModel
-	)
-
-
-target_link_libraries(${PROJECT_NAME} 
 	deform
 	)
 
-
 if(USE_SUPERQUADRIC)
-target_link_libraries(${PROJECT_NAME} 
-	${Teem_LIBRARY_DIRS}/teem.lib)
+	IF (WIN32)
+		target_link_libraries(${PROJECT_NAME} 
+			${Teem_LIBRARY_DIRS}/Release/teem.lib) #since the shared lib of teem is used, it is safe for Debug mode too
+	ELSE()
+		target_link_libraries(${PROJECT_NAME} 
+			${Teem_LIBRARY_DIRS}/teem.lib)
+	ENDIF()
 endif()
 
 if(USE_OSVR)
-	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)d
+	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
 endif()
 
 endif()

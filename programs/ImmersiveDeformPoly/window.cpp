@@ -28,8 +28,9 @@
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
 #include "PolyRenderable.h"
-#include "MeshReader.h"
 #include "PolyMesh.h"
+
+#include "PlyVTKReader.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -180,17 +181,14 @@ Window::Window()
 	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
 
 
-
-
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
-	std::shared_ptr<MeshReader> meshReader = std::make_shared<MeshReader>();
-	//meshReader->LoadPLY(polyDataPath.c_str());
 
 	polyMesh = std::make_shared<PolyMesh>();
-	polyMesh->read(polyDataPath.c_str());
+
+	PlyVTKReader plyVTKReader;
+	plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
 	
-	polyRenderable = std::make_shared<PolyRenderable>(meshReader.get());
-	polyRenderable->polyMesh = polyMesh;
+	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	
 	openGL->AddRenderable("mm", polyRenderable.get());
 

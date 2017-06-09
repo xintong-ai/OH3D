@@ -22,8 +22,14 @@ public:
 
 	std::vector<float4> pos; //current position after deformation
 
-	std::vector<float> val; //attribute that might be important. currently only support one attribute
+	//to record the attribute(s) that might be important, two ways can be used
+	//the first case is for only one attribute
+	std::vector<float> val; 
 	float valMin, valMax;
+	//the second case is for multiple attribute
+	std::vector<float> valTuple;
+	int tupleCount;
+	//when one way of attribute recording is used, the other one can be ignored
 
 	bool hasFeature = false;
 	std::vector<char> feature; //actually is segmentation tag. should be named as "label" or "tag"
@@ -64,13 +70,6 @@ public:
 
 private:
 
-};
-
-
-class TensorParticle :public Particle
-{
-public:
-	std::vector<float> tensorVal; //the size is 7 times the commonly used std::vector<float> val
 };
 
 #endif

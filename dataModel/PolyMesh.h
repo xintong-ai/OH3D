@@ -15,15 +15,13 @@
 #include <helper_cuda.h>
 
 //currently only support triangles
-
+//written by Xin?
 class PolyMesh
 {
 public:
 
-	unsigned int vertexcount;
-	unsigned int facecount;
-	int vertexnormals = 0;
-	int facenormals = 0;
+	unsigned int vertexcount = 0;
+	unsigned int facecount = 0;
 	
 	float* vertexCoords = 0;
 	float* vertexNorms = 0;
@@ -34,8 +32,6 @@ public:
 		if (vertexNorms) delete[]vertexNorms;
 		if (indices) delete[]indices;
 	}
-
-	void read(const char* fname);
 
 private:
 	float cx, cy, cz;

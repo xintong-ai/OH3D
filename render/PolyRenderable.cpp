@@ -10,7 +10,6 @@
 #include "ShaderProgram.h"
 #include "PolyRenderable.h"
 #include <QMatrix4x4>
-#include "MeshReader.h"
 #include "PolyMesh.h"
 
 void PolyRenderable::init()
@@ -69,7 +68,8 @@ void PolyRenderable::loadShaders()
 
 	smooth in vec3 tnorm;
 
-	layout(location = 0) out vec4 FragColor;
+	//layout(location = 0) 
+		out vec4 FragColor;
 
 	vec3 phongModel(vec4 position, vec3 normal) {
 		vec3 s = normalize(vec3(LightPosition - position));

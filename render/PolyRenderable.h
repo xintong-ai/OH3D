@@ -7,16 +7,14 @@
 class PolyMesh;
 
 class ShaderProgram;
-struct MeshReader;
 class PolyRenderable :public Renderable
 {
 public:
-	PolyRenderable(MeshReader* _m) { m = _m; }
+	PolyRenderable(std::shared_ptr<PolyMesh> p) { polyMesh = p; }
 
 	~PolyRenderable(){
 	}
 
-	std::shared_ptr<PolyMesh> polyMesh;
 
     void GenVertexBuffer(int nv);
 
@@ -47,8 +45,7 @@ public:
 
 private:
 	void loadShaders();
-
-	MeshReader* m = nullptr;
+	std::shared_ptr<PolyMesh> polyMesh;
 
 protected:
 

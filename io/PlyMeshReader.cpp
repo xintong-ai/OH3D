@@ -1,12 +1,13 @@
-#include "MeshReader.h"
+#include "PlyMeshReader.h"
+#include "PolyMesh.h"
 #include <helper_math.h>
 
 //for linux
 #include <string.h>
 #include <float.h>
-//mesh* SphereMesh(float radius, unsigned int rings, unsigned int sectors);
 
-void MeshReader::LoadPLY(const char* filename)
+
+void PlyMeshReader::LoadPLY(const char* filename, std::shared_ptr<PolyMesh> polyMesh)
 {
 	//mesh* m = new mesh();
 
@@ -51,9 +52,7 @@ void MeshReader::LoadPLY(const char* filename)
 			int normal_index = 0;
 			char buffer[1000];
 
-
 			fgets(buffer, 300, file);			// ply
-
 
 			// READ HEADER
 			// -----------------
@@ -75,6 +74,7 @@ void MeshReader::LoadPLY(const char* filename)
 				fgets(buffer, 300, file);			// format
 			}
 			strcpy(buffer, buffer + strlen("element face"));
+			int TotalFaces;
 			sscanf(buffer, "%i", &TotalFaces);
 			std::cout << "TotalFaces:" << TotalFaces << std::endl;
 
@@ -190,10 +190,12 @@ void MeshReader::LoadPLY(const char* filename)
 #endif
 					triangle_index += 9;
 					TotalConnectedTriangles += 1;
+					i += 3;
 				}
-
-
-				i += 3;
+				else{
+					std::cout << "NOT suppourt non-triangle now..." << std::endl;
+					exit(0);
+				}
 			}
 
 			std::cout << "Mesh file loading is done..." << std::endl;
@@ -205,25 +207,19 @@ void MeshReader::LoadPLY(const char* filename)
 			for (int i = 0; i < TotalConnectedTriangles * 3; i++) {
 				indices[i] = i;
 			}
-			numElements = TotalConnectedTriangles * 3;
-
-			//                glGenBuffers(1, &vbo);
-			//            glBindBuffer(GL_ARRAY_BUFFER, vbo);
-			//            cout<<"TotalConnectedTriangles:"<<TotalConnectedTriangles<<endl;
-			//            glBufferData(GL_ARRAY_BUFFER, TotalConnectedTriangles * 3 * sizeof(GLfloat), Faces_Triangles, GL_STATIC_DRAW);
-			//            glVertexPointer(3, GL_FLOAT, 0, NULL);
-			//            cout<<Faces_Triangles[0]<<","<<Faces_Triangles[1]<<","<<Faces_Triangles[2]<<endl;
-			//            cout<<Faces_Triangles[3]<<","<<Faces_Triangles[4]<<","<<Faces_Triangles[5]<<endl;
-
-			//glBindBuffer(GL_ARRAY_BUFFER, 0);
-			//glVertexPointer(2, GL_FLOAT, 0, 0);
-
 			fclose(file);
 
 			computeCenter();
 		}
 
 		else { printf("File can't be opened\n"); }
+
+		//polyMesh->vertexcount = TotalConnectedPoints;
+		polyMesh->vertexcount = TotalConnectedTriangles*3; //actually not very efficent?
+		polyMesh->facecount = TotalConnectedTriangles;
+		polyMesh->vertexCoords = Faces_Triangles;
+		polyMesh->indices = indices;
+		polyMesh->vertexNorms = Normals;
 	}
 	else {
 		printf("File does not have a .PLY extension. ");
@@ -232,7 +228,7 @@ void MeshReader::LoadPLY(const char* filename)
 }
 
 
-void MeshReader::computeCenter()
+void PlyMeshReader::computeCenter()
 {
 	float x = 0, y = 0, z = 0;
 	for (int i = 0; i < TotalConnectedTriangles; i++){
@@ -250,68 +246,4 @@ void MeshReader::computeCenter()
 	y = y / TotalConnectedTriangles/3;
 	z = z / TotalConnectedTriangles/3;
 	center = make_float3(x,y,z);
-}
-
-//The following function is from:
-//http://stackoverflow.com/questions/7946770/calculating-a-sphere-in-opengl
-void MeshReader::SphereMesh(float radius, unsigned int rings, unsigned int sectors)
-{
-	//	mesh* m = new mesh();
-	//TotalConnectedPoints = 0;
-	numElements = 0;
-	//	std::vector<float> vertices;
-	//	std::vector<float> normals;
-	//	std::vector<float> texcoords;
-	//	std::vector<int> indices;
-
-	float const R = 1. / (float)(rings - 1);
-	float const S = 1. / (float)(sectors);
-	int r, s;
-
-	Faces_Triangles = new float[rings * sectors * 3];
-	//	vertices.resize(rings * sectors * 3);
-	TotalConnectedPoints = rings * sectors * 3;
-	Normals = new float[rings * sectors * 3];
-	//	normals.resize(rings * sectors * 3);
-	//	texcoords.resize(rings * sectors * 2);
-	//std::vector<float>::iterator v = vertices.begin();
-	//std::vector<float>::iterator n = normals.begin();
-	float* v = Faces_Triangles;
-	float* n = Normals;
-	//	std::vector<float>::iterator t = texcoords.begin();
-	for (r = 0; r < rings; r++) for (s = 0; s < sectors; s++) {
-		float const y = sin(-M_PI_2 + M_PI * r * R);
-		float const x = cos(2 * M_PI * s * S) * sin(M_PI * r * R);
-		float const z = sin(2 * M_PI * s * S) * sin(M_PI * r * R);
-
-		//*t++ = s*S;
-		//*t++ = r*R;
-
-		*v++ = x * radius;
-		*v++ = y * radius;
-		*v++ = z * radius;
-
-		//		float a = 1.0f / sqrt(x*x + y*y + z*z);
-		*n++ = x;
-		*n++ = y;
-		*n++ = z;
-	}
-
-	//	indices.resize(rings * sectors * 4);
-	numElements = (rings - 1) * sectors * 6;
-	indices = new unsigned int[numElements];
-	//std:vector<int>::iterator i = indices.begin();
-	unsigned int* i = indices;
-	for (r = 0; r < (rings - 1); r++) for (s = 0; s < sectors; s++) {
-		*i++ = r * sectors + s;
-		*i++ = (r + 1) * sectors + (s + 1) % sectors;
-		*i++ = r * sectors + (s + 1) % sectors;
-		//		*i++ = (r + 1) * sectors + s;
-
-		*i++ = r * sectors + s;
-		*i++ = (r + 1) * sectors + s;
-		*i++ = (r + 1) * sectors + (s + 1) % sectors;
-	}
-	//	numElements -= 10;
-	//	return m;
 }

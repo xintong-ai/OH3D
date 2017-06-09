@@ -4,7 +4,6 @@
 #include "GlyphRenderable.h"
 #include <memory>
 
-class TensorParticle;
 class ShaderProgram;
 class QOpenGLVertexArrayObject;
 class SQRenderable :public GlyphRenderable
@@ -23,7 +22,7 @@ class SQRenderable :public GlyphRenderable
 
 public:
 	//SQRenderable(std::vector<float4> _pos, std::vector < float > _val);
-	SQRenderable(std::shared_ptr<TensorParticle> p);
+	SQRenderable(std::shared_ptr<Particle> p);
 	void init() override;
 	virtual void DrawWithoutProgram(float modelview[16], float projection[16], ShaderProgram* sp) override;
 	void draw(float modelview[16], float projection[16]) override;

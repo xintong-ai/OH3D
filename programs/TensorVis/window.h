@@ -28,8 +28,9 @@ class ModelGridRenderable;
 class ModelGrid;
 class PolyRenderable;
 class QListWidget;
-class TensorParticle;
+class Particle;
 class Lens;
+class PolyMesh;
 
 //#define USE_PARTICLE
 
@@ -51,7 +52,7 @@ public:
 
 private:
     std::shared_ptr<GLWidget> openGL;
-	std::shared_ptr<TensorParticle> inputParticle;
+	std::shared_ptr<Particle> inputParticle;
 	Cubemap* cubemap;
 	QTimer *aTimer;
 	const int nScale = 20;
@@ -91,6 +92,7 @@ private:
 
 	PolyRenderable * polyFeature0, *polyFeature1, *polyFeature2;
 	QListWidget *featuresLw = NULL;
+	std::shared_ptr<PolyMesh>  polyMeshFeature0, polyMeshFeature1, polyMeshFeature2;
 
 	std::vector<Lens*> lenses; //can change Lens* to shared pointer, to avoid manually deleting
 
@@ -120,6 +122,7 @@ private slots:
 	void SlotLoadState();
 
 	void SlotFeaturesLwRowChanged(int);
+	void SlotDelLens();
 
 };
 

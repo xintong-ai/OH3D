@@ -65,7 +65,8 @@ void MatrixMgrRenderable::LoadShaders(ShaderProgram*& shaderProg)
 	uniform float Shininess;
 	in vec4 eyeCoords;
 	smooth in vec3 tnorm;
-	layout(location = 0) out vec4 FragColor;
+	//layout(location = 0) 
+	out vec4 FragColor;
 	uniform float Bright;
 
 

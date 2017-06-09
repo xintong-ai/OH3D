@@ -1,7 +1,6 @@
 DATA_PATH=D:/Data/FPM/smoothinglength_0.44/run11/119.vtu
-
-DATA_PATHdf=D:/Data/Cosmology/particle_pos
 DATA_PATH51=D:/Data/FPM/smoothinglength_0.44/run06/119.vtu
-gDATA_PATH=D:/Onedrive/Data/particle/smoothinglength_0.44/run15/099.vtu
+
+DATA_PATH=D:/Data/Cosmology/particle_pos
 DATA_PATHs=D:/Dropbox/ShareXin/particle_pos
-DATA_PATHr=C:/Users/lc/Data/Cosmology/particle_pos2
+DATA_PATH=C:/Users/lc/Data/Cosmology/particle_pos

@@ -8,7 +8,7 @@
 #define EPS 1e-6
 
 DTIVolumeReader::DTIVolumeReader(const char* filename) 
-	:TeemVolumeReader(filename)
+	:NrrdVolumeReader(filename)
 {
 }
 
@@ -150,11 +150,12 @@ void DTIVolumeReader::GetSamplesWithFeature(std::vector<float4>& _pos, std::vect
 	}
 }
 
-void DTIVolumeReader::OutputToParticleData(std::shared_ptr<TensorParticle> v)
+void DTIVolumeReader::OutputToParticleData(std::shared_ptr<Particle> v)
 {
 	v->clear();
 
-	GetSamples(v->pos, v->tensorVal);
+	v->tupleCount = 7;
+	GetSamples(v->pos, v->valTuple);
 	v->posOrig = v->pos;
 
 	//v->pos = pos;

@@ -7,7 +7,6 @@
 #include <helper_math.h>
 
 #include "SphereRenderable.h"
-#include "CosmoRenderable.h"
 
 #include "SolutionParticleReader.h"
 #include "BinaryParticleReader.h"
@@ -16,7 +15,6 @@
 #include "MeshDeformProcessor.h"
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
-#include "MeshReader.h"
 #include "ColorGradient.h"
 #include "Particle.h"
 
@@ -113,7 +111,6 @@ Window::Window()
 		glyphRenderable->setColorMap(COLOR_MAP::RDYIGN, true);
 	}
 	else{
-		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
 		//glyphRenderable->setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
 		glyphRenderable->colorByFeature = true;

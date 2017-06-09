@@ -4,19 +4,13 @@
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
 #include "GridRenderable.h"
-#include "ScreenLensDisplaceProcessor.h"// "Displace.h"
+#include "ScreenLensDisplaceProcessor.h"
 #include "Lens.h"
+#include "PolyMesh.h"
 
-
-//#define USE_PARTICLE
-
-#ifdef USE_PARTICLE
-#include "SphereRenderable.h"
-#include "ParticleReader.h"
-#else
 #include "DTIVolumeReader.h"
 #include "SQRenderable.h"
-#endif
+
 //#include "VecReader.h"
 //#include "ArrowRenderable.h"
 #include "DataMgr.h"
@@ -24,7 +18,7 @@
 //#include <ModelGrid.h>
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
-#include "MeshReader.h"
+#include "PlyMeshReader.h"
 #include "Particle.h"
 
 #ifdef USE_LEAP
@@ -37,22 +31,7 @@
 #include "VRGlyphRenderable.h"
 #endif
 
-enum DATA_TYPE
-{
-	TYPE_PARTICLE,
-	TYPE_TENSOR,
-	TYPE_VECTOR,
-};
 
-QSlider* CreateSlider()
-{
-	QSlider* slider = new QSlider(Qt::Horizontal);
-	slider->setRange(0, 10);
-	slider->setValue(5);
-	return slider;
-}
-
-class GLTextureCube;
 Window::Window()
 {
     setWindowTitle(tr("Interactive Glyph Visualization"));
@@ -63,16 +42,8 @@ Window::Window()
 	//QSizePolicy fixedPolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
 	std::shared_ptr<DTIVolumeReader> reader;
 
-	inputParticle = std::make_shared<TensorParticle>();
+	inputParticle = std::make_shared<Particle>();
 
-#ifdef USE_PARTICLE
-	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
-	reader = std::make_shared<ParticleReader>(dataPath.c_str());
-	glyphRenderable = std::make_shared<SphereRenderable>(
-		((ParticleReader*)reader.get())->GetPos(),
-		((ParticleReader*)reader.get())->GetVal());
-	std::cout << "number of rendered glyphs: " << (((ParticleReader*)reader.get())->GetVal()).size() << std::endl;
-#else
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH_TENSOR");
 	reader = std::make_shared<DTIVolumeReader>(dataPath.c_str());
 	std::vector<float4> pos;
@@ -87,15 +58,12 @@ Window::Window()
 	}
 	else
 	{
-		//((DTIVolumeReader*)reader.get())->GetSamples(pos, val);
-		((DTIVolumeReader*)reader.get())->OutputToParticleData(inputParticle);
-		
+		((DTIVolumeReader*)reader.get())->OutputToParticleData(inputParticle);		
 		glyphRenderable = std::make_shared<SQRenderable>(inputParticle);
 	}
 
 	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 
-#endif
 	//else if (DATA_TYPE::TYPE_VECTOR == dataType) {
 	//	reader = std::make_shared<VecReader>(dataPath.c_str());
 	//	std::vector<float4> pos;
@@ -106,6 +74,7 @@ Window::Window()
 
 	//	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
 	//}
+
 	std::cout << "number of rendered glyphs: " << inputParticle->pos.size() << std::endl;
 
 	/********GL widget******/
@@ -137,36 +106,46 @@ Window::Window()
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
-
-	
 	//modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
 	//modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
 	//glyphRenderable->SetModelGrid(modelGrid.get());
 	//openGL->AddRenderable("bbox", bbox);
 	openGL->AddRenderable("glyph", glyphRenderable.get());
-	openGL->AddRenderable("lenses", lensRenderable.get());
-	openGL->AddRenderable("grid", gridRenderable.get());
+	//openGL->AddRenderable("lenses", lensRenderable.get());
+	//openGL->AddRenderable("grid", gridRenderable.get());
 	//openGL->AddRenderable("model", modelGridRenderable.get());
 #ifndef USE_PARTICLE
-	MeshReader *meshReader;
-	meshReader = new MeshReader();
-	meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str());
-	polyFeature0 = new PolyRenderable(meshReader);
+	
+	PlyMeshReader *meshReader;
+	meshReader = new PlyMeshReader();
+
+	polyMeshFeature0 = std::make_shared<PolyMesh>();
+	meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str(), polyMeshFeature0);
+
+	polyFeature0 = new PolyRenderable(polyMeshFeature0);
+
 	polyFeature0->SetAmbientColor(0.2, 0, 0);
 	openGL->AddRenderable("ventricles", polyFeature0);
 
-	meshReader = new MeshReader();
-	meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str());
-	polyFeature1 = new PolyRenderable(meshReader);
+	
+	meshReader = new PlyMeshReader();
+	
+	polyMeshFeature1 = std::make_shared<PolyMesh>();
+	meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str(), polyMeshFeature1);
+	polyFeature1 = new PolyRenderable(polyMeshFeature1);
+
 	polyFeature1->SetAmbientColor(0.0, 0.2, 0);
 	openGL->AddRenderable("tumor1", polyFeature1);
-
-	meshReader = new MeshReader();
-	meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str());
-	polyFeature2 = new PolyRenderable(meshReader);
+	
+	meshReader = new PlyMeshReader();
+	
+	polyMeshFeature2 = std::make_shared<PolyMesh>();
+	meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str(), polyMeshFeature2);
+	polyFeature2 = new PolyRenderable(polyMeshFeature2);
+	
 	polyFeature2->SetAmbientColor(0.0, 0.0, 0.2);
 	openGL->AddRenderable("tumor2", polyFeature2);
-
+	
 	featuresLw = new QListWidget();
 	featuresLw->addItem(QString("ventricles"));
 	featuresLw->addItem(QString("tumor1"));
@@ -183,8 +162,6 @@ Window::Window()
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
-	QLabel* transSizeLabel = new QLabel("Transition region size:", this);
-	QSlider* transSizeSlider = CreateSlider();
 #ifdef USE_LEAP
 	listener = new LeapListener();
 	controller = new Leap::Controller();
@@ -220,8 +197,6 @@ Window::Window()
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 	controlLayout->addWidget(groupBox);
-	controlLayout->addWidget(transSizeLabel);
-	controlLayout->addWidget(transSizeSlider);
 	controlLayout->addWidget(usingGlyphSnappingCheck);
 	controlLayout->addWidget(usingGlyphPickingCheck);
 	controlLayout->addWidget(freezingFeatureCheck);
@@ -233,13 +208,12 @@ Window::Window()
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
 	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
-	connect(delLensBtn.get(), SIGNAL(clicked()), lensRenderable.get(), SLOT(SlotDelLens()));
+	connect(delLensBtn.get(), SIGNAL(clicked()), this, SLOT(SlotDelLens()));
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
 
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
-	connect(transSizeSlider, SIGNAL(valueChanged(int)), lensRenderable.get(), SLOT(SlotFocusSizeChanged(int)));
 	//connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
 	//	this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
 #ifdef USE_LEAP
@@ -453,3 +427,11 @@ void Window::SlotFeaturesLwRowChanged(int currentRow)
 	//featuresLw->setEnabled(false);
 }
 
+
+void Window::SlotDelLens()
+{
+	lensRenderable->DelLens();
+	inputParticle->reset();
+	//screenLensDisplaceProcessor->reset();
+	openGL->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+}
