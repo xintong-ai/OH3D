@@ -16,7 +16,6 @@ list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 include_directories(
 	${CUDA_TOOLKIT_INCLUDE} 
-	${CUDA_SDK_ROOT_DIR}/common/inc 
 )
 
 include_directories(
@@ -25,7 +24,6 @@ include_directories(
 	${CMAKE_BINARY_DIR}
 	${Boost_INCLUDE_DIR}
 	 ${CUDA_TOOLKIT_INCLUDE} 
-	#${CUDA_SDK_ROOT_DIR}/common/inc
 	required)
 
 set( Srcs 
@@ -72,7 +70,7 @@ set( Hdrs
 		DeformFrameRenderable.h
 	)
 
-if(USE_SUPERQUADRIC)
+if(USE_TEEM)
 	set(Hdrs ${Hdrs} SQRenderable.h)
 	set(Srcs ${Srcs} SQRenderable.cpp)
 	include_directories(${Teem_INCLUDE_DIRS})
@@ -106,7 +104,7 @@ target_link_libraries(${PROJECT_NAME}
 	deform
 	)
 
-if(USE_SUPERQUADRIC)
+if(USE_TEEM)
 	IF (WIN32)
 		target_link_libraries(${PROJECT_NAME} 
 			${Teem_LIBRARY_DIRS}/Release/teem.lib) #since the shared lib of teem is used, it is safe for Debug mode too

@@ -7,7 +7,12 @@
 #include <helper_math.h>
 
 
-Particle::Particle(std::vector<float4> _pos, std::vector<float> _val)
+Particle::Particle(std::vector<float4>  &_pos, std::vector<float> &_val)
+{
+	init(_pos, _val);
+}
+
+void Particle::init(std::vector<float4>  &_pos, std::vector<float> &_val)
 {
 	pos = _pos;
 	posOrig = _pos;
@@ -137,7 +142,7 @@ void Particle::featureReshuffle()
 void Particle::reset()
 {
 	pos = posOrig;
-	if (hasInitedForRendering){
+	if (hasInitedForRendering){  //the following is only true in limited situations
 		glyphSizeScale.assign(numParticles, 1.0f);
 		glyphBright.assign(numParticles, 1.0f);
 	}

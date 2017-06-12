@@ -14,9 +14,7 @@ message("deform is already defined")
 
 else()
 
-include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE} 
-	${CUDA_SDK_ROOT_DIR}/common/inc)
-
+include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE} )
 
 set(SRCS 
 	Lens.cpp
@@ -38,8 +36,7 @@ set(HDRS	Lens.h
 			PositionBasedDeformProcessor.h
 						)
 
-cuda_add_library(deform STATIC ${HDRS} ${SRCS})
+cuda_add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 
-#set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
 endif()

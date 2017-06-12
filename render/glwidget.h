@@ -13,12 +13,13 @@
 #include <CMakeConfig.h>
 
 enum INTERACT_MODE{
+	OPERATE_MATRIX,
+
 	MOVE_LENS,
 	MODIFY_LENS_FOCUS_SIZE,
 	MODIFY_LENS_TRANSITION_SIZE,
 	MODIFY_LENS_DEPTH,
 	MODIFY_LENS_TWO_FINGERS,
-	TRANSFORMATION,
 	ADDING_LENS,
 
 	CHANGING_FORCE, //currently only used for Leap
@@ -125,7 +126,7 @@ private:
 	GLuint screenTex = 0;
 
 
-	INTERACT_MODE interactMode = INTERACT_MODE::TRANSFORMATION;
+	INTERACT_MODE interactMode = INTERACT_MODE::OPERATE_MATRIX;
 	
 	bool initialized = false;
 	bool pinching = false;

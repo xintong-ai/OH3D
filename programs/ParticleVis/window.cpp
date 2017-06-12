@@ -376,7 +376,7 @@ void Window::SlotDelLens()
 	lensRenderable->DelLens();
 	inputParticle->reset();
 	screenLensDisplaceProcessor->reset();
-	openGL->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	openGL->SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 }
 
 void Window::SlotToggleUsingGlyphSnapping(bool b)

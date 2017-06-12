@@ -4,21 +4,30 @@ PROJECT (DeformVis)
 
 find_package(Qt5Widgets REQUIRED)
 
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
-option(USE_SUPERQUADRIC "Enable features that require TEEM" OFF)
+option(BUILD_TUTORIAL "Build a tutorial project" ON)
 
-find_package(GLM REQUIRED)
+option(BUILD_TEST "Build ongoing projects that are not well mainteined" OFF)
 
-if(USE_SUPERQUADRIC)
+
+option(USE_TEEM "Enable features that require Teem" OFF)
+if(USE_TEEM)
 	find_package(Teem REQUIRED)
 endif()
 
+option(USE_GLM "Enable features that require glm" ON)
+if(USE_GLM)
+	find_package(GLM REQUIRED)
+endif()
+
+
 option(USE_LEAP OFF)
+if(USE_LEAP)
+	find_package(Leap)
+endif()
 
 option(USE_OSVR "Enable features that require OSVR" OFF)
-
 if(USE_OSVR)
 	if (Boost_FOUND)
 	else ()
@@ -29,9 +38,23 @@ if(USE_OSVR)
 	include_directories(${osvr_DIR}/../../../include)
 endif()
 
-option(USE_CONTROLLER "Enable VIVE controller. !! NOT tested yet!!" OFF)
-
 option(USE_TOUCHSCREEN "Enable touch screen interaction. !! NOT tested yet!!" OFF)
+
+
+
+if(BUILD_TEST)
+	option(USE_VTK "Enable features that require VTK" OFF)
+	if(USE_VTK)
+		find_package(VTK REQUIRED)
+	endif()
+
+	option(USE_ITK "Enable features that require ITK" OFF)
+	if(USE_ITK)
+		find_package(ITK REQUIRED)
+	endif()
+endif ()
+
+option(USE_CONTROLLER "Enable VIVE controller. !! NOT tested yet!!" OFF)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
@@ -53,7 +76,10 @@ include_directories(
 	cuda_types/
 	)
 
-add_subdirectory(vpsel)
+if(USE_ITK)
+	add_subdirectory(vpsel)
+	#essentially vpsel does not need ITK. but all executables using vpsel will use ITK
+endif()
 
 add_subdirectory(deform)
 

@@ -31,9 +31,7 @@ mouse/ScreenBrushInteractor.cpp
 add_definitions(-DEXPORT_QT)
 
 
-
 if(USE_LEAP)
-	find_package(Leap)
 	include_directories(${Leap_ROOT_DIR}/include)
 	set( HDRS ${HDRS} leap/LeapInteraction.h leap/LeapListener.h 
 		leap/LeapInteractor.h leap/LensLeapInteractor.h leap/MatrixLeapInteractor.h)
@@ -41,7 +39,6 @@ if(USE_LEAP)
 endif()
 
 if(USE_CONTROLLER)
-#	find_package(Qt5Widgets REQUIRED)
 	include_directories(${Boost_INCLUDE_DIR})
 	set(HDRS ${HDRS} controller/Controller.h controller/QController.h)
 	set(SRCS ${SRCS} controller/Controller.cpp controller/QController.cpp)
@@ -52,14 +49,10 @@ if(USE_TOUCHSCREEN)
 	set( SRCS ${SRCS} touch/LensTouchInteractor.cpp)
 endif()
 
-#qt5_use_modules(${PROJECT_NAME} Qt5::Widgets)
 SET(CMAKE_AUTOMOC ON)
 
-add_library(interact STATIC ${HDRS} ${SRCS})
+add_library(${PROJECT_NAME} STATIC ${HDRS} ${SRCS})
 
-
-#if(USE_CONTROLLER)
-	target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
-#endif
+target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
 
 endif()

@@ -24,7 +24,7 @@ void LensInteractor::mousePress(int x, int y, int modifier, int mouseKey)
 		}
 		break;
 	}
-	case INTERACT_MODE::TRANSFORMATION:
+	case INTERACT_MODE::OPERATE_MATRIX:
 	{
 		if (lenses->size()<1)
 			return;
@@ -76,7 +76,7 @@ void LensInteractor::mouseRelease(int x, int y, int modifier)
 			((CurveLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 		}
 		l->justChanged = true;
-		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+		actor->SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 	}
 	else {
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE){
@@ -84,7 +84,7 @@ void LensInteractor::mouseRelease(int x, int y, int modifier)
 				lenses->back()->justChanged = true;
 			}
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && changeLensWhenRotateData){
+		else if (actor->GetInteractMode() == INTERACT_MODE::OPERATE_MATRIX && changeLensWhenRotateData){
 			//this decides whether to relocate the mesh when rotating the data
 			if (lenses->size() > 0){
 				Lens* l = lenses->back();
@@ -129,7 +129,7 @@ void LensInteractor::mouseRelease(int x, int y, int modifier)
 			*/
 		}
 	}
-	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	actor->SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 }
 
 void LensInteractor::mouseMove(int x, int y, int modifier)

@@ -18,7 +18,7 @@ class Particle
 public:
 	std::vector<float4> posOrig;
 	float3 posMin, posMax;
-	int numParticles;
+	int numParticles = 0;
 
 	std::vector<float4> pos; //current position after deformation
 
@@ -37,12 +37,14 @@ public:
 	char featureMin, featureMax;
 
 	Particle(){};
-	Particle(std::vector<float4> _pos, std::vector<float> _val);
+	Particle(std::vector<float4>  &_pos, std::vector<float>  &_val);
 	
 	~Particle()
 	{
 	};
-	
+
+	void init(std::vector<float4> &_pos, std::vector<float> & _val);
+
 	void updateMaxMinValAndPos();
 	void clear(){};
 	

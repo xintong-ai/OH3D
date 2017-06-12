@@ -23,15 +23,10 @@ set(HDRS Volume.h Particle.h Processor.h myDefine.h GLMatrixManager.h ColorGradi
 	myDefineRayCasting.h
 	PolyMesh.h
 )
-add_library(dataModel STATIC ${HDRS} ${SRCS})
-
-set(VTK_DIR "C:/Users/lc/Library/VTK-7.1.1/")
-find_package(VTK REQUIRED)
-include(${VTK_USE_FILE})  
+add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
-	${VTK_LIBRARIES}
 	)
 
 endif()

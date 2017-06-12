@@ -44,7 +44,7 @@ bool RegularInteractor::MouseWheel(int x, int y, int modifier, float v)
 	
 	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
 	QVector3D viewVecWorld = matrixMgr->getViewVecInWorld();
-	matrixMgr->setEyeInWorld(eyeInWorld + v*viewVecWorld);
+	matrixMgr->setEyeInWorld(eyeInWorld + v*viewVecWorld * matrixMgr->GetVolScale()*0.01);
 
 	return true;
 }

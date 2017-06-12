@@ -135,6 +135,11 @@ public:
 
 	float3 DataCenter();
 	void GetVol(float3 &posMin, float3 &posMax){ posMin = dataMin; posMax = dataMax; }
+	float GetVolScale()//used to roughly estimate how big the volume is
+	{ 
+		float3 t = dataMax - dataMin;
+		return t.x + t.y + t.z - min(min(t.x, t.y), t.z) - max(max(t.x, t.y), t.z);
+	}
 	void GetClipDepthRangeOfVol(float2 & depthRange);
 	void SaveState(const char* filename);
 	void LoadState(const char* filename);

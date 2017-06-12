@@ -11,30 +11,28 @@ else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR})
 
-target_link_libraries(
-	dataModel
-	${VTK_LIBRARIES}
-	)
 
-set(SRCS DataMgr.cpp PlyMeshReader.cpp PlyVTKReader.cpp ParticleReader.cpp
+set(SRCS DataMgr.cpp PlyMeshReader.cpp  ParticleReader.cpp
 	VecReader.cpp NrrdVolumeReader.cpp DTIVolumeReader.cpp 
 	SolutionParticleReader.cpp BinaryParticleReader.cpp
 	RawVolumeReader.cpp
 	BinaryTuplesReader.cpp
 	)
 
-set(HDRS DataMgr.h PlyMeshReader.h  PlyVTKReader.h ParticleReader.h
+set(HDRS DataMgr.h PlyMeshReader.h  ParticleReader.h
 	VecReader.h NrrdVolumeReader.h DTIVolumeReader.h 
 	SolutionParticleReader.h BinaryParticleReader.h
 	RawVolumeReader.h
 	BinaryTuplesReader.h
 	)
 
-set(VTK_DIR "C:/Users/lc/Library/VTK-7.1.1/")
-find_package(VTK REQUIRED)
-include(${VTK_USE_FILE})  
+if(USE_VTK)
+	set(HDRS ${HDRS} PlyVTKReader.h )
+	set(SRCS ${SRCS} PlyVTKReader.cpp)
+	include(${VTK_USE_FILE}) 
+	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
+endif()
 
-
-add_library(io STATIC ${HDRS} ${SRCS})
+add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 
 endif()

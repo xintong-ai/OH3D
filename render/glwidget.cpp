@@ -286,7 +286,7 @@ void GLWidget::mouseMoveEvent(QMouseEvent *event)
 		//return;
 
 	QPointF pos = event->pos();
-	if (INTERACT_MODE::TRANSFORMATION == interactMode) {
+	if (INTERACT_MODE::OPERATE_MATRIX == interactMode) {
 		QPointF from = pixelPosToViewPos(prevPos);
 		QPointF to = pixelPosToViewPos(pos);
 		int mouseKey = 0;
@@ -367,7 +367,7 @@ bool GLWidget::TouchEndEvent(QTouchEvent *event)
 {
 	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
 	//if (0 == pts.size()) {
-	//SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	//SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 	//}
 	return true;
 }
@@ -415,11 +415,11 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 	switch (interactMode)
 	{
 
-	case INTERACT_MODE::TRANSFORMATION:
+	case INTERACT_MODE::OPERATE_MATRIX:
 	{
 		//if (insideLens) break;
 		QPinchGesture::ChangeFlags changeFlags = gesture->changeFlags();
-		//if (INTERACT_MODE::TRANSFORMATION == interactMode){
+		//if (INTERACT_MODE::OPERATE_MATRIX == interactMode){
 		if (changeFlags & QPinchGesture::ScaleFactorChanged) {
 			//currentTransScale = gesture->totalScaleFactor();// exp(/*event->delta()*/gesture->totalScaleFactor() * 0.01);
 		//	matrixMgr->SetCurrentScale(gesture->totalScaleFactor());
@@ -444,7 +444,7 @@ void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
 	}
 
 	if (gesture->state() == Qt::GestureFinished) {
-		SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+		SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 		pinching = false;
 	}
 }

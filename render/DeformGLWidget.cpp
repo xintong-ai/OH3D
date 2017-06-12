@@ -27,7 +27,7 @@ bool DeformGLWidget::TouchBeginEvent(QTouchEvent *event)
 	//if (insideLens)
 	//	SetInteractMode(INTERACT_MODE::MOVE_LENS);
 	//else
-	//	SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	//	SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 	////	SetInteractMode(INTERACT_MODE::NO_TRANSFORMATION);
 
 	////std::cout << "pts.size(): " << pts.size() << std::endl;
@@ -40,7 +40,7 @@ bool DeformGLWidget::TouchUpdateEvent(QTouchEvent *event)
 	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
 	switch(GetInteractMode())
 	{
-	case INTERACT_MODE::TRANSFORMATION:
+	case INTERACT_MODE::OPERATE_MATRIX:
 	{
 		if (2 == pts.size()) {
 			QPointF p1 = pixelPosToGLPos(pts.at(0).lastPos());

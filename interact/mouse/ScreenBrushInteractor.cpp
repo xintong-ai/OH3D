@@ -64,7 +64,7 @@ void ScreenBrushInteractor::mouseRelease(int x, int y, int modifier)
 {
 	if (!isActive)
 		return;
-	actor->SetInteractMode(TRANSFORMATION);
+	actor->SetInteractMode(OPERATE_MATRIX);
 
 	sm->justChanged = true;
 }

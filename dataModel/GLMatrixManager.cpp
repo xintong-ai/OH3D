@@ -19,7 +19,8 @@ GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 	UpdateModelMatrixFromDetail();
 
 	float3 dataRange = posMax - posMin;
-	float initEyePos = min(max(max(dataRange.x, dataRange.y), dataRange.z) * 3, max(max(dataRange.x, dataRange.y), dataRange.z) + 100);	//float initEyePos = 300;
+	//float initEyePos = min(max(max(dataRange.x, dataRange.y), dataRange.z) * 3, max(max(dataRange.x, dataRange.y), dataRange.z) + 100);	//float initEyePos = 300;
+	float initEyePos = max(max(dataRange.x, dataRange.y), dataRange.z) * 3;
 
 	eyeInWorld = QVector3D(0, 0, initEyePos); //may need adjust wisely. for data whose range is small, 300 is a number which is too big
 	//eyeInWorld = QVector3D(0, 0, 30);
