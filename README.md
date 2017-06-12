@@ -22,6 +22,8 @@ BUILD_TUTORIAL: build /programs/TutorialVis.
 
 BUILD_TEST: build some programs in 'programs' folder which are still under test.
 
+USE_TEEM: the library Teem (http://teem.sourceforge.net/index.html) is required by the program TensorVis. Need to install related libraries.
+
 USE_LEAP: use the Leap Motion controller. Need to install related libraries from (https://www.leapmotion.com/).
 
 USE_OSVR: use the OSVR headset. Need to install related libraries from (http://www.osvr.org/).

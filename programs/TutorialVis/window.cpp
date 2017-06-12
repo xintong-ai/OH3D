@@ -58,7 +58,9 @@ Window::Window()
 	rInteractor = std::make_shared<RegularInteractor>();
 	rInteractor->setMatrixMgr(matrixMgr);
 
-	//Some controllers involve complex deform computations, and we create helping classes in 'deform' folder
+	//Some classes involve complex deform computations, and we create helping classes in 'deform' folder
+	//They can be treated similarly as a special kind of controllers, 
+	//becaues once activated, they automatically modify the data object at each iteration even without further interaction
 	//We will not show the example here. Refer to ParticleVis, VolumeVis or TensorVis if interested.
 
 	//Besides our classes, some QT GUI are also essentially controllers.

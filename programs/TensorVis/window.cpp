@@ -1,25 +1,28 @@
 #include "window.h"
-#include "glwidget.h"
+#include "DeformGLWidget.h"
 //#include "VecReader.h"
 #include "BoxRenderable.h"
 #include "LensRenderable.h"
-#include "GridRenderable.h"
 #include "ScreenLensDisplaceProcessor.h"
 #include "Lens.h"
 #include "PolyMesh.h"
 
 #include "DTIVolumeReader.h"
 #include "SQRenderable.h"
+#include "MeshDeformProcessor.h"
+#include "ScreenLensDisplaceProcessor.h"
+#include "PhysicalParticleDeformProcessor.h"
 
-//#include "VecReader.h"
-//#include "ArrowRenderable.h"
+#include "mouse/RegularInteractor.h"
+#include "mouse/LensInteractor.h"
+
 #include "DataMgr.h"
-//#include "ModelGridRenderable.h"
-//#include <ModelGrid.h>
+
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
 #include "PlyMeshReader.h"
 #include "Particle.h"
+#include "MeshRenderable.h"
 
 #ifdef USE_LEAP
 #include <LeapListener.h>
@@ -39,17 +42,14 @@ Window::Window()
 
 	dataMgr = std::make_shared<DataMgr>();
 	
-	//QSizePolicy fixedPolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
 	std::shared_ptr<DTIVolumeReader> reader;
-
 	inputParticle = std::make_shared<Particle>();
-
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH_TENSOR");
 	reader = std::make_shared<DTIVolumeReader>(dataPath.c_str());
 	std::vector<float4> pos;
 	std::vector<float> val;
 
-	if (false){//existing in old prog
+	if (false){//existing in old prog. forget what it is used for...
 	//if (((DTIVolumeReader*)reader.get())->LoadFeatureNew(dataMgr->GetConfig("FEATURE_PATH").c_str())){
 		/*std::vector<char> feature;
 		((DTIVolumeReader*)reader.get())->GetSamplesWithFeature(pos, val, feature);
@@ -58,39 +58,20 @@ Window::Window()
 	}
 	else
 	{
-		((DTIVolumeReader*)reader.get())->OutputToParticleData(inputParticle);		
+		((DTIVolumeReader*)reader.get())->OutputToParticleData(inputParticle);
 		glyphRenderable = std::make_shared<SQRenderable>(inputParticle);
 	}
-
-	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
-
-	//else if (DATA_TYPE::TYPE_VECTOR == dataType) {
-	//	reader = std::make_shared<VecReader>(dataPath.c_str());
-	//	std::vector<float4> pos;
-	//	std::vector<float3> vec;
-	//	std::vector<float> val;
-	//	((VecReader*)reader.get())->GetSamples(pos, vec, val);
-	//	glyphRenderable = std::make_shared<ArrowRenderable>(pos, vec, val);
-
-	//	std::cout << "number of rendered glyphs: " << pos.size() << std::endl;
-	//}
 
 	std::cout << "number of rendered glyphs: " << inputParticle->pos.size() << std::endl;
 
 	/********GL widget******/
-	float3 posMin, posMax;
-	reader->GetPosRange(posMin, posMax);
-	gridRenderable = std::make_shared<GridRenderable>(64);
-	//matrixMgr->SetVol(posMin, posMax);// cubemap->GetInnerDim());
+	float3 posMin = inputParticle->posMin, posMax = inputParticle->posMax;
 #ifdef USE_OSVR
 	matrixMgr = std::make_shared<GLMatrixManager>(true);
 #else
-	//matrixMgr = std::make_shared<GLMatrixManager>(false);
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 #endif
-	openGL = std::make_shared<GLWidget>(matrixMgr);
-	lensRenderable = std::make_shared<LensRenderable>(&lenses);
-	//lensRenderable->SetDrawScreenSpace(false);
+	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 #ifdef USE_OSVR
 		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
 		vrWidget->setWindowFlags(Qt::Window);
@@ -105,44 +86,26 @@ Window::Window()
 	format.setVersion(2, 0);
 	format.setProfile(QSurfaceFormat::CoreProfile);
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
-
-	//modelGrid = std::make_shared<ModelGrid>(&posMin.x, &posMax.x, 22);
-	//modelGridRenderable = std::make_shared<ModelGridRenderable>(modelGrid.get());
-	//glyphRenderable->SetModelGrid(modelGrid.get());
-	//openGL->AddRenderable("bbox", bbox);
-	openGL->AddRenderable("glyph", glyphRenderable.get());
-	//openGL->AddRenderable("lenses", lensRenderable.get());
-	//openGL->AddRenderable("grid", gridRenderable.get());
-	//openGL->AddRenderable("model", modelGridRenderable.get());
-#ifndef USE_PARTICLE
 	
 	PlyMeshReader *meshReader;
 	meshReader = new PlyMeshReader();
-
 	polyMeshFeature0 = std::make_shared<PolyMesh>();
 	meshReader->LoadPLY(dataMgr->GetConfig("ventricles").c_str(), polyMeshFeature0);
-
 	polyFeature0 = new PolyRenderable(polyMeshFeature0);
-
 	polyFeature0->SetAmbientColor(0.2, 0, 0);
 	openGL->AddRenderable("ventricles", polyFeature0);
 
-	
 	meshReader = new PlyMeshReader();
-	
 	polyMeshFeature1 = std::make_shared<PolyMesh>();
 	meshReader->LoadPLY(dataMgr->GetConfig("tumor1").c_str(), polyMeshFeature1);
 	polyFeature1 = new PolyRenderable(polyMeshFeature1);
-
 	polyFeature1->SetAmbientColor(0.0, 0.2, 0);
 	openGL->AddRenderable("tumor1", polyFeature1);
 	
 	meshReader = new PlyMeshReader();
-	
 	polyMeshFeature2 = std::make_shared<PolyMesh>();
 	meshReader->LoadPLY(dataMgr->GetConfig("tumor2").c_str(), polyMeshFeature2);
 	polyFeature2 = new PolyRenderable(polyMeshFeature2);
-	
 	polyFeature2->SetAmbientColor(0.0, 0.0, 0.2);
 	openGL->AddRenderable("tumor2", polyFeature2);
 	
@@ -151,13 +114,65 @@ Window::Window()
 	featuresLw->addItem(QString("tumor1"));
 	featuresLw->addItem(QString("tumor2"));
 	featuresLw->setEnabled(false);
-#endif
+
+
+
+	///////////////////////deformer
+	screenLensDisplaceProcessor = std::make_shared<ScreenLensDisplaceProcessor>(&lenses, inputParticle);
+	meshDeformer = std::make_shared<MeshDeformProcessor>(&posMin.x, &posMax.x, meshResolution);
+
+	std::cout << posMin.x << " " << posMin.y << " " << posMin.z << "  "
+		<< posMax.x << " " << posMax.y << " " << posMax.z << "  " << std::endl;
+
+	meshDeformer->data_type = DATA_TYPE::USE_PARTICLE;
+	meshDeformer->setParticleData(inputParticle);
+	meshDeformer->SetLenses(&lenses);
+	physicalParticleDeformer = std::make_shared<PhysicalParticleDeformProcessor>(meshDeformer, inputParticle);
+	physicalParticleDeformer->lenses = &lenses;
+	if (openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		screenLensDisplaceProcessor->isActive = true;
+		meshDeformer->isActive = false;
+		physicalParticleDeformer->isActive = false;
+	}
+	else{
+		screenLensDisplaceProcessor->isActive = false;
+		meshDeformer->isActive = true;
+		physicalParticleDeformer->isActive = true;
+	}
+
+	meshDeformer->setDeformForce(meshDeformer->getDeformForce()*100);
+
+	/////////////////////renderable
+	lensRenderable = std::make_shared<LensRenderable>(&lenses);
+
+	meshRenderable = std::make_shared<MeshRenderable>(meshDeformer.get());
+
+	openGL->AddRenderable("glyph", glyphRenderable.get());
+	openGL->AddRenderable("lenses", lensRenderable.get());
+	openGL->AddRenderable("4model", meshRenderable.get());
+
+	/////////////////////interactor
+	rInteractor = std::make_shared<RegularInteractor>();
+	rInteractor->setMatrixMgr(matrixMgr);
+
+	lensInteractor = std::make_shared<LensInteractor>();
+	lensInteractor->SetLenses(&lenses);
+	openGL->AddInteractor("regular", rInteractor.get());
+	openGL->AddInteractor("lens", lensInteractor.get());
+
+
+	/////////////////////processor
+
+	openGL->AddProcessor("1screen", screenLensDisplaceProcessor.get());
+	openGL->AddProcessor("2meshdeform", meshDeformer.get());
+	openGL->AddProcessor("3physicalParticleDeform", physicalParticleDeformer.get());
+
 
 	///********controls******/
 	addLensBtn = new QPushButton("Add circle lens");
 	addLineLensBtn = new QPushButton("Add straight band lens");
 	delLensBtn = std::make_shared<QPushButton>("Delete a lens");
-	addCurveBLensBtn = new QPushButton("Add curved band lens");
+	addCurveLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 
@@ -192,7 +207,7 @@ Window::Window()
 	controlLayout->addWidget(addLensBtn);
 	controlLayout->addWidget(addLineLensBtn);
 
-	controlLayout->addWidget(addCurveBLensBtn);
+	controlLayout->addWidget(addCurveLensBtn);
 	controlLayout->addWidget(delLensBtn.get());
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
@@ -207,7 +222,7 @@ Window::Window()
 
 	connect(addLensBtn, SIGNAL(clicked()), this, SLOT(AddLens()));
 	connect(addLineLensBtn, SIGNAL(clicked()), this, SLOT(AddLineLens()));
-	connect(addCurveBLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveBLens()));
+	connect(addCurveLensBtn, SIGNAL(clicked()), this, SLOT(AddCurveLens()));
 	connect(delLensBtn.get(), SIGNAL(clicked()), this, SLOT(SlotDelLens()));
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
@@ -228,12 +243,10 @@ Window::Window()
 	connect(radioDeformObject.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 	connect(radioDeformScreen.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformModeChanged(bool)));
 
-#ifndef USE_PARTICLE
 	if (featuresLw != NULL) {
 		controlLayout->addWidget(featuresLw);
 		connect(featuresLw, SIGNAL(currentRowChanged(int)), this, SLOT(SlotFeaturesLwRowChanged(int)));
 	}
-#endif
 	
 	mainLayout->addWidget(openGL.get(), 3);
 	mainLayout->addLayout(controlLayout,1);
@@ -242,32 +255,37 @@ Window::Window()
 
 void Window::AddLens()
 {
-	lensRenderable->AddCircleLens();
+	if (openGL->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+		meshDeformer->gridType = GRID_TYPE::UNIFORM_GRID;
+		meshDeformer->InitializeUniformGrid(inputParticle); //call this function must set gridType = GRID_TYPE::UNIFORM_GRID first
+		lensRenderable->AddCircleLens3D();
+	}
+	else if (openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		lensRenderable->AddCircleLens();
+	}
 }
 
 void Window::AddLineLens()
 {
-	lensRenderable->AddLineLens();
+	if (openGL->GetDeformModel() == DEFORM_MODEL::OBJECT_SPACE){
+		meshDeformer->gridType = GRID_TYPE::LINESPLIT_UNIFORM_GRID;
+		lensRenderable->AddLineLens3D();
+	}
+	else if (openGL->GetDeformModel() == DEFORM_MODEL::SCREEN_SPACE){
+		lensRenderable->AddLineLens();
+	}
 }
 
 
-void Window::AddCurveBLens()
+void Window::AddCurveLens()
 {
 	lensRenderable->AddCurveLens();
 }
 
-//void Window::animate()
-//{
-//	//int v = heightScaleSlider->value();
-//	//v = (v + 1) % nHeightScale;
-//	//heightScaleSlider->setValue(v);
-//	openGL->animate();
-//}
-//
 
 void Window::SlotToggleGrid(bool b)
 {
-	//modelGridRenderable->SetVisibility(b);
+	meshRenderable->SetVisibility(b);
 }
 
 Window::~Window() {
@@ -275,33 +293,12 @@ Window::~Window() {
 
 void Window::init()
 {
-//	if ("ON" == dataMgr->GetConfig("VR_SUPPORT")){
 #ifdef USE_OSVR
 		vrWidget->show();
 #endif
 }
 
 
-//void Window::UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir)
-//{
-//	//std::cout << indexTip.x() << "," << indexTip.y() << "," << indexTip.z() << std::endl;
-//	lensRenderable->SlotLensCenterChanged(make_float3(indexTip.x(), indexTip.y(), indexTip.z()));
-//}
-#ifdef USE_LEAP
-void Window::SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands)
-{
-	if (1 == numHands){
-		lensRenderable->SlotOneHandChanged(make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
-	}
-	else if(2 == numHands){
-		//
-		lensRenderable->SlotTwoHandChanged(
-			make_float3(leftIndexTip.x(), leftIndexTip.y(), leftIndexTip.z()),
-			make_float3(rightIndexTip.x(), rightIndexTip.y(), rightIndexTip.z()));
-		
-	}
-}
-#endif
 void Window::SlotToggleUsingGlyphSnapping(bool b)
 {
 	//lensRenderable->isSnapToGlyph = b;
@@ -387,12 +384,24 @@ void Window::SlotToggleFeaturePickingFinished()
 
 void Window::SlotDeformModeChanged(bool clicked)
 {
-	//if (radioDeformScreen->isChecked()){
-	//	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
-	//}
-	//else if (radioDeformObject->isChecked()){
-	//	openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
-	//}
+	if (radioDeformScreen->isChecked()){
+		openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
+
+		screenLensDisplaceProcessor->isActive = true;
+		meshDeformer->isActive = false;
+		physicalParticleDeformer->isActive = false;
+
+		addCurveLensBtn->setDisabled(false);
+	}
+	else if (radioDeformObject->isChecked()){
+		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
+
+		screenLensDisplaceProcessor->isActive = false;
+		meshDeformer->isActive = true;
+		physicalParticleDeformer->isActive = true;
+
+		addCurveLensBtn->setDisabled(true);
+	}
 }
 
 void Window::SlotFeaturesLwRowChanged(int currentRow)
@@ -432,6 +441,6 @@ void Window::SlotDelLens()
 {
 	lensRenderable->DelLens();
 	inputParticle->reset();
-	//screenLensDisplaceProcessor->reset();
-	openGL->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	screenLensDisplaceProcessor->reset();
+	openGL->SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 }

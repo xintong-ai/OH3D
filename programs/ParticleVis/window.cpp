@@ -141,9 +141,9 @@ Window::Window()
 
 
 	///********controls******/
-	addLensBtn = new QPushButton("Add old lens");
-	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
-	delLensBtn = std::make_shared<QPushButton>("Delete the Virtual Retractor");
+	addLensBtn = new QPushButton("Add circle lens");
+	addLineLensBtn = new QPushButton("Add line lens");
+	delLensBtn = std::make_shared<QPushButton>("Delete the lens");
 	addCurveLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
@@ -542,6 +542,8 @@ void Window::SlotDeformModeChanged(bool clicked)
 		screenLensDisplaceProcessor->isActive = true;
 		meshDeformer->isActive = false;
 		physicalParticleDeformer->isActive = false;
+
+		addCurveLensBtn->setDisabled(false);
 	}
 	else if (radioDeformObject->isChecked()){
 		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
@@ -549,6 +551,8 @@ void Window::SlotDeformModeChanged(bool clicked)
 		screenLensDisplaceProcessor->isActive = false;
 		meshDeformer->isActive = true;
 		physicalParticleDeformer->isActive = true;
+
+		addCurveLensBtn->setDisabled(true);	
 	}
 }
 

@@ -1,3 +1,8 @@
+////// NOTE!!!!!!!!!!
+////// LEAP and OSVR of this project has not been well set
+
+
+
 #ifndef WINDOW_H
 #define WINDOW_H
 
@@ -6,34 +11,32 @@
 #include "CMakeConfig.h"
 
 class DataMgr;
-class GLWidget;
+class DeformGLWidget;
 class MarchingCubes;
 class QPushButton;
 class QSlider;
 class Renderable;
-class TexPlaneRenderable;
 class QCheckBox;
 class QLabel;
 class Cubemap;
-//class GlyphRenderable;
 class GlyphRenderable;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
-class GridRenderable;
 class LeapListener;
 class DataMgr;
 class GLMatrixManager;
-class ModelGridRenderable;
-class ModelGrid;
 class PolyRenderable;
 class QListWidget;
 class Particle;
 class Lens;
 class PolyMesh;
-
-//#define USE_PARTICLE
-
+class MeshDeformProcessor;
+class ScreenLensDisplaceProcessor;
+class PhysicalParticleDeformProcessor;
+class RegularInteractor;
+class LensInteractor;
+class MeshRenderable;
 #ifdef USE_OSVR
 class VRWidget;
 class VRGlyphRenderable;
@@ -51,7 +54,7 @@ public:
 	void init();
 
 private:
-    std::shared_ptr<GLWidget> openGL;
+    std::shared_ptr<DeformGLWidget> openGL;
 	std::shared_ptr<Particle> inputParticle;
 	Cubemap* cubemap;
 	QTimer *aTimer;
@@ -74,21 +77,22 @@ private:
 
 	std::shared_ptr<GlyphRenderable> glyphRenderable;
 	std::shared_ptr<LensRenderable> lensRenderable;
-	std::shared_ptr<GridRenderable> gridRenderable;
+	std::shared_ptr<MeshRenderable> meshRenderable;
+
 #ifdef USE_OSVR
 	std::shared_ptr<VRWidget> vrWidget;
 	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
 #endif
-	std::shared_ptr<ModelGridRenderable> modelGridRenderable;
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	LeapListener* listener;
 	Leap::Controller* controller;
 
-	QPushButton *addCurveBLensBtn;
+	QPushButton *addCurveLensBtn;
 
-	std::shared_ptr<ModelGrid> modelGrid;
+	std::shared_ptr<RegularInteractor> rInteractor;
+	std::shared_ptr<LensInteractor> lensInteractor;
 
 	PolyRenderable * polyFeature0, *polyFeature1, *polyFeature2;
 	QListWidget *featuresLw = NULL;
@@ -96,10 +100,16 @@ private:
 
 	std::vector<Lens*> lenses; //can change Lens* to shared pointer, to avoid manually deleting
 
+	std::shared_ptr<MeshDeformProcessor> meshDeformer;
+	std::shared_ptr<ScreenLensDisplaceProcessor> screenLensDisplaceProcessor;
+	std::shared_ptr<PhysicalParticleDeformProcessor> physicalParticleDeformer;
+	float deformForceConstant = 3;
+	int meshResolution = 20;
+
 private slots:
 	void AddLens();
 	void AddLineLens();
-	void AddCurveBLens();
+	void AddCurveLens();
 
 	//void animate();
 	void SlotToggleGrid(bool b);

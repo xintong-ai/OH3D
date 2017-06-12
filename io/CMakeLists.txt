@@ -30,9 +30,12 @@ if(USE_VTK)
 	set(HDRS ${HDRS} PlyVTKReader.h )
 	set(SRCS ${SRCS} PlyVTKReader.cpp)
 	include(${VTK_USE_FILE}) 
-	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
 endif()
 
 add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
+
+if(USE_VTK)
+	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
+endif()
 
 endif()
