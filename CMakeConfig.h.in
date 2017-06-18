@@ -3,9 +3,8 @@
 
 #cmakedefine USE_OSVR
 #cmakedefine USE_LEAP
-#cmakedefine USE_TOUCH
-#cmakedefine USE_DEFORM
-#cmakedefine USE_NEW_LEAP
+#cmakedefine USE_TOUCHSCREEN
+
 #cmakedefine USE_CONTROLLER
 
 #endif//CMAKE_CONFIG_H

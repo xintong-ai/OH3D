@@ -5,16 +5,6 @@ PROJECT (TensorVis)
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
-# option(USE_OSVR "Enable features that require OSVR" OFF)
-# if(USE_OSVR)
-	# find_package(osvr REQUIRED)
-# endif()
-
-# option(USE_LEAP "Enable features that require LEAP MOTION" OFF)
-# if(USE_LEAP)
-	# find_package(Leap REQUIRED)
-# endif()
-
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -38,7 +28,7 @@ configure_file(config.txt config.txt COPYONLY)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs})
+add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} config.txt)
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  

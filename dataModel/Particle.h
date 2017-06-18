@@ -18,12 +18,18 @@ class Particle
 public:
 	std::vector<float4> posOrig;
 	float3 posMin, posMax;
-	int numParticles;
+	int numParticles = 0;
 
 	std::vector<float4> pos; //current position after deformation
 
-	std::vector<float> val; //attribute that might be important. currently only support one attribute
+	//to record the attribute(s) that might be important, two ways can be used
+	//the first case is for only one attribute
+	std::vector<float> val; 
 	float valMin, valMax;
+	//the second case is for multiple attribute
+	std::vector<float> valTuple;
+	int tupleCount;
+	//when one way of attribute recording is used, the other one can be ignored
 
 	bool hasFeature = false;
 	std::vector<char> feature; //actually is segmentation tag. should be named as "label" or "tag"
@@ -31,12 +37,15 @@ public:
 	char featureMin, featureMax;
 
 	Particle(){};
-	Particle(std::vector<float4> _pos, std::vector<float> _val);
+	Particle(std::vector<float4>  &_pos, std::vector<float>  &_val);
 	
 	~Particle()
 	{
 	};
-	
+
+	void init(std::vector<float4> &_pos, std::vector<float> & _val);
+
+	void updateMaxMinValAndPos();
 	void clear(){};
 	
 	void featureReshuffle();
@@ -45,7 +54,7 @@ public:
 	//variables for rendering. are not needed if not used for a glyphRenderable
 	//generally rendering
 	bool hasInitedForRendering = false;
-	void initForRendering();
+	void initForRendering(float s = 1.0f, float b = 1.0f);
 	std::vector<float> glyphBright;
 	std::vector<float> glyphSizeScale;
 	//used for feature freezing / snapping
@@ -64,4 +73,5 @@ public:
 private:
 
 };
+
 #endif

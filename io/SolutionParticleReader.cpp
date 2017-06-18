@@ -113,6 +113,5 @@ void SolutionParticleReader::OutputToParticleData(std::shared_ptr<Particle> v)
 	v->val = val;
 
 	v->numParticles = pos.size();
-	GetValRange(v->valMin, v->valMax);
-	GetPosRange(v->posMin, v->posMax);
+	v->updateMaxMinValAndPos();
 }

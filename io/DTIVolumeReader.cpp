@@ -1,4 +1,5 @@
 #include "DTIVolumeReader.h"
+#include "Particle.h"
 #include <vector_types.h>
 #include <vector_functions.h>
 #include <helper_math.h>
@@ -7,7 +8,7 @@
 #define EPS 1e-6
 
 DTIVolumeReader::DTIVolumeReader(const char* filename) 
-	:TeemVolumeReader(filename)
+	:NrrdVolumeReader(filename)
 {
 }
 
@@ -147,4 +148,21 @@ void DTIVolumeReader::GetSamplesWithFeature(std::vector<float4>& _pos, std::vect
 			}
 		}
 	}
+}
+
+void DTIVolumeReader::OutputToParticleData(std::shared_ptr<Particle> v)
+{
+	v->clear();
+
+	v->tupleCount = 7;
+	GetSamples(v->pos, v->valTuple);
+	v->posOrig = v->pos;
+
+	//v->pos = pos;
+	//v->posOrig = pos;
+	//v->val = val;
+	v->val.resize(v->pos.size(), 1.0f); //dummy values
+
+	v->numParticles = v->pos.size();
+	v->updateMaxMinValAndPos();
 }

@@ -7,13 +7,22 @@
 #include <helper_math.h>
 
 
-Particle::Particle(std::vector<float4> _pos, std::vector<float> _val)
+Particle::Particle(std::vector<float4>  &_pos, std::vector<float> &_val)
+{
+	init(_pos, _val);
+}
+
+void Particle::init(std::vector<float4>  &_pos, std::vector<float> &_val)
 {
 	pos = _pos;
 	posOrig = _pos;
 	val = _val;
 	numParticles = pos.size();
+	updateMaxMinValAndPos();
+}
 
+void Particle::updateMaxMinValAndPos()
+{
 	posMax = make_float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 	posMin = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 	float v = 0;
@@ -48,6 +57,7 @@ Particle::Particle(std::vector<float4> _pos, std::vector<float> _val)
 	}
 }
 
+
 void Particle::setFeature(std::vector<char> _f)
 {
 	feature = _f;
@@ -65,11 +75,13 @@ void Particle::setFeature(std::vector<char> _f)
 	}
 }
 
-void Particle::initForRendering()
+void Particle::initForRendering(float s, float b)
 {
+	if (hasInitedForRendering)	return;
+
 	hasInitedForRendering = true;
-	glyphSizeScale.assign(numParticles, 1.0f);
-	glyphBright.assign(numParticles, 1.0f);
+	glyphSizeScale.assign(numParticles, s);
+	glyphBright.assign(numParticles, b);
 }
 
 
@@ -130,7 +142,7 @@ void Particle::featureReshuffle()
 void Particle::reset()
 {
 	pos = posOrig;
-	if (hasInitedForRendering){
+	if (hasInitedForRendering){  //the following is only true in limited situations
 		glyphSizeScale.assign(numParticles, 1.0f);
 		glyphBright.assign(numParticles, 1.0f);
 	}

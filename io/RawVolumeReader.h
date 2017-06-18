@@ -1,6 +1,6 @@
 #ifndef RAWVOLUME_READER_H
 #define RAWVOLUME_READER_H
-#include "vector_types.h"
+#include <vector_types.h>
 #include <assert.h>
 
 #include <algorithm>
@@ -8,7 +8,7 @@
 #include <vector>
 #include <string>
 
-#include <Volume.h>
+#include "Volume.h"
 
 #ifndef _DataType_
 #define _DataType_
@@ -26,21 +26,25 @@ struct DataType {
 class RawVolumeReader 
 {
 public:
-
 	///	define 7 common types of data type
 	static const DataType dtFloat32, dtInt8, dtUint8, dtInt16, dtUint16, dtInt32, dtUint32;
 
-	void Load();
-
-	RawVolumeReader(const char* filename, int3 _dim); //need to provide the dimensions at least
-
-
-
+	RawVolumeReader(const char* filename, int3 _dim, DataType _DataType = dtUint16); //need to provide the dimensions at least
+	~RawVolumeReader();
 
 	void OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v);
+	void OutputToVolumeCUDAUnsignedShort(std::shared_ptr<VolumeCUDA>);
 
+	static void rawFileReadingInfo(std::string dataPath, DataType & volDataType, bool &labelFromFile)
+	{
+		if (std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("181") != std::string::npos || std::string(dataPath).find("Bucky") != std::string::npos || std::string(dataPath).find("bloodCell") != std::string::npos || std::string(dataPath).find("Lobster") != std::string::npos || std::string(dataPath).find("Orange") != std::string::npos || std::string(dataPath).find("Tomato") != std::string::npos || std::string(dataPath).find("Neghip") != std::string::npos)
+			volDataType = dtUint8;
+		else
+			volDataType = dtUint16;
 
-	~RawVolumeReader();
+		if (std::string(dataPath).find("Baseline") != std::string::npos)
+			labelFromFile = true;
+	};
 
 protected:
 	std::string datafilename;
@@ -59,6 +63,9 @@ protected:
 	void GetMinMaxValue();
 	void Clean();
 	void Allocate();
+
+	void Load();
+
 };
 
 #endif

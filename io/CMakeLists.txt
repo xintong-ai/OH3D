@@ -11,20 +11,31 @@ else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR})
 
-target_link_libraries(
-	dataModel
+
+set(SRCS DataMgr.cpp PlyMeshReader.cpp  ParticleReader.cpp
+	VecReader.cpp NrrdVolumeReader.cpp DTIVolumeReader.cpp 
+	SolutionParticleReader.cpp BinaryParticleReader.cpp
+	RawVolumeReader.cpp
+	BinaryTuplesReader.cpp
 	)
 
-set(SRCS DataMgr.cpp MeshReader.cpp ParticleReader.cpp
-	VecReader.cpp TeemVolumeReader.cpp DTIVolumeReader.cpp 
-	FlightReader.cpp UniverseParticleReader.cpp SolutionParticleReader.cpp BinaryParticleReader.cpp
-	RawVolumeReader.cpp)
+set(HDRS DataMgr.h PlyMeshReader.h  ParticleReader.h
+	VecReader.h NrrdVolumeReader.h DTIVolumeReader.h 
+	SolutionParticleReader.h BinaryParticleReader.h
+	RawVolumeReader.h
+	BinaryTuplesReader.h
+	)
 
-set(HDRS DataMgr.h MeshReader.h ParticleReader.h
-	VecReader.h TeemVolumeReader.h DTIVolumeReader.h 
-	FlightReader.h UniverseParticleReader.h SolutionParticleReader.h BinaryParticleReader.h
-	RawVolumeReader.h)
+if(BUILD_TEST AND USE_VTK)
+	set(HDRS ${HDRS} PlyVTKReader.h )
+	set(SRCS ${SRCS} PlyVTKReader.cpp)
+	include(${VTK_USE_FILE}) 
+endif()
 
-add_library(io STATIC ${HDRS} ${SRCS})
+add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
+
+if(BUILD_TEST AND USE_VTK)
+	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
+endif()
 
 endif()

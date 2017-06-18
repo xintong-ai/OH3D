@@ -5,7 +5,7 @@
 
 #include <vector_functions.h>
 
-#include "myMat.h"
+#include "myDefine.h"
 
 class GLWidget;
 #define USE_PBO 0
@@ -36,8 +36,6 @@ inline void GetNormalMatrix(float modelview[16], float NormalMatrix[9])
 
 class Renderable: public QObject
 {
-
-
 public:
 	Renderable();
     ~Renderable();
@@ -56,26 +54,11 @@ public:
 		memcpy(&matrix_pj.v[0].x, projection, sizeof(float4) * 4);
 	}
 
-    //void SetDataMgr(DataMgr* ptr) {dataMgr = (DataMgr*)ptr;}
-
     uint* GetHostImage(){ return h_output;}
 
     void SetDeviceImage(uint* p){ d_output = p;}
 
     void SetPBO(uint v) {pbo = v;}
-
-    //void GetDataDim(int &nx, int &ny, int &nz);
-
-    //void SetWindowSize(int w, int h) {winWidth = w; winHeight = h;}
-
-    //void SaveMatrices(float* mv, float* pj) {
-    //    ModelviewMatrix = QMatrix4x4(mv);
-    //    ModelviewMatrix = ModelviewMatrix.transposed();
-
-    //    ProjectionMatrix = QMatrix4x4(pj);
-    //    ProjectionMatrix = ProjectionMatrix.transposed();
-    //}
-
 
 	void SetActor(GLWidget* _actor) {
 		actor = _actor;
@@ -93,8 +76,6 @@ public:
 	void DrawEnd(const char* rendererName);
 
 protected:
-    //DataMgr *dataMgr;
-    //int winWidth, winHeight;
     uint pbo;
     uint* d_output = NULL;
     uint* h_output = NULL;

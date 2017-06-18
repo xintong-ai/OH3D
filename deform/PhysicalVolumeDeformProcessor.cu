@@ -28,8 +28,6 @@ void PhysicalVolumeDeformProcessor::InitFromVolume(std::shared_ptr<Volume> _ori)
 {
 	volume = _ori;
 
-	//volumeCUDADeformed.VolumeCUDA_init(_ori->size, _ori->values, 1, 1);
-
 	ModelVolumeDeformer_KernelInit();
 }
 
@@ -235,7 +233,8 @@ bool PhysicalVolumeDeformProcessor::process(float* modelview, float* projection,
 		dim3 blockSize(dim, dim, 1);
 		dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
-		checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, volume->volumeCudaOri.channelDesc));
+		cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
+		checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
 
 		checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
 

@@ -9,10 +9,8 @@
 
 class DataMgr;
 class DeformGLWidget;
-class MarchingCubes;
 class QPushButton;
 class QSlider;
-class Renderable;
 class QCheckBox;
 class QLabel;
 class GlyphRenderable;
@@ -29,7 +27,6 @@ class PhysicalParticleDeformProcessor;
 class Lens;
 class RegularInteractor;
 class LensInteractor;
-class LensLeapInteractor;
 
 
 #ifdef USE_LEAP
@@ -38,12 +35,18 @@ class ArrowRenderable; //used to draw leap finger indicators
 namespace Leap{
 	class Controller;
 }
+class LensLeapInteractor;
 #endif
 
 #ifdef USE_OSVR
 class VRWidget;
 class VRGlyphRenderable;
 #endif
+
+#ifdef USE_TOUCHSCREEN
+class LensTouchInteractor;
+#endif
+
 
 class Window : public QWidget
 {
@@ -55,7 +58,6 @@ public:
 
 private:
 	std::shared_ptr<DeformGLWidget> openGL;
-	QTimer *aTimer;
 	QPushButton* addLensBtn;
 	QPushButton* addLineLensBtn;
 
@@ -112,6 +114,10 @@ private:
 	std::shared_ptr<Particle> leapFingerIndicators;
 	std::vector<float3> leapFingerIndicatorVecs;
 	std::shared_ptr<LensLeapInteractor> lensLeapInteractor;
+#endif
+
+#ifdef USE_TOUCHSCREEN
+	std::shared_ptr<LensTouchInteractor> lensTouchInteractor;
 #endif
 
 private slots:

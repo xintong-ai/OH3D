@@ -7,7 +7,6 @@
 #include <helper_math.h>
 
 #include "SphereRenderable.h"
-#include "CosmoRenderable.h"
 
 #include "SolutionParticleReader.h"
 #include "BinaryParticleReader.h"
@@ -16,7 +15,6 @@
 #include "MeshDeformProcessor.h"
 #include "GLMatrixManager.h"
 #include "PolyRenderable.h"
-#include "MeshReader.h"
 #include "ColorGradient.h"
 #include "Particle.h"
 
@@ -37,7 +35,9 @@
 #include "VRGlyphRenderable.h"
 #endif
 
-
+#ifdef USE_TOUCHSCREEN
+#include "touch/LensTouchInteractor.h"
+#endif
 
 Window::Window()
 {
@@ -53,29 +53,27 @@ Window::Window()
 		std::shared_ptr<SolutionParticleReader> reader;
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),130);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
-		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
 	}
 	else{
 		std::shared_ptr<BinaryParticleReader> reader;
 		reader = std::make_shared<BinaryParticleReader>(dataPath.c_str());
-		reader->GetPosRange(posMin, posMax);
 		reader->OutputToParticleData(inputParticle);
 		reader.reset();
 		deformForceConstant = 2;
 		//inputParticle->featureReshuffle();
 	}
 
+	posMin = inputParticle->posMin;
+	posMax = inputParticle->posMax;
+
+
 	std::cout << "number of rendered glyphs: " << inputParticle->numParticles << std::endl;
 
 	/********GL widget******/
-#ifdef USE_OSVR
-	matrixMgr = std::make_shared<GLMatrixManager>(true);
-#else
-	matrixMgr = std::make_shared<GLMatrixManager>(false);
-#endif
-	matrixMgr->SetVol(posMin, posMax);
+
+	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
 	openGL->SetDeformModel(DEFORM_MODEL::SCREEN_SPACE);
@@ -115,7 +113,6 @@ Window::Window()
 		glyphRenderable->setColorMap(COLOR_MAP::RDYIGN, true);
 	}
 	else{
-		//glyphRenderable = std::make_shared<CosmoRenderable>(inputParticle);
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
 		//glyphRenderable->setColorMap(COLOR_MAP::SIMPLE_BLUE_RED);
 		glyphRenderable->colorByFeature = true;
@@ -141,14 +138,17 @@ Window::Window()
 	openGL->AddInteractor("regular", rInteractor.get());
 	openGL->AddInteractor("lens", lensInteractor.get());
 
-
-
+#ifdef USE_TOUCHSCREEN
+	lensTouchInteractor = std::make_shared<LensTouchInteractor>();
+	lensTouchInteractor->SetLenses(&lenses);
+	openGL->AddTouchInteractor("lens", lensTouchInteractor.get());
+#endif
 
 
 	///********controls******/
-	addLensBtn = new QPushButton("Add old lens");
-	addLineLensBtn = new QPushButton("Add a Virtual Retractor");
-	delLensBtn = std::make_shared<QPushButton>("Delete the Virtual Retractor");
+	addLensBtn = new QPushButton("Add circle lens");
+	addLineLensBtn = new QPushButton("Add line lens");
+	delLensBtn = std::make_shared<QPushButton>("Delete the lens");
 	addCurveLensBtn = new QPushButton("Add curved band lens");
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
@@ -199,7 +199,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 #endif
 
 #ifdef USE_OSVR 
-	vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
+	vrWidget = std::make_shared<VRWidget>(matrixMgr);
 	vrWidget->setWindowFlags(Qt::Window);
 	vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
 
@@ -381,7 +381,7 @@ void Window::SlotDelLens()
 	lensRenderable->DelLens();
 	inputParticle->reset();
 	screenLensDisplaceProcessor->reset();
-	openGL->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	openGL->SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 }
 
 void Window::SlotToggleUsingGlyphSnapping(bool b)
@@ -547,6 +547,8 @@ void Window::SlotDeformModeChanged(bool clicked)
 		screenLensDisplaceProcessor->isActive = true;
 		meshDeformer->isActive = false;
 		physicalParticleDeformer->isActive = false;
+
+		addCurveLensBtn->setDisabled(false);
 	}
 	else if (radioDeformObject->isChecked()){
 		openGL->SetDeformModel(DEFORM_MODEL::OBJECT_SPACE);
@@ -554,6 +556,8 @@ void Window::SlotDeformModeChanged(bool clicked)
 		screenLensDisplaceProcessor->isActive = false;
 		meshDeformer->isActive = true;
 		physicalParticleDeformer->isActive = true;
+
+		addCurveLensBtn->setDisabled(true);	
 	}
 }
 

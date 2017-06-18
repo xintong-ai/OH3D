@@ -10,7 +10,7 @@
 #include "ShaderProgram.h"
 #include "PolyRenderable.h"
 #include <QMatrix4x4>
-#include "MeshReader.h"
+#include "PolyMesh.h"
 
 void PolyRenderable::init()
 {
@@ -20,9 +20,8 @@ void PolyRenderable::init()
 
 	//glEnable(GL_DEPTH_TEST);
 
-	GenVertexBuffer(m->numElements,
-		m->Faces_Triangles,
-		m->Normals);
+//	GenVertexBuffer(m->numElements, m->Faces_Triangles, m->Normals);
+	GenVertexBuffer(polyMesh->vertexcount, polyMesh->vertexCoords,polyMesh->vertexNorms);
 }
 
 void PolyRenderable::loadShaders()
@@ -69,7 +68,8 @@ void PolyRenderable::loadShaders()
 
 	smooth in vec3 tnorm;
 
-	layout(location = 0) out vec4 FragColor;
+	//layout(location = 0) 
+		out vec4 FragColor;
 
 	vec3 phongModel(vec4 position, vec3 normal) {
 		vec3 s = normalize(vec3(LightPosition - position));
@@ -134,7 +134,6 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 
 	glMatrixMode(GL_MODELVIEW);
 
-
 	glProg->use();
 	m_vao->bind();
 
@@ -156,8 +155,9 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 	qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
-	glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
+	//glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
 	//glDrawElements(GL_TRIANGLES, m->numElements, GL_UNSIGNED_INT, m->indices);
+	glDrawElements(GL_TRIANGLES, polyMesh->facecount*3, GL_UNSIGNED_INT, polyMesh->indices);
 
 	//glBindVertexArray(0);
 	m_vao->release();
@@ -211,6 +211,6 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 	m_vao->release();
 }
 
-float3 PolyRenderable::GetPolyCenter(){
-	return m->center;
-}
+//float3 PolyRenderable::GetPolyCenter(){
+//	//return m->center;
+//}

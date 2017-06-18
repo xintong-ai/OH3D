@@ -8,78 +8,31 @@
 #include <QOpenGLTexture>
 #include <QOpenGLFunctions>
 #include <QOpenGLShaderProgram>
-class ShaderProgram;
-class QOpenGLVertexArrayObject;
-class Fiber;
-class Lens;
 
-enum DEFORM_METHOD{
-	PRINCIPLE_DIRECTION,
-	DISTANCE_MAP,
-	PROJECTIVE_DYNAMIC
-};
-enum VIS_METHOD{
-	CUTAWAY,
-	DEFORM
-};
-
-
+struct RayCastingParameters;
 class VolumeRenderableCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
-	
+
 	//the volume to render 
 	std::shared_ptr<Volume> volume = 0;
 
-	VIS_METHOD vis_method = VIS_METHOD::DEFORM;
-	DEFORM_METHOD deformMethod = DEFORM_METHOD::PROJECTIVE_DYNAMIC;
-	
 public:
 	VolumeRenderableCUDA(std::shared_ptr<Volume> _volume);
 	~VolumeRenderableCUDA();
 
-	//cutaway or deform paramteres
 	bool isFixed = false;
-	float wallRotateTan = 0;
-	int curDeformDegree = 1; //for deform by PRINCIPLE_DIRECTION & DISTANCE_MAP,
-	int curAnimationDeformDegree = 0; //for deform by PROJECTIVE_DYNAMIC
-	
-	//NEK
-	//lighting
-	float la = 1.0, ld = 0.2, ls = 0.1;
-	////MGHT2
-	//transfer function
-	float transFuncP1 = 0.55;
-	float transFuncP2 = 0.13;
-	float density = 1;
-	//ray casting
-	int maxSteps = 768;
-	float tstep = 0.25f;
-	float brightness = 1.0;
 
-
-	////////MGHT2
-	////lighting
-	//float la = 1.0, ld = 0.2, ls = 0.7;
-	////transfer function
-	//float transFuncP1 = 0.44;// 0.55;
-	//float transFuncP2 = 0.29;// 0.13;
-	//float density = 1.25;
-	////ray casting
-	//int maxSteps = 512;
-	//float tstep = 0.25f;
-	//float brightness = 1.3;
-
+	std::shared_ptr<RayCastingParameters> rcp;
 
 	void init() override;
 	void draw(float modelview[16], float projection[16]) override;
 	void resize(int width, int height)override;
 
-	bool useColor = false;
-
 	std::shared_ptr<Volume> getVolume(){
 		return volume;
 	}
+	void setBlending(bool b, float d = 1.0){ blendPreviousImage = b; densityBonus = d; };
 
 private:
 	VolumeCUDA volumeCUDAGradient;
@@ -108,6 +61,29 @@ private:
 		q_mvFix = _q_mv;
 
 	};
+
+	uint *d_output;
+
+
+	//attributes used to blend the current image in pbo into the volume rendering
+	bool blendPreviousImage = false;
+	float densityBonus;
+
+	//for belending
+	//for color
+	struct cudaGraphicsResource *cuda_inputImageTex_resource = 0;
+	//for depth
+	//to transfer the depth of the current depth buffer to cuda, three possible methods are:
+	//testmethod == 1: store the depth in a opengl texture, then use a cuda_fiberImageDepthTex_resource to map it to CUDA array. Currently this mapping does not accept GL_DEPTH_COMPONENT, thus the depth value need to be first copied out into a host array, then be copied into a opengl float texure.
+	//another untested similar way is to encode the depth value into the color channel, which is non-intuitive and introduce extra error
+	//testmethod == 2: copy out the depth value into a host array, then	store the depth in a 2D cuda array. does not work currently
+	//anothe untested similar way is to use 1D cuda array
+	//testmethod == 3: store the depth in a 3D cuda array, then use it to init a 3D cuda texture.
+	//so here use method 3
+	unsigned int textureDepth = 0;
+	cudaArray_t c_inputImageDepthArray = 0;
+	cudaArray_t c_inputImageColorArray; //no allocation or deallocation
+	float *localDepthArray = 0; //used to transfer opengl depth to cuda array
 };
 
 #endif

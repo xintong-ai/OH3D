@@ -4,8 +4,7 @@
 #include "Lens.h"
 #include "Particle.h"
 
-bool LensLeapInteractor::SlotOneHandChanged(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap,  float &f)
-
+bool LensLeapInteractor::SlotRightHandChanged(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap,  float &f)
 {
 	//currently only work for line lens 3D
 
@@ -67,9 +66,8 @@ bool LensLeapInteractor::SlotOneHandChanged(float3 thumpLeap, float3 indexLeap, 
 			ret = true;
 		}
 	}
-	else{	//lenses->size()>0
+	else{
 		LineLens3D* l = (LineLens3D*)lenses->back();
-
 
 #ifdef USE_OSVR
 		float d2 = length(middleLeap - indexLeap) / 1.1;
@@ -78,8 +76,6 @@ bool LensLeapInteractor::SlotOneHandChanged(float3 thumpLeap, float3 indexLeap, 
 		float d2 = length(middleLeap - indexLeap) / 1.2;
 		float d3 = length(middleLeap - ringLeap) / 1.2;
 #endif
-
-
 
 		switch (actor->GetInteractMode())
 		{
@@ -257,8 +253,6 @@ bool LensLeapInteractor::SlotOneHandChanged(float3 thumpLeap, float3 indexLeap, 
 		}
 	}
 
-
-
 	
 	leapFingerIndicators->numParticles = 1;
 	leapFingerIndicators->pos[0] = markerPos;
@@ -342,7 +336,7 @@ void LensLeapInteractor::ChangeLensCenterbyLeap(Lens *l, float3 p)
 		float3 leapPos = GetNormalizedLeapPos(p);
 		const float aa = 0.02f;
 		float2 depthRange;
-		((DeformGLWidget*)actor)->GetDepthRange(depthRange);
+		actor->GetDepthRange(depthRange);
 
 		bool usingVR = false;
 		if (usingVR){
@@ -362,6 +356,7 @@ void LensLeapInteractor::ChangeLensCenterbyLeap(Lens *l, float3 p)
 
 }
 
+
 float3 LensLeapInteractor::GetTransferredLeapPos(float3 p)
 {
 	////Xin's method when not using VR
@@ -374,7 +369,7 @@ float3 LensLeapInteractor::GetTransferredLeapPos(float3 p)
 	actor->GetProjection(projection);
 
 	float2 depthRange;
-	((DeformGLWidget*)actor)->GetDepthRange(depthRange);
+	actor->GetDepthRange(depthRange);
 
 	float leapClipx = leapPosNormalized.x * 2 - 1;
 	float leapClipy = leapPosNormalized.y * 2 - 1;
@@ -389,4 +384,3 @@ float3 LensLeapInteractor::GetTransferredLeapPos(float3 p)
 	return make_float3(Clip2ObjectGlobal(make_float4(leapClipx, leapClipy, leapClipz, 1.0), _invmv, _invpj));
 
 }
-

@@ -3,7 +3,7 @@
 #include "glwidget.h"
 #include "Particle.h"
 
-void GlyphInteractor::mousePress(int x, int y, int modifier)
+void GlyphInteractor::mousePress(int x, int y, int modifier, int mouseKey)
 {
 	/*
 	///DO NOT DELETE!!! will modify in the future

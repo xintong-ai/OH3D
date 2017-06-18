@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include <helper_timer.h>
+#include <Windows.h>
+
 
 #include "Renderable.h"
 #include "VRWidget.h"
@@ -12,17 +14,23 @@
 #include "Processor.h"
 #include "mouse/Interactor.h"
 
-GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
-: QOpenGLWidget(parent)
-    , m_frame(0)
-	, matrixMgr(_matrixMgr)
-{
+#ifdef USE_TOUCHSCREEN
+#include "touch/TouchInteractor.h"
+#endif
 
+// removing the following lines will cause runtime error
+#ifdef WIN32
+#include <windows.h>
+#endif
+#define qgl	QOpenGLContext::currentContext()->functions()
+
+GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
+: QOpenGLWidget(parent), matrixMgr(_matrixMgr)
+{
     setFocusPolicy(Qt::StrongFocus);
     sdkCreateTimer(&timer);
 
 	grabGesture(Qt::PinchGesture);
-
 }
 
 
@@ -43,6 +51,8 @@ void GLWidget::AddInteractor(const char* name, void* r)
 	interactors[name] = (Interactor*)r;
 	((Interactor*)r)->SetActor(this);
 }
+
+
 
 GLWidget::~GLWidget()
 {
@@ -72,14 +82,13 @@ void GLWidget::initializeGL()
 
 void GLWidget::computeFPS()
 {
-    frameCount++;
     fpsCount++;
     if (fpsCount == fpsLimit)
     {
         float ifps = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
-        qDebug() << "FPS: "<<ifps;
+        //qDebug() << "Processor plus Renderer FPS: "<<ifps;
         fpsCount = 0;
-//        fpsLimit = (int)MAX(1.f, ifps);
+        fpsLimit = min(4*ifps, 100);
         sdkResetTimer(&timer);
     }
 }
@@ -91,22 +100,35 @@ void GLWidget::TimerStart()
 
 void GLWidget::TimerEnd()
 {
-	sdkStopTimer(&timer);
-	computeFPS();
+	fpsCount++;
+	if (fpsCount >= fpsLimit)
+	{
+		sdkStopTimer(&timer);
+
+		float ifps = 1.f*fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f);
+		qDebug() << "Overall FPS: "<<ifps;
+
+		fpsCount = 0;
+		sdkResetTimer(&timer);
+		sdkStartTimer(&timer);
+		fpsLimit = max(min(4 * ifps, 128), 16);
+	}
+
+	//computeFPS();
 }
 
 
 void GLWidget::paintGL() {
     /****transform the view direction*****/
 	makeCurrent();
-	TimerStart();
+	//TimerStart();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	GLfloat modelview[16];
 	GLfloat projection[16];
 	matrixMgr->GetModelViewMatrix(modelview);
-	matrixMgr->GetProjection(projection, width, height);
+	matrixMgr->GetProjection(projection);
 
 
 	for (auto processor : processors)
@@ -169,16 +191,59 @@ void GLWidget::paintGL() {
 #endif
 	
 	UpdateGL();
+
+	if (needSaveImage){
+		SYSTEMTIME st;
+		GetSystemTime(&st);
+		std::string fname = "screenShot_" + std::to_string(st.wMinute) + std::to_string(st.wSecond) + std::to_string(st.wMilliseconds) + ".png";
+		std::cout << "saving screen shot to file: " << fname << std::endl;
+
+		qgl->glActiveTexture(GL_TEXTURE0);
+		glGenTextures(1, &screenTex);
+		glBindTexture(GL_TEXTURE_2D, screenTex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		int w = width, h = height;
+
+		std::cout << "w " << w << " h " << h << std::endl;
+		uint8_t *pixels = new uint8_t[w * h * 3];
+		// copy pixels from screen
+		glBindTexture(GL_TEXTURE_2D, screenTex);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, (GLvoid *)pixels);
+	
+		QImage image(w, h, QImage::Format_RGB32);
+		for (int i = 0; i<w; ++i) {
+			for (int j = 0; j<h; ++j) {
+				int jinv = h - 1 - j;
+				int ind = (i + j*w) * 3;
+				image.setPixel(i, jinv, 256 * 256 * pixels[ind] + 256 * pixels[ind + 1] + pixels[ind + 2]);
+			}
+		}
+
+		image.save(fname.c_str());
+
+		glDeleteTextures(1, &screenTex);
+		screenTex = 0;
+
+		delete[]pixels;
+		needSaveImage = false;
+		std::cout << "finish saving image" << std::endl;
+	}
 }
-
-
 
 void GLWidget::resizeGL(int w, int h)
 {
     width = w;
     height = h;
 	std::cout << "OpenGL window size:" << w << "x" << h << std::endl;
-
+	
+	matrixMgr->setWinSize(w, h);
+	
 	for (auto processor : processors)
 		processor.second->resize(w, h);
 
@@ -192,210 +257,193 @@ void GLWidget::resizeGL(int w, int h)
 			renderer.second->init();
         initialized = true;
     }
-    //glMatrixMode(GL_PROJECTION);
-    //glLoadIdentity();
-    //glMatrixMode(GL_MODELVIEW);
 }
 
-void GLWidget::mouseMoveEvent(QMouseEvent *event)
-{
-	if (pinching)
-		return;
 
-	QPointF pos = event->pos();
-	if (INTERACT_MODE::TRANSFORMATION == interactMode) {
-		if ((event->buttons() & Qt::LeftButton) && (!pinched)) {
-			QPointF from = pixelPosToViewPos(prevPos);
-			QPointF to = pixelPosToViewPos(pos);
 
-			for (auto interactor : interactors)
-				interactor.second->Rotate(from.x(), from.y(), to.x(), to.y());
-			//matrixMgr->Rotate(from.x(), from.y(), to.x(), to.y());
-		}
-		else if (event->buttons() & Qt::RightButton) {
-			QPointF diff = pixelPosToViewPos(pos) - pixelPosToViewPos(prevPos);
 
-			for (auto interactor : interactors)
-				interactor.second->Translate(diff.x(), diff.y());
-			//matrixMgr->Translate(diff.x(), diff.y());
-		}
-	}
-	QPoint posGL = pixelPosToGLPos(event->pos());
-	//for (auto renderer : renderers)
-		//renderer.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
-	for (auto interactor : interactors)
-		interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
-
-    prevPos = pos;
-    update();
-}
 
 void GLWidget::mousePressEvent(QMouseEvent *event)
 {
+	if (interactMode == UNDER_TOUCH)
+		return;
+
 	QPointF pos = event->pos();
 	QPoint posGL = pixelPosToGLPos(event->pos());
 	//lastPt = make_int2(posGL.x(), posGL.y());
 
-	//if (pinching)
-	//	return;
-
 	makeCurrent();
-	//for (auto renderer : renderers)
-		//	renderer.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 
+	int mouseKey = 0;
+	if (event->buttons() & Qt::LeftButton){
+		mouseKey = 1;
+	}
+	else if (event->buttons() & Qt::RightButton){
+		mouseKey = 2;
+	}
 	for (auto interactor : interactors)
-		interactor.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+		interactor.second->mousePress(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), mouseKey);
 
-    prevPos = pos;
+	prevPos = pos;
+}
+
+void GLWidget::mouseMoveEvent(QMouseEvent *event)
+{
+	if (interactMode == UNDER_TOUCH)
+		return;
+
+	QPointF pos = event->pos();
+	if (INTERACT_MODE::OPERATE_MATRIX == interactMode) {
+		QPointF from = pixelPosToViewPos(prevPos);
+		QPointF to = pixelPosToViewPos(pos);
+		int mouseKey = 0;
+		if (event->buttons() & Qt::LeftButton){
+			mouseKey = 1;
+		}
+		else if (event->buttons() & Qt::RightButton){
+			mouseKey = 2;
+		}
+		for (auto interactor : interactors)
+			interactor.second->mouseMoveMatrix(from.x(), from.y(), to.x(), to.y(), QApplication::keyboardModifiers(), mouseKey);
+	}
+	else{
+		QPoint posGL = pixelPosToGLPos(pos);
+		for (auto interactor : interactors)
+			interactor.second->mouseMove(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
+	}
+	
+	prevPos = pos;
+    update();
 }
 
 void GLWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-	//if (pinching)
-	//	return;
-
-	pinched = false;
+	if (interactMode == UNDER_TOUCH || interactMode == OTHERS){
+		interactMode = OPERATE_MATRIX;
+		return;
+	}
 
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	//for (auto renderer : renderers)
-	//	renderer.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 	for (auto interactor : interactors)
 		interactor.second->mouseRelease(posGL.x(), posGL.y(), QApplication::keyboardModifiers());
 }
 
 void GLWidget::wheelEvent(QWheelEvent * event)
 {
-	bool doTransform = true;
 	QPoint posGL = pixelPosToGLPos(event->pos());
-	/*for (auto renderer : renderers){
-		if (renderer.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
-			doTransform = false;
-	}
-	*/
+
+	//only the first interactor is executed, because it is tricky to apply INTERACT_MODE to monitor the operated object
+	//so note the order when you add interactors
+
 	for (auto interactor : interactors){
 		if (interactor.second->MouseWheel(posGL.x(), posGL.y(), QApplication::keyboardModifiers(), event->delta()))
-			doTransform = false;
+			break;
 	}
-	if (doTransform){
-		for (auto interactor : interactors)
-			interactor.second->wheelEvent(event->delta());
-		//matrixMgr->Scale(event->delta());
-	}
+
 	update();
 }
 
 void GLWidget::keyPressEvent(QKeyEvent * event)
 {
+	for (auto interactor : interactors)
+		interactor.second->keyPress(event->key());
+}
+
+
+#ifdef USE_TOUCHSCREEN
+
+void GLWidget::AddTouchInteractor(const char* name, void* r)
+{
+	touchInteractors[name] = (TouchInteractor*)r;
+	((TouchInteractor*)r)->SetActor(this);
 }
 
 bool GLWidget::event(QEvent *event)
 {
-	if (event->type() == QEvent::Gesture)
-		return gestureEvent(static_cast<QGestureEvent*>(event));
-	else if (event->type() == QEvent::TouchBegin)
+	if (event->type() == QEvent::Gesture){
+		//for this branch, there is a small bug:
+		//when two fingers are doing a gesture and then 1 finger leaves, the state will be changed to a touchUpdate or touchEnd,
+		//without a proper touchBegin
+		//currently not solving this problem yet
+		//a save way would be abandon gesture, but detect the number of fingers use regular touch interactions
+
+		interactMode = UNDER_TOUCH;
+
+		QGestureEvent* eventG = static_cast<QGestureEvent*>(event);
+
+
+		if (QGesture *swipe = eventG->gesture(Qt::SwipeGesture)){
+			std::cout << "swipe \n" << std::endl;
+			//			swipeTriggered(static_cast<QSwipeGesture *>(swipe));
+
+		}
+		else if (QGesture *pan = eventG->gesture(Qt::PanGesture)){
+			std::cout << "pan \n" << std::endl;
+			//			panTriggered(static_cast<QPanGesture *>(pan));
+
+		}
+		else if (QGesture *pinch = eventG->gesture(Qt::PinchGesture))
+		{
+			QPinchGesture* ges = static_cast<QPinchGesture *>(pinch);
+			pinchTriggered(ges);
+
+		}
+
+		return true;	
+	}
+	else if (event->type() == QEvent::TouchBegin){
+		interactMode = UNDER_TOUCH;
 		return TouchBeginEvent(static_cast<QTouchEvent*>(event));
-	else if (event->type() == QEvent::TouchEnd)
-		return TouchEndEvent(static_cast<QTouchEvent*>(event));
+	}
+	else if (event->type() == QEvent::TouchEnd){
+		bool temp = TouchEndEvent(static_cast<QTouchEvent*>(event));
+		interactMode = OTHERS;
+		return temp;
+	}
 	else if (event->type() == QEvent::TouchUpdate)
 		return TouchUpdateEvent(static_cast<QTouchEvent*>(event));
 
 	return QWidget::event(event);
 }
 
-//bool GLWidget::TouchBeginEvent(QTouchEvent *event)
-//{
-//	return false;
-//}
-
-
-
-
+bool GLWidget::TouchBeginEvent(QTouchEvent *event)
+{
+	for (auto interactor : touchInteractors)
+		interactor.second->TouchBeginEvent(event);
+	return false;
+}
 
 bool GLWidget::TouchEndEvent(QTouchEvent *event)
 {
-	QList<QTouchEvent::TouchPoint> pts = event->touchPoints();
-	//if (0 == pts.size()) {
-	//SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-	//}
+	for (auto interactor : touchInteractors)
+		interactor.second->TouchEndEvent(event);
+	return true;
+}
+
+bool GLWidget::TouchUpdateEvent(QTouchEvent *event)
+{
+	for (auto interactor : touchInteractors)
+		interactor.second->TouchUpdateEvent(event);
 	return true;
 }
 
 
 
-
-
-//http://doc.qt.io/qt-5/gestures-overview.html
-bool GLWidget::gestureEvent(QGestureEvent *event)
+void GLWidget::pinchTriggered(QPinchGesture *gesture)
 {
-	if (QGesture *pinch = event->gesture(Qt::PinchGesture))
-	{
-		QPinchGesture* ges = static_cast<QPinchGesture *>(pinch);
-		//QPointF center = ges->centerPoint());
-		//std::cout << "center:" << center.x() << "," << center.y() << std::endl;
-		pinchTriggered(ges);
+	for (auto interactor : touchInteractors)
+		interactor.second->pinchTriggered(gesture);
 
-	}
-	return true;
-}
-
-void GLWidget::pinchTriggered(QPinchGesture *gesture/*, QPointF center*/)
-{
-	if (!pinching) {
-		pinching = true;
-		pinched = true;
-	}
-	QPoint gesScreen = QPoint(gesture->centerPoint().x(), gesture->centerPoint().y());
-
-	//std::cout << "this->pos:" << this->pos().x() << "," << this->pos().y() << std::endl;
-	//QPoint gesWin = gesScreen - this->pos();
-	//QPoint posGL = pixelPosToGLPos(gesWin);
-	////std::cout << "gesture->centerPoint():" << .x() << "," << gesture->centerPoint().y() << std::endl;
-	//std::cout << "posGL:" << posGL.x() << "," << posGL.y() << std::endl;
-
-	//if (insideLens){
-	//	interactMode = INTERACT_MODE::MODIFY_LENS_DEPTH;
-		//for (auto renderer : renderers)
-		//	renderer.second->PinchScaleFactorChanged(
-		//	0,
-		//	0,
-		//	gesture->totalScaleFactor());
-	//}
-	switch (interactMode)
-	{
-
-	case INTERACT_MODE::TRANSFORMATION:
-	{
-		//if (insideLens) break;
-		QPinchGesture::ChangeFlags changeFlags = gesture->changeFlags();
-		//if (INTERACT_MODE::TRANSFORMATION == interactMode){
-		if (changeFlags & QPinchGesture::ScaleFactorChanged) {
-			//currentTransScale = gesture->totalScaleFactor();// exp(/*event->delta()*/gesture->totalScaleFactor() * 0.01);
-		//	matrixMgr->SetCurrentScale(gesture->totalScaleFactor());
-			update();
-		}
-
-		if (changeFlags & QPinchGesture::CenterPointChanged) {
-			// transform only when there is no lens
-			QPointF diff = pixelPosToViewPos(gesture->centerPoint())
-				- pixelPosToViewPos(gesture->lastCenterPoint());
-			//transVec[0] += diff.x();
-			//transVec[1] += diff.y();
-			matrixMgr->TranslateInWorldSpace(diff.x(), diff.y());
-			update();
-		}
-
-		if (gesture->state() == Qt::GestureFinished) {
-			matrixMgr->FinishedScale();
-		}
-		break;
-	}
-	}
-
+	return;
+	/*
 	if (gesture->state() == Qt::GestureFinished) {
-		SetInteractMode(INTERACT_MODE::TRANSFORMATION);
-		pinching = false;
+		SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 	}
+	*/
 }
+#endif
+
+
 
 QPointF GLWidget::pixelPosToViewPos(const QPointF& p)
 {
@@ -431,6 +479,10 @@ void GLWidget::GetPosRange(float3 &pmin, float3 &pmax)
 {
 	matrixMgr->GetVol(pmin, pmax);
 }
+void GLWidget::GetDepthRange(float2 &dr)
+{
+	matrixMgr->GetClipDepthRangeOfVol(dr);
+}
 
 void GLWidget::GetModelview(float* m)
 {
@@ -439,7 +491,7 @@ void GLWidget::GetModelview(float* m)
 
 void GLWidget::GetProjection(float* m)
 {
-	matrixMgr->GetProjection(m, width, height);
+	matrixMgr->GetProjection(m);
 }
 
 void GLWidget::SetInteractMode(INTERACT_MODE v)
@@ -447,3 +499,4 @@ void GLWidget::SetInteractMode(INTERACT_MODE v)
 	interactMode = v; 
 	//std::cout << "Set INTERACT_MODE: " << interactMode << std::endl; 
 }
+

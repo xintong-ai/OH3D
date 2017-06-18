@@ -123,7 +123,8 @@ void ArrowRenderable::LoadShaders(ShaderProgram*& shaderProg)
 		in vec4 eyeCoords;
 		in vec4 fragColor;
 		smooth in vec3 tnorm;
-		layout(location = 0) out vec4 FragColor;
+		//layout(location = 0) 
+		out vec4 FragColor;
 		uniform float Bright;
 
 		vec3 phongModel(vec3 a, vec4 position, vec3 normal) {
@@ -290,7 +291,7 @@ void ArrowRenderable::draw(float modelview[16], float projection[16])
 
 void ArrowRenderable::initPickingDrawingObjects()
 {
-
+	/*
 	//init shader
 #define GLSL(shader) "#version 440\n" #shader
 	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
@@ -352,6 +353,7 @@ void ArrowRenderable::initPickingDrawingObjects()
 	qgl->glBufferData(GL_ARRAY_BUFFER, glyphMesh->GetNumVerts() * sizeof(float)* 4, glyphMesh->GetVerts(), GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glPickingProg->attribute("VertexPosition"));
+	*/
 }
 
 

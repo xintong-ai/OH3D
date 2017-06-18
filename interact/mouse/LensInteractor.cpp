@@ -3,7 +3,7 @@
 #include "glwidget.h"
 #include "Lens.h"
 
-void LensInteractor::mousePress(int x, int y, int modifier)
+void LensInteractor::mousePress(int x, int y, int modifier, int mouseKey)
 {
 	int2 winSize = actor->GetWindowSize();
 	GLfloat modelview[16];
@@ -24,7 +24,7 @@ void LensInteractor::mousePress(int x, int y, int modifier)
 		}
 		break;
 	}
-	case INTERACT_MODE::TRANSFORMATION:
+	case INTERACT_MODE::OPERATE_MATRIX:
 	{
 		if (lenses->size()<1)
 			return;
@@ -39,7 +39,6 @@ void LensInteractor::mousePress(int x, int y, int modifier)
 		}
 		else if (l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 			actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
-			std::cout << "hehaherha" << std::endl;
 			break;
 		}
 		break;
@@ -76,7 +75,7 @@ void LensInteractor::mouseRelease(int x, int y, int modifier)
 			((CurveLens *)l)->FinishConstructing(modelview, projection, winSize.x, winSize.y);
 		}
 		l->justChanged = true;
-		actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+		actor->SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 	}
 	else {
 		if (actor->GetInteractMode() == INTERACT_MODE::MOVE_LENS || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE || actor->GetInteractMode() == INTERACT_MODE::MODIFY_LENS_TRANSITION_SIZE){
@@ -84,7 +83,7 @@ void LensInteractor::mouseRelease(int x, int y, int modifier)
 				lenses->back()->justChanged = true;
 			}
 		}
-		else if (actor->GetInteractMode() == INTERACT_MODE::TRANSFORMATION && changeLensWhenRotateData){
+		else if (actor->GetInteractMode() == INTERACT_MODE::OPERATE_MATRIX && changeLensWhenRotateData){
 			//this decides whether to relocate the mesh when rotating the data
 			if (lenses->size() > 0){
 				Lens* l = lenses->back();
@@ -129,7 +128,7 @@ void LensInteractor::mouseRelease(int x, int y, int modifier)
 			*/
 		}
 	}
-	actor->SetInteractMode(INTERACT_MODE::TRANSFORMATION);
+	actor->SetInteractMode(INTERACT_MODE::OPERATE_MATRIX);
 }
 
 void LensInteractor::mouseMove(int x, int y, int modifier)
@@ -228,7 +227,7 @@ void LensInteractor::mouseMove(int x, int y, int modifier)
 
 
 
-bool LensInteractor::MouseWheel(int x, int y, int modifier, int delta)
+bool LensInteractor::MouseWheel(int x, int y, int modifier, float delta)
 {
 	if (lenses->size() < 1)
 		return false;
@@ -246,6 +245,8 @@ bool LensInteractor::MouseWheel(int x, int y, int modifier, int delta)
 		actor->GetPosRange(posMin, posMax);
 		float3 dif = posMax - posMin;
 		float coeff = min(min(dif.x, dif.y), dif.z) / 10.0 / 20.0 / 20.0;
+		std::cout << "mouse delta" << delta << std::endl;
+
 		l->ChangeClipDepth(delta*coeff, modelview, projection);
 	}
 	return insideAnyLens;

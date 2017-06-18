@@ -17,11 +17,10 @@
 #endif
 #define qgl	QOpenGLContext::currentContext()->functions()
 
-VRWidget::VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, GLWidget* _mainGLWidget, QWidget *parent)
+VRWidget::VRWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 	: QOpenGLWidget(parent)
 	, matrixMgr(_matrixMgr)
 	, m_frame(0)
-	, mainGLWidget(_mainGLWidget)
 {
 	//setFocusPolicy(Qt::StrongFocus);
 	sdkCreateTimer(&timer);
@@ -83,7 +82,7 @@ void VRWidget::computeFPS()
 	if (fpsCount == fpsLimit)
 	{
 		float ifps = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
-		qDebug() << "FPS: " << ifps;
+		//qDebug() << "FPS: " << ifps;
 		fpsCount = 0;
 		//        fpsLimit = (int)MAX(1.f, ifps);
 		sdkResetTimer(&timer);
@@ -104,49 +103,49 @@ void VRWidget::TimerEnd()
 
 void VRWidget::paintGL() {
 	TimerStart();
-	//GLfloat modelview[16];
-	//GLfloat projection[16];
-	//mainGLWidget->GetModelview(modelview);
-	//mainGLWidget->GetProjection(projection);
+
 	makeCurrent();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	ctx->update();
 
-	QMatrix4x4 viewMat;
-	display->getViewer(0).getEye(0).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
-		viewMat.data());
-	matrixMgr->SetViewMat(viewMat);
 
 	OSVR_ViewerCount viewers = display->getNumViewers();
 	for (OSVR_ViewerCount viewer = 0; viewer < viewers; ++viewer) {
 		OSVR_EyeCount eyes = display->getViewer(viewer).getNumEyes();
 		for (OSVR_EyeCount eye = 0; eye < eyes; ++eye) {
+			QMatrix4x4 viewMat;
 			display->getViewer(viewer).getEye(eye).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
 				viewMat.data());
-			QMatrix4x4 mv;// (modelview);
-			//mv = mv.transposed();
-			//mv = viewMat * mv;
-			matrixMgr->GetModelViewMatrix(mv.data(), viewMat.data());
+			
 			OSVR_SurfaceCount surfaces = display->getViewer(viewer).getEye(eye).getNumSurfaces();
 			for (OSVR_SurfaceCount surface = 0; surface < surfaces; ++surface) {
-				auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
+				/*auto viewport = display->getViewer(viewer).getEye(eye).getSurface(surface).getRelativeViewport();
 				qgl->glViewport(static_cast<GLint>(viewport.left),
 					static_cast<GLint>(viewport.bottom),
 					static_cast<GLsizei>(viewport.width),
-					static_cast<GLsizei>(viewport.height));
+					static_cast<GLsizei>(viewport.height));*/
+				if (eye  == 0)
+				qgl->glViewport(static_cast<GLint>(0),
+					static_cast<GLint>(0),
+					static_cast<GLsizei>(width/2),
+					static_cast<GLsizei>(height));
+				else
+					qgl->glViewport(static_cast<GLint>(width / 2),
+					static_cast<GLint>(0),
+					static_cast<GLsizei>(width / 2),
+					static_cast<GLsizei>(height));
 
-				/// Set the OpenGL projection matrix based on the one we
-				/// computed.
-				float zNear = 0.1;
-				float zFar = 100;
+				/// Set the OpenGL projection matrix based on the one we computed.
 				QMatrix4x4 projMat;
 				display->getViewer(viewer).getEye(eye).getSurface(surface).getProjectionMatrix(
-					zNear, zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
+					matrixMgr->zNear, matrixMgr->zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
 					OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
 					projMat.data());
+				
+				matrixMgr->SetViewMat(viewMat);
+				QMatrix4x4 mv;
+				matrixMgr->GetModelViewMatrix(mv.data());
 
-				//QMatrix4x4 pj(projection);
-				//pj = pj.transposed();
 
 				/// Call out to render our scene.
 				for (auto renderer : renderers){
@@ -162,23 +161,15 @@ void VRWidget::paintGL() {
 		}
 	};
 
-	//glViewport(0, 0, width / 2,height);
-	////((GlyphRenderable*)GetRenderable("glyph"))->SetDispalceOn(false);
-	//for (auto renderer : renderers)
-	//	renderer.second->draw(modelview, projection);
-	//glViewport(width / 2, 0, width / 2, height);
-	//for (auto renderer : renderers)
-	//	renderer.second->draw(modelview, projection);
 	TimerEnd();
 }
-//void Perspective(float fovyInDegrees, float aspectRatio,
-//	float znear, float zfar);
+
 
 void VRWidget::resizeGL(int w, int h)
 {
 	width = w;
 	height = h;
-	std::cout << "OpenGL window size:" << w << "x" << h << std::endl;
+	std::cout << "VR OpenGL window size:" << w << "x" << h << std::endl;
 	for (auto renderer : renderers)
 		renderer.second->resize(w, h);
 
@@ -191,10 +182,20 @@ void VRWidget::resizeGL(int w, int h)
 		initialized = true;
 	}
 
-	//glMatrixMode(GL_PROJECTION);
-	//glLoadIdentity();
-	//Perspective(30, (float)width / height, (float)0.1, (float)10e4);
-	//glMatrixMode(GL_MODELVIEW);
+
+
+	/*
+	QMatrix4x4 viewMat;
+	display->getViewer(0).getEye(0).getViewMatrix(OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS,
+		viewMat.data());
+	QMatrix4x4 projMat;
+	display->getViewer(0).getEye(0).getSurface(0).getProjectionMatrix(
+		zNear, zFar, OSVR_MATRIX_COLMAJOR | OSVR_MATRIX_COLVECTORS |
+		OSVR_MATRIX_SIGNEDZ | OSVR_MATRIX_RHINPUT,
+		projMat.data());
+	//matrixMgr->SetViewMat(viewMat);
+	matrixMgr->computeFakeModel(viewMat, projMat, width / 2, height);*/
+
 }
 
 void VRWidget::keyPressEvent(QKeyEvent * event)
@@ -207,15 +208,6 @@ void VRWidget::keyPressEvent(QKeyEvent * event)
 			this->showNormal();
 		}
 	}
-}
-
-Renderable* VRWidget::GetRenderable(const char* name)
-{
-	if (renderers.find(name) == renderers.end()) {
-		std::cout << "No renderer named : " << name << std::endl;
-		exit(1);
-	}
-	return renderers[name];
 }
 
 void VRWidget::UpdateGL()

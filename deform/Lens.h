@@ -79,7 +79,6 @@ struct Lens
 		float dis = length(make_float2(_x, _y) - center);// make_float2(x, y));
 		return dis < eps_pixel;
 	}
-	virtual void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH){}
 	virtual void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	virtual void ChangeFocusRatio(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) {}
 	virtual float3 MoveLens(int sx, int sy, float* mv, float* pj, int winW, int winH);
@@ -139,13 +138,6 @@ struct CircleLens :public Lens
 		return std::abs(dis - radius / focusRatio) < eps_pixel;
 	}
 	
-	void ChangeLensTwoFingers(int2 p1, int2 p2, float* mv, float* pj, int winW, int winH) override
-	{
-		float dis = length(make_float2(p1) - make_float2(p2));
-		radius = dis * 0.5;
-		float2 center = (make_float2(p1) + make_float2(p2)) * 0.5;
-		UpdateCenterByScreenPos(center.x, center.y, mv, pj, winW, winH);
-	}
 	void ChangeLensSize(int _x, int _y, int _prex, int _prey, float* mv, float* pj, int winW, int winH) override
 	{
 		float2 center = GetCenterScreenPos(mv, pj, winW, winH);

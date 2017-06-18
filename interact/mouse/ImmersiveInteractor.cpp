@@ -1,65 +1,161 @@
 #include "ImmersiveInteractor.h"
 #include "GLMatrixManager.h"
-#include "mouse/trackball.h"
+#include <iostream>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
-void ImmersiveInteractor::Rotate(float fromX, float fromY, float toX, float toY)
+void ImmersiveInteractor::mouseMoveMatrix(float fromX, float fromY, float toX, float toY, int modifier, int mouseKey)
 {
-	matrixMgr->getTrackBall()->rotate(fromX, fromY, toX, toY);
-	//the rotation in trackball is not strictly in eye coordinate. but use this as approximation
-	QVector3D axis;
-	matrixMgr->getTrackBall()->getRotationAxis(axis[0], axis[1], axis[2]);
-	float a = matrixMgr->getTrackBall()->getAngleRotated();
+	if (!noMoveMode){
+		if (mouseKey == 1){
+			RotateLocal(fromX, fromY, toX, toY);
+		}
+		else if (mouseKey == 2){
+			RotateEye(fromX, fromY, toX, toY);
+		}
+	}
+}
 
-	QMatrix4x4 m,mv;
+void ImmersiveInteractor::RotateLocal(float fromX, float fromY, float toX, float toY)
+{
+	if (!isActive)
+		return;
 
-	matrixMgr->GetModelMatrix(m);
-	matrixMgr->GetModelViewMatrix(mv);
+	float3 upInLocalf3 = matrixMgr->getUpInLocal();
+	QVector3D upInLocal = QVector3D(upInLocalf3.x, upInLocalf3.y, upInLocalf3.z);
+	float close = abs(QVector3D::dotProduct(upInLocal, targetUpVecInLocal));
+
+	float angthr = 0.5;
+
+	*rot = trackball->rotate(toX, 0, fromX, 0);  //raising or lowering the head should be done by using the device
+	float m[16];
+	rot->matrix(m);
+	QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
 	
-	
-	QVector3D eyeInLocal = m.inverted().map(matrixMgr->getEyeVecInWorld());
-	
+	QMatrix4x4 oriRotMat;
+	matrixMgr->GetRotMatrix(oriRotMat);
 
+	QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+	QVector3D tempUpInLocal = (QVector3D((newRotation*oriRotMat).inverted()*QVector4D(upVecInWorld, 0.0))).normalized();
 
-	QVector3D cofInEye = mv.map(matrixMgr->getCofLocal());
-	QMatrix4x4 r;
-	r.rotate(a/3.14159*180.0, axis);
-	QVector3D newCofInEye = r.map(cofInEye);
-	QVector3D newCofLocal = (mv.inverted()).map(newCofInEye);
-
-	matrixMgr->setCofLocal(newCofLocal);
-
-	matrixMgr->GetModelMatrix(m);
-	matrixMgr->setEyeInWorld(m.map(eyeInLocal));
-
-	return; 
+	close = abs(QVector3D::dotProduct(tempUpInLocal, targetUpVecInLocal));
+	if (close > angthr){
+		//matrixMgr->setRotMat(oriRotMat*newRotation);
+		matrixMgr->setRotMat(newRotation*oriRotMat);
+	}
 };
 
-
-void ImmersiveInteractor::Translate(float x, float y)
+void ImmersiveInteractor::RotateEye(float fromX, float fromY, float toX, float toY)
 {
-	QMatrix4x4 m, mv;
-	matrixMgr->GetModelMatrix(m);
-
 	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
-	QVector3D dir = QVector3D::crossProduct(eyeInWorld, matrixMgr->getUpVecInWorld())*x ;
-		
-	QVector3D newCofInWorld = dir;
+	QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+	QVector3D viewVecInWorld = matrixMgr->getViewVecInWorld();
 
-	matrixMgr->setCofLocal(m.inverted().map(newCofInWorld));
+	*rot = trackball->rotate(0, fromY, 0, toY);  //left or right the head has been done by RotateLocal()
+	float m[16];
+	rot->matrix(m);
+	QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
 
-	return;
-};
+	matrixMgr->setViewAndUpInWorld(QVector3D(newRotation*QVector4D(viewVecInWorld, 0)), QVector3D(newRotation*QVector4D(upVecInWorld, 0)));
+}
 
-void ImmersiveInteractor::wheelEvent(float v)
+
+void ImmersiveInteractor::mousePress(int x, int y, int modifier, int mouseKey)
 {
-	QMatrix4x4 m, mv;
-	matrixMgr->GetModelMatrix(m);
+	if (noMoveMode){
+		if (mouseKey == 1)
+		{
+			matrixMgr->toRotateLeft = true;
+		}
+		else if (mouseKey == 2)
+		{
+			matrixMgr->toRotateRight = true;
+		}
+	}
+}
 
-	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
-	QVector3D dir = eyeInWorld.normalized()*v/-1000.0;
-	QVector3D newCofInWorld = dir;
+void ImmersiveInteractor::mouseRelease(int x, int y, int modifier)
+{
+	if (noMoveMode){
+		matrixMgr->toRotateLeft = false;
+		matrixMgr->toRotateRight = false;
+	}
+}
 
-	matrixMgr->setCofLocal(m.inverted().map(newCofInWorld));
-	
-	return;
+
+bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
+{
+	if (!isActive)
+		return false;
+
+	float3 viewVecLocal = matrixMgr->getViewVecInLocal();
+	QVector3D oldTransVec = matrixMgr->getTransVec();
+	matrixMgr->setTransVec(oldTransVec - v / 100.0 *QVector3D(viewVecLocal.x, viewVecLocal.y, viewVecLocal.z));
+	if (v > 0){
+		matrixMgr->recentChange = 1;
+	}
+	else{
+		matrixMgr->recentChange = 2;
+	}
+}
+
+void ImmersiveInteractor::keyPress(char key)
+{
+	switch (key)
+	{
+	case 'a':
+	case 'A':
+		moveViewHorizontally(0);
+		break;
+	case 'd':
+	case 'D':
+		moveViewHorizontally(1);
+		break;
+	case 'w':
+	case 'W':
+		moveViewVertically(1);
+		break;
+	case 's':
+	case 'S':
+		moveViewVertically(0);
+		break;
+	case 'z':
+	case 'Z':
+		//for Tao09Detail
+		ve->currentMethod = VPMethod::Tao09Detail;
+		ve->compute_SkelSampling(VPMethod::Tao09Detail);
+		infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+
+		//for LabelVisibility from file
+		//if (!hasLabelFromFile){
+		//	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
+		//	std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
+		//}
+		ve->currentMethod = VPMethod::LabelVisibility;
+		ve->compute_SkelSampling(VPMethod::LabelVisibility);
+		infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+		break;
+	case 'x':
+	case 'X':
+		infoGuideRenderable->changeWhetherGlobalGuideMode(false);
+		break;
+	}
+
+}
+
+void ImmersiveInteractor::moveViewHorizontally(int d)
+{
+	//d: 0. left; 1. right
+	float3 horiViewInLocal = matrixMgr->getHorizontalMoveVec(make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z()));
+	float3 newEye = matrixMgr->getEyeInLocal() + cross(horiViewInLocal, make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z()))*(d==1?1:(-1));
+	matrixMgr->moveEyeInLocalByModeMat(newEye);
+	matrixMgr->recentChange = 3 + d;
+}
+
+void ImmersiveInteractor::moveViewVertically(int d)
+{
+	//d: 0. down; 1. up
+	float3 newEye = matrixMgr->getEyeInLocal() + make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z())*(d==1?1:(-1));
+	matrixMgr->moveEyeInLocalByModeMat(newEye);
+	matrixMgr->recentChange = 5 + d;
 }

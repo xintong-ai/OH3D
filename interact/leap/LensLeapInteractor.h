@@ -9,12 +9,10 @@ class LensLeapInteractor :public LeapInteractor
 {
 private:
 
-	float3 snapPos;
 
 	//used for Leap
 	void ChangeLensCenterbyLeap(Lens *l, float3 p);
 	void ChangeLensCenterbyTransferredLeap(Lens *l, float3 p);
-	float3 GetTransferredLeapPos(float3 p);
 	float3 prevPos, prevPos2, prevPointOfLens;
 	float preForce;
 
@@ -24,14 +22,6 @@ private:
 	bool highlightingMajorSide = false;
 	bool highlightingMinorSide = false;
 
-	inline float3 GetNormalizedLeapPos(float3 p)
-	{
-		float3 leapPos;
-		leapPos.x = clamp((p.x + 117.5) / 235.0, 0.0f, 1.0f);
-		leapPos.y = clamp((p.y - 82.5) / 235.0, 0.0f, 1.0f);
-		leapPos.z = clamp((p.z + 73.5f) / 147.0f, 0.0f, 1.0f);
-		return leapPos;
-	}
 
 	inline bool outOfDomain(float3 p, float3 posMin, float3 posMax)
 	{
@@ -43,6 +33,7 @@ private:
 	std::vector<Lens*> *lenses = 0;
 	std::shared_ptr<Particle> leapFingerIndicators;
 
+	float3 GetTransferredLeapPos(float3 p);
 
 public:
 	LensLeapInteractor(){};
@@ -52,7 +43,7 @@ public:
 	void SetFingerIndicator(std::shared_ptr<Particle> p){ leapFingerIndicators = p; }
 
 
-	bool SlotOneHandChanged(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap, float &f) override;
+	bool SlotRightHandChanged(float3 thumpLeap, float3 indexLeap, float3 middleLeap, float3 ringLeap, float &f) override;
 	void SlotTwoHandChanged(float3 l, float3 r) override;
 
 	//bool changeLensWhenRotateData = true; //view dependant or not

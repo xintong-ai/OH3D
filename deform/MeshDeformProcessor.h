@@ -1,5 +1,5 @@
-#ifndef LINESPLIT_MODEL_GRID_H
-#define LINESPLIT_MODEL_GRID_H
+#ifndef MESHDEFORMPROCESSOR_H
+#define MESHDEFORMPROCESSOR_H
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>

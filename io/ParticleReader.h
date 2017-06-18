@@ -11,13 +11,7 @@ public:
 	ParticleReader(const char* filename) {
 		datafilename.assign(filename);
 	}
-	//float4* GetPos();
-	std::vector<float4> GetPos();
-	int GetNum();
-	//float* GetVal();
-	std::vector<float> GetVal();
-	void GetValRange(float& vMin, float& vMax);
-	void GetPosRange(float3& posMin, float3& posMax) ;
+
 protected:
 	virtual void Load() = 0;
 	std::vector<float> val;
