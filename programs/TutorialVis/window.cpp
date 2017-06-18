@@ -83,8 +83,20 @@ Window::Window()
 
 	//One of the major goal of using GLWidget is to connect all View objects and Controller objects together
 	//During the OpenGl interation, each added View objects and Controller objects will be called
+	//Note that when multiple view/controller objects are connected, they are called with an alphabetic order of the assigned name
 	openGL->AddRenderable("glyph", glyphRenderable.get());
 	openGL->AddInteractor("regular", rInteractor.get());
+
+	//COMING SOON:
+	//When multiple interactors are connected and sometimes you only want to trigger one of them,
+	//our strategy used in ParticleVis or VolumeVis is, for example when using a mouse,
+	//when mouse is pressed, detect which interactor is active, then set the 'isActive' attribute of the interactor,
+	//or change the 'interactMode' attribute stored in the glwidget class, then when mouse is moved or released,
+	//the interactor can perform required processing.
+	//Examples is not given now but will be in the future
+
+	//COMING SOON:
+	//more examples about using touchpad, leap motion, and VR headset
 
 
 	//////////////////////////// QT interfaces

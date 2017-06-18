@@ -35,7 +35,9 @@
 #include "VRGlyphRenderable.h"
 #endif
 
-
+#ifdef USE_TOUCHSCREEN
+#include "touch/LensTouchInteractor.h"
+#endif
 
 Window::Window()
 {
@@ -136,8 +138,11 @@ Window::Window()
 	openGL->AddInteractor("regular", rInteractor.get());
 	openGL->AddInteractor("lens", lensInteractor.get());
 
-
-
+#ifdef USE_TOUCHSCREEN
+	lensTouchInteractor = std::make_shared<LensTouchInteractor>();
+	lensTouchInteractor->SetLenses(&lenses);
+	openGL->AddTouchInteractor("lens", lensTouchInteractor.get());
+#endif
 
 
 	///********controls******/

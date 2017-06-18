@@ -24,16 +24,6 @@
 #include "Particle.h"
 #include "MeshRenderable.h"
 
-#ifdef USE_LEAP
-#include <LeapListener.h>
-#include <Leap.h>
-#endif
-
-#ifdef USE_OSVR
-#include "VRWidget.h"
-#include "VRGlyphRenderable.h"
-#endif
-
 
 Window::Window()
 {
@@ -66,20 +56,11 @@ Window::Window()
 
 	/********GL widget******/
 	float3 posMin = inputParticle->posMin, posMax = inputParticle->posMax;
-#ifdef USE_OSVR
-	matrixMgr = std::make_shared<GLMatrixManager>(true);
-#else
+
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
-#endif
+
 	openGL = std::make_shared<DeformGLWidget>(matrixMgr);
-#ifdef USE_OSVR
-		vrWidget = std::make_shared<VRWidget>(matrixMgr, openGL.get());
-		vrWidget->setWindowFlags(Qt::Window);
-		vrGlyphRenderable = std::make_shared<VRGlyphRenderable>(glyphRenderable.get());
-		vrWidget->AddRenderable("glyph", vrGlyphRenderable.get());
-		vrWidget->AddRenderable("lens", lensRenderable.get());
-		openGL->SetVRWidget(vrWidget.get());
-#endif
+
 	QSurfaceFormat format;
 	format.setDepthBufferSize(24);
 	format.setStencilBufferSize(8);
@@ -177,12 +158,7 @@ Window::Window()
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 
 	QCheckBox* gridCheck = new QCheckBox("Grid", this);
-#ifdef USE_LEAP
-	listener = new LeapListener();
-	controller = new Leap::Controller();
-	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
-	controller->addListener(*listener);
-#endif
+
 
 	QGroupBox *groupBox = new QGroupBox(tr("Deformation Mode"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
@@ -229,12 +205,6 @@ Window::Window()
 
 
 	connect(gridCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleGrid(bool)));
-	//connect(listener, SIGNAL(UpdateRightHand(QVector3D, QVector3D, QVector3D)),
-	//	this, SLOT(UpdateRightHand(QVector3D, QVector3D, QVector3D)));
-#ifdef USE_LEAP
-	connect(listener, SIGNAL(UpdateHands(QVector3D, QVector3D, int)),
-		this, SLOT(SlotUpdateHands(QVector3D, QVector3D, int)));
-#endif
 	connect(usingGlyphSnappingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleUsingGlyphSnapping(bool)));
 	connect(usingGlyphPickingCheck, SIGNAL(clicked(bool)), this, SLOT(SlotTogglePickingGlyph(bool)));
 	connect(freezingFeatureCheck, SIGNAL(clicked(bool)), this, SLOT(SlotToggleFreezingFeature(bool)));
@@ -293,9 +263,6 @@ Window::~Window() {
 
 void Window::init()
 {
-#ifdef USE_OSVR
-		vrWidget->show();
-#endif
 }
 
 

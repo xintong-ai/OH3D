@@ -1,6 +1,6 @@
 Synopsis
 
-This project was started as a deformation-based scientific visualization research by Xin Tong from The Ohio State University during his PhD study under Prof. Han-Wei Shen. Another student, Cheng Li, later joined this research and extended it. This project is a library containing a lot of toolkits, which can be used for other scientific visualization researches and developments.
+This project was a deformation-based scientific visualization research by PhD students Xin Tong and Cheng Li from The Ohio State University with Prof. Han-Wei Shen. This project is a library containing a lot of toolkits, which can be used for other scientific visualization researches and developments.
 
 
 Code Example
@@ -28,7 +28,7 @@ USE_LEAP: use the Leap Motion controller. Need to install related libraries from
 
 USE_OSVR: use the OSVR headset. Need to install related libraries from (http://www.osvr.org/).
 
-USE_TOUCHSCREEN: use touchscreen (not tested yet)
+USE_TOUCHSCREEN: use touchscreen. Note that we used QT touch screen functions, so the touch pad need to be supported by QT, such as touchable PC laptops, or android tablets.
 
 USE_CONTROLLER: use HTC VIVE controller (not tested yet).
 

@@ -26,7 +26,7 @@ set(HDRS DataMgr.h PlyMeshReader.h  ParticleReader.h
 	BinaryTuplesReader.h
 	)
 
-if(USE_VTK)
+if(BUILD_TEST AND USE_VTK)
 	set(HDRS ${HDRS} PlyVTKReader.h )
 	set(SRCS ${SRCS} PlyVTKReader.cpp)
 	include(${VTK_USE_FILE}) 
@@ -34,7 +34,7 @@ endif()
 
 add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 
-if(USE_VTK)
+if(BUILD_TEST AND USE_VTK)
 	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
 endif()
 

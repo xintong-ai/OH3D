@@ -43,6 +43,11 @@ class VRWidget;
 class VRGlyphRenderable;
 #endif
 
+#ifdef USE_TOUCHSCREEN
+class LensTouchInteractor;
+#endif
+
+
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
@@ -109,6 +114,10 @@ private:
 	std::shared_ptr<Particle> leapFingerIndicators;
 	std::vector<float3> leapFingerIndicatorVecs;
 	std::shared_ptr<LensLeapInteractor> lensLeapInteractor;
+#endif
+
+#ifdef USE_TOUCHSCREEN
+	std::shared_ptr<LensTouchInteractor> lensTouchInteractor;
 #endif
 
 private slots:

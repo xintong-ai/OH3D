@@ -39,7 +39,6 @@ void LensInteractor::mousePress(int x, int y, int modifier, int mouseKey)
 		}
 		else if (l->PointOnInnerBoundary(x, y, modelview, projection, winSize.x, winSize.y)) {
 			actor->SetInteractMode(INTERACT_MODE::MODIFY_LENS_FOCUS_SIZE);
-			std::cout << "hehaherha" << std::endl;
 			break;
 		}
 		break;
@@ -246,6 +245,8 @@ bool LensInteractor::MouseWheel(int x, int y, int modifier, float delta)
 		actor->GetPosRange(posMin, posMax);
 		float3 dif = posMax - posMin;
 		float coeff = min(min(dif.x, dif.y), dif.z) / 10.0 / 20.0 / 20.0;
+		std::cout << "mouse delta" << delta << std::endl;
+
 		l->ChangeClipDepth(delta*coeff, modelview, projection);
 	}
 	return insideAnyLens;

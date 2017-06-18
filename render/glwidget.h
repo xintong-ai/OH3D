@@ -19,12 +19,24 @@ enum INTERACT_MODE{
 	MODIFY_LENS_FOCUS_SIZE,
 	MODIFY_LENS_TRANSITION_SIZE,
 	MODIFY_LENS_DEPTH,
-	MODIFY_LENS_TWO_FINGERS,
 	ADDING_LENS,
 
 	CHANGING_FORCE, //currently only used for Leap
 	PANNING_MATRIX, //currently only used for Leap
+
+	UNDER_TOUCH, //since some touch screen operations are also treated as mouse clicking, currently use this one to prevent confusing operation
+	//may need to introduce more to also distinguish between different touch interactors in the future
+
 	OTHERS
+};
+
+enum TOUCH_INTERACT_MODE{
+	TOUCH_NOT_START,
+	TOUCH_OPERATE_MATRIX,
+	TOUCH_MOVE_LENS,
+	TOUCH_MODIFY_LENS_FOCUS_SIZE,
+	TOUCH_MODIFY_LENS_TRANSITION_SIZE,
+	TOUCH_MODIFY_LENS_DEPTH,
 };
 
 enum DEFORM_MODEL{
@@ -38,10 +50,13 @@ class Renderable;
 class GLMatrixManager;
 class Processor;
 class Interactor;
+class TouchInteractor;
 
 #ifdef USE_OSVR
 class VRWidget;
 #endif
+
+class TouchInteractor;
 
 class GLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
@@ -85,6 +100,12 @@ public:
 	void SetVRWidget(VRWidget* _vrWidget){ vrWidget = _vrWidget; }
 #endif
 
+#ifdef USE_TOUCHSCREEN
+	void AddTouchInteractor(const char* name, void* r);
+	
+	TOUCH_INTERACT_MODE GetTouchInteractMode(){ return touchInteractMode; }
+	void SetTouchInteractMode(TOUCH_INTERACT_MODE v) { touchInteractMode = v;  };
+#endif
 
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
@@ -92,14 +113,23 @@ public:
 		needSaveImage = true;
 	};
 	
+	QPoint pixelPosToGLPos(const QPoint& p);
+	QPoint pixelPosToGLPos(const QPointF& p);
+	QPointF pixelPosToViewPos(const QPointF& p);
+
 protected:
 	uint width = 750, height = 900;
-
-
+	
 	std::map<std::string, Renderable*> renderers;
 	std::map<std::string, Processor*> processors;
 	std::map<std::string, Interactor*> interactors;
-	std::map<std::string, Interactor*> matrixInteractors;
+	std::map<std::string, Interactor*> matrixInteractors;  
+	//interactors and matrixInteractors should be combined together in the future
+	//the limited benefits to separate them include that we can make it a must to have at least one matrixInteractor,
+	//and to continue using the current strategy of 'interactMode'
+	
+	
+
 
     virtual void initializeGL() Q_DECL_OVERRIDE;
     virtual void paintGL() Q_DECL_OVERRIDE;
@@ -109,15 +139,24 @@ protected:
     virtual void mouseMoveEvent(QMouseEvent *event) Q_DECL_OVERRIDE;
     virtual void wheelEvent(QWheelEvent * event) Q_DECL_OVERRIDE;
     virtual void keyPressEvent(QKeyEvent * event) Q_DECL_OVERRIDE;
+
+#ifdef USE_TOUCHSCREEN
+	std::map<std::string, TouchInteractor*> touchInteractors;
+	bool TouchBeginEvent(QTouchEvent *event);
+	bool TouchUpdateEvent(QTouchEvent *event);
+	bool TouchEndEvent(QTouchEvent *event);
+	void pinchTriggered(QPinchGesture *gesture);
+	bool gestureEvent(QGestureEvent *event) { return false; };
+
 	virtual bool event(QEvent *event) Q_DECL_OVERRIDE;
 
-	virtual bool TouchBeginEvent(QTouchEvent *event){ return false; }
-	virtual bool TouchUpdateEvent(QTouchEvent *event){ return false; }
-	virtual void pinchTriggered(QPinchGesture *gesture);
+	TOUCH_INTERACT_MODE touchInteractMode = TOUCH_INTERACT_MODE::TOUCH_OPERATE_MATRIX;
 
-	QPoint pixelPosToGLPos(const QPoint& p);
-	QPoint pixelPosToGLPos(const QPointF& p);
-	QPointF pixelPosToViewPos(const QPointF& p);
+	bool pinching = false;
+	//mark whether there is any pinching gesture in this sequence of gestures.
+	// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.
+#endif
+	
 	QPointF prevPos;//previous mouse position
 
 private:
@@ -125,23 +164,15 @@ private:
 	bool needSaveImage = false;
 	GLuint screenTex = 0;
 
-
 	INTERACT_MODE interactMode = INTERACT_MODE::OPERATE_MATRIX;
 	
 	bool initialized = false;
-	bool pinching = false;
-	//mark whether there is any pinching gesture in this sequence of gestures.
-	// in order to prevent rotation if pinching is finished while one finger is still on the touch screen.
-	bool pinched = false;
 
 #ifdef USE_OSVR
 	VRWidget* vrWidget = nullptr;
 #endif
 	
-	bool gestureEvent(QGestureEvent *event);
-	bool TouchEndEvent(QTouchEvent *event); 
 
-		
     /****timing****/
     StopWatchInterface *timer = 0;
     int fpsCount = 0;

@@ -1,6 +1,3 @@
-////// NOTE!!!!!!!!!!
-////// LEAP and OSVR of this project has not been well set
-
 
 
 #ifndef WINDOW_H
@@ -23,7 +20,6 @@ class GlyphRenderable;
 class QRadioButton;
 class QTimer;
 class LensRenderable;
-class LeapListener;
 class DataMgr;
 class GLMatrixManager;
 class PolyRenderable;
@@ -37,14 +33,9 @@ class PhysicalParticleDeformProcessor;
 class RegularInteractor;
 class LensInteractor;
 class MeshRenderable;
-#ifdef USE_OSVR
-class VRWidget;
-class VRGlyphRenderable;
-#endif
 
-namespace Leap{
-	class Controller;
-}
+
+
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
@@ -79,15 +70,8 @@ private:
 	std::shared_ptr<LensRenderable> lensRenderable;
 	std::shared_ptr<MeshRenderable> meshRenderable;
 
-#ifdef USE_OSVR
-	std::shared_ptr<VRWidget> vrWidget;
-	std::shared_ptr<VRGlyphRenderable> vrGlyphRenderable;
-#endif
 	std::shared_ptr<DataMgr> dataMgr;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
-
-	LeapListener* listener;
-	Leap::Controller* controller;
 
 	QPushButton *addCurveLensBtn;
 
@@ -114,9 +98,7 @@ private slots:
 	//void animate();
 	void SlotToggleGrid(bool b);
 	//void UpdateRightHand(QVector3D thumbTip, QVector3D indexTip, QVector3D indexDir);
-#ifdef USE_LEAP
-	void SlotUpdateHands(QVector3D leftIndexTip, QVector3D rightIndexTip, int numHands);
-#endif
+
 	void SlotToggleUsingGlyphSnapping(bool b);
 	void SlotTogglePickingGlyph(bool b);
 	void SlotToggleFreezingFeature(bool b);

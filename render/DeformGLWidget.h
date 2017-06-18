@@ -13,11 +13,6 @@ public:
 	explicit DeformGLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr,
 		QWidget *parent = 0) ;
 
-protected:
-	virtual bool TouchBeginEvent(QTouchEvent *event) override;
-	virtual bool TouchUpdateEvent(QTouchEvent *event) override;
-	virtual void pinchTriggered(QPinchGesture *gesture) override;
-
 private:
 	DEFORM_MODEL deformModel = DEFORM_MODEL::SCREEN_SPACE;
 

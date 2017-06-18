@@ -3,6 +3,9 @@ project(interact)
 set(SHARED_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(SHARED_LIB_INCLUDE_DIR ${SHARED_LIB_INCLUDE_DIR} PARENT_SCOPE)
 
+find_package(Qt5Widgets REQUIRED)
+
+
 if(TARGET interact)
 
 message("interact is already defined")
@@ -52,6 +55,9 @@ endif()
 SET(CMAKE_AUTOMOC ON)
 
 add_library(${PROJECT_NAME} STATIC ${HDRS} ${SRCS})
+
+#qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
+qt5_use_modules(${PROJECT_NAME} Widgets)
 
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
 

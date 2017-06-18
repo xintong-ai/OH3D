@@ -38,7 +38,7 @@ if(USE_OSVR)
 	include_directories(${osvr_DIR}/../../../include)
 endif()
 
-option(USE_TOUCHSCREEN "Enable touch screen interaction. !! NOT tested yet!!" OFF)
+option(USE_TOUCHSCREEN "Enable touch screen interaction." OFF)
 
 
 
