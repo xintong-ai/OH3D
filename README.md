@@ -37,7 +37,7 @@ Contributors
 
 Xin Tong, email: tongxin829 at gmail dot com
 
-Cheng Li, email: li dot 4076 at gmail dot com
+Cheng Li, email: li dot 4076 at osu dot com
 
 
 Citation
