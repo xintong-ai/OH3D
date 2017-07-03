@@ -27,8 +27,8 @@ set(HDRS DataMgr.h PlyMeshReader.h  ParticleReader.h
 	)
 
 if(BUILD_TEST AND USE_VTK)
-	set(HDRS ${HDRS} PlyVTKReader.h )
-	set(SRCS ${SRCS} PlyVTKReader.cpp)
+	set(HDRS ${HDRS} PlyVTKReader.h VTPReader.h)
+	set(SRCS ${SRCS} PlyVTKReader.cpp VTPReader.cpp)
 	include(${VTK_USE_FILE}) 
 endif()
 

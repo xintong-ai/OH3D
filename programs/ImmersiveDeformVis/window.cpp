@@ -27,7 +27,10 @@
 #include "BinaryTuplesReader.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
-
+#include "VTPReader.h"
+#include "PolyMesh.h"
+#include "PolyRenderable.h"
+#include "TraceRenderable.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -43,7 +46,7 @@
 #include "VolumeRenderableCUDAKernel.h"
 
 
-bool channelSkelViewReady = false;
+bool channelSkelViewReady = true;
 
 Window::Window()
 {
@@ -115,6 +118,11 @@ Window::Window()
 		skelVolume->spacing = spacing;
 		skelVolume->initVolumeCuda();
 		reader4.reset();
+
+		polyMesh = std::make_shared<PolyMesh>();
+		polyMesh->opacity = 0.5;
+		VTPReader reader;
+		reader.readFile((subfolder + "/surface.vtp").c_str(), polyMesh.get());
 	}
 
 	int maxLabel = 1;
@@ -197,6 +205,8 @@ Window::Window()
 		reader3->OutputToParticleDataArrays(views);
 		ve->setViews(views);
 		reader3.reset();
+
+		traceRenderable = std::make_shared<TraceRenderable>(views);
 	}
 
 
@@ -247,7 +257,14 @@ Window::Window()
 
 	if (channelSkelViewReady){
 		infoGuideRenderable = std::make_shared<InfoGuideRenderable>(ve, matrixMgr);
-		openGL->AddRenderable("4infoGuide", infoGuideRenderable.get());
+		//openGL->AddRenderable("4infoGuide", infoGuideRenderable.get());
+
+		polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
+		polyRenderable->SetVisibility(false);
+		openGL->AddRenderable("7poly", polyRenderable.get());
+
+		traceRenderable->SetVisibility(false);
+		openGL->AddRenderable("6traces", traceRenderable.get());
 	}
 
 
@@ -321,15 +338,25 @@ Window::Window()
 	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
 	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel"));
 	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton"));
+	surfaceRb = std::make_shared<QRadioButton>(tr("&surface"));
 	oriVolumeRb->setChecked(true);
 	deformModeLayout->addWidget(oriVolumeRb.get());
 	deformModeLayout->addWidget(channelVolumeRb.get());
 	deformModeLayout->addWidget(skelVolumeRb.get());
+	deformModeLayout->addWidget(surfaceRb.get());
 	groupBox->setLayout(deformModeLayout);
 	controlLayout->addWidget(groupBox);
 	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
 	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
 	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
+	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
+
+	if (!channelSkelViewReady){
+		oriVolumeRb->setDisabled(true);
+		channelVolumeRb->setDisabled(true);
+		skelVolumeRb->setDisabled(true);
+		surfaceRb->setDisabled(true);
+	}
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -590,8 +617,11 @@ Window::Window()
 	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
 
 	mainLayout->addLayout(assistLayout, 1);
-	openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
-	//openGL->setFixedSize(600,600);
+	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
+	
+	
+	
+openGL->setFixedSize(1000, 1000);
 //openGLMini->setFixedSize(300, 300);
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -738,6 +768,9 @@ void Window::SlotOriVolumeRb(bool b)
 	if (b){
 		volumeRenderable->setVolume(inputVolume);
 		volumeRenderable->rcp = rcp;
+		volumeRenderable->SetVisibility(true);
+		polyRenderable->SetVisibility(false);
+		traceRenderable->SetVisibility(false);
 	}
 }
 
@@ -748,6 +781,9 @@ void Window::SlotChannelVolumeRb(bool b)
 		if (channelVolume){
 			volumeRenderable->setVolume(channelVolume);
 			volumeRenderable->rcp = rcpForChannelSkel;
+			volumeRenderable->SetVisibility(true);
+			polyRenderable->SetVisibility(false);
+			traceRenderable->SetVisibility(false);
 		}
 		else{
 			std::cout << "channelVolume not set!!" << std::endl;
@@ -764,9 +800,29 @@ void Window::SlotSkelVolumeRb(bool b)
 		if (skelVolume){
 			volumeRenderable->setVolume(skelVolume);
 			volumeRenderable->rcp = rcpForChannelSkel;
+			volumeRenderable->SetVisibility(true);
+			polyRenderable->SetVisibility(false);
+			traceRenderable->SetVisibility(false);
 		}
 		else{
 			std::cout << "skelVolume not set!!" << std::endl;
+			oriVolumeRb->setChecked(true);
+			SlotOriVolumeRb(true);
+		}
+	}
+}
+
+void Window::SlotSurfaceRb(bool b)
+{
+	if (b)
+	{
+		if (polyMesh){
+			volumeRenderable->SetVisibility(false);
+			polyRenderable->SetVisibility(true);
+			traceRenderable->SetVisibility(true);
+		}
+		else{
+			std::cout << "polymesh not set!!" << std::endl;
 			oriVolumeRb->setChecked(true);
 			SlotOriVolumeRb(true);
 		}

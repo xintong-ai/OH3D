@@ -46,6 +46,7 @@ set( Srcs
 		MatrixMgrRenderable.cpp
 	InfoGuideRenderable.cpp
 		DeformFrameRenderable.cpp
+		TraceRenderable.cpp
 	)
 set( Hdrs  
 	glwidget.h 
@@ -68,6 +69,7 @@ set( Hdrs
 		MatrixMgrRenderable.h
 	InfoGuideRenderable.h
 		DeformFrameRenderable.h
+		TraceRenderable.h
 	)
 
 if(USE_TEEM)

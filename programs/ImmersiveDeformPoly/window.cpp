@@ -31,6 +31,7 @@
 #include "PolyMesh.h"
 
 #include "PlyVTKReader.h"
+#include "VTPReader.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -54,55 +55,10 @@ Window::Window()
 	//////////////////Volume and RayCastingParameters
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
-
-	rcp = std::make_shared<RayCastingParameters>();
-
-	std::string subfolder;
 	
-	//Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
-	//rcp->useColor = false;
+	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 
-	dims = make_int3(160, 224, 64);
-	spacing = make_float3(1, 1, 1);
-	rcp = std::make_shared<RayCastingParameters>(0.6, 0.0, 0.0, 0.29, 0.0, 0.35, 512, 0.25f, 1.0, false); //for 181
-	subfolder = "beetle";
-	rcp->use2DInteg = false;
-
-	std::shared_ptr<RayCastingParameters> rcpMini = rcp;// std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
-
-	inputVolume = std::make_shared<Volume>(true);
-	
-	if (std::string(dataPath).find(".vec") != std::string::npos){
-		std::shared_ptr<VecReader> reader;
-		reader = std::make_shared<VecReader>(dataPath.c_str());
-		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
-		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
-		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
-		reader.reset();
-	}
-	else{
-		std::shared_ptr<RawVolumeReader> reader;
-		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos || std::string(dataPath).find("Bucky") != std::string::npos || std::string(dataPath).find("bloodCell") != std::string::npos || std::string(dataPath).find("Lobster") != std::string::npos || std::string(dataPath).find("Orange") != std::string::npos){
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
-		}
-		else{
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
-		}
-		reader->OutputToVolumeByNormalizedValue(inputVolume);
-		reader.reset();
-	}
-	inputVolume->spacing = spacing;
-	inputVolume->initVolumeCuda();
-	
-
-	if (rcp->use2DInteg){
-		inputVolume->computeGradient();
-		rcp->secondCutOffLow = 0.19f;
-		rcp->secondCutOffHigh = 0.72f;
-		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
-	}
+	std::string subfolder = "";
 
 	bool channelSkelViewReady = false;
 	if (channelSkelViewReady){
@@ -111,31 +67,30 @@ Window::Window()
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
-
-		skelVolume = std::make_shared<Volume>();
-		std::shared_ptr<RawVolumeReader> reader4 = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		reader4->OutputToVolumeByNormalizedValue(skelVolume);
-		skelVolume->initVolumeCuda();
-		reader4.reset();
 	}
 
-	//labelVolCUDA = std::make_shared<VolumeCUDA>();
-	//labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
-	//labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
-	//memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
+	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+
+	polyMesh = std::make_shared<PolyMesh>();
+
+	if (std::string(polyDataPath).find(".ply") != std::string::npos){
+		PlyVTKReader plyVTKReader;
+		plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
+	}
+	else{
+		VTPReader reader;
+		reader.readFile(polyDataPath.c_str(), polyMesh.get());
+	}
+
+	polyMesh->opacity = 1.0;// 0.5;
 
 	////////////////matrix manager
 	float3 posMin, posMax;
-	inputVolume->GetPosRange(posMin, posMax);
+	polyMesh->GetPosRange(posMin, posMax);
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	matrixMgr->setDefaultForImmersiveMode();		
-	if (std::string(dataPath).find("engine") != std::string::npos){
-		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -20, 60));
-	}
 
 	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
-
-
 
 
 
@@ -161,17 +116,9 @@ Window::Window()
 		openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	}
 
-	//lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVolCUDA);
-	//lvProcessor->setScreenMarker(sm);
-	//lvProcessor->rcp = rcp;
-	//openGL->AddProcessor("screenMarkerLabelVolumeProcessor", lvProcessor.get());
-
 
 	//////////////////////////////// Renderable ////////////////////////////////	
-	//volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
-	//volumeRenderable->rcp = rcp;
-	//openGL->AddRenderable("1volume", volumeRenderable.get());
-	////volumeRenderable->setScreenMarker(sm);
+
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
@@ -180,18 +127,9 @@ Window::Window()
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
 
-
-	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
-
-	polyMesh = std::make_shared<PolyMesh>();
-
-	PlyVTKReader plyVTKReader;
-	plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
-	
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
+	openGL->AddRenderable("poly", polyRenderable.get());
 	
-	openGL->AddRenderable("mm", polyRenderable.get());
-
 
 
 	//////////////////////////////// Interactor ////////////////////////////////
@@ -208,10 +146,7 @@ Window::Window()
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
 	
-	//sbInteractor = std::make_shared<ScreenBrushInteractor>();
-	////sbInteractor->setScreenMarker(sm);
-	//openGL->AddInteractor("3screenMarker", sbInteractor.get());
-	
+
 
 #ifdef USE_LEAP
 	listener = new LeapListener();
@@ -224,6 +159,7 @@ Window::Window()
 	listener->AddLeapInteractor("matrixMgr", (LeapInteractor*)(matrixMgrLeapInteractor.get()));
 #endif
 
+	
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 	
@@ -302,9 +238,6 @@ Window::Window()
 	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
 
 
-
-	
-
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);
 	setLayout(mainLayout);
@@ -356,58 +289,6 @@ void Window::applyEyePos()
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
 }
 
-void Window::transFuncP1LabelSliderValueChanged(int v)
-{
-	rcp->transFuncP1 = 1.0*v / 100;
-	transFuncP1Label->setText(QString::number(1.0*v / 100));
-}
-void Window::transFuncP2LabelSliderValueChanged(int v)
-{
-	rcp->transFuncP2 = 1.0*v / 100;
-	transFuncP2Label->setText(QString::number(1.0*v / 100));
-}
-
-void Window::transFuncP1SecondLabelSliderValueChanged(int v)
-{
-	rcp->secondCutOffHigh = 1.0*v / 100;
-	transFuncP1SecondLabel->setText(QString::number(1.0*v / 100));
-}
-void Window::transFuncP2SecondLabelSliderValueChanged(int v)
-{
-	rcp->secondCutOffLow = 1.0*v / 100;
-	transFuncP2SecondLabel->setText(QString::number(1.0*v / 100));
-}
-
-
-void Window::brSliderValueChanged(int v)
-{
-	rcp->brightness = v*1.0 / 20.0;
-	brLabel->setText(QString::number(rcp->brightness));
-}
-
-void Window::dsSliderValueChanged(int v)
-{
-	rcp->density = v*1.0 / 20.0;
-	dsLabel->setText(QString::number(rcp->density));
-}
-
-void Window::laSliderValueChanged(int v)
-{
-	rcp->la = 1.0*v / 10;
-	laLabel->setText(QString::number(1.0*v / 10));
-
-}
-void Window::ldSliderValueChanged(int v)
-{
-	rcp->ld = 1.0*v / 10;
-	ldLabel->setText(QString::number(1.0*v / 10));
-}
-void Window::lsSliderValueChanged(int v)
-{
-	rcp->ls = 1.0*v / 10;
-	lsLabel->setText(QString::number(1.0*v / 10));
-}
-
 void Window::isDeformEnabledClicked(bool b)
 {
 	if (b){
@@ -416,7 +297,7 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 	else{
 		positionBasedDeformProcessor->isActive = false;
-		inputVolume->reset();
+		//inputVolume->reset();
 		channelVolume->reset();
 	}
 }
@@ -433,8 +314,6 @@ void Window::moveToOptimalBtnClicked()
 
 void Window::SlotOriVolumeRb(bool b)
 {
-	if (b)
-		volumeRenderable->setVolume(inputVolume);
 }
 
 void Window::SlotChannelVolumeRb(bool b)

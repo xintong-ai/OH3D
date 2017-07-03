@@ -64,6 +64,8 @@ void PolyRenderable::loadShaders()
 	uniform vec3 Kd; // Diffuse reflectivity
 	uniform vec3 Ks; // Diffuse reflectivity
 	uniform float Shininess;
+	uniform float Opacity;
+	
 	in vec4 eyeCoords;
 
 	smooth in vec3 tnorm;
@@ -95,10 +97,10 @@ void PolyRenderable::loadShaders()
 		BackColor = phongModel(eyeCoords, -tnorm);
 
 		if (gl_FrontFacing) {
-			FragColor = vec4(FrontColor, 1.0);//vec4(tnorm, 1.0);
+			FragColor = vec4(FrontColor, Opacity);//vec4(tnorm, 1.0);
 		}
 		else {
-			FragColor = vec4(BackColor, 1.0);
+			FragColor = vec4(BackColor, Opacity);
 		}
 	}
 	);
@@ -114,11 +116,12 @@ void PolyRenderable::loadShaders()
 	glProg->addUniform("Kd");
 	glProg->addUniform("Ks");
 	glProg->addUniform("Shininess");
+	glProg->addUniform("Opacity");
 
 	glProg->addUniform("ModelViewMatrix");
 	glProg->addUniform("NormalMatrix");
 	glProg->addUniform("ProjectionMatrix");
-
+	
 	glProg->addUniform("Transform");
 }
 
@@ -131,6 +134,9 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!visible)
 		return;
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 
 	glMatrixMode(GL_MODELVIEW);
 
@@ -145,7 +151,7 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glUniform3f(glProg->uniform("Kd"), 0.6f, 0.6f, 0.6f);
 	qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 	qgl->glUniform1f(glProg->uniform("Shininess"), 1);
-
+	qgl->glUniform1f(glProg->uniform("Opacity"), polyMesh->opacity);
 	qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
 
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview);
@@ -162,6 +168,9 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	//glBindVertexArray(0);
 	m_vao->release();
 	glProg->disable();
+
+
+	glDisable(GL_BLEND);
 
 }
 //

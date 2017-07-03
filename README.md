@@ -1,16 +1,16 @@
-Synopsis
+## Synopsis
 
 This project was a deformation-based scientific visualization research by PhD students Xin Tong and Cheng Li from The Ohio State University with Prof. Han-Wei Shen. This project is a library containing a lot of toolkits, which can be used for other scientific visualization researches and developments.
 
 
-Code Example
+## Code Example
 
 This project can create an executable program for each subfolder in the 'programs' folder. Other folders are used to build libraries used by these executable programs. The program TutorialVis is a short program better for starters. The executable programs follow the Model–View–Controller design. /programs/TutorialVis/windows.cpp contains rich comments to explain this recommanded way to build programs.
 
 Besides TutorialVis in the 'programs' folder, ParticleVis is used in citations [1] and [2]; TensorVis is used in citation [1]; VolumeVis is used in citation [2]. (please note low-level settings might have been changed since the papers are published. Refer to previous commits of the project for exact reproduction.) Other programs are test programs which are not well maintained and are not recommanded
 
 
-Installation
+## Installation
 
 Use CMake to build the project.
 
@@ -33,14 +33,14 @@ USE_TOUCHSCREEN: use touchscreen. Note that we used QT touch screen functions, s
 USE_CONTROLLER: use HTC VIVE controller (not tested yet).
 
 
-Contributors
+## Contributors
 
 Xin Tong, email: tongxin829 at gmail dot com
 
 Cheng Li, email: li dot 4076 at osu dot com
 
 
-Citation
+## Citation
 
 This program is used for the following publications. Citing it will be appreciated if you use the code for your publication.
 

@@ -169,13 +169,19 @@ void GLWidget::paintGL() {
 			renderer.second->DrawEnd(renderer.first.c_str());
 		}
 	}
-#else		
+#else	
+
+	//glEnable(GL_BLEND);
+
 	for (auto renderer : renderers)
 	{
 		renderer.second->DrawBegin();
 		renderer.second->draw(modelview, projection);
 		renderer.second->DrawEnd(renderer.first.c_str());
 	}
+
+	//glDisable(GL_BLEND);
+
 #endif
 
 

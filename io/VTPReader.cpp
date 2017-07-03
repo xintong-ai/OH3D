@@ -1,10 +1,8 @@
-#include "PlyVTKReader.h"
+#include "VTPReader.h"
 #include "PolyMesh.h"
 
-#include <vtkPolyData.h>
-#include <vtkPLYReader.h>
+#include <vtkXMLPolyDataReader.h>
 #include <vtkSmartPointer.h>
-#include <vtkCell.h>
 
 
 #include <vtkCellData.h>
@@ -16,62 +14,62 @@
 #include <vtkPointData.h>
 #include <vtkSphereSource.h>
 
-
-void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
+void VTPReader::readFile(const char* filename, PolyMesh* polyMesh)
 {
-	vtkSmartPointer<vtkPLYReader> reader =
-		vtkSmartPointer<vtkPLYReader>::New();
-	reader->SetFileName(fname);
+	vtkSmartPointer<vtkXMLPolyDataReader> reader =
+		vtkSmartPointer<vtkXMLPolyDataReader>::New();
+	reader->SetFileName(filename);
+	reader->Update();
 
 	vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
 	data = reader->GetOutput();
-	reader->Update();
-
+	
 	std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
 	std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
+
 	
 	// Try to read normals directly
 	bool hasPointNormals = GetPointNormals(data);
 
 	if (!hasPointNormals)
 	{
-		std::cout << "No point normals were found. Computing normals..." << std::endl;
-
-		// Generate normals
-		vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
-#if VTK_MAJOR_VERSION <= 5
-		normalGenerator->SetInput(polydata);
-#else
-		normalGenerator->SetInputData(data);
-#endif
-		normalGenerator->ComputePointNormalsOn();
-		normalGenerator->ComputeCellNormalsOff();
-		/*
-		// Optional settings
-		normalGenerator->SetFeatureAngle(0.1);
-		normalGenerator->SetSplitting(1);
-		normalGenerator->SetConsistency(0);
-		normalGenerator->SetAutoOrientNormals(0);
-		normalGenerator->SetComputePointNormals(1);
-		normalGenerator->SetComputeCellNormals(0);
-		normalGenerator->SetFlipNormals(0);
-		normalGenerator->SetNonManifoldTraversal(1);
-		*/
-		normalGenerator->SetSplitting(0);
-		normalGenerator->SetConsistency(1);
-
-		normalGenerator->Update();
-
-		data = normalGenerator->GetOutput();
-
-		// Try to read normals again
-		hasPointNormals = GetPointNormals(data);
-
-		std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
-		if (!hasPointNormals){
-			std::cout << "fail computing normals" << std::endl;
-			exit(0);
-		}
+//		std::cout << "No point normals were found. Computing normals..." << std::endl;
+//
+//		// Generate normals
+//		vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
+//#if VTK_MAJOR_VERSION <= 5
+//		normalGenerator->SetInput(polydata);
+//#else
+//		normalGenerator->SetInputData(data);
+//#endif
+//		normalGenerator->ComputePointNormalsOn();
+//		normalGenerator->ComputeCellNormalsOff();
+//		/*
+//		// Optional settings
+//		normalGenerator->SetFeatureAngle(0.1);
+//		normalGenerator->SetSplitting(1);
+//		normalGenerator->SetConsistency(0);
+//		normalGenerator->SetAutoOrientNormals(0);
+//		normalGenerator->SetComputePointNormals(1);
+//		normalGenerator->SetComputeCellNormals(0);
+//		normalGenerator->SetFlipNormals(0);
+//		normalGenerator->SetNonManifoldTraversal(1);
+//		*/
+//		normalGenerator->SetSplitting(0);
+//		normalGenerator->SetConsistency(1);
+//
+//		normalGenerator->Update();
+//
+//		data = normalGenerator->GetOutput();
+//
+//		// Try to read normals again
+//		hasPointNormals = GetPointNormals(data);
+//
+//		std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
+//		if (!hasPointNormals){
+//			std::cout << "fail computing normals" << std::endl;
+//			exit(0);
+//		}
 	}
 	else
 	{
@@ -112,11 +110,12 @@ void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 		polyMesh->indices[3 * i + 2] = data->GetCell(i)->GetPointId(2);
 	}
 	polyMesh->find_center_and_range();
+
 }
 
 
 
-bool PlyVTKReader::GetPointNormals(vtkPolyData* polydata)
+bool VTPReader::GetPointNormals(vtkPolyData* polydata)
 {
 	//std::cout << "In GetPointNormals: " << polydata->GetNumberOfPoints() << std::endl;
 	//std::cout << "Looking for point normals..." << std::endl;

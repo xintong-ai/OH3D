@@ -54,3 +54,14 @@ target_link_libraries(${PROJECT_NAME}
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
 endif()
+
+
+if(USE_VTK)
+	set(HDRS ${HDRS} PlyVTKReader.h VTPReader.h)
+	set(SRCS ${SRCS} PlyVTKReader.cpp VTPReader.cpp)
+	include(${VTK_USE_FILE}) 
+endif()
+
+if(USE_VTK)
+	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
+endif()

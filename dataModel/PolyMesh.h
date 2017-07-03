@@ -33,39 +33,41 @@ public:
 		if (indices) delete[]indices;
 	}
 
-private:
-	float cx, cy, cz;
-	float x_min, x_max, y_min, y_max, z_min, z_max;
+	float opacity = 1.0;
 
-	/*
-	void find_center(float& cx, float& cy, float& cz,
-		float& minx, float& maxx, float&miny,
-		float &maxy, float &minz, float & maxz)
+
+	void find_center_and_range()
 	{
 		float x, y, z;
-		float min_x = 9999, max_x = -9999, min_y = 9999, max_y = -9999;
-		float min_z = 9999, max_z = -9999;
+		min_x = 9999, max_x = -9999, min_y = 9999, max_y = -9999;
+		min_z = 9999, max_z = -9999;
 
 		x = y = z = 0;
 		for (int i = 0; i < vertexcount; i++) {
-			x += vertices[i]->x;
-			y += vertices[i]->y;
-			z += vertices[i]->z;
-			if (min_x >vertices[i]->x) min_x = vertices[i]->x;
-			if (max_x <vertices[i]->x) max_x = vertices[i]->x;
-			if (min_y >vertices[i]->y) min_y = vertices[i]->y;
-			if (max_y <vertices[i]->y) max_y = vertices[i]->y;
-			if (min_z >vertices[i]->z) min_z = vertices[i]->z;
-			if (max_z <vertices[i]->z) max_z = vertices[i]->z;
+			x += vertexCoords[3 * i];
+			y += vertexCoords[3 * i + 1];
+			z += vertexCoords[3 * i + 2];
+			if (min_x > vertexCoords[3 * i]) min_x = vertexCoords[3 * i];
+			if (max_x < vertexCoords[3 * i]) max_x = vertexCoords[3 * i];
+			if (min_y > vertexCoords[3 * i + 1]) min_y = vertexCoords[3 * i + 1];
+			if (max_y < vertexCoords[3 * i + 1]) max_y = vertexCoords[3 * i + 1];
+			if (min_z > vertexCoords[3 * i + 2]) min_z = vertexCoords[3 * i + 2];
+			if (max_z < vertexCoords[3 * i + 2]) max_z = vertexCoords[3 * i + 2];
 		}
 		cx = x / (float)vertexcount;
 		cy = y / (float)vertexcount;
 		cz = z / (float)vertexcount;
-		minx = min_x; maxx = max_x;
-		miny = min_y; maxy = max_y;
-		minz = min_z; maxz = max_z;
+
 	}
-	*/
+
+	void GetPosRange(float3& posMin, float3& posMax)
+	{
+		posMin = make_float3(min_x, min_y, min_z);
+		posMax = make_float3(max_x, max_y, max_z);
+	}
+private:
+	float cx, cy, cz;
+	float min_x, max_x, min_y, max_y, min_z, max_z;
 
 };
 #endif

@@ -14,14 +14,14 @@ include_directories(${SHARED_LIB_INCLUDE_DIR})
 
 set(SRCS Volume.cpp Particle.cpp GLMatrixManager.cpp
 	LabelVolumeProcessor.cpp
-	AnimationByMatrixProcessor.cpp
+	AnimationByMatrixProcessor.cpp Trace.cpp
 	)
 set(HDRS Volume.h Particle.h Processor.h myDefine.h GLMatrixManager.h ColorGradient.h ScreenMarker.h
 	LabelVolumeProcessor.h
 	AnimationByMatrixProcessor.h
 	MatrixManager.h
 	myDefineRayCasting.h
-	PolyMesh.h
+	PolyMesh.h Trace.h
 )
 add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 

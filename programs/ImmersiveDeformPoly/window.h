@@ -142,15 +142,7 @@ private slots:
 	void SlotLoadState();
 	void applyEyePos();
 
-	void transFuncP1LabelSliderValueChanged(int);
-	void transFuncP2LabelSliderValueChanged(int); 
-	void transFuncP1SecondLabelSliderValueChanged(int);
-	void transFuncP2SecondLabelSliderValueChanged(int); 
-	void brSliderValueChanged(int v);
-	void dsSliderValueChanged(int v);
-	void laSliderValueChanged(int);
-	void ldSliderValueChanged(int);
-	void lsSliderValueChanged(int);
+
 
 	void isDeformEnabledClicked(bool b);
 	void isBrushingClicked();

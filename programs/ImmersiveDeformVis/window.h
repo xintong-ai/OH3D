@@ -37,6 +37,9 @@ class InfoGuideRenderable;
 class DeformFrameRenderable;
 class GlyphRenderable;
 struct RayCastingParameters;
+class PolyMesh;
+class PolyRenderable;
+class TraceRenderable;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -71,7 +74,8 @@ private:
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
 	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
-	
+	std::shared_ptr<PolyMesh> polyMesh = 0;
+
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
 	//bool useLabel;
@@ -108,6 +112,8 @@ private:
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
+	std::shared_ptr<PolyRenderable> polyRenderable;
+	std::shared_ptr<TraceRenderable> traceRenderable;
 
 	//for 2d view
 	Helper helper;
@@ -135,6 +141,7 @@ private:
 	std::shared_ptr<QRadioButton> oriVolumeRb;
 	std::shared_ptr<QRadioButton> channelVolumeRb;
 	std::shared_ptr<QRadioButton> skelVolumeRb;
+	std::shared_ptr<QRadioButton> surfaceRb;
 
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
@@ -162,6 +169,7 @@ private slots:
 	void SlotOriVolumeRb(bool);
 	void SlotChannelVolumeRb(bool);
 	void SlotSkelVolumeRb(bool);
+	void SlotSurfaceRb(bool);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

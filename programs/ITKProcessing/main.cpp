@@ -16,10 +16,21 @@
 #include <itkImage.h>
 #include <helper_timer.h>
 
+#include <vtkVersion.h>
+#include <vtkSmartPointer.h>
+#include <vtkImplicitModeller.h>
+#include <vtkSphereSource.h>
+#include <vtkPolyData.h>
+#include <vtkXMLPolyDataReader.h>
+#include <vtkImageData.h>
+//#include <vtkXMLImageDataWriter.h>
+#include <vtkNIFTIImageWriter.h>
+#include <vtkImplicitModeller.h>
+
 
 using namespace std;
 
-const int PHASES_COUNT = 3; //phase 1 is for creating cell volume; phase 2 is for creating skeletion; phase 3 is for creating bilateral volume
+const int PHASES_COUNT = 1; //phase 1 is for creating cell volume; phase 2 is for creating skeletion; phase 3 is for creating bilateral volume
 
 void computeInitCellVolume(std::shared_ptr<Volume> v, std::shared_ptr<Volume> resVolume, std::shared_ptr<RayCastingParameters> rcp)
 {
@@ -84,15 +95,8 @@ ImageType::Pointer createITKImageFromVolume(shared_ptr<Volume> volume)
 	return importFilter->GetOutput();
 }
 
-int main(int argc, char **argv)
+void processVolumeData()
 {
-	StopWatchInterface *timer = 0;
-	sdkCreateTimer(&timer);
-	sdkResetTimer(&timer);
-
-	sdkStartTimer(&timer);
-
-
 	//reading data
 	int3 dims;
 	float3 spacing;
@@ -136,12 +140,12 @@ int main(int argc, char **argv)
 	ImageType::Pointer initCellImg = createITKImageFromVolume(initCellVolume);
 
 	ImageType::Pointer connectedImg;
-		
+
 	int maxComponentMark;
 	refineCellVolume(initCellImg, dims, spacing, connectedImg, maxComponentMark);
 
 	if (PHASES_COUNT == 1){
-		return 1;
+		return;
 	}
 
 
@@ -155,7 +159,7 @@ int main(int argc, char **argv)
 	findViews(skelComponentedImg, maxComponentMark, dims, spacing, viewArrays);
 
 	if (PHASES_COUNT == 2){
-		return 1;
+		return;
 	}
 
 
@@ -166,7 +170,72 @@ int main(int argc, char **argv)
 	fwrite(bilateralVolumeRes, sizeof(float), inputVolume->size.x*inputVolume->size.y*inputVolume->size.z, fp);
 	fclose(fp);
 	delete[]bilateralVolumeRes;
+}
 
+void processSurfaceData()
+{
+	//reading data
+	int3 dims;
+	float3 spacing;
+
+	vtkSmartPointer<vtkPolyData> inputPolyData;
+
+	std::shared_ptr<DataMgr> dataMgr;
+	dataMgr = std::make_shared<DataMgr>();
+	//const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH")
+	dataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+	vtkSmartPointer<vtkXMLPolyDataReader> reader =
+		vtkSmartPointer<vtkXMLPolyDataReader>::New();
+	reader->SetFileName(dataPath.c_str());
+	reader->Update();
+	inputPolyData = reader->GetOutput();
+
+	vtkSmartPointer<vtkImplicitModeller> implicitModeller =
+		vtkSmartPointer<vtkImplicitModeller>::New();
+
+	double bounds[6];
+	inputPolyData->GetBounds(bounds);
+	double xrange = bounds[1] - bounds[0], yrange = bounds[3] - bounds[2], zrange = bounds[5] - bounds[4];
+	double minRange = min(min(xrange, yrange), zrange);
+	if (minRange < 50){
+		double scale = 50 / minRange;
+		xrange *= scale;		
+		yrange *= scale;
+		zrange *= scale;
+	}
+	implicitModeller->SetSampleDimensions(xrange, yrange, zrange);
+#if VTK_MAJOR_VERSION <= 5
+	implicitModeller->SetInput(inputPolyData);
+#else
+	implicitModeller->SetInputData(inputPolyData);
+#endif
+	implicitModeller->AdjustBoundsOn();
+	implicitModeller->SetAdjustDistance(.1); // Adjust by 10%
+	implicitModeller->SetMaximumDistance(.1);
+
+
+	implicitModeller->Update();
+	vtkSmartPointer<vtkImageData> img = implicitModeller->GetOutput();
+
+	vtkSmartPointer<vtkNIFTIImageWriter> writer =
+		vtkSmartPointer<vtkNIFTIImageWriter>::New();
+	writer->SetFileName("hoho.hdr");
+
+	writer->SetInputData(img);
+	writer->Write();
+}
+
+int main(int argc, char **argv)
+{
+	StopWatchInterface *timer = 0;
+	sdkCreateTimer(&timer);
+	sdkResetTimer(&timer);
+
+	sdkStartTimer(&timer);
+
+	//processVolumeData();
+	processSurfaceData();
+	
 	sdkStopTimer(&timer);
 
 	float timeCost = sdkGetAverageTimerValue(&timer) / 1000.f;
