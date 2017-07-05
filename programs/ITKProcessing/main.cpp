@@ -175,8 +175,8 @@ void processVolumeData()
 void processSurfaceData()
 {
 	//reading data
-	int3 dims;
-	float3 spacing;
+	//int3 dims;
+	//float3 spacing;
 
 	vtkSmartPointer<vtkPolyData> inputPolyData;
 
@@ -195,7 +195,7 @@ void processSurfaceData()
 
 	double bounds[6];
 	inputPolyData->GetBounds(bounds);
-	double xrange = bounds[1] - bounds[0], yrange = bounds[3] - bounds[2], zrange = bounds[5] - bounds[4];
+	double xrange = bounds[1] - bounds[0] + 1, yrange = bounds[3] - bounds[2] + 1, zrange = bounds[5] - bounds[4] + 1;
 	double minRange = min(min(xrange, yrange), zrange);
 	if (minRange < 50){
 		double scale = 50 / minRange;
@@ -217,9 +217,26 @@ void processSurfaceData()
 	implicitModeller->Update();
 	vtkSmartPointer<vtkImageData> img = implicitModeller->GetOutput();
 
+
+	//thresholding
+	for (int k = 0; k < zrange; k++){
+		for (int j = 0; j < yrange; j++){
+			for (int i = 0; i < xrange; i++){
+				float v = *(static_cast<float*>(img->GetScalarPointer(i,j,k)));
+				if (v>1.5){
+					*(static_cast<float*>(img->GetScalarPointer(i, j, k))) = 1;
+				}
+				else{
+					*(static_cast<float*>(img->GetScalarPointer(i, j, k))) = 0;
+				}
+			}
+		}
+	}
+
+
 	vtkSmartPointer<vtkNIFTIImageWriter> writer =
 		vtkSmartPointer<vtkNIFTIImageWriter>::New();
-	writer->SetFileName("hoho.hdr");
+	writer->SetFileName("cleanedChannel.hdr");
 
 	writer->SetInputData(img);
 	writer->Write();

@@ -244,9 +244,10 @@ void VolumeRenderableCUDA::deinitTextureAndCudaArrayOfScreen()
 
 void VolumeRenderableCUDA::resize(int width, int height)
 {
+	bool oriVisibility = visible;
 	visible = false;
 	deinitTextureAndCudaArrayOfScreen();
 	initTextureAndCudaArrayOfScreen();
-	visible = true;
+	visible = oriVisibility;
 }
 

@@ -109,8 +109,8 @@ void VTPReader::readFile(const char* filename, PolyMesh* polyMesh)
 		polyMesh->indices[3 * i + 1] = data->GetCell(i)->GetPointId(1);
 		polyMesh->indices[3 * i + 2] = data->GetCell(i)->GetPointId(2);
 	}
+	polyMesh->setVertexCoordsOri();
 	polyMesh->find_center_and_range();
-
 }
 
 

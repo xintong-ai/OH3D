@@ -67,7 +67,7 @@ private:
 	float3 spacing;
 	std::vector<float3> views;
 
-	std::shared_ptr<RayCastingParameters> rcp;
+	//std::shared_ptr<RayCastingParameters> rcp;
 	
 	std::shared_ptr<PolyMesh> polyMesh;
 
@@ -100,7 +100,7 @@ private:
 
 
 	//for main view
-	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
+	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;

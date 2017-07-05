@@ -13,7 +13,7 @@ class ScreenMarker;
 class PositionBasedDeformProcessor;
 struct RayCastingParameters;
 
-//the difference from VolumeRenderableCUDA is with an extra lable volume, and a screen marker
+//the difference from VolumeRenderableCUDA is with an extra label volume, and a screen marker
 class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT

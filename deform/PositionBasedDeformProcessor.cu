@@ -211,7 +211,7 @@ d_posInDeformedChannelVolume(float3 pos, int3 dims, float3 spacing, bool* inChan
 	}
 }
 
-void PositionBasedDeformProcessor::doDeform(float degree)
+void PositionBasedDeformProcessor::doVolumeDeform(float degree)
 {
 	cudaExtent size = volume->volumeCuda.size;
 	unsigned int dim = 32;
@@ -227,7 +227,7 @@ void PositionBasedDeformProcessor::doDeform(float degree)
 	//checkCudaErrors(cudaUnbindTexture(channelVolumeTex));
 }
 
-void PositionBasedDeformProcessor::doDeform2Tunnel(float degree, float degreeClose)
+void PositionBasedDeformProcessor::doVolumeDeform2Tunnel(float degree, float degreeClose)
 {
 	cudaExtent size = volume->volumeCuda.size;
 	unsigned int dim = 32;
@@ -248,7 +248,7 @@ void PositionBasedDeformProcessor::doDeform2Tunnel(float degree, float degreeClo
 
 }
 
-void PositionBasedDeformProcessor::doTunnelDeform(float degree)
+void PositionBasedDeformProcessor::doChannelVolumeDeform(float degree)
 {
 	cudaExtent size = volume->volumeCuda.size;
 	unsigned int dim = 32;
@@ -317,7 +317,21 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 {
 	if (!isActive)
 		return false;
+	if (dataType == VOLUME){
+		return processVolumeData(modelview, projection, winWidth, winHeight);
+	}
+	else{ //if (dataType == MESH)
+		return processMeshData(modelview, projection, winWidth, winHeight);
+	}
+}
 
+bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* projection, int winWidth, int winHeight)
+{
+	return false;
+}
+
+bool PositionBasedDeformProcessor::processVolumeData(float* modelview, float* projection, int winWidth, int winHeight)
+{
 	float3 eyeInLocal = matrixMgr->getEyeInLocal();
 
 	if (lastVolumeState == ORIGINAL){
@@ -329,7 +343,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				lastEyeState = inWall;
 
 				computeTunnelInfo(eyeInLocal);
-				doTunnelDeform(deformationScale);
+				doChannelVolumeDeform(deformationScale);
 				//start a opening animation
 				hasOpenAnimeStarted = true;
 				hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
@@ -364,7 +378,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				sdkStartTimer(&timer);
 
 				sdkResetTimer(&timerFrame);
-				
+
 				fpsCount = 0;
 
 				lastOpenFinalDegree = closeStartingRadius;
@@ -373,8 +387,8 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				lastTunnelEnd = tunnelEnd;
 
 				computeTunnelInfo(eyeInLocal);
-				doTunnelDeform(deformationScale);
-	
+				doChannelVolumeDeform(deformationScale);
+
 				hasOpenAnimeStarted = true;//start a opening animation
 				hasCloseAnimeStarted = true; //since eye should just moved to the current solid, the previous solid should be closed 
 				startOpen = std::clock();
@@ -401,25 +415,25 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			hasCloseAnimeStarted = false;
 
 			sdkStopTimer(&timer);
-			std::cout << "Mixed animation fps: " << fpsCount / (sdkGetAverageTimerValue(&timer) /	1000.f) << std::endl;
+			std::cout << "Mixed animation fps: " << fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f) << std::endl;
 
 			sdkStopTimer(&timer);
-			std::cout << "Mixed animation cost each frame: " << sdkGetAverageTimerValue(&timerFrame) <<" ms" << std::endl;
+			std::cout << "Mixed animation cost each frame: " << sdkGetAverageTimerValue(&timerFrame) << " ms" << std::endl;
 		}
 		else{
 			sdkStartTimer(&timerFrame);
 
 			fpsCount++;
 
-			r = past / totalDuration*deformationScale/2;
+			r = past / totalDuration*deformationScale / 2;
 			if (past >= closeDuration){
 				hasCloseAnimeStarted = false;
 				rClose = 0;
-				doDeform(r);
+				doVolumeDeform(r);
 			}
 			else{
 				rClose = (1 - past / closeDuration)*closeStartingRadius;
-				doDeform2Tunnel(r, rClose);
+				doVolumeDeform2Tunnel(r, rClose);
 			}
 
 			sdkStopTimer(&timerFrame);
@@ -436,8 +450,8 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
 		}
 		else{
-			r = past / totalDuration*deformationScale/2;
-			doDeform(r);
+			r = past / totalDuration*deformationScale / 2;
+			doVolumeDeform(r);
 			closeStartingRadius = r;
 			closeDuration = past;
 		}
@@ -451,14 +465,12 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		}
 		else{
 			r = (1 - past / closeDuration)*closeStartingRadius;
-			doDeform(r);
+			doVolumeDeform(r);
 		}
 	}
-
-
+	
 	return false;
 }
-
 
 void PositionBasedDeformProcessor::InitCudaSupplies()
 {

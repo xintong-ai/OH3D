@@ -57,22 +57,22 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 	
 	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
-
-	std::string subfolder = "";
-
-	bool channelSkelViewReady = false;
+	std::string subfolder = "FPM";
+	dims = make_int3(64, 64, 64);
+	bool channelSkelViewReady = true;
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
+		//std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
+		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.img").c_str(), dims, RawVolumeReader::dtFloat32);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
 	}
 
+
+
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
-
 	polyMesh = std::make_shared<PolyMesh>();
-
 	if (std::string(polyDataPath).find(".ply") != std::string::npos){
 		PlyVTKReader plyVTKReader;
 		plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
@@ -87,12 +87,10 @@ Window::Window()
 	////////////////matrix manager
 	float3 posMin, posMax;
 	polyMesh->GetPosRange(posMin, posMax);
+	std::cout << "posMin: " << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
+	std::cout << "posMax: " << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	matrixMgr->setDefaultForImmersiveMode();		
-
-	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
-
-
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -105,15 +103,13 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////
-	
-	
 	if (channelSkelViewReady){
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
+		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh, matrixMgr, channelVolume);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
-		animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
-		animationByMatrixProcessor->setViews(views);
-		openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
+		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
+		//animationByMatrixProcessor->setViews(views);
+		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	}
 
 
@@ -124,14 +120,20 @@ Window::Window()
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
 
+
+	if (channelSkelViewReady){
+		volumeRenderable = std::make_shared<VolumeRenderableCUDA>(channelVolume);
+		volumeRenderable->rcp = rcpMini;
+		openGL->AddRenderable("2volume", volumeRenderable.get());
+		volumeRenderable->SetVisibility(false);
+	}
+
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
+	openGL->AddRenderable("3matrix", matrixMgrRenderable.get()); 
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
-	openGL->AddRenderable("poly", polyRenderable.get());
+	openGL->AddRenderable("1poly", polyRenderable.get());
 	
-
-
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
@@ -167,8 +169,7 @@ Window::Window()
 	
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
-	std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
-	std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
+
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 
@@ -314,6 +315,8 @@ void Window::moveToOptimalBtnClicked()
 
 void Window::SlotOriVolumeRb(bool b)
 {
+	volumeRenderable->SetVisibility(false);
+	polyRenderable->SetVisibility(true);
 }
 
 void Window::SlotChannelVolumeRb(bool b)
@@ -321,7 +324,9 @@ void Window::SlotChannelVolumeRb(bool b)
 	if (b)
 	{
 		if (channelVolume){
-			volumeRenderable->setVolume(channelVolume);
+			//volumeRenderable->setVolume(channelVolume);
+			volumeRenderable->SetVisibility(true);
+			polyRenderable->SetVisibility(false);
 		}
 		else{
 			std::cout << "channelVolume not set!!" << std::endl;
@@ -336,7 +341,7 @@ void Window::SlotSkelVolumeRb(bool b)
 	if (b)
 	{
 		if (skelVolume){
-			volumeRenderable->setVolume(skelVolume);
+			//volumeRenderable->setVolume(skelVolume);
 		}
 		else{
 			std::cout << "skelVolume not set!!" << std::endl;
@@ -394,7 +399,7 @@ void Window::redrawBtnClicked()
 
 void Window::doTourBtnClicked()
 {
-	animationByMatrixProcessor->startAnimation();
+	//animationByMatrixProcessor->startAnimation();
 }
 
 void Window::saveScreenBtnClicked()

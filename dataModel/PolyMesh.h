@@ -24,17 +24,19 @@ public:
 	unsigned int facecount = 0;
 	
 	float* vertexCoords = 0;
+	float* vertexCoordsOri = 0;
+
 	float* vertexNorms = 0;
 	unsigned int* indices = 0;
 
 	~PolyMesh(){
 		if (vertexCoords) delete[]vertexCoords;
+		if (vertexCoordsOri) delete[]vertexCoordsOri;
 		if (vertexNorms) delete[]vertexNorms;
 		if (indices) delete[]indices;
 	}
 
 	float opacity = 1.0;
-
 
 	void find_center_and_range()
 	{
@@ -65,6 +67,24 @@ public:
 		posMin = make_float3(min_x, min_y, min_z);
 		posMax = make_float3(max_x, max_y, max_z);
 	}
+
+	void setVertexCoordsOri()
+	{
+		if (vertexcount > 0){
+			if (vertexCoordsOri) delete[]vertexCoordsOri;
+			vertexCoordsOri = (float*)malloc(sizeof(float)* 3 * vertexcount);
+			memcpy(vertexCoordsOri, vertexCoords, sizeof(float)* 3 * vertexcount);
+		}
+	}
+
+
+	void reset()
+	{
+		if (vertexcount > 0){
+			memcpy(vertexCoords, vertexCoordsOri, sizeof(float)* 3 * vertexcount);
+		}
+	};
+
 private:
 	float cx, cy, cz;
 	float min_x, max_x, min_y, max_y, min_z, max_z;
