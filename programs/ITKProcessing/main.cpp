@@ -26,7 +26,9 @@
 //#include <vtkXMLImageDataWriter.h>
 #include <vtkNIFTIImageWriter.h>
 #include <vtkImplicitModeller.h>
-
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkImageResample.h>
+#include "itkResampleImageFilter.h"
 
 using namespace std;
 
@@ -174,15 +176,10 @@ void processVolumeData()
 
 void processSurfaceData()
 {
-	//reading data
-	//int3 dims;
-	//float3 spacing;
-
 	vtkSmartPointer<vtkPolyData> inputPolyData;
 
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	//const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH")
 	dataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 	vtkSmartPointer<vtkXMLPolyDataReader> reader =
 		vtkSmartPointer<vtkXMLPolyDataReader>::New();
@@ -192,18 +189,18 @@ void processSurfaceData()
 
 	vtkSmartPointer<vtkImplicitModeller> implicitModeller =
 		vtkSmartPointer<vtkImplicitModeller>::New();
-
-	double bounds[6];
-	inputPolyData->GetBounds(bounds);
-	double xrange = bounds[1] - bounds[0] + 1, yrange = bounds[3] - bounds[2] + 1, zrange = bounds[5] - bounds[4] + 1;
-	double minRange = min(min(xrange, yrange), zrange);
-	if (minRange < 50){
-		double scale = 50 / minRange;
-		xrange *= scale;		
-		yrange *= scale;
-		zrange *= scale;
-	}
-	implicitModeller->SetSampleDimensions(xrange, yrange, zrange);
+	
+	//double bounds[6];
+	//inputPolyData->GetBounds(bounds);
+	//double xrange = bounds[1] - bounds[0] + 1, yrange = bounds[3] - bounds[2] + 1, zrange = bounds[5] - bounds[4] + 1;
+	//double minRange = min(min(xrange, yrange), zrange);
+	//if (minRange < 50){
+	//	double scale = 50 / minRange;
+	//	xrange *= scale;		
+	//	yrange *= scale;
+	//	zrange *= scale;
+	//}
+	//implicitModeller->SetSampleDimensions(xrange, yrange, zrange);
 #if VTK_MAJOR_VERSION <= 5
 	implicitModeller->SetInput(inputPolyData);
 #else
@@ -215,35 +212,146 @@ void processSurfaceData()
 
 
 	implicitModeller->Update();
+
+	//vtkSmartPointer<vtkImageResample> imgResampler =
+	//	vtkSmartPointer<vtkImageResample>::New();
+	//imgResampler->SetInputData(implicitModeller->GetOutput());
+	//double spacing[3] = { 1, 1, 1 };
+	////imgResampler->SetOutputSpacing(spacing);
+	//imgResampler->SetDimensionality(3);
+	//imgResampler->SetOutputSpacing(1.0, 1.0, 1.0);
+	//imgResampler->SetOutputOrigin(0.0, 0.0, 0.0);
+	//imgResampler->InterpolateOn();
+	//imgResampler->SetAxisMagnificationFactor(0, 1.2);
+	//imgResampler->SetAxisMagnificationFactor(1, 1.2);
+	//imgResampler->SetAxisMagnificationFactor(2, 1.2);
+	//imgResampler->Update();
+	//vtkSmartPointer<vtkImageData> img = imgResampler->GetOutput();
 	vtkSmartPointer<vtkImageData> img = implicitModeller->GetOutput();
 
+	int dims[3];
+	img->GetDimensions(dims);
+	std::cout << "output dims: " << dims[0] << " " << dims[1] << " " << dims[2] << std::endl;
+	////thresholding
+	//for (int k = 0; k < dims[2]; k++){
+	//	for (int j = 0; j < dims[1]; j++){
+	//		for (int i = 0; i < dims[0]; i++){
+	//			float v = *(static_cast<float*>(img->GetScalarPointer(i,j,k)));
+	//			if (abs(v)>2){
+	//				*(static_cast<float*>(img->GetScalarPointer(i, j, k))) = 1;
+	//			}
+	//			else{
+	//				*(static_cast<float*>(img->GetScalarPointer(i, j, k))) = 0;
+	//			}
+	//		}
+	//	}
+	//}
 
-	//thresholding
-	for (int k = 0; k < zrange; k++){
-		for (int j = 0; j < yrange; j++){
-			for (int i = 0; i < xrange; i++){
-				float v = *(static_cast<float*>(img->GetScalarPointer(i,j,k)));
-				if (v>1.5){
-					*(static_cast<float*>(img->GetScalarPointer(i, j, k))) = 1;
+	//for some unknown reason, vtkImageResample cannot work correctly. therefore use itk 
+	ImageType::Pointer image = ImageType::New();
+	itk::Index<3> start; start.Fill(0);
+	itk::Size<3> size;
+	size[0] = dims[0];
+	size[1] = dims[1];
+	size[2] = dims[2];
+	ImageType::RegionType region(start, size);
+	image->SetRegions(region);	
+	double spacing[3];
+	img->GetSpacing(spacing);
+	double origin[3];
+	img->GetOrigin(origin);
+	image->SetOrigin(origin);
+	image->SetSpacing(spacing);
+	image->Allocate();
+	image->FillBuffer(0);
+
+	// Make a white square
+	for (unsigned int z = 0; z < size[2]; z++)
+	{
+		for (unsigned int y = 0; y < size[1]; y++)
+		{
+			for (unsigned int x= 0; x< size[0]; x++)
+			{
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = x;
+				pixelIndex[1] = y;
+				pixelIndex[2] = z;
+				float v = *(static_cast<float*>(img->GetScalarPointer(x,y,z)));
+				if (abs(v)>2){
+					image->SetPixel(pixelIndex, 1);
 				}
 				else{
-					*(static_cast<float*>(img->GetScalarPointer(i, j, k))) = 0;
+					image->SetPixel(pixelIndex, 0);
 				}
 			}
 		}
 	}
+	ImageType::SizeType inputSize = image->GetLargestPossibleRegion().GetSize();
+	std::cout << "Input size: " << inputSize << std::endl;
+
+	// Resize
+	ImageType::SizeType outputSize;
+	outputSize.Fill(68);
+	ImageType::SpacingType outputSpacing;
+	outputSpacing[0] = 1.0;
+	outputSpacing[1] = 1.0;
+	outputSpacing[2] = 1.0;
+	double outputspacing[3] = { 0, 0, 0 };
 
 
-	vtkSmartPointer<vtkNIFTIImageWriter> writer =
-		vtkSmartPointer<vtkNIFTIImageWriter>::New();
-	writer->SetFileName("cleanedChannel.hdr");
+	typedef itk::IdentityTransform<double, 2> TransformType;
+	typedef itk::ResampleImageFilter<ImageType, ImageType> ResampleImageFilterType;
+	ResampleImageFilterType::Pointer resample = ResampleImageFilterType::New();
+	resample->SetInput(image);
+	resample->SetSize(outputSize);
+	resample->SetOutputSpacing(outputSpacing);
+	resample->SetOutputOrigin(outputspacing);
+//resample->SetTransform(TransformType::New());
+	resample->UpdateLargestPossibleRegion();
 
-	writer->SetInputData(img);
-	writer->Write();
+	ImageType::Pointer output = resample->GetOutput();
+
+	std::cout << "Output size: " << output->GetLargestPossibleRegion().GetSize() << std::endl;
+	
+	typedef  itk::ImageFileWriter<ImageType> WriterType;
+	std::cout << "Writing output... " << std::endl;
+	WriterType::Pointer outputWriter = WriterType::New();
+	outputWriter->SetFileName("cleanedChannel.hdr");
+	outputWriter->SetInput(output);
+	outputWriter->Update();
+
+
+
 }
 
 int main(int argc, char **argv)
 {
+	/*
+	vtkSmartPointer<vtkSphereSource> sphereSource =
+		vtkSmartPointer<vtkSphereSource>::New();
+	sphereSource->SetCenter(30.0, 30.0, 30.0);
+	sphereSource->SetRadius(25);
+	sphereSource->LatLongTessellationOff();
+	sphereSource->SetThetaResolution(30);
+	sphereSource->SetPhiResolution(30);
+
+	sphereSource->Update();
+	vtkSmartPointer<vtkPolyData> polydata = sphereSource->GetOutput();
+
+	vtkSmartPointer<vtkXMLPolyDataWriter> writer =
+		vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+	writer->SetFileName("sphere.vtp");
+#if VTK_MAJOR_VERSION <= 5
+	writer->SetInput(polydata);
+#else
+	writer->SetInputData(polydata);
+#endif
+
+	writer->Write();
+	return 0;
+	*/
+
+
 	StopWatchInterface *timer = 0;
 	sdkCreateTimer(&timer);
 	sdkResetTimer(&timer);

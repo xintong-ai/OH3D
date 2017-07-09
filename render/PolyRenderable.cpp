@@ -12,6 +12,8 @@
 #include <QMatrix4x4>
 #include "PolyMesh.h"
 
+
+
 void PolyRenderable::init()
 {
 	loadShaders();
@@ -23,6 +25,10 @@ void PolyRenderable::init()
 //	GenVertexBuffer(m->numElements, m->Faces_Triangles, m->Normals);
 	GenVertexBuffer(polyMesh->vertexcount, polyMesh->vertexCoords,polyMesh->vertexNorms);
 }
+
+
+
+
 
 void PolyRenderable::loadShaders()
 {
@@ -77,9 +83,9 @@ void PolyRenderable::loadShaders()
 		vec3 s = normalize(vec3(LightPosition - position));
 		vec3 v = normalize(-position.xyz);
 		vec3 r = reflect(-s, normal);
-		vec3 ambient = Ka;
+		vec3 ambient = Ka;// *0.01 + (vec3(position) + vec3(20, 20, 20)) / 50;
 		float sDotN = max(dot(s, normal), 0.0);
-		vec3 diffuse = Kd * sDotN;
+		vec3 diffuse = Kd * sDotN ;
 		vec3 spec = vec3(0.0);
 		if (sDotN > 0.0)
 			spec = Ks *
@@ -136,19 +142,28 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 		return;
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-
+	
 	glMatrixMode(GL_MODELVIEW);
 
 	glProg->use();
 	m_vao->bind();
+
+
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount * sizeof(float)* 3, polyMesh->vertexCoords, GL_STATIC_DRAW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_norm);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 3, polyMesh->vertexNorms, GL_STATIC_DRAW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, 10, 1);
 	if (isSnapped)
 		qgl->glUniform3f(glProg->uniform("Ka"), ka.x + 0.2, ka.y + 0.2, ka.z + 0.2);
 	else
 		qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
-	qgl->glUniform3f(glProg->uniform("Kd"), 0.6f, 0.6f, 0.6f);
+	qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 	qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 	qgl->glUniform1f(glProg->uniform("Shininess"), 1);
 	qgl->glUniform1f(glProg->uniform("Opacity"), polyMesh->opacity);
@@ -161,9 +176,14 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
 	qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
 	//glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
 	//glDrawElements(GL_TRIANGLES, m->numElements, GL_UNSIGNED_INT, m->indices);
 	glDrawElements(GL_TRIANGLES, polyMesh->facecount*3, GL_UNSIGNED_INT, polyMesh->indices);
+	
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	//glBindVertexArray(0);
 	m_vao->release();

@@ -20,15 +20,14 @@ set( Srcs
 set( Hdrs  
 	window.h 
     )
-
-
-
+	
 configure_file(config.txt config.txt COPYONLY)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
 add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} config.txt)
+
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  

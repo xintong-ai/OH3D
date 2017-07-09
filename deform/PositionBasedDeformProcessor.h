@@ -1,20 +1,24 @@
 #ifndef	POSITION_BASED_DEFORM_PROCESSOR_H
 #define POSITION_BASED_DEFORM_PROCESSOR_H
+
+#include <thrust/device_vector.h>
+#include "Processor.h"
+
 #include <memory>
 #include <vector>
 #include <ctime>
 #include <vector_types.h>
 #include <helper_timer.h>
 
-#include "Processor.h"
-#include "Volume.h"
-#include "PolyMesh.h"
+
 
 enum EYE_STATE { inCell, inWall };
 enum DATA_DEFORM_STATE { ORIGINAL, DEFORMED};
 enum DEFORMED_DATA_TYPE { VOLUME, MESH, PARTICLE };
 
-
+class Volume;
+class VolumeCUDA;
+class PolyMesh;
 class MatrixManager;
 class PositionBasedDeformProcessor :public Processor
 {
@@ -25,52 +29,31 @@ public:
 	std::shared_ptr<Volume> channelVolume;
 	std::shared_ptr<MatrixManager> matrixMgr;
 
-	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
-	{
-		volume = ori;
-		matrixMgr = _m;		
-		channelVolume = ch;
-		spacing = volume->spacing;
-		InitCudaSupplies();		
-		sdkCreateTimer(&timer);
-		sdkCreateTimer(&timerFrame);
-
-		dataType = VOLUME;
-	};
-
-	PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
-	{
-		poly = ori;
-		matrixMgr = _m;
-		channelVolume = ch;
-		spacing = channelVolume->spacing;  //may not be precise
-
-		sdkCreateTimer(&timer);
-		sdkCreateTimer(&timerFrame);
-
-		dataType = MESH;
-	};
-
-
+	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
+	PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
+	
 	~PositionBasedDeformProcessor(){
 		sdkDeleteTimer(&timer);
 		sdkDeleteTimer(&timerFrame);
+
+		if (d_vertexCoords) cudaFree(d_vertexCoords);
+		if (d_vertexCoords_init) cudaFree(d_vertexCoords_init);
+		if (d_indices) cudaFree(d_indices);
+		if (d_faceValid) cudaFree(d_faceValid);
+		if (d_numAddedFaces) cudaFree(d_numAddedFaces);
 	};		
 
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
 	EYE_STATE lastEyeState = inCell;
-	DATA_DEFORM_STATE lastVolumeState = ORIGINAL;
+	DATA_DEFORM_STATE lastDataState = ORIGINAL;
 	DEFORMED_DATA_TYPE dataType = VOLUME;
 
 	float deformationScale = 5; // for rect, the width of opening
 	float deformationScaleVertical = 7; // for rectangular, it is the other side length
 
-	void reset(){
-		EYE_STATE lastEyeState = inCell;
-		DATA_DEFORM_STATE lastVolumeState = ORIGINAL;
-	}
+	void reset(){}
 
 	bool hasOpenAnimeStarted = false;
 	bool hasCloseAnimeStarted = false;
@@ -79,11 +62,20 @@ public:
 	float3 rectVerticalDir; // for rectangular, it is the direction of deformationScaleVertical
 
 private:
+	float* d_vertexCoords = 0;
+	float* d_vertexCoords_init = 0;
+	unsigned int* d_indices = 0;
+	float* d_norms = 0;
+
+	bool* d_faceValid = 0;
+	int* d_numAddedFaces = 0;
+
+	void modifyPolyMesh();
 
 	bool processVolumeData(float* modelview, float* projection, int winWidth, int winHeight);
 	bool processMeshData(float* modelview, float* projection, int winWidth, int winHeight);
-
-	VolumeCUDA volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
+	
+	std::shared_ptr<VolumeCUDA> volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 
 	float3 spacing;
 	bool inDeformedCell(float3 pos);
@@ -97,8 +89,9 @@ private:
 
 	void doVolumeDeform(float degree);
 	void doVolumeDeform2Tunnel(float degree, float degreeClose);
-	void doChannelVolumeDeform(float degree);
-	
+	void doChannelVolumeDeform();
+	void doPolyDeform(float degree);
+
 	void computeTunnelInfo(float3 centerPoint);
 
 	std::clock_t startOpen;

@@ -17,11 +17,9 @@
 #include "mouse/ScreenBrushInteractor.h"
 #include "LabelVolumeProcessor.h"
 #include "ViewpointEvaluator.h"
-#include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
 #include "Particle.h"
 
-#include "PositionBasedDeformProcessor.h"
 #include "MatrixMgrRenderable.h"
 #include "InfoGuideRenderable.h"
 #include "BinaryTuplesReader.h"
@@ -32,6 +30,10 @@
 
 #include "PlyVTKReader.h"
 #include "VTPReader.h"
+
+#include "PositionBasedDeformProcessor.h"
+
+#include <thrust/device_vector.h>
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -47,6 +49,27 @@
 #include "VolumeRenderableCUDAKernel.h"
 
 
+void fileInfo(std::string dataPath, DataType & channelVolDataType, int3 & dims, std::string & subfolder)
+{
+	if (std::string(dataPath).find("sphere") != std::string::npos){
+		subfolder = "sphere";
+		dims = make_int3(60, 60, 60);
+		channelVolDataType = RawVolumeReader::dtUint16;
+	}
+	else if (std::string(dataPath).find("iso_t") != std::string::npos){
+		subfolder = "FPM";
+		//dims = make_int3(64, 64, 64);
+		dims = make_int3(68, 68, 68);
+
+		channelVolDataType = RawVolumeReader::dtFloat32;
+	}
+	else{
+		std::cout << "file name not defined" << std::endl;
+		exit(0);
+	}
+}
+
+
 Window::Window()
 {
 	setWindowTitle(tr("Egocentric VR Volume Visualization"));
@@ -57,13 +80,19 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 	
 	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
-	std::string subfolder = "FPM";
-	dims = make_int3(64, 64, 64);
+	std::string subfolder;
+
+	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+
+	DataType channelVolDataType;
+	fileInfo(polyDataPath, channelVolDataType, dims, subfolder);
+
+
 	bool channelSkelViewReady = true;
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
 		//std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.img").c_str(), dims, RawVolumeReader::dtFloat32);
+		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.img").c_str(), dims, channelVolDataType);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
@@ -71,7 +100,6 @@ Window::Window()
 
 
 
-	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 	polyMesh = std::make_shared<PolyMesh>();
 	if (std::string(polyDataPath).find(".ply") != std::string::npos){
 		PlyVTKReader plyVTKReader;
@@ -81,6 +109,7 @@ Window::Window()
 		VTPReader reader;
 		reader.readFile(polyDataPath.c_str(), polyMesh.get());
 	}
+	polyMesh->setVertexCoordsOri();
 
 	polyMesh->opacity = 1.0;// 0.5;
 
@@ -107,6 +136,11 @@ Window::Window()
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh, matrixMgr, channelVolume);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
+
+		positionBasedDeformProcessor->deformationScale = 2; 
+		positionBasedDeformProcessor->deformationScaleVertical = 2.5;
+
+
 		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 		//animationByMatrixProcessor->setViews(views);
 		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
@@ -116,8 +150,8 @@ Window::Window()
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 
-	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
+	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
 
 
@@ -143,7 +177,7 @@ Window::Window()
 	immersiveInteractor->isActive = true;
 
 	if (channelSkelViewReady){
-		immersiveInteractor->noMoveMode = true;
+		//immersiveInteractor->noMoveMode = true;
 	}
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
@@ -175,7 +209,7 @@ Window::Window()
 
 	if (channelSkelViewReady){
 		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+		//isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 	}

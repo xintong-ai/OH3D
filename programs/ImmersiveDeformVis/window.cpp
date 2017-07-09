@@ -45,6 +45,7 @@
 
 #include "VolumeRenderableCUDAKernel.h"
 
+#include <thrust/device_vector.h>
 
 bool channelSkelViewReady = true;
 

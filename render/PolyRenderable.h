@@ -5,8 +5,9 @@
 #include <memory>
 
 class PolyMesh;
-
 class ShaderProgram;
+enum COLOR_MAP;
+
 class PolyRenderable :public Renderable
 {
 public:
@@ -26,7 +27,6 @@ public:
 
     void draw(float modelview[16], float projection[16]) override;
 
-    //void cleanup() override;
 
 	float3 GetTransform(){
 		return transform;
