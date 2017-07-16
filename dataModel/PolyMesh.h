@@ -15,6 +15,7 @@
 #include <helper_cuda.h>
 
 //currently only support triangles
+class Particle;
 
 class PolyMesh
 {
@@ -43,6 +44,13 @@ public:
 	void setVertexCoordsOri();
 	void reset();
 	bool inRange(float3 v);
+
+	//particle is optional. needed when the poly mesh is constituted by several connected components.
+	//the count of the particles stored in the object is the same with the count of the connected components.
+	//the center of the connected components are stored in pos, and their properties are stored in valTuple
+	//when this object is used, the coordinate stored in vertexCoords[] is the relative position of each vertex from the component center
+	std::shared_ptr<Particle> particle = 0; 
+	void setAssisParticle(char* fname);
 
 private:
 	float cx, cy, cz;

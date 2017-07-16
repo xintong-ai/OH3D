@@ -22,6 +22,7 @@
 
 #include "MatrixMgrRenderable.h"
 #include "InfoGuideRenderable.h"
+#include "BinaryTuplesReader.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
 #include "PolyRenderable.h"
@@ -109,7 +110,8 @@ Window::Window()
 		VTPReader reader;
 		reader.readFile(polyDataPath.c_str(), polyMesh.get());
 	}
-	polyMesh->setVertexCoordsOri();
+	polyMesh->setAssisParticle("polyMeshRegions.mytup");	
+	//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
 
 	polyMesh->opacity = 1.0;// 0.5;
 
@@ -120,6 +122,8 @@ Window::Window()
 	std::cout << "posMax: " << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	matrixMgr->setDefaultForImmersiveMode();		
+
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x, -20, matrixMgr->getEyeInLocal().z));
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -167,6 +171,7 @@ Window::Window()
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	openGL->AddRenderable("1poly", polyRenderable.get());
+	polyRenderable->setMultipleRendering();
 	
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();

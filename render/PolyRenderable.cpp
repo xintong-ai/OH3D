@@ -11,6 +11,7 @@
 #include "PolyRenderable.h"
 #include <QMatrix4x4>
 #include "PolyMesh.h"
+#include "Particle.h"
 
 
 
@@ -148,7 +149,6 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	glProg->use();
 	m_vao->bind();
 
-
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
 	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount * sizeof(float)* 3, polyMesh->vertexCoords, GL_STATIC_DRAW);
@@ -158,16 +158,14 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 3, polyMesh->vertexNorms, GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+
+
 	qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, 10, 1);
-	if (isSnapped)
-		qgl->glUniform3f(glProg->uniform("Ka"), ka.x + 0.2, ka.y + 0.2, ka.z + 0.2);
-	else
-		qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
+	
 	qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 	qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
 	qgl->glUniform1f(glProg->uniform("Shininess"), 1);
 	qgl->glUniform1f(glProg->uniform("Opacity"), polyMesh->opacity);
-	qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
 
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 	q_modelview = q_modelview.transposed();
@@ -179,10 +177,34 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	//glDrawArrays(GL_TRIANGLES, 0, m->TotalConnectedTriangles * 3);
-	//glDrawElements(GL_TRIANGLES, m->numElements, GL_UNSIGNED_INT, m->indices);
-	glDrawElements(GL_TRIANGLES, polyMesh->facecount*3, GL_UNSIGNED_INT, polyMesh->indices);
-	
+	if (multipleRendering){
+		int nRegion = polyMesh->particle->numParticles;
+		for (int i = 0; i < nRegion; i++){
+			//std::cout << "region " << i << " transform " << polyMesh->particle->pos[i].x << " " << polyMesh->particle->pos[i].y << " " << polyMesh->particle->pos[i].z<< std::endl;
+			transform = make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z);
+			qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
+
+			int startface = polyMesh->particle->valTuple[i * polyMesh->particle->tupleCount];
+			int endface = polyMesh->particle->valTuple[i * polyMesh->particle->tupleCount + 1];
+			int countface = endface - startface + 1;
+
+			qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
+			glDrawElements(GL_TRIANGLES, countface * 3, GL_UNSIGNED_INT, polyMesh->indices + startface * 3);
+			//std::cout << "start " << start << " end " << end << std::endl;
+		}
+	}
+	else{
+		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
+
+
+
+		if (isSnapped)
+			qgl->glUniform3f(glProg->uniform("Ka"), ka.x + 0.2, ka.y + 0.2, ka.z + 0.2);
+		else
+			qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
+		glDrawElements(GL_TRIANGLES, polyMesh->facecount * 3, GL_UNSIGNED_INT, polyMesh->indices);
+	}
+
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	//glBindVertexArray(0);
@@ -193,10 +215,7 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	glDisable(GL_BLEND);
 
 }
-//
-//void PolyRenderable::cleanup()
-//{
-//}
+
 
 void PolyRenderable::GenVertexBuffer(int nv)
 {

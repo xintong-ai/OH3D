@@ -1,5 +1,7 @@
 #include "PolyMesh.h"
-
+#include "Particle.h"
+#include "BinaryTuplesReader.h"
+#include <helper_math.h>
 PolyMesh::~PolyMesh(){
 	if (vertexCoords) delete[]vertexCoords;
 	if (vertexNorms) delete[]vertexNorms;
@@ -87,4 +89,24 @@ void PolyMesh::reset()
 bool PolyMesh::inRange(float3 v)
 {
 	return v.x >= min_x && v.x < max_x && v.y >= min_y && v.y < max_y && v.z >= min_z && v.z < max_z;
+}
+
+void PolyMesh::setAssisParticle(char* fname)
+{
+	std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>(fname);
+	particle = std::make_shared<Particle>();
+	reader3->OutputToParticleData(particle);
+
+	int nRegion = particle->numParticles;
+	for (int i = 0; i < nRegion; i++){
+		float3 c = make_float3(particle->pos[i]);
+		int start = particle->valTuple[i * particle->tupleCount +2];
+		int end = particle->valTuple[i * particle->tupleCount + 3];
+		for (int j = start; j <= end; j++){
+			vertexCoords[3 * j] -= c.x;
+			vertexCoords[3 * j + 1] -= c.y;
+			vertexCoords[3 * j + 2] -= c.z;
+		}
+	}
+
 }

@@ -326,31 +326,7 @@ void processSurfaceData()
 
 int main(int argc, char **argv)
 {
-	/*
-	vtkSmartPointer<vtkSphereSource> sphereSource =
-		vtkSmartPointer<vtkSphereSource>::New();
-	sphereSource->SetCenter(30.0, 30.0, 30.0);
-	sphereSource->SetRadius(25);
-	sphereSource->LatLongTessellationOff();
-	sphereSource->SetThetaResolution(30);
-	sphereSource->SetPhiResolution(30);
-
-	sphereSource->Update();
-	vtkSmartPointer<vtkPolyData> polydata = sphereSource->GetOutput();
-
-	vtkSmartPointer<vtkXMLPolyDataWriter> writer =
-		vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-	writer->SetFileName("sphere.vtp");
-#if VTK_MAJOR_VERSION <= 5
-	writer->SetInput(polydata);
-#else
-	writer->SetInputData(polydata);
-#endif
-
-	writer->Write();
-	return 0;
-	*/
-
+	
 
 	StopWatchInterface *timer = 0;
 	sdkCreateTimer(&timer);

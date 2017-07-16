@@ -42,11 +42,12 @@ public:
 
 	//float3 GetPolyCenter();
 	bool isSnapped = false;
-
+	void setMultipleRendering(){ multipleRendering = true; }
 private:
 	void loadShaders();
 	std::shared_ptr<PolyMesh> polyMesh;
 
+	bool multipleRendering = false;
 protected:
 
     unsigned int vbo_norm;

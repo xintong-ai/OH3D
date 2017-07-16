@@ -496,6 +496,7 @@ __global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int fac
 		intersectNorm1 = normalize((norm1 * d31intersect + norm3 * (dis31 - d31intersect)) / dis31);
 		intersectNorm2 = normalize((norm2 * d12intersect + norm1 * (dis12 - d12intersect)) / dis12);
 	}
+	//NOTE!!! one case is now missing. it is possible that only one of the three booleans is true
 	else{
 		return;
 	}
