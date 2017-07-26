@@ -31,8 +31,8 @@ public:
 
 	bool noMoveMode = false;
 	
-	InfoGuideRenderable *infoGuideRenderable;
-	ViewpointEvaluator *ve;
+	InfoGuideRenderable *infoGuideRenderable = 0;
+	ViewpointEvaluator *ve = 0;
 
 };
 #endif

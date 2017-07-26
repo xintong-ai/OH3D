@@ -178,6 +178,8 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	if (multipleRendering){
+		ka = make_float3(0.2f, 0, 0);
+
 		int nRegion = polyMesh->particle->numParticles;
 		for (int i = 0; i < nRegion; i++){
 			//std::cout << "region " << i << " transform " << polyMesh->particle->pos[i].x << " " << polyMesh->particle->pos[i].y << " " << polyMesh->particle->pos[i].z<< std::endl;

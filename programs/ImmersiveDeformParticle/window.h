@@ -33,7 +33,6 @@ class AnimationByMatrixProcessor;
 class PositionBasedDeformProcessor;
 class SphereRenderable;
 class MatrixMgrRenderable;
-class InfoGuideRenderable;
 class DeformFrameRenderable;
 class GlyphRenderable;
 struct RayCastingParameters;
@@ -66,8 +65,6 @@ private:
 	int3 dims;
 	float3 spacing;
 	std::vector<float3> views;
-
-	//std::shared_ptr<RayCastingParameters> rcp;
 	
 	std::shared_ptr<PolyMesh> polyMesh;
 
@@ -81,13 +78,9 @@ private:
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
-	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
 	std::shared_ptr<RegularInteractor> regularInteractor;
 
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
-
-
-
 
 	//for miniature
 	std::shared_ptr<GLWidget> openGLMini;
@@ -102,12 +95,9 @@ private:
 	//for main view
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
-	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 	std::shared_ptr<PolyRenderable> polyRenderable;
 
-	//for 2d view
-	Helper helper;
 
 #ifdef USE_LEAP
 	LeapListener* listener;
@@ -145,8 +135,6 @@ private slots:
 
 
 	void isDeformEnabledClicked(bool b);
-	void isBrushingClicked();
-	void moveToOptimalBtnClicked();
 
 	void SlotOriVolumeRb(bool);
 	void SlotChannelVolumeRb(bool);
@@ -155,11 +143,6 @@ private slots:
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);
 
-	void zSliderValueChanged(int v);
-	void updateLabelVolBtnClicked();
-	void findGeneralOptimalBtnClicked();
-	void turnOffGlobalGuideBtnClicked();
-	void redrawBtnClicked();
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
 };

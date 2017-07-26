@@ -6,6 +6,7 @@
 
 #include "Volume.h"
 #include "PolyMesh.h"
+#include "Particle.h"
 
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
@@ -56,6 +57,22 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyM
 	//cudaMalloc(&d_faceValid, sizeof(bool)*poly->facecount);
 	cudaMalloc(&d_numAddedFaces, sizeof(int));
 };
+
+PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
+{
+	particle = ori;
+	matrixMgr = _m;
+	channelVolume = ch;
+	spacing = channelVolume->spacing;  //may not be precise
+
+	sdkCreateTimer(&timer);
+	sdkCreateTimer(&timerFrame);
+
+	dataType = PARTICLE;
+
+	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+	d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+}
 
 __device__ bool inTunnel(float3 pos, float3 start, float3 end, float deformationScale, float deformationScaleVertical, float3 dir2nd)
 {
@@ -258,12 +275,6 @@ __global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, floa
 
 	float3 pos = make_float3(vertexCoords_init[3 * i], vertexCoords_init[3 * i + 1], vertexCoords_init[3 * i + 2]) * spacing;
 
-
-	//vertexCoords[3 * i] = pos.x * (1 + r / deformationScale);
-	//vertexCoords[3 * i + 1] = pos.y * (1 + r / deformationScale);
-	//vertexCoords[3 * i + 2] = pos.z * (1 + r / deformationScale);
-	//return;
-
 	float3 tunnelVec = normalize(end - start);
 	float tunnelLength = length(end - start);
 
@@ -313,6 +324,84 @@ void PositionBasedDeformProcessor::doPolyDeform(float degree)
 		tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir);
 
 	cudaMemcpy(poly->vertexCoords, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+}
+
+struct functor_particleDeform
+{
+	int n;
+	float3 start, end, dir2nd;
+	float3 spacing;
+	float r, deformationScale, deformationScaleVertical;
+	
+	template<typename Tuple>
+	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
+		float4 posf4 = thrust::get<0>(t);
+		float3 pos = make_float3(posf4.x, posf4.y, posf4.z) * spacing;
+		float3 newPos;
+		float3 tunnelVec = normalize(end - start);
+		float tunnelLength = length(end - start);
+
+		float3 voxelVec = pos - start;
+		float l = dot(voxelVec, tunnelVec);
+		if (l > 0 && l < tunnelLength){
+			float disToStart = length(voxelVec);
+			float l2 = dot(voxelVec, dir2nd);
+			if (abs(l2) < deformationScaleVertical){
+				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
+				float3 dir = normalize(pos - prjPoint);
+				float dis = length(pos - prjPoint);
+
+				if (dis < deformationScale){
+					float newDis = deformationScale - (deformationScale - dis) / deformationScale * (deformationScale - r);
+					newPos = prjPoint + newDis * dir;
+				}
+				else{
+					newPos = pos;
+				}
+			}
+			else{
+				newPos = pos;
+			}
+		}
+		else{
+			newPos = pos;
+		}
+		thrust::get<1>(t) = make_float4(newPos.x, newPos.y, newPos.z, 1);
+
+	}
+
+
+	functor_particleDeform(int _n, float3 _start, float3 _end, float3 _spacing, float _r, float _deformationScale, float _deformationScaleVertical, float3 _dir2nd)
+		: n(_n), start(_start), end(_end), spacing(_spacing), r(_r), deformationScale(_deformationScale), deformationScaleVertical(_deformationScaleVertical), dir2nd(_dir2nd){}
+};
+
+void PositionBasedDeformProcessor::doParticleDeform(float degree)
+{
+	int count = particle->numParticles;
+
+	//for debug
+//	std::vector<float4> tt(count);
+//	//thrust::copy(tt.begin(), tt.end(), d_vec_posTarget.begin());
+//	std::cout << "pos of region 0 before: " << tt[0].x << " " << tt[0].y << " " << tt[0].z << std::endl;
+
+	thrust::for_each(
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_posOrig.begin(),
+		d_vec_posTarget.begin()
+		)),
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_posOrig.end(),
+		d_vec_posTarget.end()
+		)),
+		functor_particleDeform(count, tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir));
+
+	thrust::copy(d_vec_posTarget.begin(), d_vec_posTarget.end(), &(particle->pos[0]));
+
+//	std::cout << "moved particles by: " << degree <<" with count "<<count<< std::endl;
+//	std::cout << "pos of region 0: " << particle->pos[0].x << " " << particle->pos[0].y << " " << particle->pos[0].z << std::endl;
+
 }
 
 
@@ -594,7 +683,6 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 }
 
 
-
 bool PositionBasedDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
 {
 	if (!isActive)
@@ -602,9 +690,164 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 	if (dataType == VOLUME){
 		return processVolumeData(modelview, projection, winWidth, winHeight);
 	}
-	else{ //if (dataType == MESH)
+	else if (dataType == MESH){
 		return processMeshData(modelview, projection, winWidth, winHeight);
 	}
+	else if (dataType == PARTICLE){
+		return processParticleData(modelview, projection, winWidth, winHeight);
+	}
+	else{
+		std::cout << " not implemented " << std::endl;
+		exit(0);
+	}
+}
+
+bool PositionBasedDeformProcessor::processParticleData(float* modelview, float* projection, int winWidth, int winHeight)
+{
+	float3 eyeInLocal = matrixMgr->getEyeInLocal();
+
+	if (lastDataState == ORIGINAL){
+		if (channelVolume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
+			// in solid area
+			// in this case, set the start of deformation
+			if (lastEyeState != inWall){
+				lastDataState = DEFORMED;
+				lastEyeState = inWall;
+
+				computeTunnelInfo(eyeInLocal);
+				doChannelVolumeDeform();
+				//start a opening animation
+				hasOpenAnimeStarted = true;
+				hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
+				startOpen = std::clock();
+			}
+			else if (lastEyeState == inWall){
+				//from wall to wall
+			}
+		}
+		else{
+			// either eyeInLocal is out of range, or eyeInLocal is in channel
+			//in this case, no state change
+		}
+	}
+	else{ //lastDataState == Deformed
+		if (channelVolume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
+			//in area which is solid in the original volume
+			bool inchannel = inDeformedCell(eyeInLocal);
+			if (inchannel){
+				// not in the solid region in the deformed volume
+				// in this case, no change
+			}
+			else{
+				//std::cout <<"Triggered "<< lastDataState << " " << lastEyeState << " " << hasOpenAnimeStarted << " " << hasCloseAnimeStarted << std::endl;
+				//even in the deformed volume, eye is still inside the solid region 
+				//eye should just move to a solid region
+
+				//volume->reset();
+				//channelVolume->reset();
+
+				sdkResetTimer(&timer);
+				sdkStartTimer(&timer);
+
+				sdkResetTimer(&timerFrame);
+
+				fpsCount = 0;
+
+				lastOpenFinalDegree = closeStartingRadius;
+				lastDeformationDirVertical = rectVerticalDir;
+				lastTunnelStart = tunnelStart;
+				lastTunnelEnd = tunnelEnd;
+
+				computeTunnelInfo(eyeInLocal);
+				doChannelVolumeDeform();
+
+				hasOpenAnimeStarted = true;//start a opening animation
+				hasCloseAnimeStarted = true; //since eye should just moved to the current solid, the previous solid should be closed 
+				startOpen = std::clock();
+			}
+		}
+		else{// in area which is channel in the original volume
+			hasCloseAnimeStarted = true;
+			hasOpenAnimeStarted = false;
+			startClose = std::clock();
+
+			channelVolume->reset();
+			lastDataState = ORIGINAL;
+			lastEyeState = inCell;
+		}
+	}
+
+	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
+		//std::cout << "processing as wanted" << std::endl;
+		float r, rClose;
+		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
+		if (past >= totalDuration){
+			//r = deformationScale;
+			hasOpenAnimeStarted = false;
+			hasCloseAnimeStarted = false;
+
+			sdkStopTimer(&timer);
+			std::cout << "Mixed animation fps: " << fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f) << std::endl;
+
+			sdkStopTimer(&timer);
+			std::cout << "Mixed animation cost each frame: " << sdkGetAverageTimerValue(&timerFrame) << " ms" << std::endl;
+		}
+		else{
+			sdkStartTimer(&timerFrame);
+
+			fpsCount++;
+
+			r = past / totalDuration*deformationScale / 2;
+			if (past >= closeDuration){
+				hasCloseAnimeStarted = false;
+				rClose = 0;
+				doParticleDeform(r);
+			}
+			else{
+				rClose = (1 - past / closeDuration)*closeStartingRadius;
+				//doVolumeDeform2Tunnel(r, rClose);  //!!!TO BE implemented
+			}
+
+			sdkStopTimer(&timerFrame);
+
+		}
+	}
+	else if (hasOpenAnimeStarted){
+		std::cout << "doing opening " << std::endl;
+
+		float r;
+		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
+		if (past >= totalDuration){
+			r = deformationScale;
+			hasOpenAnimeStarted = false;
+			//closeStartingRadius = r;
+			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
+		}
+		else{
+			r = past / totalDuration*deformationScale / 2;
+			doParticleDeform(r);
+			closeStartingRadius = r;
+			closeDuration = past;
+		}
+	}
+	else if (hasCloseAnimeStarted){
+		std::cout << "doing closing " << std::endl;
+
+		float r;
+		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
+		if (past >= closeDuration){
+			particle->reset();
+			d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+			d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+			hasCloseAnimeStarted = false;
+		}
+		else{
+			r = (1 - past / closeDuration)*closeStartingRadius;
+			doParticleDeform(r);
+		}
+	}
+
+	return false;
 }
 
 bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* projection, int winWidth, int winHeight)
@@ -712,7 +955,7 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 			}
 			else{
 				rClose = (1 - past / closeDuration)*closeStartingRadius;
-				//doVolumeDeform2Tunnel(r, rClose);
+				//doVolumeDeform2Tunnel(r, rClose);  //TO BE IMPLEMENTED
 			}
 
 			sdkStopTimer(&timerFrame);

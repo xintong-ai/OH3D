@@ -9,13 +9,11 @@
 #include "VecReader.h"
 #include "GLMatrixManager.h"
 #include "ScreenMarker.h"
-#include "LabelVolumeProcessor.h"
 #include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
 #include "mouse/ScreenBrushInteractor.h"
-#include "LabelVolumeProcessor.h"
 #include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
@@ -27,10 +25,6 @@
 #include "BinaryTuplesReader.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
-#include "VTPReader.h"
-#include "PolyMesh.h"
-#include "PolyRenderable.h"
-#include "TraceRenderable.h"
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -46,6 +40,7 @@
 #include "VolumeRenderableCUDAKernel.h"
 
 #include <thrust/device_vector.h>
+
 
 bool channelSkelViewReady = true;
 
@@ -69,8 +64,8 @@ Window::Window()
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	
-	rcp->tstep = 1.0;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
-
+	rcp->tstep = 0.125;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	
 	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
 
 
@@ -113,59 +108,7 @@ Window::Window()
 		channelVolume->initVolumeCuda();
 		reader2.reset();
 
-		skelVolume = std::make_shared<Volume>();
-		std::shared_ptr<RawVolumeReader> reader4 = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		reader4->OutputToVolumeByNormalizedValue(skelVolume);
-		skelVolume->spacing = spacing;
-		skelVolume->initVolumeCuda();
-		reader4.reset();
-
-		polyMesh = std::make_shared<PolyMesh>();
-		polyMesh->opacity = 0.5;
-		VTPReader reader;
-		reader.readFile((subfolder + "/surface.vtp").c_str(), polyMesh.get());
 	}
-
-	int maxLabel = 1;
-	if (hasLabelFromFile){
-		unsigned char* labelVolRes = new unsigned char[dims.x*dims.y*dims.z];
-		FILE * fp = fopen(dataMgr->GetConfig("FEATURE_PATH").c_str(), "rb");
-		fread(labelVolRes, sizeof(unsigned char), dims.x*dims.y*dims.z, fp);
-		fclose(fp);
-		unsigned short *temp = new unsigned short[dims.x*dims.y*dims.z];
-		for (int i = 0; i < dims.x*dims.y*dims.z; i++){
-			//specific processing only for Baseline data
-			if (labelVolRes[i] >2)
-				temp[i] = 2;
-			else if (labelVolRes[i] >1)
-				temp[i] = 1;
-			else 
-				temp[i] = 0;
-		}
-		maxLabel = 2;
-
-		//for (int i = 0; i < dims.x*dims.y*dims.z; i++){
-		//	//specific processing only for Baseline data
-		//	if (labelVolRes[i] >2)
-		//		temp[i] = 1;
-		//	else
-		//		temp[i] = 0;
-		//}
-		//maxLabel = 1;
-
-		labelVolCUDA = std::make_shared<VolumeCUDA>();
-		labelVolCUDA->VolumeCUDA_init(dims, temp, 0, 1); //currently if from file, do not allow change
-
-		delete[] labelVolRes;
-		delete[] temp;
-	}
-	else{
-		labelVolCUDA = std::make_shared<VolumeCUDA>();
-		labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
-		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
-		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
-	}
-	
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -191,25 +134,6 @@ Window::Window()
 
 
 	//////////////ScreenMarker, ViewpointEvaluator
-	std::shared_ptr<ScreenMarker> sm = std::make_shared<ScreenMarker>();
-	ve = std::make_shared<ViewpointEvaluator>(rcp, inputVolume);
-	//ve->initDownSampledResultVolume(make_int3(40, 40, 40));
-	ve->dataFolder = subfolder;
-	ve->setSpherePoints();
-	ve->setLabel(labelVolCUDA);
-	ve->maxLabel = maxLabel;
-
-	if (channelSkelViewReady){
-		std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>((subfolder + "/views.mytup").c_str());
-		std::vector<std::shared_ptr<Particle>> views;
-
-		reader3->OutputToParticleDataArrays(views);
-		ve->setViews(views);
-		reader3.reset();
-
-		traceRenderable = std::make_shared<TraceRenderable>(views);
-	}
-
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -221,8 +145,7 @@ Window::Window()
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
 
-	//////////////////////////////// Processor ////////////////////////////////
-		
+	//////////////////////////////// Processor ////////////////////////////////		
 	if (channelSkelViewReady){
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
@@ -232,41 +155,19 @@ Window::Window()
 		openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	}
 
-	//lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVolCUDA);
-	//lvProcessor->setScreenMarker(sm);
-	//lvProcessor->rcp = rcp;
-	//openGL->AddProcessor("screenMarkerLabelVolumeProcessor", lvProcessor.get());
-
-
 	//////////////////////////////// Renderable ////////////////////////////////	
-	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
+	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, positionBasedDeformProcessor);
 	volumeRenderable->rcp = rcp;
 	openGL->AddRenderable("2volume", volumeRenderable.get());
-	volumeRenderable->setScreenMarker(sm);
+	//volumeRenderable->setPreIntegrate(true);
 
-	//ve->createOneParticleFormOfViewSamples();
-	//ve->allViewSamples->initForRendering(10, 1);
-	//glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
-	//openGL->AddRenderable("2glyphOfViews", glyphRenderable.get());
-
+	
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
 
 	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//openGL->AddRenderable("3matrixMgr", matrixMgrRenderable.get()); 
-
-	if (channelSkelViewReady){
-		infoGuideRenderable = std::make_shared<InfoGuideRenderable>(ve, matrixMgr);
-		//openGL->AddRenderable("4infoGuide", infoGuideRenderable.get());
-
-		polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
-		polyRenderable->SetVisibility(false);
-		openGL->AddRenderable("7poly", polyRenderable.get());
-
-		traceRenderable->SetVisibility(false);
-		openGL->AddRenderable("6traces", traceRenderable.get());
-	}
 
 
 	//////////////////////////////// Interactor ////////////////////////////////
@@ -280,11 +181,7 @@ Window::Window()
 
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
-	
-	sbInteractor = std::make_shared<ScreenBrushInteractor>();
-	sbInteractor->setScreenMarker(sm);
-	openGL->AddInteractor("3screenMarker", sbInteractor.get());
-	
+		
 
 #ifdef USE_LEAP
 	listener = new LeapListener();
@@ -375,12 +272,19 @@ Window::Window()
 	controlLayout->addWidget(saveScreenBtn);
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 	
-	QPushButton *alwaysLocalGuideBtn = new QPushButton("Always Compute Local Guide");
-	controlLayout->addWidget(alwaysLocalGuideBtn);
-	connect(alwaysLocalGuideBtn, SIGNAL(clicked()), this, SLOT(alwaysLocalGuideBtnClicked()));
 
 
 	///////////////ray casting settings
+	QCheckBox* usePreIntCB = new QCheckBox("Use Pre-Integrate", this);
+	usePreIntCB->setChecked(volumeRenderable->usePreInt);
+	controlLayout->addWidget(usePreIntCB);
+	connect(usePreIntCB, SIGNAL(clicked(bool)), this, SLOT(usePreIntCBClicked(bool)));
+
+	QCheckBox* useSplineInterpolationCB = new QCheckBox("Use cubic spline interpolation (when preintegrate)", this);
+	useSplineInterpolationCB->setChecked(volumeRenderable->useSplineInterpolation);
+	controlLayout->addWidget(useSplineInterpolationCB);
+	connect(useSplineInterpolationCB, SIGNAL(clicked(bool)), this, SLOT(useSplineInterpolationCBClicked(bool)));
+
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
 	//controlLayout->addWidget(transFuncP1SliderLabelLit);
 	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
@@ -487,6 +391,7 @@ Window::Window()
 
 	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
 	QVBoxLayout *rcLayout = new QVBoxLayout;
+	rcLayout->addWidget(usePreIntCB);
 	rcLayout->addWidget(transFuncP1SliderLabelLit);
 	rcLayout->addLayout(transFuncP1Layout);
 	rcLayout->addWidget(transFuncP2SliderLabelLit);
@@ -534,10 +439,6 @@ Window::Window()
 	//matrixMgrRenderableMini = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//matrixMgrRenderableMini->renderPart = 2;
 	//openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
-	////ve->createOneParticleFormOfViewSamples(); 
-	////ve->allViewSamples->initForRendering(50, 1);
-	////glyphRenderable = std::make_shared<SphereRenderable>(ve->allViewSamples);
-	////openGLMini->AddRenderable("2glyphRenderable", glyphRenderable.get());
 	//volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	//volumeRenderableMini->rcp = rcpMini; 
 	//volumeRenderableMini->setBlending(true, 50);
@@ -550,12 +451,8 @@ Window::Window()
 
 
 	////////////////////2D slice view
-	if (labelVolLocal!=0)
-		helper.setData(inputVolume, labelVolLocal);
-	else{
-		labelVolLocal = new unsigned short[dims.x*dims.y*dims.z]; //should remove this part later
-		helper.setData(inputVolume, labelVolLocal);
-	}
+	helper.setData(inputVolume, 0);
+
 	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
 	assistLayout->addWidget(openGL2D, 0);
 	QTimer *timer = new QTimer(this);
@@ -573,49 +470,15 @@ Window::Window()
 	zLayout->addWidget(zSlider);
 	assistLayout->addLayout(zLayout);
 
-	QHBoxLayout *manualFeatureLayout = new QHBoxLayout;
-
-	QPushButton *redrawBtn = new QPushButton("Redraw the Label");
-	manualFeatureLayout->addWidget(redrawBtn);
-	connect(redrawBtn, SIGNAL(clicked()), this, SLOT(redrawBtnClicked()));
-	QPushButton *featureGrowingBtn = new QPushButton("Feature Growing");
-	manualFeatureLayout->addWidget(featureGrowingBtn);
-	connect(featureGrowingBtn, SIGNAL(clicked()), this, SLOT(featureGrowingBtnClicked()));
-	QPushButton *save2dScreenBtn = new QPushButton("Save screen");
-	manualFeatureLayout->addWidget(save2dScreenBtn);
-	connect(save2dScreenBtn, SIGNAL(clicked()), this, SLOT(save2dScreenBtnClicked()));
-	assistLayout->addLayout(manualFeatureLayout);
 
 
-	QPushButton *updateLabelVolBtn = new QPushButton("Find optimal for Label");
-	assistLayout->addWidget(updateLabelVolBtn);
-	connect(updateLabelVolBtn, SIGNAL(clicked()), this, SLOT(updateLabelVolBtnClicked()));
 
-	QPushButton *findGeneralOptimalBtn = new QPushButton("Find general optimal");
-	assistLayout->addWidget(findGeneralOptimalBtn);
-	connect(findGeneralOptimalBtn, SIGNAL(clicked()), this, SLOT(findGeneralOptimalBtnClicked()));
-
-	//only for 181
-	QPushButton *findNextOptimalBtn = new QPushButton("Find next optimal");
-	assistLayout->addWidget(findNextOptimalBtn);
-	connect(findNextOptimalBtn, SIGNAL(clicked()), this, SLOT(findNextOptimalBtnClicked()));
-
-	QCheckBox* isBrushingCb = new QCheckBox("Brush", this);
-	isBrushingCb->setChecked(sbInteractor->isActive);
-	assistLayout->addWidget(isBrushingCb);
-	connect(isBrushingCb, SIGNAL(clicked()), this, SLOT(isBrushingClicked()));
-
-	QPushButton *moveToOptimalBtn = new QPushButton("Move to the Optimal Viewpoint");
-	assistLayout->addWidget(moveToOptimalBtn);
-	connect(moveToOptimalBtn, SIGNAL(clicked()), this, SLOT(moveToOptimalBtnClicked()));
 
 	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
 	assistLayout->addWidget(doTourBtn);
 	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
 
-	QPushButton *turnOffGlobalGuideBtn = new QPushButton("Turn Off GLobal Guide");
-	assistLayout->addWidget(turnOffGlobalGuideBtn);
-	connect(turnOffGlobalGuideBtn, SIGNAL(clicked()), this, SLOT(turnOffGlobalGuideBtnClicked()));
+
 
 	mainLayout->addLayout(assistLayout, 1);
 	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
@@ -634,21 +497,15 @@ openGL->setFixedSize(1000, 1000);
 	vrWidget = std::make_shared<VRWidget>(matrixMgr);
 	vrWidget->setWindowFlags(Qt::Window);
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
-	vrVolumeRenderable->sm = sm;
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
 	if (channelSkelViewReady){
 		immersiveInteractor->noMoveMode = true;
-		vrWidget->AddRenderable("2info", infoGuideRenderable.get());
 	}
 
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
 #endif
-
-
-	immersiveInteractor->ve = ve.get();
-	immersiveInteractor->infoGuideRenderable = infoGuideRenderable.get();
 
 }
 
@@ -659,8 +516,7 @@ openGL->setFixedSize(1000, 1000);
 
 Window::~Window()
 {
-	if (labelVolLocal)
-		delete[]labelVolLocal;
+
 }
 
 void Window::init()
@@ -685,6 +541,16 @@ void Window::applyEyePos()
 	QString s = eyePosLineEdit->text();
 	QStringList sl = s.split(QRegExp("[\\s,]+"));
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
+}
+
+void Window::usePreIntCBClicked(bool b)
+{
+	volumeRenderable->setPreIntegrate(b);
+}
+
+void Window::useSplineInterpolationCBClicked(bool b)
+{
+	volumeRenderable->setSplineInterpolation(b);
 }
 
 void Window::transFuncP1LabelSliderValueChanged(int v)
@@ -752,17 +618,8 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
-void Window::isBrushingClicked()
-{
-	sbInteractor->isActive = !sbInteractor->isActive;
-}
 
-void Window::moveToOptimalBtnClicked()
-{
-	//ve->compute_UniformSampling(VPMethod::JS06Sphere);
-	matrixMgr->moveEyeInLocalByModeMat(make_float3(ve->optimalEyeInLocal.x, ve->optimalEyeInLocal.y, ve->optimalEyeInLocal.z));
-	//ve->saveResultVol("labelEntro.raw");
-}
+
 
 void Window::SlotOriVolumeRb(bool b)
 {
@@ -770,8 +627,6 @@ void Window::SlotOriVolumeRb(bool b)
 		volumeRenderable->setVolume(inputVolume);
 		volumeRenderable->rcp = rcp;
 		volumeRenderable->SetVisibility(true);
-		polyRenderable->SetVisibility(false);
-		traceRenderable->SetVisibility(false);
 	}
 }
 
@@ -783,8 +638,6 @@ void Window::SlotChannelVolumeRb(bool b)
 			volumeRenderable->setVolume(channelVolume);
 			volumeRenderable->rcp = rcpForChannelSkel;
 			volumeRenderable->SetVisibility(true);
-			polyRenderable->SetVisibility(false);
-			traceRenderable->SetVisibility(false);
 		}
 		else{
 			std::cout << "channelVolume not set!!" << std::endl;
@@ -798,18 +651,9 @@ void Window::SlotSkelVolumeRb(bool b)
 {
 	if (b)
 	{
-		if (skelVolume){
-			volumeRenderable->setVolume(skelVolume);
-			volumeRenderable->rcp = rcpForChannelSkel;
-			volumeRenderable->SetVisibility(true);
-			polyRenderable->SetVisibility(false);
-			traceRenderable->SetVisibility(false);
-		}
-		else{
 			std::cout << "skelVolume not set!!" << std::endl;
 			oriVolumeRb->setChecked(true);
 			SlotOriVolumeRb(true);
-		}
 	}
 }
 
@@ -817,16 +661,9 @@ void Window::SlotSurfaceRb(bool b)
 {
 	if (b)
 	{
-		if (polyMesh){
-			volumeRenderable->SetVisibility(false);
-			polyRenderable->SetVisibility(true);
-			traceRenderable->SetVisibility(true);
-		}
-		else{
 			std::cout << "polymesh not set!!" << std::endl;
 			oriVolumeRb->setChecked(true);
 			SlotOriVolumeRb(true);
-		}
 	}
 }
 
@@ -855,60 +692,6 @@ void Window::zSliderValueChanged(int v)
 	helper.z = v;
 }
 
-void Window::updateLabelVolBtnClicked()
-{
-	if (!hasLabelFromFile){
-		labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
-		std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
-	}
-
-	ve->currentMethod = VPMethod::LabelVisibility;
-	ve->compute_SkelSampling(VPMethod::LabelVisibility);
-	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy << std::endl;
-	std::cout << "The optimal view point: " << ve->optimalEyeInLocal.x << " " << ve->optimalEyeInLocal.y << " " << ve->optimalEyeInLocal.z << std::endl << "The optimal view point in voxel: " << ve->optimalEyeInLocal.x / spacing.x << " " << ve->optimalEyeInLocal.y / spacing.y << " " << ve->optimalEyeInLocal.z / spacing.z << std::endl;
-	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
-}
-
-void Window::findGeneralOptimalBtnClicked()
-{
-	ve->currentMethod = VPMethod::Tao09Detail;
-	ve->compute_SkelSampling(VPMethod::Tao09Detail);
-	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy<< std::endl;
-	std::cout << "The optimal view point: " << ve->optimalEyeInLocal.x << " " << ve->optimalEyeInLocal.y << " "<< ve->optimalEyeInLocal.z << std::endl << "The optimal view point in voxel: " << ve->optimalEyeInLocal.x / spacing.x << " " << ve->optimalEyeInLocal.y / spacing.y << " " << ve->optimalEyeInLocal.z / spacing.z << std::endl;
-	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
-}
-
-void Window::findNextOptimalBtnClicked()
-{
-	ve->currentMethod = VPMethod::Tao09Detail;
-	ve->compute_NextSkelSampling(VPMethod::Tao09Detail);
-	std::cout << std::endl << "The optimal view point has been computed" << std::endl << "max entropy: " << ve->maxEntropy << std::endl;
-	std::cout << "The optimal view point: " << ve->optimalEyeInLocal.x << " " << ve->optimalEyeInLocal.y << " " << ve->optimalEyeInLocal.z << std::endl << "The optimal view point in voxel: " << ve->optimalEyeInLocal.x / spacing.x << " " << ve->optimalEyeInLocal.y / spacing.y << " " << ve->optimalEyeInLocal.z / spacing.z << std::endl;
-	infoGuideRenderable->changeWhetherGlobalGuideMode(true);
-}
-
-void Window::turnOffGlobalGuideBtnClicked()
-{
-	infoGuideRenderable->changeWhetherGlobalGuideMode(false);
-}
-
-void Window::redrawBtnClicked()
-{
-	if (labelVolLocal){
-		memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
-		labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
-	}
-	helper.valSet = false;
-}
-
-void Window::featureGrowingBtnClicked()
-{
-	helper.featureGrowing();
-}
-void Window::save2dScreenBtnClicked()
-{
-	helper.saveScreen();
-}
 void Window::doTourBtnClicked()
 {
 	animationByMatrixProcessor->startAnimation();
@@ -917,8 +700,4 @@ void Window::doTourBtnClicked()
 void Window::saveScreenBtnClicked()
 {
 	openGL->saveCurrentImage();
-}
-void Window::alwaysLocalGuideBtnClicked()
-{
-	infoGuideRenderable->isAlwaysLocalGuide = true;
 }

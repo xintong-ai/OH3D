@@ -11,6 +11,9 @@ class StopWatchInterface;
 class Particle;
 enum COLOR_MAP;
 
+
+//NOTE! this TraceRenderable is not the same with the TraceRenderable used in other flow studies
+//to be uniform, the trace to be rendered here is stored as Particle data object, which records the coordinates of trace nodes
 class TraceRenderable : public Renderable
 {
 	Q_OBJECT

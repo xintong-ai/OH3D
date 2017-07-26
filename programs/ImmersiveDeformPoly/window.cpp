@@ -8,7 +8,6 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "ScreenMarker.h"
 #include "LabelVolumeProcessor.h"
 #include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableImmerCUDA.h"
@@ -21,7 +20,6 @@
 #include "Particle.h"
 
 #include "MatrixMgrRenderable.h"
-#include "InfoGuideRenderable.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
 #include "PolyRenderable.h"
@@ -284,7 +282,6 @@ Window::Window()
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	vrWidget->AddRenderable("2info", infoGuideRenderable.get());
 	
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
@@ -337,15 +334,6 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
-void Window::isBrushingClicked()
-{
-	sbInteractor->isActive = !sbInteractor->isActive;
-}
-
-void Window::moveToOptimalBtnClicked()
-{
-
-}
 
 void Window::SlotOriVolumeRb(bool b)
 {
@@ -403,32 +391,6 @@ void Window::SlotNonImmerRb(bool b)
 		immersiveInteractor->isActive = false;
 		openGL->matrixMgr = matrixMgrMini;
 	}
-}
-
-void Window::zSliderValueChanged(int v)
-{
-	helper.z = v;
-}
-
-void Window::updateLabelVolBtnClicked()
-{
-
-}
-
-void Window::findGeneralOptimalBtnClicked()
-{
-
-}
-
-
-void Window::turnOffGlobalGuideBtnClicked()
-{
-	infoGuideRenderable->changeWhetherGlobalGuideMode(false);
-}
-
-void Window::redrawBtnClicked()
-{
-
 }
 
 void Window::doTourBtnClicked()

@@ -9,8 +9,10 @@
 
 #include <thrust/device_vector.h>
 
+#include <cubicTex3D.cu>
 
-
+#define VOLUMERENDER_TF_PREINTSIZE    1024
+#define VOLUMERENDER_TF_PREINTSTEPS   1024
 
 
 // texture
@@ -160,7 +162,6 @@ __constant__ float colorTableColon[2][4] = {
 	1.00001, 200 / 255.0, 83 / 255.0, 63 / 255.0
 };
 
-
 __device__ float3 GetColourColon(float v)
 {
 	int pos = 0;
@@ -181,6 +182,157 @@ __device__ float3 GetColourColon(float v)
 
 	return(c);
 }
+
+
+
+/////NOTE!!! add code to delete them afterwards
+static cudaArray *d_transferArray = 0;
+static cudaArray *d_transferIntegrate = 0;
+
+texture<float4, 1, cudaReadModeElementType>           transferIntegrateTex;
+surface<void, 1>                                      transferIntegrateSurf;
+
+texture<float4, cudaTextureType2DLayered, cudaReadModeElementType>   transferLayerPreintTex;
+surface<void, cudaSurfaceType2DLayered>                             transferLayerPreintSurf;
+
+//float curfuncRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+//float lastFuncRes = clamp((lastSample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
+
+
+__global__ void
+d_integrate_trapezoidal(cudaExtent extent, float transFuncP1, float transFuncP2)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+
+	// for higher speed could use hierarchical approach for sum
+	if (x >= extent.width)
+	{
+		return;
+	}
+
+	float stepsize = 1.0 / float(extent.width - 1);
+	float to = float(x) * stepsize;
+
+	float4 outclr = make_float4(0, 0, 0, 0);
+	float incr = stepsize;
+
+	float funcRes = __saturatef((0.0 - transFuncP2) / (transFuncP1 - transFuncP2));
+	float4 lastval = make_float4(funcRes, funcRes, funcRes, funcRes);	// tex1D(transferTex, 0);
+
+	float cur = incr;
+
+	while (cur < to + incr * 0.5)
+	{
+		float funcRes = __saturatef((cur - transFuncP2) / (transFuncP1 - transFuncP2));
+
+		float4 val = make_float4(funcRes, funcRes, funcRes, funcRes); // tex1D(transferTex, cur);
+		float4 trapezoid = (lastval + val) / 2.0f;
+		lastval = val;
+
+		outclr += trapezoid;
+		cur += incr;
+	}
+
+	// surface writes need byte offsets for x!
+	surf1Dwrite(outclr, transferIntegrateSurf, x * sizeof(float4));
+}
+
+
+__global__ void
+d_preintegrate(float steps, cudaExtent extent, float transFuncP1, float transFuncP2)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if (x >= extent.width || y >= extent.height)
+	{
+		return;
+	}
+
+	float sx = float(x) / float(extent.width);
+	float sy = float(y) / float(extent.height);
+
+	float smax = max(sx, sy);
+	float smin = min(sx, sy);
+
+	float4 iv;
+
+	if (x != y)
+	{
+		// assumes square textures!
+		float fracc = smax - smin;
+		fracc = 1.0 / (fracc*steps);
+
+		float4 intmax = tex1D(transferIntegrateTex, smax);
+		float4 intmin = tex1D(transferIntegrateTex, smin);
+		iv.x = (intmax.x - intmin.x)*fracc;
+		iv.y = (intmax.y - intmin.y)*fracc;
+		iv.z = (intmax.z - intmin.z)*fracc;
+		iv.w = (intmax.w - intmin.w)*fracc;
+		//iv.w = (1.0 - exp(-(intmax.w - intmin.w) * fracc));
+	}
+	else
+	{
+		float funcRes = __saturatef((smin - transFuncP2) / (transFuncP1 - transFuncP2));
+		float4 sample = make_float4(funcRes, funcRes, funcRes, funcRes);  //tex1D(transferTex, smin);
+		iv.x = sample.x;
+		iv.y = sample.y;
+		iv.z = sample.z;
+		iv.w = sample.w;
+		//iv.w = (1.0 - exp(-sample.w));
+	}
+
+	//iv.x = __saturatef(iv.x);
+	//iv.y = __saturatef(iv.y);
+	//iv.z = __saturatef(iv.z);
+	//iv.w = __saturatef(iv.w);
+
+	// surface writes need byte offsets for x!
+	surf2DLayeredwrite(iv, transferLayerPreintSurf, x * sizeof(float4), y, 0);
+}
+
+void updatePreIntTabel(float r1, float r2)
+{
+	{
+		cudaExtent extent = { VOLUMERENDER_TF_PREINTSTEPS, 0, 0 };
+		dim3 blockSize(32, 1, 1);
+		dim3 gridSize(iDivUp(extent.width, blockSize.x), 1, 1);
+		d_integrate_trapezoidal << <gridSize, blockSize >> >(extent, r1, r2);
+	}
+	{
+		cudaExtent extent = { VOLUMERENDER_TF_PREINTSIZE, VOLUMERENDER_TF_PREINTSIZE, 1 };
+		dim3 blockSize(16, 16, 1);
+		dim3 gridSize(iDivUp(extent.width, blockSize.x), iDivUp(extent.height, blockSize.y), 1);
+		d_preintegrate << <gridSize, blockSize >> >(float(VOLUMERENDER_TF_PREINTSTEPS), extent, r1, r2);
+		//d_preintegrate << <gridSize, blockSize >> >(4.0, extent, r1, r2);
+
+	}
+}
+
+void initPreIntTabel()
+{
+	transferLayerPreintTex.normalized = true;
+	transferLayerPreintTex.filterMode = cudaFilterModeLinear;
+	transferLayerPreintTex.addressMode[0] = cudaAddressModeClamp;
+	transferLayerPreintTex.addressMode[1] = cudaAddressModeClamp;
+
+	cudaChannelFormatDesc channelFloat4 = cudaCreateChannelDesc<float4>();
+	cudaExtent extent = { VOLUMERENDER_TF_PREINTSIZE, VOLUMERENDER_TF_PREINTSIZE, 1 };
+	checkCudaErrors(cudaMalloc3DArray(&d_transferArray, &channelFloat4, extent, cudaArrayLayered | cudaArraySurfaceLoadStore));
+	checkCudaErrors(cudaBindTextureToArray(transferLayerPreintTex, d_transferArray, channelFloat4));
+	checkCudaErrors(cudaBindSurfaceToArray(transferLayerPreintSurf, d_transferArray, channelFloat4));
+
+	transferIntegrateTex.normalized = true;
+	transferIntegrateTex.filterMode = cudaFilterModeLinear;
+	transferIntegrateTex.addressMode[0] = cudaAddressModeClamp;
+	transferIntegrateTex.addressMode[1] = cudaAddressModeClamp;
+	transferIntegrateTex.addressMode[2] = cudaAddressModeClamp;
+	checkCudaErrors(cudaMallocArray(&d_transferIntegrate, &channelFloat4, VOLUMERENDER_TF_PREINTSTEPS, 0, cudaArraySurfaceLoadStore));
+	checkCudaErrors(cudaBindTextureToArray(transferIntegrateTex, d_transferIntegrate, channelFloat4));
+	checkCudaErrors(cudaBindSurfaceToArray(transferIntegrateSurf, d_transferIntegrate, channelFloat4));
+}
+
+
 
 void VolumeRender_setVolume(const VolumeCUDA *vol)
 {
@@ -226,8 +378,6 @@ void VolumeRender_setConstants(float *MVMatrix, float *MVPMatrix, float *invMVMa
 	checkCudaErrors(cudaMemcpyToSymbol(spacing, _spacing, sizeof(float3)));
 }
 
-
-
 void VolumeRender_init()
 {
 	// set texture parameters
@@ -236,7 +386,6 @@ void VolumeRender_init()
 	volumeTexGradient.addressMode[0] = cudaAddressModeBorder;  // clamp texture coordinates
 	volumeTexGradient.addressMode[1] = cudaAddressModeBorder;
 	volumeTexGradient.addressMode[2] = cudaAddressModeBorder;
-
 
 	volumeTexValueForRC.normalized = false;
 	volumeTexValueForRC.filterMode = cudaFilterModeLinear;
@@ -254,10 +403,14 @@ void VolumeRender_init()
 	tex_inputImageColor.filterMode = cudaFilterModePoint;
 	tex_inputImageColor.addressMode[0] = cudaAddressModeBorder;
 	tex_inputImageColor.addressMode[1] = cudaAddressModeBorder;
+
+	initPreIntTabel();
 }
 
 void VolumeRender_deinit()
 {
+	checkCudaErrors(cudaFreeArray(d_transferArray));
+	checkCudaErrors(cudaFreeArray(d_transferIntegrate));
 }
 
 
@@ -340,7 +493,7 @@ __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
 
 
 
-__global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
+__global__ void d_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -406,11 +559,11 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 			cc = make_float3(funcRes, funcRes, funcRes);
 
 
-		float3 posInWorld = mul(c_MVMatrix, pos);
+		float3 posInEye = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), funcRes * 1.0);
 		}
 		else
 		{
@@ -455,7 +608,7 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInL
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 
-	d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);
+	d_render << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);
 
 	//clean what was used
 
@@ -464,7 +617,7 @@ void VolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInL
 }
 
 
-__global__ void d_OmniVolumeRender_preint(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
+__global__ void d_OmniVolumeRender(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -568,11 +721,11 @@ __global__ void d_OmniVolumeRender_preint(uint *d_output, uint imageW, uint imag
 			colDensity = funcRes;
 		}
 
-		float3 posInWorld = mul(c_MVMatrix, pos);
+		float3 posInEye = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), colDensity);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), colDensity);
 		}
 		else
 		{
@@ -615,12 +768,12 @@ void OmniVolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 ey
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 
-	d_OmniVolumeRender_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);
+	d_OmniVolumeRender << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);
 }
 
 
 //iossurface type rendering
-__global__ void d_render_preint_immer_iso(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, char* screenMark)
+__global__ void d_render_immer_iso(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -723,11 +876,11 @@ __global__ void d_render_preint_immer_iso(uint *d_output, uint imageW, uint imag
 		//	}
 		//}
 
-		float3 posInWorld = mul(c_MVMatrix, pos);
+		float3 posInEye = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), colDensity);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), colDensity);
 		}
 		else
 		{
@@ -765,7 +918,7 @@ __global__ void d_render_preint_immer_iso(uint *d_output, uint imageW, uint imag
 	d_output[y*imageW + x] = rgbaFloatToInt(sum);
 }
 
-__global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH,  float3 eyeInLocal, int3 volumeSize, char* screenMark)
+__global__ void d_render_immer(uint *d_output, uint imageW, uint imageH,  float3 eyeInLocal, int3 volumeSize)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -862,16 +1015,18 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 			colDensity = funcRes;
 		}
 
-		float3 posInWorld = mul(c_MVMatrix, pos);
+		float3 posInEye = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), colDensity);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), colDensity);
 		}
 		else
 		{
 			col = make_float4(la*cc, colDensity);
 		}
+
+		col.w *= tstep;
 
 		col.w *= density;
 
@@ -879,6 +1034,7 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 		col.x *= col.w;
 		col.y *= col.w;
 		col.z *= col.w;
+
 		// "over" operator for front-to-back blending
 		sum = sum + col*(1.0f - sum.w);
 
@@ -904,7 +1060,144 @@ __global__ void d_render_preint_immer(uint *d_output, uint imageW, uint imageH, 
 	d_output[y*imageW + x] = rgbaFloatToInt(sum);
 }
 
-__global__ void d_render_2dint_immer(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, char* screenMark, float secondCutOffHigh, float secondCutOffLow, float secondNormalizationCoeff)
+__global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, bool useSplineInterpolation)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+
+	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
+	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
+	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
+	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
+	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)
+		//	if (!hit)
+	{
+		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		return;
+	}
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+
+	float tstepv = tstep;
+	float3 step = eyeRay.d*tstepv;
+	float lightingThr = 0.0001;
+
+	float fragDepth = 1.0;
+
+	float3 coord = pos / spacing;
+	float lastSample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+	float3 last_normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+	float3 last_normal_in_eye = normalize(mul(c_NormalMatrix, last_normalInWorld));
+	t += tstepv;
+	pos += step;
+
+
+
+	for (int i = 1; i<maxSteps; i++)
+	{
+		if (i == 256) {
+			//increase step size to improve performance, when the ray is already far, since then we do not need short step size that much then
+			tstepv *= 2;
+			step *= 2;
+		}
+		float3 coord = pos / spacing;
+		
+		float sample;
+		if (useSplineInterpolation)
+			sample = cubicTex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		else
+			sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+
+		float4 cpreint = tex2DLayered(transferLayerPreintTex, sample, lastSample, 0);
+
+		float3 cc;
+		
+		cc = make_float3(cpreint.x, cpreint.y, cpreint.z);
+		cc.x = __saturatef(cc.x);
+		cc.y = __saturatef(cc.y);
+		cc.z = __saturatef(cc.z);
+		
+		//float colDensity = __saturatef(cpreint.w);
+		float colDensity = cpreint.w * tstepv;
+
+		float4 col;
+		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+		float3 posInEye = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)// && abs(sample - lastSample) > 0.0001)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye)/2), colDensity);
+			//using average of last_normal_in_eye and normal_in_eye is just one option, and may not be the best.
+
+			last_normal_in_eye = normal_in_eye;
+		}
+		else
+		{
+			col = make_float4(la*cc, colDensity);
+
+			last_normal_in_eye = make_float3(0,0,0);
+		}
+		
+
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		t += tstepv;
+
+		if (t > tfar){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		pos += step;
+
+		lastSample = sample;
+	}
+
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+}
+
+
+__global__ void d_render_2dint_immer(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, float secondCutOffHigh, float secondCutOffLow, float secondNormalizationCoeff)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -989,11 +1282,11 @@ __global__ void d_render_2dint_immer(uint *d_output, uint imageW, uint imageH, f
 			}
 		}
 
-		float3 posInWorld = mul(c_MVMatrix, pos);
+		float3 posInEye = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), funcRes * 1.0);
 		}
 		else
 		{
@@ -1032,18 +1325,23 @@ __global__ void d_render_2dint_immer(uint *d_output, uint imageW, uint imageH, f
 }
 
 
-//used for immersive observation. the difference is the label and screenMark might be used
+//used for immersive observation. the difference is the label might be used
 void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-	float3 eyeInLocal, int3 volumeSize, char* screenMark, RayCastingParameters* rcp)
+	float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, bool usePreInt, bool useSplineInterpolation)
 {
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 	if (rcp->use2DInteg){
-		d_render_2dint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, screenMark, rcp->secondCutOffHigh, rcp->secondCutOffLow, rcp->secondNormalizationCoeff);
+		d_render_2dint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, rcp->secondCutOffHigh, rcp->secondCutOffLow, rcp->secondNormalizationCoeff);
 	}
 	else{
-		d_render_preint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, screenMark);
-		//d_render_preint_immer_iso << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, screenMark); //for Neghip
+		if (usePreInt){
+			d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation);
+		}
+		else{
+			d_render_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);
+			//d_render_immer_iso << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize); //for Neghip
+		}
 	}
 }
 
@@ -1101,8 +1399,8 @@ void VolumeRender_setGradient(const VolumeCUDA *gradVol)
 	checkCudaErrors(cudaBindTextureToArray(volumeTexGradient, gradVol->content, gradVol->channelDesc));
 }
 
-//similar with d_render_preint_immer. might be faster if directly use the result of d_render_preint_immer
-__global__ void d_LabelProcessor(uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark)
+//similar with d_render_immer. might be faster if directly use the result of d_render_immer
+__global__ void d_LabelProcessor(uint imageW, uint imageH, float density, float brightness, float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor,char* screenMark)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -1183,11 +1481,11 @@ __global__ void d_LabelProcessor(uint imageW, uint imageH, float density, float 
 				cc = make_float3(funcRes, funcRes, funcRes);
 		}
 
-		float3 posInWorld = mul(c_MVMatrix, pos);
+		float3 posInEye = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), funcRes * 1.0);
 		}
 		else
 		{
@@ -1249,7 +1547,7 @@ void LabelProcessor(uint imageW, uint imageH,
 
 
 
-__global__ void d_render_preint_withDepthInput(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, float densityBonus)
+__global__ void d_render_withDepthInput(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, float densityBonus)
 {
 	uint x = blockIdx.x*blockDim.x + threadIdx.x;
 	uint y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -1326,11 +1624,11 @@ __global__ void d_render_preint_withDepthInput(uint *d_output, uint imageW, uint
 			cc = make_float3(funcRes, funcRes, funcRes);
 
 
-		float3 posInWorld = mul(c_MVMatrix, pos);
+		float3 posInEye = mul(c_MVMatrix, pos);
 		if (length(normalInWorld) > lightingThr)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInWorld, normal_in_eye), funcRes * 1.0);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), funcRes * 1.0);
 		}
 		else
 		{
@@ -1414,5 +1712,6 @@ void VolumeRender_renderWithDepthInput(uint *d_output, uint imageW, uint imageH,
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 
-	d_render_preint_withDepthInput << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, densityBonus);
+	d_render_withDepthInput << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, densityBonus);
 }
+

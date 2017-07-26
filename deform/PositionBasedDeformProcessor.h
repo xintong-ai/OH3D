@@ -19,19 +19,23 @@ enum DEFORMED_DATA_TYPE { VOLUME, MESH, PARTICLE };
 class Volume;
 class VolumeCUDA;
 class PolyMesh;
+class Particle;
 class MatrixManager;
 class PositionBasedDeformProcessor :public Processor
 {
 public:
 	std::shared_ptr<Volume> volume;
 	std::shared_ptr<PolyMesh> poly;
-	
+	std::shared_ptr<Particle> particle;
+
 	std::shared_ptr<Volume> channelVolume;
+
 	std::shared_ptr<MatrixManager> matrixMgr;
 
 	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
 	PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
-	
+	PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
+
 	~PositionBasedDeformProcessor(){
 		sdkDeleteTimer(&timer);
 		sdkDeleteTimer(&timerFrame);
@@ -74,7 +78,12 @@ private:
 
 	bool processVolumeData(float* modelview, float* projection, int winWidth, int winHeight);
 	bool processMeshData(float* modelview, float* projection, int winWidth, int winHeight);
-	
+	bool processParticleData(float* modelview, float* projection, int winWidth, int winHeight);
+
+	thrust::device_vector<float4> d_vec_posOrig;
+	thrust::device_vector<float4> d_vec_posTarget;
+
+
 	std::shared_ptr<VolumeCUDA> volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 
 	float3 spacing;
@@ -91,6 +100,7 @@ private:
 	void doVolumeDeform2Tunnel(float degree, float degreeClose);
 	void doChannelVolumeDeform();
 	void doPolyDeform(float degree);
+	void doParticleDeform(float degree);
 
 	void computeTunnelInfo(float3 centerPoint);
 

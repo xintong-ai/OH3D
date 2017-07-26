@@ -144,12 +144,14 @@ void labelPoly()
 		double * coord = points->GetPoint(i);
 		posSum[d] = make_double3(posSum[d].x + coord[0], posSum[d].y + coord[1], posSum[d].z + coord[2]);
 		count[d]++;
-		minPos[d] = make_float3(min(minPos[d].x, coord[0]), min(minPos[d].y, coord[1]), min(minPos[d].z, coord[2]));
-		maxPos[d] = make_float3(max(maxPos[d].x, coord[0]), max(maxPos[d].y, coord[1]), max(maxPos[d].z, coord[2]));
+		minPos[d] = make_float3(fmin(minPos[d].x, coord[0]), fmin(minPos[d].y, coord[1]), fmin(minPos[d].z, coord[2]));
+		maxPos[d] = make_float3(fmax(maxPos[d].x, coord[0]), fmax(maxPos[d].y, coord[1]), fmax(maxPos[d].z, coord[2]));
 	}
 	vector<float3> posAve(nRegion);
 	for (int i = 0; i < nRegion; i++){
 		posAve[i] = make_float3(posSum[i].x / count[i], posSum[i].y / count[i], posSum[i].z / count[i]);
+		//cout << "min " << minPos[i].x << " " << minPos[i].y << " " << minPos[i].z << endl;
+		//cout << "max " << maxPos[i].x << " " << maxPos[i].y << " " << maxPos[i].z << endl;
 	}
 
 

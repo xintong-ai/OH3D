@@ -73,27 +73,22 @@ private:
 
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
-	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
-	std::shared_ptr<PolyMesh> polyMesh = 0;
 
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
 	//bool useLabel;
 	bool hasLabelFromFile = false;
-	std::shared_ptr<VolumeCUDA> labelVolCUDA;
-	unsigned short* labelVolLocal = 0;
+
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
-	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
 	std::shared_ptr<RegularInteractor> regularInteractor;
 
 	std::shared_ptr<LabelVolumeProcessor> lvProcessor;
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
-	std::shared_ptr<ViewpointEvaluator> ve;
 
 	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
 
@@ -112,9 +107,6 @@ private:
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
-	std::shared_ptr<PolyRenderable> polyRenderable;
-	std::shared_ptr<TraceRenderable> traceRenderable;
-
 	//for 2d view
 	Helper helper;
 
@@ -152,6 +144,9 @@ private slots:
 	void SlotLoadState();
 	void applyEyePos();
 
+	void usePreIntCBClicked(bool);
+	void useSplineInterpolationCBClicked(bool);
+
 	void transFuncP1LabelSliderValueChanged(int);
 	void transFuncP2LabelSliderValueChanged(int); 
 	void transFuncP1SecondLabelSliderValueChanged(int);
@@ -163,8 +158,6 @@ private slots:
 	void lsSliderValueChanged(int);
 
 	void isDeformEnabledClicked(bool b);
-	void isBrushingClicked();
-	void moveToOptimalBtnClicked();
 
 	void SlotOriVolumeRb(bool);
 	void SlotChannelVolumeRb(bool);
@@ -175,16 +168,9 @@ private slots:
 	void SlotNonImmerRb(bool);
 
 	void zSliderValueChanged(int v);
-	void updateLabelVolBtnClicked();
-	void findGeneralOptimalBtnClicked();
-	void findNextOptimalBtnClicked();
-	void turnOffGlobalGuideBtnClicked();
-	void redrawBtnClicked();
-	void featureGrowingBtnClicked();
-	void save2dScreenBtnClicked();
+
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
-	void alwaysLocalGuideBtnClicked();
 };
 
 #endif

@@ -23,6 +23,8 @@
 #include "PositionBasedDeformProcessor.h"
 #include "myDefineRayCasting.h"
 
+
+
 VolumeRenderableImmerCUDA::VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vlabel, std::shared_ptr<PositionBasedDeformProcessor> p)
 {
 	volume = _volume;
@@ -30,6 +32,14 @@ VolumeRenderableImmerCUDA::VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _vo
 	if (_vlabel != 0){
 		VolumeRender_setLabelVolume(_vlabel.get());
 	}
+
+	positionBasedDeformProcessor = p;
+}
+
+VolumeRenderableImmerCUDA::VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<PositionBasedDeformProcessor> p)
+{
+	volume = _volume;
+	volumeCUDAGradient.VolumeCUDA_init(_volume->size, (float*)0, 1, 4);
 
 	positionBasedDeformProcessor = p;
 }
@@ -44,11 +54,12 @@ VolumeRenderableImmerCUDA::~VolumeRenderableImmerCUDA()
 void VolumeRenderableImmerCUDA::init()
 {
 	VolumeRender_init();
+	updatePreIntTabel(rcp->transFuncP1, rcp->transFuncP2);
+	
 	initTextureAndCudaArrayOfScreen();
 
 	int winWidth, winHeight;
 	actor->GetWindowSize(winWidth, winHeight);
-	sm->initMaskPixel(winWidth, winHeight);
 }
 
 
@@ -134,7 +145,7 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 		VolumeRender_renderWithDepthInput(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, densityBonus);
 	}
 	else{
-		VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, sm->dev_isPixelSelected, rcp.get());
+		VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, rcp.get(), usePreInt, useSplineInterpolation);
 	}
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));
@@ -262,3 +273,13 @@ void VolumeRenderableImmerCUDA::resize(int width, int height)
 	visible = oriVisibility;
 }
 
+
+void VolumeRenderableImmerCUDA::updatePreIntTable()
+{
+	//if (rcp->useColor){
+	//	std::cout << "preint table not implement yet!!" << std::endl;
+	//}
+	//else{
+	//	updatePreIntTabel();
+	//}
+}

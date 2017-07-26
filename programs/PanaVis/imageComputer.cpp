@@ -110,7 +110,7 @@ void ImageComputer::saveImage(uint *output, int w, int h)
 	for (int i = 0; i<w; ++i) {
 		for (int j = 0; j<h; ++j) {
 			//int jinv = h - 1 - j;
-			int jinv = j; //in the d_OmniVolumeRender_preint() function, the j is already positioned correctly
+			int jinv = j; //in the d_OmniVolumeRender() function, the j is already positioned correctly
 			int ind = (i + j*w) * 4;
 			image.setPixel(i, jinv, 256 * 256 * pixel[ind] + 256 * pixel[ind + 1] + pixel[ind + 2]);
 		}

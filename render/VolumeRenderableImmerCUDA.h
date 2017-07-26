@@ -23,6 +23,7 @@ class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor;//may not be a good design
 public:
 	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl = 0, std::shared_ptr<PositionBasedDeformProcessor> p = 0);
+	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<PositionBasedDeformProcessor> p);
 	~VolumeRenderableImmerCUDA();
 
 	void setVolume(std::shared_ptr<Volume> v, bool needMoreChange = false){
@@ -31,6 +32,19 @@ public:
 			//todo in the future;
 		}
 	};
+
+	bool usePreInt = false;
+	void setPreIntegrate(bool v){
+		usePreInt = v;
+	}
+
+	bool useSplineInterpolation = false;
+	void setSplineInterpolation(bool v){
+		useSplineInterpolation = v;
+	}
+
+	void updatePreIntTable(); //!!! MUST be called after the gl loop started. cannot be called beforehand
+
 
 	bool isFixed = false;
 
@@ -44,7 +58,6 @@ public:
 		return volume;
 	}
 
-	void setScreenMarker(std::shared_ptr<ScreenMarker> _sm){ sm = _sm; }
 	void setBlending(bool b, float d = 1.0){ blendPreviousImage = b; densityBonus = d; };
 
 private:

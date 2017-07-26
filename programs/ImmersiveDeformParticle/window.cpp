@@ -8,7 +8,6 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "ScreenMarker.h"
 #include "LabelVolumeProcessor.h"
 #include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableImmerCUDA.h"
@@ -21,7 +20,6 @@
 #include "Particle.h"
 
 #include "MatrixMgrRenderable.h"
-#include "InfoGuideRenderable.h"
 #include "BinaryTuplesReader.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
@@ -48,21 +46,19 @@
 
 #include "VolumeRenderableCUDAKernel.h"
 
-bool channelSkelViewReady = false;
+bool channelSkelViewReady = true;
 
 void fileInfo(std::string dataPath, DataType & channelVolDataType, int3 & dims, std::string & subfolder)
 {
-	if (std::string(dataPath).find("sphere") != std::string::npos){
-		subfolder = "sphere";
-		dims = make_int3(60, 60, 60);
-		channelVolDataType = RawVolumeReader::dtUint16;
-	}
-	else if (std::string(dataPath).find("iso_t") != std::string::npos){
-		subfolder = "FPM";
-		//dims = make_int3(64, 64, 64);
-		dims = make_int3(68, 68, 68);
+	if (std::string(dataPath).find("rbcs") != std::string::npos){
 
-		channelVolDataType = RawVolumeReader::dtFloat32;
+		dims = make_int3(64, 224, 160);
+		//spacing = make_float3(1, 1, 1);
+		//rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false);
+		subfolder = "bloodCell";
+
+		channelVolDataType = RawVolumeReader::dtUint8;
+
 	}
 	else{
 		std::cout << "file name not defined" << std::endl;
@@ -98,8 +94,6 @@ Window::Window()
 		channelVolume->initVolumeCuda();
 		reader2.reset();
 	}
-
-
 
 	polyMesh = std::make_shared<PolyMesh>();
 	if (std::string(polyDataPath).find(".ply") != std::string::npos){
@@ -137,13 +131,11 @@ Window::Window()
 
 	//////////////////////////////// Processor ////////////////////////////////
 	if (channelSkelViewReady){
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh, matrixMgr, channelVolume);
+		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr, channelVolume);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
-
-		positionBasedDeformProcessor->deformationScale = 2; 
-		positionBasedDeformProcessor->deformationScaleVertical = 2.5;
-
+		positionBasedDeformProcessor->deformationScale = 10;
+		positionBasedDeformProcessor->deformationScaleVertical = 14;
 
 		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 		//animationByMatrixProcessor->setViews(views);
@@ -289,7 +281,6 @@ Window::Window()
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	vrWidget->AddRenderable("2info", infoGuideRenderable.get());
 	
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
@@ -342,15 +333,6 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
-void Window::isBrushingClicked()
-{
-	sbInteractor->isActive = !sbInteractor->isActive;
-}
-
-void Window::moveToOptimalBtnClicked()
-{
-
-}
 
 void Window::SlotOriVolumeRb(bool b)
 {
@@ -410,31 +392,6 @@ void Window::SlotNonImmerRb(bool b)
 	}
 }
 
-void Window::zSliderValueChanged(int v)
-{
-	helper.z = v;
-}
-
-void Window::updateLabelVolBtnClicked()
-{
-
-}
-
-void Window::findGeneralOptimalBtnClicked()
-{
-
-}
-
-
-void Window::turnOffGlobalGuideBtnClicked()
-{
-	infoGuideRenderable->changeWhetherGlobalGuideMode(false);
-}
-
-void Window::redrawBtnClicked()
-{
-
-}
 
 void Window::doTourBtnClicked()
 {

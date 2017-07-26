@@ -13,6 +13,8 @@ typedef unsigned int  uint;
 extern "C" {
 	void VolumeRender_init();
 	void VolumeRender_deinit();
+	
+	void updatePreIntTabel(float r1, float r2);
 
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);
 	void OmniVolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);
@@ -21,7 +23,7 @@ extern "C" {
 
 
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-		float3 eyeInLocal, int3 volumeSize, char* screenMark, RayCastingParameters* rcp);
+		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, bool usePreInt = false, bool useSplineInterpolation = false);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);

@@ -121,23 +121,33 @@ void ImmersiveInteractor::keyPress(char key)
 		break;
 	case 'z':
 	case 'Z':
-		//for Tao09Detail
-		ve->currentMethod = VPMethod::Tao09Detail;
-		ve->compute_SkelSampling(VPMethod::Tao09Detail);
-		infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+		if (ve != 0 && infoGuideRenderable != 0){
+			//for Tao09Detail
+			ve->currentMethod = VPMethod::Tao09Detail;
+			ve->compute_SkelSampling(VPMethod::Tao09Detail);
+			infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 
-		//for LabelVisibility from file
-		//if (!hasLabelFromFile){
-		//	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
-		//	std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
-		//}
-		ve->currentMethod = VPMethod::LabelVisibility;
-		ve->compute_SkelSampling(VPMethod::LabelVisibility);
-		infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+			//for LabelVisibility from file
+			//if (!hasLabelFromFile){
+			//	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
+			//	std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
+			//}
+			ve->currentMethod = VPMethod::LabelVisibility;
+			ve->compute_SkelSampling(VPMethod::LabelVisibility);
+			infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+		}
+		else{
+			std::cout << "ve or infoGuideRenderable not set!!" << std::endl << std::endl;
+		}
 		break;
 	case 'x':
 	case 'X':
-		infoGuideRenderable->changeWhetherGlobalGuideMode(false);
+		if (infoGuideRenderable != 0){
+			infoGuideRenderable->changeWhetherGlobalGuideMode(false);
+		}
+		else{
+			std::cout << "ve or infoGuideRenderable not set!!" << std::endl << std::endl;
+		}
 		break;
 	}
 
