@@ -47,6 +47,7 @@ set( Srcs
 	InfoGuideRenderable.cpp
 		DeformFrameRenderable.cpp
 		TraceRenderable.cpp
+		SliceRenderable.cpp
 	)
 set( Hdrs  
 	glwidget.h 
@@ -60,6 +61,8 @@ set( Hdrs
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
+	SliceRenderable.h
+
 	VolumeRenderableImmerCUDA.h
 	VolumeRenderableCUDA.h
 	VolumeRenderableCUDAKernel.h

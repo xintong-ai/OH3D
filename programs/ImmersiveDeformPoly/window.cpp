@@ -45,20 +45,14 @@
 
 #include "VolumeRenderableCUDAKernel.h"
 
-bool channelSkelViewReady = false;
+bool channelSkelViewReady = true;
 
-void fileInfo(std::string dataPath, DataType & channelVolDataType, int3 & dims, std::string & subfolder)
+void rawfileInfo(std::string dataPath, DataType & channelVolDataType)
 {
 	if (std::string(dataPath).find("sphere") != std::string::npos){
-		subfolder = "sphere";
-		dims = make_int3(60, 60, 60);
 		channelVolDataType = RawVolumeReader::dtUint16;
 	}
 	else if (std::string(dataPath).find("iso_t") != std::string::npos){
-		subfolder = "FPM";
-		//dims = make_int3(64, 64, 64);
-		dims = make_int3(68, 68, 68);
-
 		channelVolDataType = RawVolumeReader::dtFloat32;
 	}
 	else{
@@ -76,27 +70,31 @@ Window::Window()
 	//////////////////Volume and RayCastingParameters
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	
+	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+
 	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 	std::string subfolder;
 
-	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+
+	float disThr;
+	float3 shift;
+	int3 dims;
+	float3 spacing;
+	PolyMesh::dataParameters(polyDataPath, dims, spacing, disThr, shift, subfolder);
+
 
 	DataType channelVolDataType;
 	if (channelSkelViewReady){
-		fileInfo(polyDataPath, channelVolDataType, dims, subfolder);
+		rawfileInfo(polyDataPath, channelVolDataType);
 	}
 
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
-		//std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.img").c_str(), dims, channelVolDataType);
+		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
 	}
-
-
 
 	polyMesh = std::make_shared<PolyMesh>();
 	if (std::string(polyDataPath).find(".ply") != std::string::npos){
@@ -107,6 +105,7 @@ Window::Window()
 		VTPReader reader;
 		reader.readFile(polyDataPath.c_str(), polyMesh.get());
 	}
+	polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!!
 	polyMesh->setVertexCoordsOri();
 
 	polyMesh->opacity = 1.0;// 0.5;

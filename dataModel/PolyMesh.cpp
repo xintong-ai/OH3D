@@ -110,3 +110,38 @@ void PolyMesh::setAssisParticle(char* fname)
 	}
 
 }
+
+void PolyMesh::doShift(float3 shift)
+{
+	min_x += shift.x;
+	max_x += shift.x;
+	min_y += shift.y;
+	max_y += shift.y;
+	min_z += shift.z;
+	max_z += shift.z;
+
+	cx += shift.x;
+	cy += shift.y;
+	cz += shift.z;
+
+	if (particle == 0){
+		for (int i = 0; i < vertexcount; i++) {
+			vertexCoords[3 * i] += shift.x;
+			vertexCoords[3 * i + 1] += shift.y;
+			vertexCoords[3 * i + 2] += shift.z;
+		}
+	}
+	else{
+		for (int i = 0; i < particle->numParticles; i++) {
+			particle->pos[i].x += shift.x;
+			particle->pos[i].y += shift.y;
+			particle->pos[i].z += shift.z;
+
+			particle->posOrig[i].x += shift.x;
+			particle->posOrig[i].y += shift.y;
+			particle->posOrig[i].z += shift.z;
+		}
+		particle->posMin += shift;
+		particle->posMax += shift;
+	}
+}

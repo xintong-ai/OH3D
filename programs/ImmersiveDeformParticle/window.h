@@ -25,10 +25,7 @@ class VolumeCUDA;
 class VolumeRenderableImmerCUDA;
 class VolumeRenderableCUDA;
 class ImmersiveInteractor;
-class ScreenBrushInteractor;
 class RegularInteractor;
-class LabelVolumeProcessor;
-class ViewpointEvaluator;
 class AnimationByMatrixProcessor;
 class PositionBasedDeformProcessor;
 class SphereRenderable;
@@ -38,6 +35,7 @@ class GlyphRenderable;
 struct RayCastingParameters;
 class PolyRenderable;
 class PolyMesh;
+class SliceRenderable;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -97,6 +95,7 @@ private:
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 	std::shared_ptr<PolyRenderable> polyRenderable;
+	std::shared_ptr<SliceRenderable> sliceRenderable;
 
 
 #ifdef USE_LEAP

@@ -30,6 +30,7 @@
 #include "VTPReader.h"
 
 #include "PositionBasedDeformProcessor.h"
+#include "SliceRenderable.h"
 
 #include <thrust/device_vector.h>
 
@@ -48,11 +49,12 @@
 
 bool channelSkelViewReady = true;
 
-void fileInfo(std::string dataPath, DataType & channelVolDataType, int3 & dims, std::string & subfolder)
+void fileInfo(std::string dataPath, DataType & channelVolDataType, float3 &shift, int3 & dims, std::string & subfolder)
 {
 	if (std::string(dataPath).find("rbcs") != std::string::npos){
+		shift = make_float3(5, 3, 0);
 
-		dims = make_int3(64, 224, 160);
+		dims = make_int3(65, 225, 161) + make_int3(shift.x, shift.y, shift.z);
 		//spacing = make_float3(1, 1, 1);
 		//rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false);
 		subfolder = "bloodCell";
@@ -78,18 +80,18 @@ Window::Window()
 	
 	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 	std::string subfolder;
-
+	float3 shift;
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
 	DataType channelVolDataType;
 	if (channelSkelViewReady){
-		fileInfo(polyDataPath, channelVolDataType, dims, subfolder);
+		fileInfo(polyDataPath, channelVolDataType, shift, dims, subfolder);
 	}
 
 	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
 		//std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.img").c_str(), dims, channelVolDataType);
+		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
@@ -106,6 +108,8 @@ Window::Window()
 	}
 	polyMesh->setAssisParticle("polyMeshRegions.mytup");	
 	//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
+
+	polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
 
 	polyMesh->opacity = 1.0;// 0.5;
 
@@ -156,6 +160,10 @@ Window::Window()
 		volumeRenderable->rcp = rcpMini;
 		openGL->AddRenderable("2volume", volumeRenderable.get());
 		volumeRenderable->SetVisibility(false);
+
+
+		//sliceRenderable = std::make_shared<SliceRenderable>(channelVolume);
+		//openGL->AddRenderable("5volumeSlice", sliceRenderable.get());
 	}
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);

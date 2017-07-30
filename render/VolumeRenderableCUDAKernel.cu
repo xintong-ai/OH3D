@@ -1151,6 +1151,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
 			col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye)/2), colDensity);
 			//using average of last_normal_in_eye and normal_in_eye is just one option, and may not be the best.
+			//another possible way is to use cubicTex3D_1st_derivative_x(texture tex, float3 coord)
 
 			last_normal_in_eye = normal_in_eye;
 		}

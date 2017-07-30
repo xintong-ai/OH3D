@@ -52,6 +52,23 @@ public:
 	std::shared_ptr<Particle> particle = 0; 
 	void setAssisParticle(char* fname);
 
+	void doShift(float3 shift);
+	
+	static void dataParameters(std::string dataPath, int3 & dims, float3 &spacing, float & disThr, float3 &shift, std::string &subfolder)
+	{
+		if (std::string(dataPath).find("iso_t40_v3") != std::string::npos){
+			dims = make_int3(68, 68, 68);
+			spacing = make_float3(1, 1, 1);
+			disThr = 2;
+			shift = make_float3(ceil(disThr) + 1, ceil(disThr) + 1, ceil(disThr) + 1); //+1 for more margin
+			subfolder = "FPM";
+		}
+		else{
+			std::cout << "volume data name not recognized" << std::endl;
+			exit(0);
+		}
+	};
+
 private:
 	float cx, cy, cz;
 	float min_x, max_x, min_y, max_y, min_z, max_z;

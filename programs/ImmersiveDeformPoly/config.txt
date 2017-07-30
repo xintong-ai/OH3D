@@ -1,11 +1,6 @@
-VOLUME_DATA_PATH=D:/Dropbox/shareXin/bloodCellWall0032.raw
-POLY_DATA_PATH=D:/Dropbox/shareXin/rbcs-0032.ply
 
-
-VOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/bloodCellWall0032.raw
-POLY_DATA_PATH=C:/Users/lc/Dropbox/shareXin/rbcs-0032.ply
 dPOLY_DATA_PATH=C:/Users/lc/Project/OH3DPana/programs/ImmersiveDeformVis/181/surface.vtp
 dPOLY_DATA_PATH=C:/Users/lc/Data/FPM/iso_t40_v75.ply
 sPOLY_DATA_PATH=C:/Users/lc/Data/FPM/iso_t43_v20.vtp
-sPOLY_DATA_PATH=C:/Users/lc/Data/FPM/iso_t40_v3.vtp
+POLY_DATA_PATH=C:/Users/lc/Data/FPM/iso_t40_v3.vtp
 sPOLY_DATA_PATH=C:/Users/lc/Project/OH3DPana/programs/ITKProcessing/sphere.vtp
