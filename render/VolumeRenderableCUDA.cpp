@@ -6,6 +6,8 @@
 #include <QOpenGLFunctions_1_2>
 #include <QOpenGLFunctions_4_3_Core>
 // removing the following lines will cause runtime error
+//and the following lines must be added after the above #include <QOpenGL***> lines
+
 #ifdef WIN32
 #include <windows.h>
 #endif

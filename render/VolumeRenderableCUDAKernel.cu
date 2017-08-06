@@ -1118,11 +1118,13 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 
 	for (int i = 1; i<maxSteps; i++)
 	{
-		if (i == 256) {
+		if (i == 256 && tstepv < 0.51) {
 			//increase step size to improve performance, when the ray is already far, since then we do not need short step size that much then
+			//but still limit the tstepv not to exceed 1
 			tstepv *= 2;
 			step *= 2;
 		}
+
 		float3 coord = pos / spacing;
 		
 		float sample;
@@ -1142,6 +1144,224 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 		
 		//float colDensity = __saturatef(cpreint.w);
 		float colDensity = cpreint.w * tstepv;
+		//float colDensity = cpreint.w;
+		
+		float4 col;
+		
+		float3 normalInWorld;
+		if (useSplineInterpolation){
+			normalInWorld = make_float3(cubicTex3D_1st_derivative_x(volumeTexValueForRC, coord),
+				cubicTex3D_1st_derivative_y(volumeTexValueForRC, coord),
+				cubicTex3D_1st_derivative_z(volumeTexValueForRC, coord)) / spacing;
+			normalInWorld = make_float3(1, 1, 0);
+		}
+		else{
+			normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+		}
+		float3 posInEye = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)// && abs(sample - lastSample) > 0.0001)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), colDensity);
+
+			//col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye)/2), colDensity); //need to solve the case when last_normal_in_eye + normal_in_eye == 0
+			last_normal_in_eye = normal_in_eye;
+			//using average of last_normal_in_eye and normal_in_eye is just one option, and may not be the best.
+			//see the other paper
+		}
+		else
+		{
+			col = make_float4(la*cc, colDensity);
+			last_normal_in_eye = make_float3(0,0,0);
+		}
+		
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+
+		sum = sum + col*(1.0f - sum.w);
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		t += tstepv;
+
+		if (t > tfar){
+			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = posInClip.z / 2.0 + 0.5;
+			break;
+		}
+
+		pos += step;
+
+		lastSample = sample;
+	}
+
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+}
+
+
+__device__ float3
+getOrigianlSamplePos(int3 volumeSize, float3 pos,
+	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
+{
+	//if (pos.x >= volumeSize.width || pos.y >= volumeSize.height || pos.z >= volumeSize.depth
+	//	|| pos.x < 0 || pos.y < 0 || pos.z < 0)
+	//{
+	//	return;
+	//}
+
+	float3 tunnelVec = normalize(end - start);
+	float tunnelLength = length(end - start);
+
+	float3 voxelVec = pos - start;
+	float l = dot(voxelVec, tunnelVec);
+	if (l > 0 && l < tunnelLength){
+		float disToStart = length(voxelVec);
+		float l2 = dot(voxelVec, dir2nd);
+		if (abs(l2) < deformationScaleVertical){
+			float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
+			float3 dir = normalize(pos - prjPoint);
+			float dis = length(pos - prjPoint);
+
+			if (dis < r){
+				return make_float3(-1, -1, r-dis);
+			}
+			else if (dis < deformationScale){
+				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
+				float3 dir = normalize(pos - prjPoint);
+				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale;
+				return samplePos;
+				//samplePos /= spacing;
+			}
+			else{
+				return make_float3(-1, -1, -1);
+			}
+		}
+		else{
+			return make_float3(-1, -1, -1);
+		}
+	}
+	else{
+		return make_float3(-1, -1, -1);
+	}
+}
+
+__global__ void d_render_preint_WithDeformFrame(uint *d_output, uint imageW, uint imageH, 
+	float3 eyeInLocal, int3 volumeSize, bool useSplineInterpolation, 
+	float3 tunnelStart, float3 tunnelEnd, float3 rectVerticalDir, float r, float deformationScale, float deformationScaleVertical)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+
+	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
+	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
+	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
+	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
+	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)
+		//	if (!hit)
+	{
+		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		return;
+	}
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+
+	float tstepv = tstep;
+	float3 step = eyeRay.d*tstepv;
+	float lightingThr = 0.0001;
+
+	float fragDepth = 1.0;
+
+	float3 coord = pos / spacing;
+	float lastSample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+	float3 last_normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+	float3 last_normal_in_eye = normalize(mul(c_NormalMatrix, last_normalInWorld));
+	t += tstepv;
+	pos += step;
+
+
+
+	for (int i = 1; i<maxSteps; i++)
+	{
+		if (i == 256) {
+			//increase step size to improve performance, when the ray is already far, since then we do not need short step size that much then
+			tstepv *= 2;
+			step *= 2;
+		}
+		float3 coord = pos / spacing;
+
+		float sample;
+		if (useSplineInterpolation)
+			sample = cubicTex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		else
+			sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+
+		float4 cpreint = tex2DLayered(transferLayerPreintTex, sample, lastSample, 0);
+
+		float3 cc;
+
+		cc = make_float3(cpreint.x, cpreint.y, cpreint.z);
+		cc.x = __saturatef(cc.x);
+		cc.y = __saturatef(cc.y);
+		cc.z = __saturatef(cc.z);
+		
+		
+		if (r>0){
+			float3 origianlPos = getOrigianlSamplePos(volumeSize, pos,
+				tunnelStart, tunnelEnd, spacing, r, deformationScale, deformationScaleVertical, rectVerticalDir);
+			if (origianlPos.x > -0.01){
+				const float3 errorColor = make_float3(1, 0, 0);
+				float maxDis = deformationScale/2;
+				float ratio = length(pos - origianlPos) / maxDis*0.8; //0.2 is selected parameter
+				cc = cc*(1 - ratio) + errorColor*ratio;
+			}
+			////to deal with partial volume effect. may be useful
+			//else if (origianlPos.z > 0){
+			//	if (origianlPos.z / r < 0.1){
+			//		const float3 errorColor = make_float3(1, 0, 0);
+			//		float maxDis = deformationScale / 2;
+			//		float ratio = maxDis / maxDis*0.8; //0.2 is selected parameter
+			//		cc = cc*(1 - ratio) + errorColor*ratio;
+			//	}
+			//}
+		}
+		
+
+		//float colDensity = __saturatef(cpreint.w);
+		float colDensity = cpreint.w * tstepv;
 
 		float4 col;
 		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
@@ -1149,7 +1369,7 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 		if (length(normalInWorld) > lightingThr)// && abs(sample - lastSample) > 0.0001)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye)/2), colDensity);
+			col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye) / 2), colDensity);
 			//using average of last_normal_in_eye and normal_in_eye is just one option, and may not be the best.
 			//another possible way is to use cubicTex3D_1st_derivative_x(texture tex, float3 coord)
 
@@ -1159,9 +1379,9 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 		{
 			col = make_float4(la*cc, colDensity);
 
-			last_normal_in_eye = make_float3(0,0,0);
+			last_normal_in_eye = make_float3(0, 0, 0);
 		}
-		
+
 
 		col.w *= density;
 
@@ -1198,146 +1418,29 @@ __global__ void d_render_preint(uint *d_output, uint imageW, uint imageH, float3
 }
 
 
-__global__ void d_render_2dint_immer(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, float secondCutOffHigh, float secondCutOffLow, float secondNormalizationCoeff)
-{
-	uint x = blockIdx.x*blockDim.x + threadIdx.x;
-	uint y = blockIdx.y*blockDim.y + threadIdx.y;
-
-	if ((x >= imageW) || (y >= imageH)) return;
-
-	const float opacityThreshold = 0.95f;
-
-	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
-	const float3 boxMax = spacing*make_float3(volumeSize);
-
-	//pixel_Index = clamp( round(uv * num_Pixels - 0.5), 0, num_Pixels-1 );
-	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
-	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
-
-	Ray eyeRay;
-	eyeRay.o = eyeInLocal;
-	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
-	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
-	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
-
-	// find intersection with box
-	float tnear, tfar;
-	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
-
-	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
-
-	if (tfar<tnear)//	if (!hit)
-	{
-		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
-		d_output[y*imageW + x] = rgbaFloatToInt(sum);
-		return;
-	}
-
-	// march along ray from front to back, accumulating color
-	float4 sum = make_float4(0.0f);
-	float t = tnear;
-	float3 pos = eyeRay.o + eyeRay.d*tnear;
-	float3 step = eyeRay.d*tstep;
-	float lightingThr = 0.000001;
-
-	float fragDepth = 1.0;
-
-
-	for (int i = 0; i<maxSteps; i++)
-	{
-		float3 coord = pos / spacing;
-		float sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
-		
-		//float funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
-		//just for Orange
-		float funcRes;
-		if (sample<transFuncP1)
-			funcRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
-		else
-			funcRes = 1 - clamp((sample - transFuncP1) / (transFuncP1 - transFuncP2), 0.0, 1.0);
-
-
-		float3 normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
-
-		float funcRes2nd = clamp((length(normalInWorld) / secondNormalizationCoeff - secondCutOffLow) / (secondCutOffHigh - secondCutOffLow), 0.0, 1.0);
-
-		// lookup in transfer function texture
-		float4 col;
-
-		float3 cc;
-		unsigned short curlabel = 0;
-		if (useLabel)
-			curlabel = tex3D(volumeLabelValue, coord.x, coord.y, coord.z);
-
-		if (useColor)
-			cc = GetColourDiverge(clamp(funcRes, 0.0f, 1.0f));
-		else{
-			cc = make_float3(funcRes, funcRes, funcRes);
-
-			if (useLabel && curlabel > 1)
-			{
-				cc = make_float3(funcRes, 0.0f, 0.0f);
-			}
-			else if (useLabel && curlabel > 0){
-				cc = make_float3(funcRes, funcRes, 0.0f);
-			}
-		}
-
-		float3 posInEye = mul(c_MVMatrix, pos);
-		if (length(normalInWorld) > lightingThr)
-		{
-			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInEye, normal_in_eye), funcRes * 1.0);
-		}
-		else
-		{
-			col = make_float4(la*cc, funcRes);
-		}
-
-		col.w *= (density*funcRes2nd);
-
-		// pre-multiply alpha
-		col.x *= col.w;
-		col.y *= col.w;
-		col.z *= col.w;
-		// "over" operator for front-to-back blending
-		sum = sum + col*(1.0f - sum.w);
-
-		// exit early if opaque
-		if (sum.w > opacityThreshold){
-			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
-			fragDepth = posInClip.z / 2.0 + 0.5;
-			break;
-		}
-
-		t += tstep;
-
-		if (t > tfar){
-			float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
-			fragDepth = posInClip.z / 2.0 + 0.5;
-			break;
-		}
-
-		pos += step;
-	}
-
-	sum *= brightness;
-	d_output[y*imageW + x] = rgbaFloatToInt(sum);
-}
 
 
 //used for immersive observation. the difference is the label might be used
 void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-	float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, bool usePreInt, bool useSplineInterpolation)
+	float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, PositionBasedDeformProcessor* pd, bool usePreInt, bool useSplineInterpolation)
 {
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 	if (rcp->use2DInteg){
-		d_render_2dint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, rcp->secondCutOffHigh, rcp->secondCutOffLow, rcp->secondNormalizationCoeff);
+		//d_render_2dint_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, rcp->secondCutOffHigh, rcp->secondCutOffLow, rcp->secondNormalizationCoeff);
+		//not quite ready
 	}
 	else{
 		if (usePreInt){
-			d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation);
+			if (pd->isColoringDeformedPart){
+				d_render_preint_WithDeformFrame << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation,
+					pd->tunnelStart, pd->tunnelEnd, pd->rectVerticalDir, pd->r, pd->deformationScale, pd->deformationScaleVertical);
+				std::cout << pd->r << std::endl;
+			
+			}
+			else{
+				d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation);
+			}
 		}
 		else{
 			d_render_immer << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize);

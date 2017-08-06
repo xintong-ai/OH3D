@@ -56,6 +56,7 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyM
 	cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3*2);
 	//cudaMalloc(&d_faceValid, sizeof(bool)*poly->facecount);
 	cudaMalloc(&d_numAddedFaces, sizeof(int));
+	cudaMalloc(&d_vertexColordVals, sizeof(float)*poly->vertexcount * 2);
 };
 
 PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
@@ -268,10 +269,12 @@ d_posInDeformedChannelVolume(float3 pos, int3 dims, float3 spacing, bool* inChan
 
 
 __global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, float* vertexCoords, int vertexcount, 
-	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
+	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd,
+	float* vertexColordVals)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= vertexcount)	return;
+	vertexColordVals[i] = 0;
 
 	float3 pos = make_float3(vertexCoords_init[3 * i], vertexCoords_init[3 * i + 1], vertexCoords_init[3 * i + 2]) * spacing;
 
@@ -294,6 +297,8 @@ __global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, floa
 				vertexCoords[3 * i] = newPos.x;
 				vertexCoords[3 * i + 1] = newPos.y;
 				vertexCoords[3 * i + 2] = newPos.z;
+
+				vertexColordVals[i] = length(newPos - pos) / (deformationScale / 2); //value range [0,1]
 			}
 			else{
 				vertexCoords[3 * i] = pos.x;
@@ -321,9 +326,13 @@ void PositionBasedDeformProcessor::doPolyDeform(float degree)
 	int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
 
 	d_updatePolyMeshbyMatrixInfo_rect << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount,
-		tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir);
+		tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexColordVals);
 
 	cudaMemcpy(poly->vertexCoords, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+	if (isColoringDeformedPart)
+	{
+		cudaMemcpy(poly->vertexColorVals, d_vertexColordVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
+	}
 }
 
 struct functor_particleDeform
@@ -656,7 +665,8 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_norms, poly->vertexNorms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 
-	
+	cudaMemset(d_vertexColordVals, 0, sizeof(float)*poly->vertexcount * 2);
+
 	cudaMemset(d_numAddedFaces, 0, sizeof(int));
 
 	d_modifyMesh << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, poly->vertexcountOri, d_norms,
@@ -779,10 +789,10 @@ bool PositionBasedDeformProcessor::processParticleData(float* modelview, float* 
 
 	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
 		//std::cout << "processing as wanted" << std::endl;
-		float r, rClose;
+		float rClose;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
-			//r = deformationScale;
+			r = deformationScale / 2;
 			hasOpenAnimeStarted = false;
 			hasCloseAnimeStarted = false;
 
@@ -815,10 +825,9 @@ bool PositionBasedDeformProcessor::processParticleData(float* modelview, float* 
 	else if (hasOpenAnimeStarted){
 		std::cout << "doing opening " << std::endl;
 
-		float r;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
-			r = deformationScale;
+			r = deformationScale / 2;
 			hasOpenAnimeStarted = false;
 			//closeStartingRadius = r;
 			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
@@ -833,13 +842,13 @@ bool PositionBasedDeformProcessor::processParticleData(float* modelview, float* 
 	else if (hasCloseAnimeStarted){
 		std::cout << "doing closing " << std::endl;
 
-		float r;
 		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
 		if (past >= closeDuration){
 			particle->reset();
 			d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
 			d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
 			hasCloseAnimeStarted = false;
+			r = 0;
 		}
 		else{
 			r = (1 - past / closeDuration)*closeStartingRadius;
@@ -930,10 +939,10 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 
 	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
 		//std::cout << "processing as wanted" << std::endl;
-		float r, rClose;
+		float rClose;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
-			//r = deformationScale;
+			r = deformationScale / 2;
 			hasOpenAnimeStarted = false;
 			hasCloseAnimeStarted = false;
 
@@ -964,10 +973,9 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 	else if (hasOpenAnimeStarted){
 		//std::cout << "doing openning" << std::endl;
 
-		float r;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
-			r = deformationScale;
+			r = deformationScale / 2;
 			hasOpenAnimeStarted = false;
 			//closeStartingRadius = r;
 			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
@@ -982,11 +990,11 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 	else if (hasCloseAnimeStarted){
 		//std::cout << "doing closing" << std::endl;
 		
-		float r;
 		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
 		if (past >= closeDuration){
 			poly->reset();
 			hasCloseAnimeStarted = false;
+			r = 0;
 		}
 		else{
 			r = (1 - past / closeDuration)*closeStartingRadius;
@@ -1074,10 +1082,10 @@ bool PositionBasedDeformProcessor::processVolumeData(float* modelview, float* pr
 
 	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
 		//std::cout << "processing as wanted" << std::endl;
-		float r, rClose;
+		float rClose;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
-			//r = deformationScale;
+			r = deformationScale / 2;
 			hasOpenAnimeStarted = false;
 			hasCloseAnimeStarted = false;
 
@@ -1108,10 +1116,9 @@ bool PositionBasedDeformProcessor::processVolumeData(float* modelview, float* pr
 		}
 	}
 	else if (hasOpenAnimeStarted){
-		float r;
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
-			r = deformationScale;
+			r = deformationScale / 2;
 			hasOpenAnimeStarted = false;
 			//closeStartingRadius = r;
 			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
@@ -1124,11 +1131,11 @@ bool PositionBasedDeformProcessor::processVolumeData(float* modelview, float* pr
 		}
 	}
 	else if (hasCloseAnimeStarted){
-		float r;
 		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
 		if (past >= closeDuration){
 			volume->reset();
-			hasCloseAnimeStarted = false;
+			hasCloseAnimeStarted = false; 
+			r = 0;
 		}
 		else{
 			r = (1 - past / closeDuration)*closeStartingRadius;

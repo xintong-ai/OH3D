@@ -25,10 +25,7 @@ class VolumeCUDA;
 class VolumeRenderableImmerCUDA;
 class VolumeRenderableCUDA;
 class ImmersiveInteractor;
-class ScreenBrushInteractor;
 class RegularInteractor;
-class LabelVolumeProcessor;
-class ViewpointEvaluator;
 class AnimationByMatrixProcessor;
 class PositionBasedDeformProcessor;
 class SphereRenderable;
@@ -76,17 +73,12 @@ private:
 
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
-	//bool useLabel;
-	bool hasLabelFromFile = false;
-
-
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
 	std::shared_ptr<RegularInteractor> regularInteractor;
 
-	std::shared_ptr<LabelVolumeProcessor> lvProcessor;
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
 
@@ -158,6 +150,7 @@ private slots:
 	void lsSliderValueChanged(int);
 
 	void isDeformEnabledClicked(bool b);
+	void isDeformColoringEnabledClicked(bool b);
 
 	void SlotOriVolumeRb(bool);
 	void SlotChannelVolumeRb(bool);

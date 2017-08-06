@@ -27,6 +27,9 @@ public:
 	float* vertexNorms = 0;
 	unsigned int* indices = 0;
 
+	float* vertexColorVals = 0; //scalar used for coloring. may not be needed for many case. how to use it is also case by case
+	void setVertexColorVals(float v = 0);
+
 	bool readyForDeform = false;
 	unsigned int vertexcountOri = 0;
 	unsigned int facecountOri = 0;
@@ -50,7 +53,7 @@ public:
 	//the center of the connected components are stored in pos, and their properties are stored in valTuple
 	//when this object is used, the coordinate stored in vertexCoords[] is the relative position of each vertex from the component center
 	std::shared_ptr<Particle> particle = 0; 
-	void setAssisParticle(char* fname);
+	void setAssisParticle(const char* fname);
 
 	void doShift(float3 shift);
 	

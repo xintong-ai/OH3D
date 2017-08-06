@@ -14,9 +14,6 @@ else()
 find_package(CUDA REQUIRED)
 list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
-include_directories(
-	${CUDA_TOOLKIT_INCLUDE} 
-)
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}

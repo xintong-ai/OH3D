@@ -8,14 +8,10 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "LabelVolumeProcessor.h"
 #include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
-#include "mouse/ScreenBrushInteractor.h"
-#include "LabelVolumeProcessor.h"
-#include "ViewpointEvaluator.h"
 #include "AnimationByMatrixProcessor.h"
 #include "Particle.h"
 
@@ -72,7 +68,7 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
-	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
+	std::shared_ptr<RayCastingParameters> rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 	std::string subfolder;
 
 
@@ -107,6 +103,7 @@ Window::Window()
 	}
 	polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!!
 	polyMesh->setVertexCoordsOri();
+	polyMesh->setVertexColorVals(0);
 
 	polyMesh->opacity = 1.0;// 0.5;
 
@@ -154,7 +151,7 @@ Window::Window()
 
 	if (channelSkelViewReady){
 		volumeRenderable = std::make_shared<VolumeRenderableCUDA>(channelVolume);
-		volumeRenderable->rcp = rcpMini;
+		volumeRenderable->rcp = rcpForChannelSkel;
 		openGL->AddRenderable("2volume", volumeRenderable.get());
 		volumeRenderable->SetVisibility(false);
 	}
@@ -209,6 +206,11 @@ Window::Window()
 		//isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+
+		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+		controlLayout->addWidget(isDeformColoringEnabled);
+		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 	}
 
 
@@ -333,6 +335,16 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
+void Window::isDeformColoringEnabledClicked(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isColoringDeformedPart = true;
+	}
+	else{
+		positionBasedDeformProcessor->isColoringDeformedPart = false;
+		polyMesh->setVertexColorVals(0);
+	}
+}
 
 void Window::SlotOriVolumeRb(bool b)
 {

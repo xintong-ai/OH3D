@@ -11,6 +11,7 @@ include_directories(
 	${CUDA_TOOLKIT_INCLUDE} 
 	${PROJECT_BINARY_DIR}
 	${CMAKE_BINARY_DIR}
+	${CUDA_SDK_ROOT_DIR}/common/inc 
 	required)
 		
 set( Srcs 

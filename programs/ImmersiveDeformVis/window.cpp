@@ -60,36 +60,24 @@ Window::Window()
 
 	std::string subfolder;
 	DataType volDataType = RawVolumeReader::dtUint16;
+	bool hasLabelFromFile;
 
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	
-	rcp->tstep = 0.125;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
-	
+	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	//use larger step size in testing phases
+
 	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
 
 
 	//rcp->use2DInteg = false;
 
-
-	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 1.0, 0.1, 0.03, 512, 0.25f, 0.6, false);
-
 	inputVolume = std::make_shared<Volume>(true);
-	if (std::string(dataPath).find(".vec") != std::string::npos){
-		std::shared_ptr<VecReader> reader;
-		reader = std::make_shared<VecReader>(dataPath.c_str());
-		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
-		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
-		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
-		reader.reset();
-	}
-	else{
-		std::shared_ptr<RawVolumeReader> reader;
-		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, volDataType);	
-		reader->OutputToVolumeByNormalizedValue(inputVolume);
-		reader.reset();
-	}
+	std::shared_ptr<RawVolumeReader> reader;
+	reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, volDataType);	
+	reader->OutputToVolumeByNormalizedValue(inputVolume);
+	reader.reset();
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
 	
@@ -211,62 +199,12 @@ Window::Window()
 		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+
+		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+		controlLayout->addWidget(isDeformColoringEnabled);
+		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 	}
-
-
-	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
-	QHBoxLayout *eyePosLayout = new QHBoxLayout;
-	QVBoxLayout *eyePosLayout2 = new QVBoxLayout;
-	QLabel *eyePosxLabel = new QLabel("x");
-	QLabel *eyePosyLabel = new QLabel("y");
-	QLabel *eyePoszLabel = new QLabel("z");
-	eyePosLineEdit = new QLineEdit;
-	QPushButton *eyePosBtn = new QPushButton("Apply");
-	eyePosLayout->addWidget(eyePosxLabel);
-	eyePosLayout->addWidget(eyePosyLabel);
-	eyePosLayout->addWidget(eyePoszLabel);
-	eyePosLayout->addWidget(eyePosLineEdit);
-	eyePosLayout2->addLayout(eyePosLayout);
-	eyePosLayout2->addWidget(eyePosBtn);
-	eyePosGroup->setLayout(eyePosLayout2);
-	controlLayout->addWidget(eyePosGroup);
-
-	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
-	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel"));
-	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton"));
-	surfaceRb = std::make_shared<QRadioButton>(tr("&surface"));
-	oriVolumeRb->setChecked(true);
-	deformModeLayout->addWidget(oriVolumeRb.get());
-	deformModeLayout->addWidget(channelVolumeRb.get());
-	deformModeLayout->addWidget(skelVolumeRb.get());
-	deformModeLayout->addWidget(surfaceRb.get());
-	groupBox->setLayout(deformModeLayout);
-	controlLayout->addWidget(groupBox);
-	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
-	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
-	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
-
-	if (!channelSkelViewReady){
-		oriVolumeRb->setDisabled(true);
-		channelVolumeRb->setDisabled(true);
-		skelVolumeRb->setDisabled(true);
-		surfaceRb->setDisabled(true);
-	}
-
-	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
-	immerRb = std::make_shared<QRadioButton>(tr("&immersive mode"));
-	nonImmerRb = std::make_shared<QRadioButton>(tr("&non immer"));
-	immerRb->setChecked(true);
-	deformModeLayout2->addWidget(immerRb.get());
-	deformModeLayout2->addWidget(nonImmerRb.get());
-	groupBox2->setLayout(deformModeLayout2);
-	controlLayout->addWidget(groupBox2);
-	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
-	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
 
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
 	controlLayout->addWidget(saveScreenBtn);
@@ -418,7 +356,6 @@ Window::Window()
 
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
-	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
 
 
 
@@ -436,20 +373,6 @@ Window::Window()
 	format2.setProfile(QSurfaceFormat::CoreProfile);
 	openGLMini->setFormat(format2);
 
-	//matrixMgrRenderableMini = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	//matrixMgrRenderableMini->renderPart = 2;
-	//openGLMini->AddRenderable("3center", matrixMgrRenderableMini.get());
-	//volumeRenderableMini = std::make_shared<VolumeRenderableCUDA>(inputVolume);
-	//volumeRenderableMini->rcp = rcpMini; 
-	//volumeRenderableMini->setBlending(true, 50);
-	//openGLMini->AddRenderable("4volume", volumeRenderableMini.get());
-	//regularInteractorMini = std::make_shared<RegularInteractor>();
-	//regularInteractorMini->setMatrixMgr(matrixMgrExocentric);
-	//openGLMini->AddInteractor("1regular", regularInteractorMini.get());
-	//assistLayout->addWidget(openGLMini.get(), 3);
-
-
-
 	////////////////////2D slice view
 	helper.setData(inputVolume, 0);
 
@@ -458,7 +381,6 @@ Window::Window()
 	QTimer *timer = new QTimer(this);
 	connect(timer, &QTimer::timeout, openGL2D, &GLWidgetQtDrawing::animate);
 	timer->start(5);
-
 
 	QLabel *zSliderLabelLit = new QLabel("Z index: ");
 	QSlider *zSlider = new QSlider(Qt::Horizontal);
@@ -469,15 +391,66 @@ Window::Window()
 	zLayout->addWidget(zSliderLabelLit);
 	zLayout->addWidget(zSlider);
 	assistLayout->addLayout(zLayout);
-
-
-
-
-
+	
 	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
 	assistLayout->addWidget(doTourBtn);
 	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
 
+	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
+	QHBoxLayout *eyePosLayout = new QHBoxLayout;
+	QVBoxLayout *eyePosLayout2 = new QVBoxLayout;
+	QLabel *eyePosxLabel = new QLabel("x");
+	QLabel *eyePosyLabel = new QLabel("y");
+	QLabel *eyePoszLabel = new QLabel("z");
+	eyePosLineEdit = new QLineEdit;
+	QPushButton *eyePosBtn = new QPushButton("Apply");
+	eyePosLayout->addWidget(eyePosxLabel);
+	eyePosLayout->addWidget(eyePosyLabel);
+	eyePosLayout->addWidget(eyePoszLabel);
+	eyePosLayout->addWidget(eyePosLineEdit);
+	eyePosLayout2->addLayout(eyePosLayout);
+	eyePosLayout2->addWidget(eyePosBtn);
+	eyePosGroup->setLayout(eyePosLayout2);
+	assistLayout->addWidget(eyePosGroup);
+	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
+
+
+	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
+	QHBoxLayout *deformModeLayout = new QHBoxLayout;
+	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
+	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel"));
+	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton"));
+	surfaceRb = std::make_shared<QRadioButton>(tr("&surface"));
+	oriVolumeRb->setChecked(true);
+	deformModeLayout->addWidget(oriVolumeRb.get());
+	deformModeLayout->addWidget(channelVolumeRb.get());
+	deformModeLayout->addWidget(skelVolumeRb.get());
+	deformModeLayout->addWidget(surfaceRb.get());
+	groupBox->setLayout(deformModeLayout);
+	assistLayout->addWidget(groupBox);
+	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
+	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
+	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
+	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
+
+	if (!channelSkelViewReady){
+		oriVolumeRb->setDisabled(true);
+		channelVolumeRb->setDisabled(true);
+		skelVolumeRb->setDisabled(true);
+		surfaceRb->setDisabled(true);
+	}
+
+	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
+	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
+	immerRb = std::make_shared<QRadioButton>(tr("&immersive mode"));
+	nonImmerRb = std::make_shared<QRadioButton>(tr("&non immer"));
+	immerRb->setChecked(true);
+	deformModeLayout2->addWidget(immerRb.get());
+	deformModeLayout2->addWidget(nonImmerRb.get());
+	groupBox2->setLayout(deformModeLayout2);
+	assistLayout->addWidget(groupBox2);
+	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
+	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
 
 
 	mainLayout->addLayout(assistLayout, 1);
@@ -485,7 +458,7 @@ Window::Window()
 	
 	
 	
-openGL->setFixedSize(1000, 1000);
+	openGL->setFixedSize(1000, 1000);
 //openGLMini->setFixedSize(300, 300);
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -619,6 +592,15 @@ void Window::isDeformEnabledClicked(bool b)
 }
 
 
+void Window::isDeformColoringEnabledClicked(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isColoringDeformedPart = true;
+	}
+	else{
+		positionBasedDeformProcessor->isColoringDeformedPart = false;
+	}
+}
 
 
 void Window::SlotOriVolumeRb(bool b)

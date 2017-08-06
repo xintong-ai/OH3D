@@ -14,7 +14,10 @@ message("deform is already defined")
 
 else()
 
-include_directories(${SHARED_LIB_INCLUDE_DIR} ${CUDA_TOOLKIT_INCLUDE} )
+include_directories(${SHARED_LIB_INCLUDE_DIR}
+	${CUDA_TOOLKIT_INCLUDE}
+ 	${CUDA_SDK_ROOT_DIR}/common/inc 
+)
 
 set(SRCS 
 	Lens.cpp

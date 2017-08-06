@@ -23,7 +23,8 @@ extern "C" {
 
 
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, bool usePreInt = false, bool useSplineInterpolation = false);
+		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, PositionBasedDeformProcessor* pd,
+		bool usePreInt = false, bool useSplineInterpolation = false);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);

@@ -145,7 +145,7 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 		VolumeRender_renderWithDepthInput(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, densityBonus);
 	}
 	else{
-		VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, rcp.get(), usePreInt, useSplineInterpolation);
+		VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, rcp.get(), positionBasedDeformProcessor.get(), usePreInt, useSplineInterpolation);
 	}
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));

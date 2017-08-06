@@ -55,7 +55,7 @@ void BinaryTuplesReader::Load()
 {
 	FILE *pFile;
 	pFile = fopen(datafilename.c_str(), "rb");
-	if (pFile == NULL) { fputs("particle file error", stderr); exit(1); }
+	if (pFile == NULL) { fputs("particle file error\n", stderr); exit(1); }
 
 	fread(&numTupleArrays, sizeof(int), 1, pFile);
 	posArrays.resize(numTupleArrays);

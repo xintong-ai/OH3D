@@ -1,17 +1,22 @@
-#ifdef WIN32
-#include <windows.h>
-#endif
+
 
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
-
+#ifdef WIN32
+#include <windows.h>
+#endif
 #define qgl	QOpenGLContext::currentContext()->functions()
+
+//#include <helper_math.h>
+#include <helper_math.h>
+#include <cuda_gl_interop.h>
 
 #include "ShaderProgram.h"
 #include "PolyRenderable.h"
 #include <QMatrix4x4>
 #include "PolyMesh.h"
 #include "Particle.h"
+#include "PositionBasedDeformProcessor.h"
 
 
 
@@ -44,8 +49,12 @@ void PolyRenderable::loadShaders()
 		GLSL(
 		layout(location = 0) in vec3 VertexPosition;
 	layout(location = 1) in vec3 VertexNormal;
+
+	layout(location = 2) in float VertexVal;
+
 	smooth out vec3 tnorm;
 	out vec4 eyeCoords;
+	out float colorVal;
 
 	uniform mat4 ModelViewMatrix;
 	uniform mat3 NormalMatrix;
@@ -61,6 +70,7 @@ void PolyRenderable::loadShaders()
 			vec4(VertexPosition, 1.0);
 
 		gl_Position = MVP * vec4(VertexPosition + Transform, 1.0);
+		colorVal = VertexVal;
 	}
 	);
 
@@ -73,18 +83,20 @@ void PolyRenderable::loadShaders()
 	uniform float Shininess;
 	uniform float Opacity;
 	
-	in vec4 eyeCoords;
-
 	smooth in vec3 tnorm;
+	in vec4 eyeCoords;
+	in float colorVal;
 
 	//layout(location = 0) 
-		out vec4 FragColor;
+	out vec4 FragColor;
 
 	vec3 phongModel(vec4 position, vec3 normal) {
+		vec3 errorColor = vec3(1.0f, 0.0f, 0.0f);
+
 		vec3 s = normalize(vec3(LightPosition - position));
 		vec3 v = normalize(-position.xyz);
 		vec3 r = reflect(-s, normal);
-		vec3 ambient = Ka;// *0.01 + (vec3(position) + vec3(20, 20, 20)) / 50;
+		vec3 ambient = Ka * (1 - colorVal) + errorColor*colorVal;
 		float sDotN = max(dot(s, normal), 0.0);
 		vec3 diffuse = Kd * sDotN ;
 		vec3 spec = vec3(0.0);
@@ -117,6 +129,7 @@ void PolyRenderable::loadShaders()
 
 	glProg->addAttribute("VertexPosition");
 	glProg->addAttribute("VertexNormal");
+	glProg->addAttribute("VertexVal");
 
 	glProg->addUniform("LightPosition");
 	glProg->addUniform("Ka");
@@ -159,7 +172,6 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
-
 	qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, 10, 1);
 	
 	qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
@@ -185,6 +197,14 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 			//std::cout << "region " << i << " transform " << polyMesh->particle->pos[i].x << " " << polyMesh->particle->pos[i].y << " " << polyMesh->particle->pos[i].z<< std::endl;
 			transform = make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z);
 			qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
+			
+			if (positionBasedDeformProcessor != 0 && positionBasedDeformProcessor->isColoringDeformedPart){
+				float dis = length(
+					make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z)
+					- make_float3(polyMesh->particle->posOrig[i].x, polyMesh->particle->posOrig[i].y, polyMesh->particle->posOrig[i].z));
+				float ratio = dis / (positionBasedDeformProcessor->deformationScale / 2) * 0.5;//0.5 is selected parameter
+				ka = make_float3(0.2f, 0, 0) * (1 - ratio) + make_float3(0.2f, 0.2f, 0) * ratio;
+			}
 
 			int startface = polyMesh->particle->valTuple[i * polyMesh->particle->tupleCount];
 			int endface = polyMesh->particle->valTuple[i * polyMesh->particle->tupleCount + 1];
@@ -196,14 +216,27 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 		}
 	}
 	else{
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
+		qgl->glVertexAttribPointer(glProg->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 1, polyMesh->vertexColorVals, GL_STATIC_DRAW);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
-
-
-
+		
 		if (isSnapped)
 			qgl->glUniform3f(glProg->uniform("Ka"), ka.x + 0.2, ka.y + 0.2, ka.z + 0.2);
-		else
+		else{
+			//if (positionBasedDeformProcessor != 0 && positionBasedDeformProcessor->isColoringDeformedPart){
+			//	float dis = length(
+			//		make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z)
+			//		- make_float3(polyMesh->particle->posOrig[i].x, polyMesh->particle->posOrig[i].y, polyMesh->particle->posOrig[i].z));
+			//	float ratio = dis / (positionBasedDeformProcessor->deformationScale / 2) * 0.5;//0.5 is selected parameter
+			//	ka = make_float3(0.2f, 0, 0) * (1 - ratio) + make_float3(0.2f, 0.2f, 0) * ratio;
+			//}
+
 			qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
+
+		}
 		glDrawElements(GL_TRIANGLES, polyMesh->facecount * 3, GL_UNSIGNED_INT, polyMesh->indices);
 	}
 
@@ -257,6 +290,13 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, normal, GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
+
+	qgl->glGenBuffers(1, &vbo_val);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
+	qgl->glVertexAttribPointer(glProg->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 1, 0, GL_STATIC_DRAW);
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	qgl->glEnableVertexAttribArray(glProg->attribute("VertexVal"));
 
 	m_vao->release();
 }

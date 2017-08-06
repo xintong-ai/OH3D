@@ -45,8 +45,10 @@ public:
 		if (d_indices) cudaFree(d_indices);
 		if (d_faceValid) cudaFree(d_faceValid);
 		if (d_numAddedFaces) cudaFree(d_numAddedFaces);
+		if (d_vertexColordVals) cudaFree(d_vertexColordVals);
 	};		
 
+	bool isColoringDeformedPart = false;
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
@@ -65,11 +67,14 @@ public:
 	float3 tunnelStart, tunnelEnd;
 	float3 rectVerticalDir; // for rectangular, it is the direction of deformationScaleVertical
 
+	float r = 0; //degree of deformation
+
 private:
 	float* d_vertexCoords = 0;
 	float* d_vertexCoords_init = 0;
 	unsigned int* d_indices = 0;
 	float* d_norms = 0;
+	float* d_vertexColordVals = 0;
 
 	bool* d_faceValid = 0;
 	int* d_numAddedFaces = 0;

@@ -10,6 +10,19 @@ PolyMesh::~PolyMesh(){
 	if (vertexNormsOri) delete[]vertexNormsOri;
 	if (indicesOri) delete[]indicesOri;
 	if (faceValid) delete[]faceValid;
+
+	if (vertexColorVals) delete[]vertexColorVals;
+}
+
+
+void PolyMesh::setVertexColorVals(float v)
+{
+	if (vertexColorVals) delete[]vertexColorVals;
+	vertexColorVals = (float*)malloc(sizeof(float)* vertexcount * 2); //times 2 to prepare for newly added vertices
+	for (int i = 0; i < vertexcount; i++) {
+		vertexColorVals[i] = v;
+	}
+	memset((void*)(vertexColorVals + vertexcount), 0, sizeof(float)* vertexcount);//the rest will always be set to 0 regardless of v
 }
 
 void PolyMesh::find_center_and_range()
@@ -91,7 +104,7 @@ bool PolyMesh::inRange(float3 v)
 	return v.x >= min_x && v.x < max_x && v.y >= min_y && v.y < max_y && v.z >= min_z && v.z < max_z;
 }
 
-void PolyMesh::setAssisParticle(char* fname)
+void PolyMesh::setAssisParticle(const char* fname)
 {
 	std::shared_ptr<BinaryTuplesReader> reader3 = std::make_shared<BinaryTuplesReader>(fname);
 	particle = std::make_shared<Particle>();

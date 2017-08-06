@@ -190,11 +190,11 @@ void labelPoly()
 		float startff = startf;
 		float endff = startf + countFace[i] - 1;
 		fwrite(&(posAve[i].x), sizeof(float3), 1, fp);
-		fwrite(&startff, sizeof(float), 1, fp);
+		fwrite(&startff, sizeof(float), 1, fp); //range of faces of the current region
 		fwrite(&endff, sizeof(float), 1, fp);
-		fwrite(&startvf, sizeof(float), 1, fp);
+		fwrite(&startvf, sizeof(float), 1, fp); //range of vertices of the current region
 		fwrite(&endvf, sizeof(float), 1, fp);
-		fwrite(&(minPos[i].x), sizeof(float3), 1, fp);
+		fwrite(&(minPos[i].x), sizeof(float3), 1, fp); //bounding box of the current region
 		fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
 
 		startv = startv + count[i];

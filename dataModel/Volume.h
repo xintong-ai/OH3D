@@ -135,7 +135,7 @@ public:
 		else if (std::string(dataPath).find("181") != std::string::npos){
 			dims = make_int3(181, 217, 181);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(3.3, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false); 
+			rcp = std::make_shared<RayCastingParameters>(2.6, 0.2, 0.6, 1.0, 0.3, 3, 512, 0.125f, 1.0, false); 
 			subfolder = "181";
 		}
 		else if (std::string(dataPath).find("Baseline") != std::string::npos){

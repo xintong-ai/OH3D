@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 PROJECT (DeformVis)
 
 find_package(Qt5Widgets REQUIRED)
+	find_package(CUDA REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
@@ -74,6 +75,7 @@ include_directories(
 	${GLM_INCLUDE_DIR}
 	${DATAMODEL_DIR}
 	cuda_types/
+	${CUDA_SDK_ROOT_DIR}/common/inc 
 	)
 
 if(USE_ITK)

@@ -131,9 +131,8 @@ private slots:
 	void SlotLoadState();
 	void applyEyePos();
 
-
-
 	void isDeformEnabledClicked(bool b);
+	void isDeformColoringEnabledClicked(bool b);
 
 	void SlotOriVolumeRb(bool);
 	void SlotChannelVolumeRb(bool);

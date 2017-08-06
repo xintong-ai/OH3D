@@ -9,7 +9,9 @@ message("io is already defined")
 
 else()
 
-include_directories(${SHARED_LIB_INCLUDE_DIR})
+include_directories(${SHARED_LIB_INCLUDE_DIR}
+ 	${CUDA_SDK_ROOT_DIR}/common/inc 
+)
 
 
 set(SRCS DataMgr.cpp PlyMeshReader.cpp  ParticleReader.cpp

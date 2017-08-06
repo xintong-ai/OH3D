@@ -25,10 +25,7 @@ class VolumeCUDA;
 class VolumeRenderableImmerCUDA;
 class VolumeRenderableCUDA;
 class ImmersiveInteractor;
-class ScreenBrushInteractor;
 class RegularInteractor;
-class LabelVolumeProcessor;
-class ViewpointEvaluator;
 class AnimationByMatrixProcessor;
 class PositionBasedDeformProcessor;
 class SphereRenderable;
@@ -137,6 +134,7 @@ private slots:
 	void applyEyePos();
 
 	void isDeformEnabledClicked(bool b);
+	void isDeformColoringEnabledClicked(bool b);
 
 	void SlotOriVolumeRb(bool);
 	void SlotChannelVolumeRb(bool);

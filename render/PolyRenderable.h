@@ -3,6 +3,7 @@
 
 #include "Renderable.h"
 #include <memory>
+class PositionBasedDeformProcessor;
 
 class PolyMesh;
 class ShaderProgram;
@@ -16,10 +17,8 @@ public:
 	~PolyRenderable(){
 	}
 
+	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;//may not be a good design
 
-    void GenVertexBuffer(int nv);
-
-    void GenVertexBuffer(int nv, float* vertex, float* normal);
 
 	void init() override;
 
@@ -52,6 +51,7 @@ protected:
 
     unsigned int vbo_norm;
 	unsigned int vbo_vert;
+	unsigned int vbo_val; //value for color
 
 	ShaderProgram *glProg;
 
@@ -60,5 +60,9 @@ protected:
 	float3 transform = make_float3(0,0,0);
 
 	float3 ka = make_float3(0.2f, 0.2f, 0.2f);
+
+
+	void GenVertexBuffer(int nv, float* vertex, float* normal);
+	void GenVertexBuffer(int nv);
 };
 #endif //POLY_RENDERABLE_H

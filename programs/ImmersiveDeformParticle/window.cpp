@@ -8,14 +8,10 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "LabelVolumeProcessor.h"
 #include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
-#include "mouse/ScreenBrushInteractor.h"
-#include "LabelVolumeProcessor.h"
-#include "ViewpointEvaluator.h"
 #include "AnimationByMatrixProcessor.h"
 #include "Particle.h"
 
@@ -78,7 +74,7 @@ Window::Window()
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
 	
-	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
+	std::shared_ptr<RayCastingParameters> rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 	std::string subfolder;
 	float3 shift;
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
@@ -106,8 +102,14 @@ Window::Window()
 		VTPReader reader;
 		reader.readFile(polyDataPath.c_str(), polyMesh.get());
 	}
-	polyMesh->setAssisParticle("polyMeshRegions.mytup");	
+	polyMesh->setAssisParticle((subfolder+"/polyMeshRegions.mytup").c_str());
 	//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
+	
+	//normally when a particle already used valTuple, we do not need to use val
+	//but here use val to record the amount of shiftness?
+	polyMesh->particle->val.resize(polyMesh->particle->numParticles, 0);
+	polyMesh->particle->valMax = 0;
+	polyMesh->particle->valMin = 0;
 
 	polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
 
@@ -140,7 +142,7 @@ Window::Window()
 
 		positionBasedDeformProcessor->deformationScale = 10;
 		positionBasedDeformProcessor->deformationScaleVertical = 14;
-
+		
 		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 		//animationByMatrixProcessor->setViews(views);
 		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
@@ -157,7 +159,7 @@ Window::Window()
 
 	if (channelSkelViewReady){
 		volumeRenderable = std::make_shared<VolumeRenderableCUDA>(channelVolume);
-		volumeRenderable->rcp = rcpMini;
+		volumeRenderable->rcp = rcpForChannelSkel;
 		openGL->AddRenderable("2volume", volumeRenderable.get());
 		volumeRenderable->SetVisibility(false);
 
@@ -172,7 +174,10 @@ Window::Window()
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	openGL->AddRenderable("1poly", polyRenderable.get());
 	polyRenderable->setMultipleRendering();
-	
+	if (channelSkelViewReady){
+		polyRenderable->positionBasedDeformProcessor = positionBasedDeformProcessor;
+	}
+
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
@@ -217,6 +222,11 @@ Window::Window()
 		//isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+
+		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+		controlLayout->addWidget(isDeformColoringEnabled);
+		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 	}
 
 
@@ -341,6 +351,15 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
+void Window::isDeformColoringEnabledClicked(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isColoringDeformedPart = true;
+	}
+	else{
+		positionBasedDeformProcessor->isColoringDeformedPart = false;
+	}
+}
 
 void Window::SlotOriVolumeRb(bool b)
 {
