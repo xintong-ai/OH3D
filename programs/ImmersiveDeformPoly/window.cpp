@@ -160,6 +160,7 @@ Window::Window()
 	openGL->AddRenderable("3matrix", matrixMgrRenderable.get()); 
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
+	polyRenderable->immersiveMode = true;
 	openGL->AddRenderable("1poly", polyRenderable.get());
 	
 	//////////////////////////////// Interactor ////////////////////////////////
@@ -203,7 +204,7 @@ Window::Window()
 
 	if (channelSkelViewReady){
 		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-		//isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 

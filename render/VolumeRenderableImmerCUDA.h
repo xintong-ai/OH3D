@@ -60,7 +60,13 @@ public:
 
 	void setBlending(bool b, float d = 1.0){ blendPreviousImage = b; densityBonus = d; };
 
+	void startClipRendering(std::shared_ptr<Volume> channelVolume);
+	void endClipRendering(){
+		useClipRendering = false;
+	};
 private:
+	bool useClipRendering = false;
+
 	VolumeCUDA volumeCUDAGradient;
 	std::shared_ptr<ScreenMarker> sm;
 

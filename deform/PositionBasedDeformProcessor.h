@@ -69,6 +69,8 @@ public:
 
 	float r = 0; //degree of deformation
 
+	bool deformData = true; //sometimes not need to modify the data, but just compute the deformation info like the frame, and just deform the channelVolume
+
 private:
 	float* d_vertexCoords = 0;
 	float* d_vertexCoords_init = 0;

@@ -42,11 +42,16 @@ public:
 	//float3 GetPolyCenter();
 	bool isSnapped = false;
 	void setMultipleRendering(){ multipleRendering = true; }
+	bool immersiveMode = false;
+
 private:
 	void loadShaders();
+	void loadShadersImmer();
+
 	std::shared_ptr<PolyMesh> polyMesh;
 
 	bool multipleRendering = false;
+
 protected:
 
     unsigned int vbo_norm;
@@ -54,6 +59,7 @@ protected:
 	unsigned int vbo_val; //value for color
 
 	ShaderProgram *glProg;
+	ShaderProgram *glProgImmer; //specifically for the immersive deformatino project
 
 	QOpenGLVertexArrayObject* m_vao;
 

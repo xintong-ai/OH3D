@@ -24,7 +24,7 @@ extern "C" {
 
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
 		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, PositionBasedDeformProcessor* pd,
-		bool usePreInt = false, bool useSplineInterpolation = false);
+		bool usePreInt = false, bool useSplineInterpolation = false, bool useCliping = false);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);
@@ -41,6 +41,8 @@ extern "C" {
 		float3 eyeInLocal, int3 volumeSize, int maxSteps, float tstep, bool useColor, char* screenMark, VolumeCUDA *volumeCUDALabel);
 
 	void setInputImageInfo(const cudaArray_t c_inputImageDepthArray, const cudaArray_t c_inputImageColorArray);
+
+	void InitChannelVolumeTex(std::shared_ptr<Volume> channelVolume);
 
 };
 

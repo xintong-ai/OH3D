@@ -23,6 +23,7 @@
 void PolyRenderable::init()
 {
 	loadShaders();
+	loadShadersImmer();
 	m_vao = new QOpenGLVertexArrayObject();
 	m_vao->create();
 
@@ -37,6 +38,108 @@ void PolyRenderable::init()
 
 
 void PolyRenderable::loadShaders()
+{
+
+#define GLSL(shader) "#version 400\n" #shader
+	//shader is from https://www.packtpub.com/books/content/basics-glsl-40-shaders
+	//using two sides shading
+
+	//the reason for flat shading is that the normal is not computed right
+	//http://stackoverflow.com/questions/4703432/why-does-my-opengl-phong-shader-behave-like-a-flat-shader
+	const char* vertexVS =
+		GLSL(
+		layout(location = 0) in vec3 VertexPosition;
+	layout(location = 1) in vec3 VertexNormal;
+
+
+	smooth out vec3 tnorm;
+	out vec4 eyeCoords;
+
+	uniform mat4 ModelViewMatrix;
+	uniform mat3 NormalMatrix;
+	uniform mat4 ProjectionMatrix;
+	uniform vec3 Transform;
+	void main()
+	{
+		mat4 MVP = ProjectionMatrix * ModelViewMatrix;
+
+		tnorm = normalize(NormalMatrix * normalize(VertexNormal));
+
+		eyeCoords = ModelViewMatrix *
+			vec4(VertexPosition, 1.0);
+
+		gl_Position = MVP * vec4(VertexPosition + Transform, 1.0);
+	}
+	);
+
+	const char* vertexFS =
+		GLSL(
+		uniform vec4 LightPosition; // Light position in eye coords.
+	uniform vec3 Ka; // Diffuse reflectivity
+	uniform vec3 Kd; // Diffuse reflectivity
+	uniform vec3 Ks; // Diffuse reflectivity
+	uniform float Shininess;
+	uniform float Opacity;
+	
+	smooth in vec3 tnorm;
+	in vec4 eyeCoords;
+
+	//layout(location = 0) 
+	out vec4 FragColor;
+
+	vec3 phongModel(vec4 position, vec3 normal) {
+		vec3 s = normalize(vec3(LightPosition - position));
+		vec3 v = normalize(-position.xyz);
+		vec3 r = reflect(-s, normal);
+		vec3 ambient = Ka;
+		float sDotN = max(dot(s, normal), 0.0);
+		vec3 diffuse = Kd * sDotN ;
+		vec3 spec = vec3(0.0);
+		if (sDotN > 0.0)
+			spec = Ks *
+			pow(max(dot(r, v), 0.0), Shininess);
+		return ambient + diffuse + spec;
+	}
+
+	void main() {
+		vec3 FrontColor;
+		vec3 BackColor;
+		//tnorm = normalize(tnorm);
+
+		FrontColor = phongModel(eyeCoords, tnorm);
+
+		BackColor = phongModel(eyeCoords, -tnorm);
+
+		if (gl_FrontFacing) {
+			FragColor = vec4(FrontColor, Opacity);//vec4(tnorm, 1.0);
+		}
+		else {
+			FragColor = vec4(BackColor, Opacity);
+		}
+	}
+	);
+
+	glProg = new ShaderProgram();
+	glProg->initFromStrings(vertexVS, vertexFS);
+
+	glProg->addAttribute("VertexPosition");
+	glProg->addAttribute("VertexNormal");
+
+	glProg->addUniform("LightPosition");
+	glProg->addUniform("Ka");
+	glProg->addUniform("Kd");
+	glProg->addUniform("Ks");
+	glProg->addUniform("Shininess");
+	glProg->addUniform("Opacity");
+
+	glProg->addUniform("ModelViewMatrix");
+	glProg->addUniform("NormalMatrix");
+	glProg->addUniform("ProjectionMatrix");
+	
+	glProg->addUniform("Transform");
+}
+
+void PolyRenderable::loadShadersImmer()
 {
 
 #define GLSL(shader) "#version 400\n" #shader
@@ -124,31 +227,33 @@ void PolyRenderable::loadShaders()
 	}
 	);
 
-	glProg = new ShaderProgram();
-	glProg->initFromStrings(vertexVS, vertexFS);
+	glProgImmer = new ShaderProgram();
+	glProgImmer->initFromStrings(vertexVS, vertexFS);
 
-	glProg->addAttribute("VertexPosition");
-	glProg->addAttribute("VertexNormal");
-	glProg->addAttribute("VertexVal");
+	glProgImmer->addAttribute("VertexPosition");
+	glProgImmer->addAttribute("VertexNormal");
+	glProgImmer->addAttribute("VertexVal");
 
-	glProg->addUniform("LightPosition");
-	glProg->addUniform("Ka");
-	glProg->addUniform("Kd");
-	glProg->addUniform("Ks");
-	glProg->addUniform("Shininess");
-	glProg->addUniform("Opacity");
+	glProgImmer->addUniform("LightPosition");
+	glProgImmer->addUniform("Ka");
+	glProgImmer->addUniform("Kd");
+	glProgImmer->addUniform("Ks");
+	glProgImmer->addUniform("Shininess");
+	glProgImmer->addUniform("Opacity");
 
-	glProg->addUniform("ModelViewMatrix");
-	glProg->addUniform("NormalMatrix");
-	glProg->addUniform("ProjectionMatrix");
+	glProgImmer->addUniform("ModelViewMatrix");
+	glProgImmer->addUniform("NormalMatrix");
+	glProgImmer->addUniform("ProjectionMatrix");
 	
-	glProg->addUniform("Transform");
+	glProgImmer->addUniform("Transform");
 }
+
 
 void PolyRenderable::resize(int width, int height)
 {
 
 }
+
 
 void PolyRenderable::draw(float modelview[16], float projection[16])
 {
@@ -156,35 +261,42 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 		return;
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	
+
 	glMatrixMode(GL_MODELVIEW);
 
-	glProg->use();
+	ShaderProgram *curGlProg;
+	if (immersiveMode && !multipleRendering){
+		curGlProg = glProgImmer;
+	}
+	else{
+		curGlProg = glProg;
+	}
+	curGlProg->use();
 	m_vao->bind();
 
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glVertexAttribPointer(curGlProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount * sizeof(float)* 3, polyMesh->vertexCoords, GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_norm);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+	qgl->glVertexAttribPointer(curGlProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
 	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 3, polyMesh->vertexNorms, GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
-	qgl->glUniform4f(glProg->uniform("LightPosition"), 0, 0, 10, 1);
-	
-	qgl->glUniform3f(glProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
-	qgl->glUniform3f(glProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
-	qgl->glUniform1f(glProg->uniform("Shininess"), 1);
-	qgl->glUniform1f(glProg->uniform("Opacity"), polyMesh->opacity);
+	qgl->glUniform4f(curGlProg->uniform("LightPosition"), 0, 0, 10, 1);
+
+	qgl->glUniform3f(curGlProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
+	qgl->glUniform3f(curGlProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
+	qgl->glUniform1f(curGlProg->uniform("Shininess"), 1);
+	qgl->glUniform1f(curGlProg->uniform("Opacity"), polyMesh->opacity);
 
 	QMatrix4x4 q_modelview = QMatrix4x4(modelview);
 	q_modelview = q_modelview.transposed();
 
-	qgl->glUniformMatrix4fv(glProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
-	qgl->glUniformMatrix4fv(glProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
-	qgl->glUniformMatrix3fv(glProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
+	qgl->glUniformMatrix4fv(curGlProg->uniform("ModelViewMatrix"), 1, GL_FALSE, modelview);
+	qgl->glUniformMatrix4fv(curGlProg->uniform("ProjectionMatrix"), 1, GL_FALSE, projection);
+	qgl->glUniformMatrix3fv(curGlProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -196,8 +308,8 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 		for (int i = 0; i < nRegion; i++){
 			//std::cout << "region " << i << " transform " << polyMesh->particle->pos[i].x << " " << polyMesh->particle->pos[i].y << " " << polyMesh->particle->pos[i].z<< std::endl;
 			transform = make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z);
-			qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
-			
+			qgl->glUniform3fv(curGlProg->uniform("Transform"), 1, &transform.x);
+
 			if (positionBasedDeformProcessor != 0 && positionBasedDeformProcessor->isColoringDeformedPart){
 				float dis = length(
 					make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z)
@@ -210,32 +322,23 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 			int endface = polyMesh->particle->valTuple[i * polyMesh->particle->tupleCount + 1];
 			int countface = endface - startface + 1;
 
-			qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
+			qgl->glUniform3f(curGlProg->uniform("Ka"), ka.x, ka.y, ka.z);
 			glDrawElements(GL_TRIANGLES, countface * 3, GL_UNSIGNED_INT, polyMesh->indices + startface * 3);
 			//std::cout << "start " << start << " end " << end << std::endl;
 		}
 	}
 	else{
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
-		qgl->glVertexAttribPointer(glProg->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glVertexAttribPointer(curGlProg->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
 		qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 1, polyMesh->vertexColorVals, GL_STATIC_DRAW);
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-		qgl->glUniform3fv(glProg->uniform("Transform"), 1, &transform.x);
-		
+		qgl->glUniform3fv(curGlProg->uniform("Transform"), 1, &transform.x);
+
 		if (isSnapped)
-			qgl->glUniform3f(glProg->uniform("Ka"), ka.x + 0.2, ka.y + 0.2, ka.z + 0.2);
+			qgl->glUniform3f(curGlProg->uniform("Ka"), ka.x + 0.2, ka.y + 0.2, ka.z + 0.2);
 		else{
-			//if (positionBasedDeformProcessor != 0 && positionBasedDeformProcessor->isColoringDeformedPart){
-			//	float dis = length(
-			//		make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z)
-			//		- make_float3(polyMesh->particle->posOrig[i].x, polyMesh->particle->posOrig[i].y, polyMesh->particle->posOrig[i].z));
-			//	float ratio = dis / (positionBasedDeformProcessor->deformationScale / 2) * 0.5;//0.5 is selected parameter
-			//	ka = make_float3(0.2f, 0, 0) * (1 - ratio) + make_float3(0.2f, 0.2f, 0) * ratio;
-			//}
-
-			qgl->glUniform3f(glProg->uniform("Ka"), ka.x, ka.y, ka.z);
-
+			qgl->glUniform3f(curGlProg->uniform("Ka"), ka.x, ka.y, ka.z);
 		}
 		glDrawElements(GL_TRIANGLES, polyMesh->facecount * 3, GL_UNSIGNED_INT, polyMesh->indices);
 	}
@@ -244,7 +347,7 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 
 	//glBindVertexArray(0);
 	m_vao->release();
-	glProg->disable();
+	curGlProg->disable();
 
 
 	glDisable(GL_BLEND);
@@ -258,15 +361,23 @@ void PolyRenderable::GenVertexBuffer(int nv)
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, 0, GL_STATIC_DRAW);
+	if (immersiveMode && !multipleRendering){
+	}
+	else{
+		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, 0, GL_STATIC_DRAW);
+	}
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 
 	qgl->glGenBuffers(1, &vbo_norm);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_norm);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, 0, GL_STATIC_DRAW);
+	if (immersiveMode && !multipleRendering){
+	}
+	else{
+		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, 0, GL_STATIC_DRAW);
+	}
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
 
@@ -279,24 +390,34 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, vertex, GL_STATIC_DRAW);
+	if (immersiveMode && !multipleRendering){
+	}
+	else{
+		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, vertex, GL_STATIC_DRAW);
+	}
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexPosition"));
 
 	qgl->glGenBuffers(1, &vbo_norm);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_norm);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float) * 3, normal, GL_STATIC_DRAW);
+	if (immersiveMode && !multipleRendering){
+	}
+	else{
+		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, normal, GL_STATIC_DRAW);
+	}
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
 
-	qgl->glGenBuffers(1, &vbo_val);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
-	qgl->glVertexAttribPointer(glProg->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
-	qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 1, 0, GL_STATIC_DRAW);
-	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-	qgl->glEnableVertexAttribArray(glProg->attribute("VertexVal"));
+	if (immersiveMode && !multipleRendering){
+		qgl->glGenBuffers(1, &vbo_val);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
+		qgl->glVertexAttribPointer(glProgImmer->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 1, 0, GL_STATIC_DRAW);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+		qgl->glEnableVertexAttribArray(glProgImmer->attribute("VertexVal"));
+	}
 
 	m_vao->release();
 }

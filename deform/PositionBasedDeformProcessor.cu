@@ -322,6 +322,8 @@ __global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, floa
 
 void PositionBasedDeformProcessor::doPolyDeform(float degree)
 {
+	if (!deformData)
+		return;
 	int threadsPerBlock = 64;
 	int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
 
@@ -386,6 +388,8 @@ struct functor_particleDeform
 
 void PositionBasedDeformProcessor::doParticleDeform(float degree)
 {
+	if (!deformData)
+		return;
 	int count = particle->numParticles;
 
 	//for debug
@@ -416,6 +420,9 @@ void PositionBasedDeformProcessor::doParticleDeform(float degree)
 
 void PositionBasedDeformProcessor::doVolumeDeform(float degree)
 {
+	if (!deformData)
+		return;
+
 	cudaExtent size = volume->volumeCuda.size;
 	unsigned int dim = 32;
 	dim3 blockSize(dim, dim, 1);
@@ -823,7 +830,7 @@ bool PositionBasedDeformProcessor::processParticleData(float* modelview, float* 
 		}
 	}
 	else if (hasOpenAnimeStarted){
-		std::cout << "doing opening " << std::endl;
+		//std::cout << "doing opening " << std::endl;
 
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
@@ -840,7 +847,7 @@ bool PositionBasedDeformProcessor::processParticleData(float* modelview, float* 
 		}
 	}
 	else if (hasCloseAnimeStarted){
-		std::cout << "doing closing " << std::endl;
+		//std::cout << "doing closing " << std::endl;
 
 		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
 		if (past >= closeDuration){

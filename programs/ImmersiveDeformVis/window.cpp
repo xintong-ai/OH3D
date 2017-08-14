@@ -65,13 +65,10 @@ Window::Window()
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	
-	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	//rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
 
 	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
-
-
-	//rcp->use2DInteg = false;
 
 	inputVolume = std::make_shared<Volume>(true);
 	std::shared_ptr<RawVolumeReader> reader;
@@ -204,6 +201,25 @@ Window::Window()
 		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
 		controlLayout->addWidget(isDeformColoringEnabled);
 		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
+	
+		QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
+		QHBoxLayout *orModeLayout = new QHBoxLayout;
+		originalRb = std::make_shared<QRadioButton>(tr("&original"));
+		deformRb = std::make_shared<QRadioButton>(tr("&deform"));
+		clipRb = std::make_shared<QRadioButton>(tr("&clip"));
+		transpRb = std::make_shared<QRadioButton>(tr("&transparent"));
+
+		deformRb->setChecked(true);
+		orModeLayout->addWidget(originalRb.get());
+		orModeLayout->addWidget(deformRb.get());
+		orModeLayout->addWidget(clipRb.get());
+		orModeLayout->addWidget(transpRb.get());
+		groupBoxORModes->setLayout(orModeLayout);
+		controlLayout->addWidget(groupBoxORModes);
+		connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
+		connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
+		connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
+		connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));	
 	}
 
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
@@ -350,7 +366,7 @@ Window::Window()
 	rcLayout->addWidget(transFuncP2SecondSliderLabelLit);
 	rcLayout->addLayout(transFuncP2SecondLayout);
 
-	controlLayout->addWidget(rcGroupBox);
+	//controlLayout->addWidget(rcGroupBox);
 
 	controlLayout->addStretch();
 
@@ -601,7 +617,46 @@ void Window::isDeformColoringEnabledClicked(bool b)
 		positionBasedDeformProcessor->isColoringDeformedPart = false;
 	}
 }
+void Window::SlotOriginalRb(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isActive = false;
+		inputVolume->reset();
+		channelVolume->reset();
+		volumeRenderable->endClipRendering();
+	}
+	else{
+	}
+}
 
+void  Window::SlotDeformRb(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isActive = true;
+		positionBasedDeformProcessor->deformData = true;
+		positionBasedDeformProcessor->reset();
+		volumeRenderable->endClipRendering();
+	}
+	else{
+	}
+}
+
+void  Window::SlotClipRb(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isActive = true;
+		positionBasedDeformProcessor->deformData = false;
+		inputVolume->reset();
+		channelVolume->reset();
+		volumeRenderable->startClipRendering(channelVolume);
+	}
+	else{
+	}
+}
+void  Window::SlotTranspRb(bool b)
+{
+	//to be done later
+}
 
 void Window::SlotOriVolumeRb(bool b)
 {
