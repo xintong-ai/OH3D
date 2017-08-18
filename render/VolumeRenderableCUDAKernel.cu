@@ -1457,8 +1457,9 @@ __global__ void d_render_preint_coloringDeformedElement(uint *d_output, uint ima
 
 	for (int i = 1; i<maxSteps; i++)
 	{
-		if (i == 256) {
+		if (i > 1 && i % 256 == 0 && tstepv < 0.51) {
 			//increase step size to improve performance, when the ray is already far, since then we do not need short step size that much then
+			//but still limit the tstepv not to exceed 1
 			tstepv *= 2;
 			step *= 2;
 		}
@@ -1485,7 +1486,7 @@ __global__ void d_render_preint_coloringDeformedElement(uint *d_output, uint ima
 				tunnelStart, tunnelEnd, spacing, r, deformationScale, deformationScaleVertical, rectVerticalDir);
 			if (origianlPos.x > -0.01){
 				const float3 errorColor = make_float3(1, 0, 0);
-				float maxDis = deformationScale/2;
+				float maxDis = deformationScale / 2.0;
 				float ratio = length(pos - origianlPos) / maxDis*0.8; //0.2 is selected parameter
 				cc = cc*(1 - ratio) + errorColor*ratio;
 			}
@@ -1510,7 +1511,9 @@ __global__ void d_render_preint_coloringDeformedElement(uint *d_output, uint ima
 		if (length(normalInWorld) > lightingThr)// && abs(sample - lastSample) > 0.0001)
 		{
 			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
-			col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye) / 2), colDensity);
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), colDensity);
+
+			//col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye) / 2), colDensity);//need to solve the case when last_normal_in_eye + normal_in_eye == 0
 			//using average of last_normal_in_eye and normal_in_eye is just one option, and may not be the best.
 			//another possible way is to use cubicTex3D_1st_derivative_x(texture tex, float3 coord)
 
@@ -1519,7 +1522,6 @@ __global__ void d_render_preint_coloringDeformedElement(uint *d_output, uint ima
 		else
 		{
 			col = make_float4(la*cc, colDensity);
-
 			last_normal_in_eye = make_float3(0, 0, 0);
 		}
 

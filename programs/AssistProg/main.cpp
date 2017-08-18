@@ -36,10 +36,24 @@
 #include <vtkPointData.h>
 #include <vtkLongLongArray.h>
 #include <vtkPoints.h>
+#include <vtkCell.h>
+#include <vtkContourGrid.h>
+#include <vtkXMLUnstructuredGridReader.h>
+#include <vtkXMLUnstructuredGridWriter.h>
 
+#include <vtkUnstructuredGrid.h>
 
 #include <helper_math.h>
 
+
+
+#include <vtkXMLUnstructuredGridReader.h>
+#include <vtkSmartPointer.h>
+#include <vtkDataSetMapper.h>
+#include <vtkActor.h>
+#include <vtkRenderWindow.h>
+#include <vtkRenderer.h>
+#include <vtkRenderWindowInteractor.h>
 
 using namespace std;
 
@@ -72,7 +86,7 @@ void createSphere()
 	writer->Write();
 }
 
-
+//for blood cell data, separate each cell
 void labelPoly()
 {
 	vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
@@ -203,12 +217,96 @@ void labelPoly()
 
 }
 
+//for moortgat data, compute isosurface
+void generateIso()
+{
+	
+	vtkSmartPointer<vtkUnstructuredGrid> data = vtkSmartPointer<vtkUnstructuredGrid>::New();
 
+	std::shared_ptr<DataMgr> dataMgr;
+	dataMgr = std::make_shared<DataMgr>();
+	string dataPath = dataMgr->GetConfig("DATA_PATH");
+
+	//read all the data from the file
+	vtkSmartPointer<vtkXMLUnstructuredGridReader> reader =
+		vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
+
+	if (std::string(dataPath).find("vtu") == std::string::npos){
+		std::cout << "file name not defined" << std::endl;
+		exit(0);
+	}
+
+		//reader->SetFileName(dataPath.c_str());
+		//reader->Update();
+		//data = reader->GetOutput();
+
+
+
+
+
+		reader->SetFileName(dataPath.c_str());
+		reader->Update();
+
+
+
+		data = reader->GetOutput();
+
+
+
+		//Create a mapper and actor
+		vtkSmartPointer<vtkDataSetMapper> mapper =
+			vtkSmartPointer<vtkDataSetMapper>::New();
+		mapper->SetInputConnection(reader->GetOutputPort());
+
+		vtkSmartPointer<vtkActor> actor =
+			vtkSmartPointer<vtkActor>::New();
+		actor->SetMapper(mapper);
+
+		//Create a renderer, render window, and interactor
+		vtkSmartPointer<vtkRenderer> renderer =
+			vtkSmartPointer<vtkRenderer>::New();
+		vtkSmartPointer<vtkRenderWindow> renderWindow =
+			vtkSmartPointer<vtkRenderWindow>::New();
+		renderWindow->AddRenderer(renderer);
+		vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+			vtkSmartPointer<vtkRenderWindowInteractor>::New();
+		renderWindowInteractor->SetRenderWindow(renderWindow);
+
+		//Add the actor to the scene
+		renderer->AddActor(actor);
+		renderer->SetBackground(.3, .6, .3); // Background color green
+
+		//Render and interact
+		renderWindow->Render();
+		renderWindowInteractor->Start();
+
+	//cout << reader->GetOutput()->GetPointData()->GetNumberOfArrays() << endl;
+	//cout << reader->GetOutput()->GetPointData()->GetNumberOfComponents() << endl;
+	//cout << reader->GetOutput()->GetPointData()->GetNumberOfTuples() << endl;
+	cout << reader->GetOutput()->GetNumberOfCells() << endl;
+
+	vtkSmartPointer<vtkContourGrid> filter =
+		vtkSmartPointer<vtkContourGrid>::New();
+	filter->SetInputData(reader->GetOutput());
+	//filter->SetNumberOfContours(1);
+	filter->SetValue(0, 0.00051);
+	filter->Update();
+
+
+
+	vtkSmartPointer<vtkXMLPolyDataWriter> writer =
+		vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+	writer->SetFileName("iso.vtp");
+	writer->SetInputData(filter->GetOutput());
+	writer->Write();
+
+}
 
 int main(int argc, char **argv)
 {
 	//createSphere();
 	labelPoly();
+	//generateIso();	//not ready . may delete later
 
 	return 0;
 }

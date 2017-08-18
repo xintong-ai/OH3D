@@ -49,6 +49,8 @@ public:
 	};		
 
 	bool isColoringDeformedPart = false;
+	
+	bool isForceDeform = false;
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
@@ -90,6 +92,10 @@ private:
 	thrust::device_vector<float4> d_vec_posOrig;
 	thrust::device_vector<float4> d_vec_posTarget;
 
+	bool inRange(float3 v);
+	void deformDataByDegree(float r);
+	void deformDataByDegree2Tunnel(float r, float rClose);
+	void resetData();
 
 	std::shared_ptr<VolumeCUDA> volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 

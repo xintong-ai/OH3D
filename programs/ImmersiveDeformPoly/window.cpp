@@ -51,6 +51,9 @@ void rawfileInfo(std::string dataPath, DataType & channelVolDataType)
 	else if (std::string(dataPath).find("iso_t") != std::string::npos){
 		channelVolDataType = RawVolumeReader::dtFloat32;
 	}
+	else if (std::string(dataPath).find("moortgat") != std::string::npos){
+		channelVolDataType = RawVolumeReader::dtFloat32;
+	}
 	else{
 		std::cout << "file name not defined" << std::endl;
 		exit(0);
@@ -77,19 +80,19 @@ Window::Window()
 	int3 dims;
 	float3 spacing;
 	PolyMesh::dataParameters(polyDataPath, dims, spacing, disThr, shift, subfolder);
-
+	shift = make_float3(0, 0, 0); //already shifted and respaced data
+	spacing = make_float3(1, 1, 1); //already shifted and respaced data
 
 	DataType channelVolDataType;
 	if (channelSkelViewReady){
 		rawfileInfo(polyDataPath, channelVolDataType);
-	}
 
-	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
 		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
+		channelVolume->spacing = spacing;
 	}
 
 	polyMesh = std::make_shared<PolyMesh>();
@@ -101,7 +104,7 @@ Window::Window()
 		VTPReader reader;
 		reader.readFile(polyDataPath.c_str(), polyMesh.get());
 	}
-	polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!!
+	//polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!! //not needed is the data is already shifted
 	polyMesh->setVertexCoordsOri();
 	polyMesh->setVertexColorVals(0);
 

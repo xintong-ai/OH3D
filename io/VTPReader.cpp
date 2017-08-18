@@ -1,6 +1,7 @@
 #include "VTPReader.h"
 #include "PolyMesh.h"
 
+#include <vtkPolyDataReader.h>
 #include <vtkXMLPolyDataReader.h>
 #include <vtkSmartPointer.h>
 
@@ -13,16 +14,26 @@
 #include <vtkPolyDataNormals.h>
 #include <vtkPointData.h>
 #include <vtkSphereSource.h>
+#include <vtkCell.h>
 
 void VTPReader::readFile(const char* filename, PolyMesh* polyMesh)
 {
-	vtkSmartPointer<vtkXMLPolyDataReader> reader =
-		vtkSmartPointer<vtkXMLPolyDataReader>::New();
-	reader->SetFileName(filename);
-	reader->Update();
-
 	vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
-	data = reader->GetOutput();
+
+	//if (std::string(filename).find(".vtp") != std::string::npos){
+		vtkSmartPointer<vtkXMLPolyDataReader> reader =
+			vtkSmartPointer<vtkXMLPolyDataReader>::New();
+		reader->SetFileName(filename);
+		reader->Update();
+		data = reader->GetOutput();
+	//}
+	//else if (std::string(filename).find(".vtk") != std::string::npos){
+	//	vtkSmartPointer<vtkPolyDataReader> reader =
+	//		vtkSmartPointer<vtkPolyDataReader>::New();
+	//	reader->SetFileName(filename);
+	//	reader->Update();
+	//	data = reader->GetOutput();
+	//}
 	
 	std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
 	std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;

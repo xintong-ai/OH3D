@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <algorithm>
 
 #include <math.h>
 #include <memory>
@@ -57,7 +58,7 @@ public:
 
 	void doShift(float3 shift);
 	
-	static void dataParameters(std::string dataPath, int3 & dims, float3 &spacing, float & disThr, float3 &shift, std::string &subfolder)
+	static void dataParameters(std::string dataPath, int3 & dims, float3 & spacing, float & disThr, float3 &shift, std::string &subfolder)
 	{
 		if (std::string(dataPath).find("iso_t40_v3") != std::string::npos){
 			dims = make_int3(68, 68, 68);
@@ -66,8 +67,16 @@ public:
 			shift = make_float3(ceil(disThr) + 1, ceil(disThr) + 1, ceil(disThr) + 1); //+1 for more margin
 			subfolder = "FPM";
 		}
+		else if (std::string(dataPath).find("moortgat") != std::string::npos){
+			dims = make_int3(73, 73, 93);
+			spacing = make_float3(0.5, 0.5, 0.5);
+			disThr = 0.5;
+			shift = make_float3(ceil(disThr) + 1, ceil(disThr) + 1, ceil(disThr) + 1); //+1 for more 
+			shift = make_float3(std::max(shift.x, 3.0f), std::max(shift.y, 3.0f), std::max(shift.z, 3.0f));//set a lower bound
+			subfolder = "moortgat";
+		}
 		else{
-			std::cout << "volume data name not recognized" << std::endl;
+			std::cout << "poly data name not recognized" << std::endl;
 			exit(0);
 		}
 	};

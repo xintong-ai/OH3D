@@ -197,11 +197,18 @@ Window::Window()
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 
-		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+		QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+		isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+		controlLayout->addWidget(isForceDeformEnabled);
+		connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+
+		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part (when preintegrate)", this);
 		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
 		controlLayout->addWidget(isDeformColoringEnabled);
 		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 	
+
+
 		QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
 		QHBoxLayout *orModeLayout = new QHBoxLayout;
 		originalRb = std::make_shared<QRadioButton>(tr("&original"));
@@ -474,8 +481,9 @@ Window::Window()
 	
 	
 	
-	openGL->setFixedSize(1000, 1000);
-//openGLMini->setFixedSize(300, 300);
+	//openGL->setFixedSize(1000, 1000);
+	//openGLMini->setFixedSize(300, 300);
+	openGL->setFixedSize(600, 600);
 
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);

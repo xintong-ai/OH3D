@@ -82,15 +82,14 @@ Window::Window()
 	DataType channelVolDataType;
 	if (channelSkelViewReady){
 		fileInfo(polyDataPath, channelVolDataType, shift, dims, subfolder);
-	}
+		spacing = make_float3(1, 1, 1);
 
-	if (channelSkelViewReady){
 		channelVolume = std::make_shared<Volume>(true);
-		//std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
 		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
 		channelVolume->initVolumeCuda();
 		reader2.reset();
+		channelVolume->spacing = spacing;
 	}
 
 	polyMesh = std::make_shared<PolyMesh>();
@@ -219,7 +218,7 @@ Window::Window()
 
 	if (channelSkelViewReady){
 		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-		//isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 

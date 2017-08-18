@@ -42,7 +42,7 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyM
 	poly = ori;
 	matrixMgr = _m;
 	channelVolume = ch;
-	spacing = channelVolume->spacing;  //may not be precise
+	spacing = channelVolume->spacing;
 
 	sdkCreateTimer(&timer);
 	sdkCreateTimer(&timerFrame);
@@ -64,7 +64,7 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Parti
 	particle = ori;
 	matrixMgr = _m;
 	channelVolume = ch;
-	spacing = channelVolume->spacing;  //may not be precise
+	spacing = channelVolume->spacing;
 
 	sdkCreateTimer(&timer);
 	sdkCreateTimer(&timerFrame);
@@ -523,9 +523,7 @@ bool PositionBasedDeformProcessor::inDeformedCell(float3 pos)
 }
 
 
-__global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms,
-	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd,
-	int* numAddedFaces)
+__global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, 	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd, int* numAddedFaces)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= facecount)	return;
@@ -700,178 +698,88 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 }
 
 
-bool PositionBasedDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
+
+bool PositionBasedDeformProcessor::inRange(float3 v)
 {
-	if (!isActive)
-		return false;
 	if (dataType == VOLUME){
-		return processVolumeData(modelview, projection, winWidth, winHeight);
+		return volume->inRange(v / spacing);
 	}
 	else if (dataType == MESH){
-		return processMeshData(modelview, projection, winWidth, winHeight);
+		return poly->inRange(v);
 	}
 	else if (dataType == PARTICLE){
-		return processParticleData(modelview, projection, winWidth, winHeight);
+		return channelVolume->inRange(v / spacing); //actually currently channelVolume->inRange will serve all possibilities. Keep 3 cases in case of unexpected needs.
 	}
 	else{
-		std::cout << " not implemented " << std::endl;
+		std::cout << " inRange not implemented " << std::endl;
 		exit(0);
 	}
 }
 
-bool PositionBasedDeformProcessor::processParticleData(float* modelview, float* projection, int winWidth, int winHeight)
+void PositionBasedDeformProcessor::deformDataByDegree(float r)
 {
-	float3 eyeInLocal = matrixMgr->getEyeInLocal();
-
-	if (lastDataState == ORIGINAL){
-		if (channelVolume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
-			// in solid area
-			// in this case, set the start of deformation
-			if (lastEyeState != inWall){
-				lastDataState = DEFORMED;
-				lastEyeState = inWall;
-
-				computeTunnelInfo(eyeInLocal);
-				doChannelVolumeDeform();
-				//start a opening animation
-				hasOpenAnimeStarted = true;
-				hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
-				startOpen = std::clock();
-			}
-			else if (lastEyeState == inWall){
-				//from wall to wall
-			}
-		}
-		else{
-			// either eyeInLocal is out of range, or eyeInLocal is in channel
-			//in this case, no state change
-		}
+	if (dataType == VOLUME){
+		doVolumeDeform(r);
 	}
-	else{ //lastDataState == Deformed
-		if (channelVolume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
-			//in area which is solid in the original volume
-			bool inchannel = inDeformedCell(eyeInLocal);
-			if (inchannel){
-				// not in the solid region in the deformed volume
-				// in this case, no change
-			}
-			else{
-				//std::cout <<"Triggered "<< lastDataState << " " << lastEyeState << " " << hasOpenAnimeStarted << " " << hasCloseAnimeStarted << std::endl;
-				//even in the deformed volume, eye is still inside the solid region 
-				//eye should just move to a solid region
+	else if (dataType == MESH){
+		doPolyDeform(r);
+	}
+	else if (dataType == PARTICLE){
+		doParticleDeform(r);
+	}
+	else{
+		std::cout << " inRange not implemented " << std::endl;
+		exit(0);
+	}
+}				
 
-				//volume->reset();
-				//channelVolume->reset();
-
-				sdkResetTimer(&timer);
-				sdkStartTimer(&timer);
-
-				sdkResetTimer(&timerFrame);
-
-				fpsCount = 0;
-
-				lastOpenFinalDegree = closeStartingRadius;
-				lastDeformationDirVertical = rectVerticalDir;
-				lastTunnelStart = tunnelStart;
-				lastTunnelEnd = tunnelEnd;
-
-				computeTunnelInfo(eyeInLocal);
-				doChannelVolumeDeform();
-
-				hasOpenAnimeStarted = true;//start a opening animation
-				hasCloseAnimeStarted = true; //since eye should just moved to the current solid, the previous solid should be closed 
-				startOpen = std::clock();
-			}
-		}
-		else{// in area which is channel in the original volume
-			hasCloseAnimeStarted = true;
-			hasOpenAnimeStarted = false;
-			startClose = std::clock();
-
-			channelVolume->reset();
-			lastDataState = ORIGINAL;
-			lastEyeState = inCell;
-		}
+void PositionBasedDeformProcessor::deformDataByDegree2Tunnel(float r, float rClose)
+{
+	if (dataType == VOLUME){
+		doVolumeDeform2Tunnel(r, rClose);
+	}
+	else if (dataType == MESH){
+	}
+	else if (dataType == PARTICLE){
+	}
+	else{
+		std::cout << " inRange not implemented " << std::endl;
+		exit(0);
 	}
 
-	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
-		//std::cout << "processing as wanted" << std::endl;
-		float rClose;
-		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
-		if (past >= totalDuration){
-			r = deformationScale / 2;
-			hasOpenAnimeStarted = false;
-			hasCloseAnimeStarted = false;
-
-			sdkStopTimer(&timer);
-			std::cout << "Mixed animation fps: " << fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f) << std::endl;
-
-			sdkStopTimer(&timer);
-			std::cout << "Mixed animation cost each frame: " << sdkGetAverageTimerValue(&timerFrame) << " ms" << std::endl;
-		}
-		else{
-			sdkStartTimer(&timerFrame);
-
-			fpsCount++;
-
-			r = past / totalDuration*deformationScale / 2;
-			if (past >= closeDuration){
-				hasCloseAnimeStarted = false;
-				rClose = 0;
-				doParticleDeform(r);
-			}
-			else{
-				rClose = (1 - past / closeDuration)*closeStartingRadius;
-				//doVolumeDeform2Tunnel(r, rClose);  //!!!TO BE implemented
-			}
-
-			sdkStopTimer(&timerFrame);
-
-		}
-	}
-	else if (hasOpenAnimeStarted){
-		//std::cout << "doing opening " << std::endl;
-
-		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
-		if (past >= totalDuration){
-			r = deformationScale / 2;
-			hasOpenAnimeStarted = false;
-			//closeStartingRadius = r;
-			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
-		}
-		else{
-			r = past / totalDuration*deformationScale / 2;
-			doParticleDeform(r);
-			closeStartingRadius = r;
-			closeDuration = past;
-		}
-	}
-	else if (hasCloseAnimeStarted){
-		//std::cout << "doing closing " << std::endl;
-
-		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
-		if (past >= closeDuration){
-			particle->reset();
-			d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
-			d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
-			hasCloseAnimeStarted = false;
-			r = 0;
-		}
-		else{
-			r = (1 - past / closeDuration)*closeStartingRadius;
-			doParticleDeform(r);
-		}
-	}
-
-	return false;
+	return;
 }
 
-bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* projection, int winWidth, int winHeight)
+void PositionBasedDeformProcessor::resetData()
 {
+	if (dataType == VOLUME){
+		volume->reset();
+
+	}
+	else if (dataType == MESH){
+		poly->reset();
+	}
+	else if (dataType == PARTICLE){
+		particle->reset();
+		d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+		d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+	}
+	else{
+		std::cout << " inRange not implemented " << std::endl;
+		exit(0);
+	}
+}
+
+
+bool PositionBasedDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
+{
+	if (!isActive)
+		return false;
+
 	float3 eyeInLocal = matrixMgr->getEyeInLocal();
 
 	if (lastDataState == ORIGINAL){
-		if (poly->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
+		if (inRange(eyeInLocal) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
 			// in solid area
 			// in this case, set the start of deformation
 			if (lastEyeState != inWall){
@@ -881,7 +789,9 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 				computeTunnelInfo(eyeInLocal);
 				doChannelVolumeDeform();
 
-				modifyPolyMesh();
+				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
+					modifyPolyMesh();
+				}
 
 				//start a opening animation
 				hasOpenAnimeStarted = true;
@@ -898,7 +808,7 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 		}
 	}
 	else{ //lastDataState == Deformed
-		if (poly->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
+		if (inRange(eyeInLocal) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
 			//in area which is solid in the original volume
 			bool inchannel = inDeformedCell(eyeInLocal);
 			if (inchannel){
@@ -967,11 +877,12 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 			if (past >= closeDuration){
 				hasCloseAnimeStarted = false;
 				rClose = 0;
-				doPolyDeform(r);
+				deformDataByDegree(r);
 			}
 			else{
 				rClose = (1 - past / closeDuration)*closeStartingRadius;
 				//doVolumeDeform2Tunnel(r, rClose);  //TO BE IMPLEMENTED
+				deformDataByDegree2Tunnel(r, rClose);
 			}
 
 			sdkStopTimer(&timerFrame);
@@ -989,169 +900,30 @@ bool PositionBasedDeformProcessor::processMeshData(float* modelview, float* proj
 		}
 		else{
 			r = past / totalDuration*deformationScale / 2;
-			doPolyDeform(r);
+			deformDataByDegree(r);
 			closeStartingRadius = r;
 			closeDuration = past;
 		}
 	}
 	else if (hasCloseAnimeStarted){
 		//std::cout << "doing closing" << std::endl;
-		
+
 		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
 		if (past >= closeDuration){
-			poly->reset();
+			resetData();
 			hasCloseAnimeStarted = false;
 			r = 0;
 		}
 		else{
 			r = (1 - past / closeDuration)*closeStartingRadius;
-			doPolyDeform(r);
+			deformDataByDegree(r);
 		}
 	}
 
 	return false;
 }
 
-bool PositionBasedDeformProcessor::processVolumeData(float* modelview, float* projection, int winWidth, int winHeight)
-{
-	float3 eyeInLocal = matrixMgr->getEyeInLocal();
 
-	if (lastDataState == ORIGINAL){
-		if (volume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
-			// in solid area
-			// in this case, set the start of deformation
-			if (lastEyeState != inWall){
-				lastDataState = DEFORMED;
-				lastEyeState = inWall;
-
-				computeTunnelInfo(eyeInLocal);
-				doChannelVolumeDeform();
-				//start a opening animation
-				hasOpenAnimeStarted = true;
-				hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
-				startOpen = std::clock();
-			}
-			else if (lastEyeState == inWall){
-				//from wall to wall
-			}
-		}
-		else{
-			// either eyeInLocal is out of range, or eyeInLocal is in channel
-			//in this case, no state change
-		}
-	}
-	else{ //lastDataState == Deformed
-		if (volume->inRange(eyeInLocal / spacing) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
-			//in area which is solid in the original volume
-			bool inchannel = inDeformedCell(eyeInLocal);
-			if (inchannel){
-				// not in the solid region in the deformed volume
-				// in this case, no change
-			}
-			else{
-				//std::cout <<"Triggered "<< lastDataState << " " << lastEyeState << " " << hasOpenAnimeStarted << " " << hasCloseAnimeStarted << std::endl;
-				//even in the deformed volume, eye is still inside the solid region 
-				//eye should just move to a solid region
-
-				//volume->reset();
-				//channelVolume->reset();
-
-				sdkResetTimer(&timer);
-				sdkStartTimer(&timer);
-
-				sdkResetTimer(&timerFrame);
-
-				fpsCount = 0;
-
-				lastOpenFinalDegree = closeStartingRadius;
-				lastDeformationDirVertical = rectVerticalDir;
-				lastTunnelStart = tunnelStart;
-				lastTunnelEnd = tunnelEnd;
-
-				computeTunnelInfo(eyeInLocal);
-				doChannelVolumeDeform();
-
-				hasOpenAnimeStarted = true;//start a opening animation
-				hasCloseAnimeStarted = true; //since eye should just moved to the current solid, the previous solid should be closed 
-				startOpen = std::clock();
-			}
-		}
-		else{// in area which is channel in the original volume
-			hasCloseAnimeStarted = true;
-			hasOpenAnimeStarted = false;
-			startClose = std::clock();
-
-			channelVolume->reset();
-			lastDataState = ORIGINAL;
-			lastEyeState = inCell;
-		}
-	}
-
-	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
-		//std::cout << "processing as wanted" << std::endl;
-		float rClose;
-		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
-		if (past >= totalDuration){
-			r = deformationScale / 2;
-			hasOpenAnimeStarted = false;
-			hasCloseAnimeStarted = false;
-
-			sdkStopTimer(&timer);
-			std::cout << "Mixed animation fps: " << fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f) << std::endl;
-
-			sdkStopTimer(&timer);
-			std::cout << "Mixed animation cost each frame: " << sdkGetAverageTimerValue(&timerFrame) << " ms" << std::endl;
-		}
-		else{
-			sdkStartTimer(&timerFrame);
-
-			fpsCount++;
-
-			r = past / totalDuration*deformationScale / 2;
-			if (past >= closeDuration){
-				hasCloseAnimeStarted = false;
-				rClose = 0;
-				doVolumeDeform(r);
-			}
-			else{
-				rClose = (1 - past / closeDuration)*closeStartingRadius;
-				doVolumeDeform2Tunnel(r, rClose);
-			}
-
-			sdkStopTimer(&timerFrame);
-
-		}
-	}
-	else if (hasOpenAnimeStarted){
-		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
-		if (past >= totalDuration){
-			r = deformationScale / 2;
-			hasOpenAnimeStarted = false;
-			//closeStartingRadius = r;
-			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
-		}
-		else{
-			r = past / totalDuration*deformationScale / 2;
-			doVolumeDeform(r);
-			closeStartingRadius = r;
-			closeDuration = past;
-		}
-	}
-	else if (hasCloseAnimeStarted){
-		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
-		if (past >= closeDuration){
-			volume->reset();
-			hasCloseAnimeStarted = false; 
-			r = 0;
-		}
-		else{
-			r = (1 - past / closeDuration)*closeStartingRadius;
-			doVolumeDeform(r);
-		}
-	}
-	
-	return false;
-}
 
 void PositionBasedDeformProcessor::InitCudaSupplies()
 {
