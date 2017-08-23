@@ -156,6 +156,7 @@ private slots:
 
 	void isDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
+	void isForceDeformEnabledClicked(bool b);
 
 	void SlotOriginalRb(bool b);
 	void SlotDeformRb(bool b);

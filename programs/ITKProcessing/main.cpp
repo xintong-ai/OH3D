@@ -219,7 +219,7 @@ void processVolumeData()
 	delete[]bilateralVolumeRes;
 }
 
-
+//this function has not been throughly tested
 inline float disToTri(float3 p, float3 p1, float3 p2, float3 p3, float thr)
 {
 	float3 e12 = p2 - p1;
@@ -233,24 +233,11 @@ inline float disToTri(float3 p, float3 p1, float3 p2, float3 p3, float thr)
 	}
 	float3 proj = p - n*disToPlane;
 
-	//locate to see if proj is inside the tri
 	bool isInside = false;
 	if (dot(cross(e12, -e31), cross(e12, proj - p1)) >= 0){
-		float3 v12 = cross(n, e12);
-		float d = dot(proj - p1, v12);
-		if (d >= 0 && d <= dot(v12, -e31)){
-			if (dot(cross(e23, -e12), cross(e23, proj - p2)) >= 0){
-				float3 v23 = cross(n, e23);
-				float d = dot(proj - p2, v23);
-				if (d >= 0 && d <= dot(v23, -e12)){
-					if (dot(cross(e31, -e23), cross(e31, proj - p3)) >= 0){
-						float3 v31 = cross(n, e31);
-						float d = dot(proj - p3, v31);
-						if (d >= 0 && d <= dot(v31, -e23)){
-							isInside = true;
-						}
-					}
-				}
+		if (dot(cross(e23, -e12), cross(e23, proj - p2)) >= 0){
+			if (dot(cross(e31, -e23), cross(e31, proj - p3)) >= 0){
+				isInside = true;
 			}
 		}
 	}
@@ -258,23 +245,20 @@ inline float disToTri(float3 p, float3 p1, float3 p2, float3 p3, float thr)
 		return abs(disToPlane);
 	}
 	float disInPlaneSqu = min(min(dot(proj - p1, proj - p1), dot(proj - p2, proj - p2)), dot(proj - p3, proj - p3));
-	if (disInPlaneSqu > thr*thr){
-		return thr + 1;
-	}
 	float d = dot(proj - p1, e12);
 	if (d > 0 && d < dot(e12, e12)){
-		float d2 = d / length(e12);
-		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p1, proj - p1) - d2*d2);
+		float projL = d / length(e12);
+		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p1, proj - p1) - projL*projL);
 	}
 	d = dot(proj - p2, e23);
 	if (d > 0 && d < dot(e23, e23)){
-		float d2 = d / length(e23);
-		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p2, proj - p2) - d2*d2);
+		float projL = d / length(e23);
+		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p2, proj - p2) - projL*projL);
 	}
 	d = dot(proj - p3, e31);
 	if (d > 0 && d < dot(e31, e31)){
-		float d2 = d / length(e31);
-		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p3, proj- p3) - d2*d2);
+		float projL = d / length(e31);
+		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p3, proj - p3) - projL*projL);
 	}
 	return sqrt(disInPlaneSqu + disToPlane*disToPlane);
 }
@@ -381,11 +365,11 @@ void processSurfaceData()
 		int zstart = max(min(min(v1.z, v2.z), v3.z) - bbMargin, 0);
 		int zend = min(ceil(max(max(v1.z, v2.z), v3.z) + bbMargin), size[2] - 1);
 
-		for (unsigned int z = zstart; z < zend; z++)
+		for (unsigned int z = zstart; z <= zend; z++)
 		{
-			for (unsigned int y = ystart; y < yend; y++)
+			for (unsigned int y = ystart; y <= yend; y++)
 			{
-				for (unsigned int x = xstart; x < xend; x++)
+				for (unsigned int x = xstart; x <= xend; x++)
 				{
 					ImageType::IndexType pixelIndex;
 					pixelIndex[0] = x;
@@ -413,7 +397,7 @@ void processSurfaceData()
 				pixelIndex[1] = y;
 				pixelIndex[2] = z;
 				
-				if (image->GetPixel(pixelIndex)< disThr){
+				if (image->GetPixel(pixelIndex) <= disThr){
 					image->SetPixel(pixelIndex, 0);
 				}
 				else{
@@ -541,8 +525,8 @@ int main(int argc, char **argv)
 	sdkStartTimer(&timer);
 
 	//processVolumeData();
-	//processSurfaceData();
-	processParticleMeshData();
+	processSurfaceData();
+	//processParticleMeshData();
 
 	sdkStopTimer(&timer);
 

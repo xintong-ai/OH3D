@@ -135,9 +135,9 @@ Window::Window()
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
-		animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
-		animationByMatrixProcessor->setViews(views);
-		openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
+		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
+		//animationByMatrixProcessor->setViews(views);
+		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	}
 
 	//////////////////////////////// Renderable ////////////////////////////////	
@@ -615,6 +615,17 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
+void Window::isForceDeformEnabledClicked(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isForceDeform = true;
+	}
+	else{
+		positionBasedDeformProcessor->isForceDeform = false;
+		//inputVolume->reset();
+		//channelVolume->reset();
+	}
+}
 
 void Window::isDeformColoringEnabledClicked(bool b)
 {

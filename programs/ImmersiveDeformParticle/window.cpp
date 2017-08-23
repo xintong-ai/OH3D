@@ -112,8 +112,6 @@ Window::Window()
 
 	polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
 
-	polyMesh->opacity = 1.0;// 0.5;
-
 	////////////////matrix manager
 	float3 posMin, posMax;
 	polyMesh->GetPosRange(posMin, posMax);
@@ -121,6 +119,7 @@ Window::Window()
 	std::cout << "posMax: " << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	matrixMgr->setDefaultForImmersiveMode();		
+	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x, -20, matrixMgr->getEyeInLocal().z));
 
@@ -141,10 +140,6 @@ Window::Window()
 
 		positionBasedDeformProcessor->deformationScale = 10;
 		positionBasedDeformProcessor->deformationScaleVertical = 14;
-		
-		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
-		//animationByMatrixProcessor->setViews(views);
-		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	}
 
 
@@ -162,7 +157,6 @@ Window::Window()
 		openGL->AddRenderable("2volume", volumeRenderable.get());
 		volumeRenderable->SetVisibility(false);
 
-
 		//sliceRenderable = std::make_shared<SliceRenderable>(channelVolume);
 		//openGL->AddRenderable("5volumeSlice", sliceRenderable.get());
 	}
@@ -172,7 +166,7 @@ Window::Window()
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	openGL->AddRenderable("1poly", polyRenderable.get());
-	polyRenderable->setMultipleRendering();
+	polyRenderable->setCenterBasedRendering();
 	if (channelSkelViewReady){
 		polyRenderable->positionBasedDeformProcessor = positionBasedDeformProcessor;
 	}
@@ -181,7 +175,7 @@ Window::Window()
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
 	regularInteractor = std::make_shared<RegularInteractor>();
-	regularInteractor->setMatrixMgr(matrixMgrMini);
+	regularInteractor->setMatrixMgr(matrixMgrExocentric);
 	regularInteractor->isActive = false;
 	immersiveInteractor->isActive = true;
 
@@ -414,7 +408,7 @@ void Window::SlotNonImmerRb(bool b)
 	{
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
-		openGL->matrixMgr = matrixMgrMini;
+		openGL->matrixMgr = matrixMgrExocentric;
 	}
 }
 

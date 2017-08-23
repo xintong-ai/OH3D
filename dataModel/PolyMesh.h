@@ -70,7 +70,7 @@ public:
 		else if (std::string(dataPath).find("moortgat") != std::string::npos){
 			dims = make_int3(73, 73, 93);
 			spacing = make_float3(0.5, 0.5, 0.5);
-			disThr = 0.5;
+			disThr = 1; //in a minimal case, this number should be no less than sqrt(3)/2
 			shift = make_float3(ceil(disThr) + 1, ceil(disThr) + 1, ceil(disThr) + 1); //+1 for more 
 			shift = make_float3(std::max(shift.x, 3.0f), std::max(shift.y, 3.0f), std::max(shift.z, 3.0f));//set a lower bound
 			subfolder = "moortgat";

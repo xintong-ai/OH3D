@@ -39,8 +39,8 @@ void DeformFrameRenderable::draw(float modelview[16], float projection[16])
 		float3 yaxis = processor->rectVerticalDir;
 		float3 xaxis = normalize(cross(zaxisn, yaxis));
 		float deformationScale = processor->deformationScale;
-
 		float deformationScaleVertical = processor->deformationScaleVertical;
+
 		float3 p0 = processor->tunnelStart - xaxis*deformationScale - yaxis*deformationScaleVertical;
 		float3 p1 = processor->tunnelStart + xaxis*deformationScale - yaxis*deformationScaleVertical;
 		float3 p2 = processor->tunnelStart + xaxis*deformationScale + yaxis*deformationScaleVertical;
@@ -76,9 +76,34 @@ void DeformFrameRenderable::draw(float modelview[16], float projection[16])
 		glVertex3fv(&(p3.x));
 		glVertex3fv(&(p7.x));
 		glEnd();
-	}
-	
 
+
+
+	}
+
+	bool blockFurtherObjects = false;
+	if (blockFurtherObjects){
+		float3 zaxisn = normalize(processor->tunnelEnd - processor->tunnelStart);
+		float3 yaxis = processor->rectVerticalDir;
+		float3 xaxis = normalize(cross(zaxisn, yaxis));
+		float deformationScale = processor->deformationScale;
+		float deformationScaleVertical = processor->deformationScaleVertical;
+
+		glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
+		float3 pp4 = processor->tunnelEnd - xaxis*deformationScale * 100 - yaxis*deformationScaleVertical * 100;
+		float3 pp5 = processor->tunnelEnd + xaxis*deformationScale * 100 - yaxis*deformationScaleVertical * 100;
+		float3 pp6 = processor->tunnelEnd + xaxis*deformationScale * 100 + yaxis*deformationScaleVertical * 100;
+		float3 pp7 = processor->tunnelEnd - xaxis*deformationScale * 100 + yaxis*deformationScaleVertical * 100;
+
+		glBegin(GL_TRIANGLES);
+		glVertex3fv(&(pp4.x));
+		glVertex3fv(&(pp5.x));
+		glVertex3fv(&(pp6.x));
+		glVertex3fv(&(pp4.x));
+		glVertex3fv(&(pp7.x));
+		glVertex3fv(&(pp6.x));
+		glEnd();
+	}
 
 	
 	

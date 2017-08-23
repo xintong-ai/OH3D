@@ -106,7 +106,7 @@ void GLWidget::TimerEnd()
 		sdkStopTimer(&timer);
 
 		float ifps = 1.f*fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f);
-		qDebug() << "Overall FPS: "<<ifps;
+		//qDebug() << "Overall FPS: "<<ifps;
 
 		fpsCount = 0;
 		sdkResetTimer(&timer);

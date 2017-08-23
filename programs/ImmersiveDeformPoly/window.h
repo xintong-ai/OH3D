@@ -35,6 +35,7 @@ class GlyphRenderable;
 struct RayCastingParameters;
 class PolyRenderable;
 class PolyMesh;
+class SliceRenderable;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -82,15 +83,8 @@ private:
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
 
+	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
 
-
-	//for miniature
-	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<GLMatrixManager> matrixMgrMini;
-	std::shared_ptr<RegularInteractor> regularInteractorMini;
-	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderableMini;
-	std::shared_ptr<GlyphRenderable> glyphRenderable;
 
 
 
@@ -99,6 +93,7 @@ private:
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 	std::shared_ptr<PolyRenderable> polyRenderable;
+	std::shared_ptr<SliceRenderable> sliceRenderable;
 
 #ifdef USE_LEAP
 	LeapListener* listener;
@@ -134,6 +129,7 @@ private slots:
 	void applyEyePos();
 
 	void isDeformEnabledClicked(bool b);
+	void isForceDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
 
 	void SlotOriVolumeRb(bool);

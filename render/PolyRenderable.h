@@ -41,7 +41,7 @@ public:
 
 	//float3 GetPolyCenter();
 	bool isSnapped = false;
-	void setMultipleRendering(){ multipleRendering = true; }
+	void setCenterBasedRendering(){ centerBasedRendering = true; }
 	bool immersiveMode = false;
 
 private:
@@ -50,7 +50,7 @@ private:
 
 	std::shared_ptr<PolyMesh> polyMesh;
 
-	bool multipleRendering = false;
+	bool centerBasedRendering = false;
 
 protected:
 
@@ -59,13 +59,13 @@ protected:
 	unsigned int vbo_val; //value for color
 
 	ShaderProgram *glProg;
-	ShaderProgram *glProgImmer; //specifically for the immersive deformatino project
+	ShaderProgram *glProgImmer; //specifically for the immersive deformation project. differences include color schemes for deformed part, etc.
 
 	QOpenGLVertexArrayObject* m_vao;
 
 	float3 transform = make_float3(0,0,0);
 
-	float3 ka = make_float3(0.2f, 0.2f, 0.2f);
+	float3 ka = make_float3(0.6f, 0.6f, 0.6f);
 
 
 	void GenVertexBuffer(int nv, float* vertex, float* normal);

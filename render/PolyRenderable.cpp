@@ -65,8 +65,7 @@ void PolyRenderable::loadShaders()
 
 		tnorm = normalize(NormalMatrix * normalize(VertexNormal));
 
-		eyeCoords = ModelViewMatrix *
-			vec4(VertexPosition, 1.0);
+		eyeCoords = ModelViewMatrix * vec4(VertexPosition, 1.0);
 
 		gl_Position = MVP * vec4(VertexPosition + Transform, 1.0);
 	}
@@ -75,9 +74,9 @@ void PolyRenderable::loadShaders()
 	const char* vertexFS =
 		GLSL(
 		uniform vec4 LightPosition; // Light position in eye coords.
-	uniform vec3 Ka; // Diffuse reflectivity
-	uniform vec3 Kd; // Diffuse reflectivity
-	uniform vec3 Ks; // Diffuse reflectivity
+	uniform vec3 Ka;
+	uniform vec3 Kd;
+	uniform vec3 Ks;
 	uniform float Shininess;
 	uniform float Opacity;
 	
@@ -169,8 +168,7 @@ void PolyRenderable::loadShadersImmer()
 
 		tnorm = normalize(NormalMatrix * normalize(VertexNormal));
 
-		eyeCoords = ModelViewMatrix *
-			vec4(VertexPosition, 1.0);
+		eyeCoords = ModelViewMatrix * vec4(VertexPosition, 1.0);
 
 		gl_Position = MVP * vec4(VertexPosition + Transform, 1.0);
 		colorVal = VertexVal;
@@ -180,9 +178,9 @@ void PolyRenderable::loadShadersImmer()
 	const char* vertexFS =
 		GLSL(
 		uniform vec4 LightPosition; // Light position in eye coords.
-	uniform vec3 Ka; // Diffuse reflectivity
-	uniform vec3 Kd; // Diffuse reflectivity
-	uniform vec3 Ks; // Diffuse reflectivity
+	uniform vec3 Ka;
+	uniform vec3 Kd;
+	uniform vec3 Ks;
 	uniform float Shininess;
 	uniform float Opacity;
 	
@@ -200,6 +198,7 @@ void PolyRenderable::loadShadersImmer()
 		vec3 v = normalize(-position.xyz);
 		vec3 r = reflect(-s, normal);
 		vec3 ambient = Ka * (1 - colorVal) + errorColor*colorVal;
+		//ambient = ambient*0.000001 + vec3(colorVal, colorVal, colorVal);
 		float sDotN = max(dot(s, normal), 0.0);
 		vec3 diffuse = Kd * sDotN ;
 		vec3 spec = vec3(0.0);
@@ -265,7 +264,7 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	glMatrixMode(GL_MODELVIEW);
 
 	ShaderProgram *curGlProg;
-	if (immersiveMode && !multipleRendering){
+	if (immersiveMode && !centerBasedRendering){
 		curGlProg = glProgImmer;
 	}
 	else{
@@ -301,7 +300,7 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	if (multipleRendering){
+	if (centerBasedRendering){
 		ka = make_float3(0.2f, 0, 0);
 
 		int nRegion = polyMesh->particle->numParticles;
@@ -361,7 +360,7 @@ void PolyRenderable::GenVertexBuffer(int nv)
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	if (immersiveMode && !multipleRendering){
+	if (immersiveMode && !centerBasedRendering){
 	}
 	else{
 		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -372,7 +371,7 @@ void PolyRenderable::GenVertexBuffer(int nv)
 
 	qgl->glGenBuffers(1, &vbo_norm);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_norm);
-	if (immersiveMode && !multipleRendering){
+	if (immersiveMode && !centerBasedRendering){
 	}
 	else{
 		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -390,7 +389,7 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 
 	qgl->glGenBuffers(1, &vbo_vert);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
-	if (immersiveMode && !multipleRendering){
+	if (immersiveMode && !centerBasedRendering){
 	}
 	else{
 		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -401,7 +400,7 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 
 	qgl->glGenBuffers(1, &vbo_norm);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_norm);
-	if (immersiveMode && !multipleRendering){
+	if (immersiveMode && !centerBasedRendering){
 	}
 	else{
 		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
@@ -410,7 +409,7 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
 
-	if (immersiveMode && !multipleRendering){
+	if (immersiveMode && !centerBasedRendering){
 		qgl->glGenBuffers(1, &vbo_val);
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
 		qgl->glVertexAttribPointer(glProgImmer->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);

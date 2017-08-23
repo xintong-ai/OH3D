@@ -20,6 +20,7 @@
 #include "SphereRenderable.h"
 #include "PolyRenderable.h"
 #include "PolyMesh.h"
+#include "SliceRenderable.h"
 
 #include "PlyVTKReader.h"
 #include "VTPReader.h"
@@ -107,8 +108,9 @@ Window::Window()
 	//polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!! //not needed is the data is already shifted
 	polyMesh->setVertexCoordsOri();
 	polyMesh->setVertexColorVals(0);
+	
+	std::cout << "Read data from : " << polyDataPath << std::endl;
 
-	polyMesh->opacity = 1.0;// 0.5;
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -117,6 +119,8 @@ Window::Window()
 	std::cout << "posMax: " << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	matrixMgr->setDefaultForImmersiveMode();		
+	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
+
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -132,31 +136,23 @@ Window::Window()
 	if (channelSkelViewReady){
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh, matrixMgr, channelVolume);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
-
-
 		positionBasedDeformProcessor->deformationScale = 2; 
 		positionBasedDeformProcessor->deformationScaleVertical = 2.5;
-
-
-		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
-		//animationByMatrixProcessor->setViews(views);
-		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 	}
-
 
 	//////////////////////////////// Renderable ////////////////////////////////	
 
-
-	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
-	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
-
+	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 
 	if (channelSkelViewReady){
 		volumeRenderable = std::make_shared<VolumeRenderableCUDA>(channelVolume);
 		volumeRenderable->rcp = rcpForChannelSkel;
 		openGL->AddRenderable("2volume", volumeRenderable.get());
 		volumeRenderable->SetVisibility(false);
+
+		//sliceRenderable = std::make_shared<SliceRenderable>(channelVolume);
+		//openGL->AddRenderable("5volumeSlice", sliceRenderable.get());
 	}
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
@@ -170,7 +166,7 @@ Window::Window()
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
 	regularInteractor = std::make_shared<RegularInteractor>();
-	regularInteractor->setMatrixMgr(matrixMgrMini);
+	regularInteractor->setMatrixMgr(matrixMgrExocentric);
 	regularInteractor->isActive = false;
 	immersiveInteractor->isActive = true;
 
@@ -210,6 +206,11 @@ Window::Window()
 		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
 		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+		
+		QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+		isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+		controlLayout->addWidget(isForceDeformEnabled);
+		connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
 
 		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
 		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
@@ -339,6 +340,18 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
+void Window::isForceDeformEnabledClicked(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isForceDeform = true;
+	}
+	else{
+		positionBasedDeformProcessor->isForceDeform = false;
+		//inputVolume->reset();
+		//channelVolume->reset();
+	}
+}
+
 void Window::isDeformColoringEnabledClicked(bool b)
 {
 	if (b){
@@ -404,7 +417,7 @@ void Window::SlotNonImmerRb(bool b)
 	{
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
-		openGL->matrixMgr = matrixMgrMini;
+		openGL->matrixMgr = matrixMgrExocentric;
 	}
 }
 

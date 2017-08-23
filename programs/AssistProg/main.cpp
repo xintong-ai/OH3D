@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <numeric>
 
 //#include <cuda_runtime.h>
 //#include <helper_cuda.h>
@@ -35,8 +36,11 @@
 #include <vtkDataArray.h>
 #include <vtkPointData.h>
 #include <vtkLongLongArray.h>
+#include <vtkIntArray.h>
 #include <vtkPoints.h>
+#include <vtkTriangle.h>
 #include <vtkCell.h>
+#include <vtkCellArray.h>
 #include <vtkContourGrid.h>
 #include <vtkXMLUnstructuredGridReader.h>
 #include <vtkXMLUnstructuredGridWriter.h>
@@ -125,7 +129,7 @@ void labelPoly()
 	vtkLongLongArray *arrayRegionId = (vtkLongLongArray *)((res->GetPointData())->GetArray("RegionId"));
 	vtkPoints * points = res->GetPoints();
 
-	int n = arrayRegionId->GetNumberOfTuples();;
+	int n = arrayRegionId->GetNumberOfTuples();
 	cout << "count of points: " << n << endl;
 	long long range[2];
 	arrayRegionId->GetValueRange(range);
@@ -220,7 +224,7 @@ void labelPoly()
 //for moortgat data, compute isosurface
 void generateIso()
 {
-	
+
 	vtkSmartPointer<vtkUnstructuredGrid> data = vtkSmartPointer<vtkUnstructuredGrid>::New();
 
 	std::shared_ptr<DataMgr> dataMgr;
@@ -236,49 +240,41 @@ void generateIso()
 		exit(0);
 	}
 
-		//reader->SetFileName(dataPath.c_str());
-		//reader->Update();
-		//data = reader->GetOutput();
+	//reader->SetFileName(dataPath.c_str());
+	//reader->Update();
+	//data = reader->GetOutput();
 
+	reader->SetFileName(dataPath.c_str());
+	reader->Update();
 
+	data = reader->GetOutput();
 
+	//Create a mapper and actor
+	vtkSmartPointer<vtkDataSetMapper> mapper =
+		vtkSmartPointer<vtkDataSetMapper>::New();
+	mapper->SetInputConnection(reader->GetOutputPort());
 
+	vtkSmartPointer<vtkActor> actor =
+		vtkSmartPointer<vtkActor>::New();
+	actor->SetMapper(mapper);
 
-		reader->SetFileName(dataPath.c_str());
-		reader->Update();
+	//Create a renderer, render window, and interactor
+	vtkSmartPointer<vtkRenderer> renderer =
+		vtkSmartPointer<vtkRenderer>::New();
+	vtkSmartPointer<vtkRenderWindow> renderWindow =
+		vtkSmartPointer<vtkRenderWindow>::New();
+	renderWindow->AddRenderer(renderer);
+	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
+		vtkSmartPointer<vtkRenderWindowInteractor>::New();
+	renderWindowInteractor->SetRenderWindow(renderWindow);
 
+	//Add the actor to the scene
+	renderer->AddActor(actor);
+	renderer->SetBackground(.3, .6, .3); // Background color green
 
-
-		data = reader->GetOutput();
-
-
-
-		//Create a mapper and actor
-		vtkSmartPointer<vtkDataSetMapper> mapper =
-			vtkSmartPointer<vtkDataSetMapper>::New();
-		mapper->SetInputConnection(reader->GetOutputPort());
-
-		vtkSmartPointer<vtkActor> actor =
-			vtkSmartPointer<vtkActor>::New();
-		actor->SetMapper(mapper);
-
-		//Create a renderer, render window, and interactor
-		vtkSmartPointer<vtkRenderer> renderer =
-			vtkSmartPointer<vtkRenderer>::New();
-		vtkSmartPointer<vtkRenderWindow> renderWindow =
-			vtkSmartPointer<vtkRenderWindow>::New();
-		renderWindow->AddRenderer(renderer);
-		vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-			vtkSmartPointer<vtkRenderWindowInteractor>::New();
-		renderWindowInteractor->SetRenderWindow(renderWindow);
-
-		//Add the actor to the scene
-		renderer->AddActor(actor);
-		renderer->SetBackground(.3, .6, .3); // Background color green
-
-		//Render and interact
-		renderWindow->Render();
-		renderWindowInteractor->Start();
+	//Render and interact
+	renderWindow->Render();
+	renderWindowInteractor->Start();
 
 	//cout << reader->GetOutput()->GetPointData()->GetNumberOfArrays() << endl;
 	//cout << reader->GetOutput()->GetPointData()->GetNumberOfComponents() << endl;
@@ -302,11 +298,317 @@ void generateIso()
 
 }
 
+void reduceBloodCell()
+{
+	int startTs = 6, endTs = 32;
+	float yThr = 112;
+	for (int i = startTs; i <= endTs; i++){
+		stringstream ss;
+		ss << setw(4) << setfill('0') << i;
+		string s = ss.str();
+
+		string inputFileName = "D:/Data/Lin/Flow Simulations with Red Blood Cells/uDeviceX/ply/rbcs-" + s + ".ply";
+
+		vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
+		if (std::string(inputFileName).find("ply") != std::string::npos){
+			vtkSmartPointer<vtkPLYReader> reader = vtkSmartPointer<vtkPLYReader>::New();
+			reader->SetFileName(inputFileName.c_str());
+			data = reader->GetOutput();
+			reader->Update();
+		}
+		else{
+			std::cout << "file name not defined" << std::endl;
+			exit(0);
+		}
+		std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
+		std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
+
+		//assume this filter will not change original points and cells
+		vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter =
+			vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
+		connectivityFilter->SetInputData(data);
+		connectivityFilter->SetExtractionModeToAllRegions();
+		connectivityFilter->ColorRegionsOn();
+		connectivityFilter->Update();
+
+		vtkSmartPointer<vtkPolyData> res = connectivityFilter->GetOutput();
+		vtkIntArray *arrayRegionId = (vtkIntArray *)((res->GetPointData())->GetArray("RegionId"));
+		//vtkPoints * points = res->GetPoints();
+
+		int n = arrayRegionId->GetNumberOfTuples();
+		//cout << "count of points: " << n << endl;
+		int range[2];
+		arrayRegionId->GetValueRange(range);
+		//cout << "range of region id: " << range[0] << " " << range[1] << endl;
+		int nRegion = range[1] - range[0] + 1;
+
+		//check if points belonging to the same region are consecutive or not
+		long long curid = 0;
+		for (int i = 0; i < n; i++){
+			long long d = arrayRegionId->GetValue(i);
+			if (curid == d){
+			}
+			else if (curid + 1 == d){
+				curid++;
+			}
+			else {
+				cout << "not consecutive region id at " << i << " with id " << curid << endl;
+				exit(0); //not implemented currently
+			}
+		}
+		cout << "consecutive region ids for vertices checked" << endl;
+
+		vector<int> count(nRegion, 0);
+		vector<double3> posSum(nRegion, make_double3(0, 0, 0));
+		for (int i = 0; i < n; i++){
+			long long d = arrayRegionId->GetValue(i);
+			double * coord = data->GetPoint(i);
+			posSum[d] = make_double3(posSum[d].x + coord[0], posSum[d].y + coord[1], posSum[d].z + coord[2]);
+			count[d]++;
+		}
+		vector<float3> posAve(nRegion);
+		for (int i = 0; i < nRegion; i++){
+			posAve[i] = make_float3(posSum[i].x / count[i], posSum[i].y / count[i], posSum[i].z / count[i]);
+		}
+
+
+
+		vector<int> table(data->GetNumberOfPoints(), -1);
+		int newid = 0;
+
+		//http://www.vtk.org/Wiki/VTK/Examples/Cxx/PolyData/DeletePoint
+		int vertexcount = data->GetNumberOfPoints();
+		vtkSmartPointer<vtkPoints> newPoints =
+			vtkSmartPointer<vtkPoints>::New();
+		for (int i = 0; i < vertexcount; i++) {
+			//double coord[3];
+			//data->GetPoint(i, coord);
+			if (!(posAve[arrayRegionId->GetValue(i)].y > yThr)){
+				double coord[3];
+				data->GetPoint(i, coord);
+				newPoints->InsertNextPoint(coord);
+				table[i] = newid;
+				newid++;
+			}
+		}
+
+		vtkSmartPointer<vtkCellArray> triangles =
+			vtkSmartPointer<vtkCellArray>::New();
+		int facecount = data->GetNumberOfCells();
+		for (int i = 0; i < facecount; i++) {
+			bool needDel = false;
+			int id[3];
+			for (int j = 0; j < 3; j++){
+				id[j] = data->GetCell(i)->GetPointId(j);
+			}
+
+			if (posAve[arrayRegionId->GetValue(id[0])].y > yThr){
+		
+			}
+			else{
+				vtkSmartPointer<vtkTriangle> triangle =
+					vtkSmartPointer<vtkTriangle>::New();
+				for (int j = 0; j < 3; j++){
+					if (table[id[j]] < 0){
+						cout << "removing error" << endl;
+						exit(0);
+					}
+					triangle->GetPointIds()->SetId(j, table[id[j]]);
+				}
+				triangles->InsertNextCell(triangle);
+			}
+		}
+
+		data->GetPoints()->ShallowCopy(newPoints);
+		data->SetPolys(triangles);
+
+
+		vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+		writer4->SetFileName(("D:/Data/Lin/reducedBloodCell/reduced-rbcs-" + s + ".vtp").c_str());
+		writer4->SetInputData(data);
+		writer4->Write();
+
+
+		std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
+		std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
+	}
+
+}
+
+void markReducedBloodCell()
+{
+	int startTs = 6, endTs = 32;
+
+	int i = startTs;
+	stringstream ss;
+	ss << setw(4) << setfill('0') << i;
+	string s = ss.str();
+
+	string inputFileName = "D:/Data/Lin/reducedBloodCell/reduced-rbcs-" + s + ".vtp";
+
+	vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
+	vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+	reader->SetFileName(inputFileName.c_str());
+	data = reader->GetOutput();
+	reader->Update();
+
+	//assume this filter will not change original points and cells
+	vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter =
+		vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
+	connectivityFilter->SetInputData(data);
+	connectivityFilter->SetExtractionModeToAllRegions();
+	connectivityFilter->ColorRegionsOn();
+	connectivityFilter->Update();
+	vtkSmartPointer<vtkPolyData> res = connectivityFilter->GetOutput();
+
+	vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+	writer4->SetFileName(("D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-" + s + ".vtp").c_str());
+	writer4->SetInputData(res);
+	writer4->Write();
+
+
+
+	vtkIntArray *arrayRegionId = (vtkIntArray *)((res->GetPointData())->GetArray("RegionId"));
+	int n = arrayRegionId->GetNumberOfTuples();
+	int range[2];
+	arrayRegionId->GetValueRange(range);
+	int nRegion = range[1] - range[0] + 1;
+	if (range[0] != 0){	//the function relies on the assumption that the result of vtkPolyDataConnectivityFilter is using consecutive ids starting from 0.
+		std::cout << "not consecutive ids!!" << std::endl;
+		exit(0);
+	}
+
+	//no need to check if points belonging to the same region are consecutive or not, since it has been checked in reduceBloodCell()
+
+	vector<int> count(nRegion, 0);
+	vector<double3> posSum(nRegion, make_double3(0, 0, 0));
+	for (int i = 0; i < n; i++){
+		long long d = arrayRegionId->GetValue(i);
+		double * coord = data->GetPoint(i);
+		posSum[d] = make_double3(posSum[d].x + coord[0], posSum[d].y + coord[1], posSum[d].z + coord[2]);
+		count[d]++;
+	}
+	vector<float3> posAve(nRegion);
+	for (int i = 0; i < nRegion; i++){
+		posAve[i] = make_float3(posSum[i].x / count[i], posSum[i].y / count[i], posSum[i].z / count[i]);
+	}
+
+	vector<float3> lastPosAve = posAve;
+	vector<int> lastIds(nRegion);
+	std::iota(std::begin(lastIds), std::end(lastIds), 0);
+
+	int nextAvalableId = nRegion;
+
+	for (int i = startTs+1; i <= endTs; i++){
+		stringstream ss;
+		ss << setw(4) << setfill('0') << i;
+		string s = ss.str();
+
+		string inputFileName = "D:/Data/Lin/reducedBloodCell/reduced-rbcs-" + s + ".vtp";
+
+		vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
+		vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+		reader->SetFileName(inputFileName.c_str());
+		data = reader->GetOutput();
+		reader->Update();
+
+		vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter =
+			vtkSmartPointer<vtkPolyDataConnectivityFilter>::New();
+		connectivityFilter->SetInputData(data);
+		connectivityFilter->SetExtractionModeToAllRegions();
+		connectivityFilter->ColorRegionsOn();
+		connectivityFilter->Update();
+		vtkSmartPointer<vtkPolyData> res = connectivityFilter->GetOutput();
+
+		vtkIntArray *arrayRegionId = (vtkIntArray *)((res->GetPointData())->GetArray("RegionId"));
+		int n = arrayRegionId->GetNumberOfTuples();
+		int range[2];
+		arrayRegionId->GetValueRange(range);
+		int nRegion = range[1] - range[0] + 1;
+		if (range[0] != 0){
+			std::cout << "not consecutive ids!!" << std::endl;
+			exit(0);
+		}
+		//no need to check if points belonging to the same region are consecutive or not, since it has been checked in reduceBloodCell()
+		vector<int> count(nRegion, 0);
+		vector<double3> posSum(nRegion, make_double3(0, 0, 0));
+		for (int i = 0; i < n; i++){
+			long long d = arrayRegionId->GetValue(i);
+			double * coord = data->GetPoint(i);
+			posSum[d] = make_double3(posSum[d].x + coord[0], posSum[d].y + coord[1], posSum[d].z + coord[2]);
+			count[d]++;
+		}
+		vector<float3> posAve(nRegion);
+		for (int i = 0; i < nRegion; i++){
+			posAve[i] = make_float3(posSum[i].x / count[i], posSum[i].y / count[i], posSum[i].z / count[i]);
+		}
+
+		vector<int> idChangeMap(nRegion, -1);
+
+		int numLastIds = lastIds.size();
+		vector<float> closestDisSquFromLast(numLastIds, -1);
+		vector<int> idOfClosestDisSquFromLast(numLastIds, -1);
+
+		for (int i = 0; i < nRegion; i++){
+			float minDisSquare = FLT_MAX;
+			int idOfMinDis;
+			for (int j = 0; j < numLastIds; j++){
+				float disSquare =  pow(posAve[i].x - lastPosAve[j].x, 2) + pow(posAve[i].y - lastPosAve[j].y, 2) + pow(posAve[i].z - lastPosAve[j].z, 2);
+				if (disSquare < minDisSquare){
+					minDisSquare = disSquare;
+					idOfMinDis = j; //essentially the id is not j, but lastIds[j]. here only the index j is important
+				}
+			}
+
+			if (idOfClosestDisSquFromLast[idOfMinDis] < 0){
+				idOfClosestDisSquFromLast[idOfMinDis] = i;
+				closestDisSquFromLast[idOfMinDis] = minDisSquare;
+			}
+			else{
+				if (closestDisSquFromLast[idOfMinDis] > minDisSquare){
+					idOfClosestDisSquFromLast[idOfMinDis] = i;
+					closestDisSquFromLast[idOfMinDis] = minDisSquare;
+				}
+			}
+		}
+
+		for (int j = 0; j < numLastIds; j++){
+			if (idOfClosestDisSquFromLast[j] >= 0){
+				//id change from idOfClosestDisSquFromLast[j] -> j
+				idChangeMap[idOfClosestDisSquFromLast[j]] = lastIds[j];
+			}
+		}
+		for (int i = 0; i < nRegion; i++){
+			if (idChangeMap[i] < 0){
+				idChangeMap[i] = nextAvalableId;
+				nextAvalableId++;
+			}
+		}
+		for (int i = 0; i < n; i++){
+			int idOri = arrayRegionId->GetValue(i);
+			arrayRegionId->SetValue(i, idChangeMap[idOri]);
+		}
+
+		vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+		writer4->SetFileName(("D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-" + s + ".vtp").c_str());
+		writer4->SetInputData(res);
+		writer4->Write();
+
+		lastPosAve = posAve;
+		lastIds = idChangeMap;
+	}
+}
+
+
 int main(int argc, char **argv)
 {
 	//createSphere();
-	labelPoly();
+	//labelPoly();
+
 	//generateIso();	//not ready . may delete later
+
+	//reduceBloodCell();
+	markReducedBloodCell();
 
 	return 0;
 }

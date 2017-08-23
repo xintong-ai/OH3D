@@ -17,6 +17,10 @@ PolyMesh::~PolyMesh(){
 
 void PolyMesh::setVertexColorVals(float v)
 {
+	if (v != 0){
+		std::cout << "setVertexColorVals not implemented!!" << std::endl;
+		exit(0);
+	}
 	if (vertexColorVals) delete[]vertexColorVals;
 	vertexColorVals = (float*)malloc(sizeof(float)* vertexcount * 2); //times 2 to prepare for newly added vertices
 	for (int i = 0; i < vertexcount; i++) {
@@ -96,6 +100,8 @@ void PolyMesh::reset()
 		facecount = facecountOri;
 		memcpy(indices, indicesOri, sizeof(unsigned int)* 3 * facecount);
 		std::cout << "poly data successfully reset " << std::endl;
+
+		memset((void*)(vertexColorVals), 0, sizeof(float)* vertexcount*2);
 	}
 }
 

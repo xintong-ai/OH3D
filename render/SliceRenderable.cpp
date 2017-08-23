@@ -44,7 +44,7 @@ void SliceRenderable::draw(float modelview[16], float projection[16])
 
 	glBegin(GL_POINTS);
 
-	int j = 5;
+	int j = 45;
 	for (int k = 0; k < size.z; k++){
 		for (int i = 0; i < size.x; i++){
 			int ind = k*size.x*size.y + j*size.x + i;
