@@ -43,6 +43,7 @@
 #include "VolumeRenderableCUDAKernel.h"
 
 bool channelSkelViewReady = true;
+bool useMultiplePolyData = true;
 
 void rawfileInfo(std::string dataPath, DataType & channelVolDataType)
 {
@@ -61,7 +62,6 @@ void rawfileInfo(std::string dataPath, DataType & channelVolDataType)
 	}
 }
 
-
 Window::Window()
 {
 	setWindowTitle(tr("Egocentric VR Volume Visualization"));
@@ -70,24 +70,80 @@ Window::Window()
 	//////////////////Volume and RayCastingParameters
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
-	std::shared_ptr<RayCastingParameters> rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 	std::string subfolder;
-
-
 	float disThr;
 	float3 shift;
 	int3 dims;
 	float3 spacing;
-	PolyMesh::dataParameters(polyDataPath, dims, spacing, disThr, shift, subfolder);
+	DataType channelVolDataType;
+	std::shared_ptr<RayCastingParameters> rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
+
+	if (useMultiplePolyData){
+		const std::string polyDatasFolder = dataMgr->GetConfig("POLY_DATAS_FOLDER");
+		std::string paths[2];
+		paths[0] = polyDatasFolder + "sand60_067_xw2_iso0.0005_shiftedAndRespaced.vtp";
+		paths[1] = polyDatasFolder + "sand60_067_xw2_iso0.0012_shiftedAndRespaced.vtp";
+
+		PolyMesh::dataParameters(paths[0], dims, spacing, disThr, shift, subfolder);
+		subfolder = subfolder + "Multi";
+
+		for (int i = 0; i < 2; i++){
+			std::shared_ptr<PolyMesh> curpolyMesh = std::make_shared<PolyMesh>();
+			if (std::string(paths[i]).find(".ply") != std::string::npos){
+				PlyVTKReader plyVTKReader;
+				plyVTKReader.readPLYByVTK(paths[i].c_str(), curpolyMesh.get());
+			}
+			else{
+				VTPReader reader;
+				reader.readFile(paths[i].c_str(), curpolyMesh.get());
+			}
+			std::cout << "Read data from : " << paths[i] << std::endl;
+			curpolyMesh->setVertexColorVals((i == 0) ? 0 : 1);
+
+			polyMeshes.push_back(curpolyMesh);
+		}
+
+		polyMesh = std::make_shared<PolyMesh>();
+		polyMesh->createByCombiningPolyMeshes(polyMeshes);
+
+		for (int i = 0; i < 2; i++){
+			polyMeshes[i].reset();
+		}
+
+		polyMesh->setVertexCoordsOri();
+		polyMesh->setVertexDeviateVals();
+
+		rawfileInfo(paths[0], channelVolDataType);
+	}
+	else{
+		const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+
+		PolyMesh::dataParameters(polyDataPath, dims, spacing, disThr, shift, subfolder);
+
+		polyMesh = std::make_shared<PolyMesh>();
+		if (std::string(polyDataPath).find(".ply") != std::string::npos){
+			PlyVTKReader plyVTKReader;
+			plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
+		}
+		else{
+			VTPReader reader;
+			reader.readFile(polyDataPath.c_str(), polyMesh.get());
+		}
+		//polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!! //not needed if the data is already shifted
+		polyMesh->setVertexCoordsOri();
+		polyMesh->setVertexDeviateVals();
+		polyMesh->setVertexColorVals(0);
+
+		std::cout << "Read data from : " << polyDataPath << std::endl;
+
+		rawfileInfo(polyDataPath, channelVolDataType);
+	}
+
 	shift = make_float3(0, 0, 0); //already shifted and respaced data
 	spacing = make_float3(1, 1, 1); //already shifted and respaced data
 
-	DataType channelVolDataType;
 	if (channelSkelViewReady){
-		rawfileInfo(polyDataPath, channelVolDataType);
-
 		channelVolume = std::make_shared<Volume>(true);
 		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
 		reader2->OutputToVolumeByNormalizedValue(channelVolume);
@@ -95,21 +151,6 @@ Window::Window()
 		reader2.reset();
 		channelVolume->spacing = spacing;
 	}
-
-	polyMesh = std::make_shared<PolyMesh>();
-	if (std::string(polyDataPath).find(".ply") != std::string::npos){
-		PlyVTKReader plyVTKReader;
-		plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
-	}
-	else{
-		VTPReader reader;
-		reader.readFile(polyDataPath.c_str(), polyMesh.get());
-	}
-	//polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!! //not needed is the data is already shifted
-	polyMesh->setVertexCoordsOri();
-	polyMesh->setVertexColorVals(0);
-	
-	std::cout << "Read data from : " << polyDataPath << std::endl;
 
 
 	////////////////matrix manager
@@ -121,6 +162,7 @@ Window::Window()
 	matrixMgr->setDefaultForImmersiveMode();		
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -141,15 +183,14 @@ Window::Window()
 	}
 
 	//////////////////////////////// Renderable ////////////////////////////////	
-
-	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
-
 	if (channelSkelViewReady){
 		volumeRenderable = std::make_shared<VolumeRenderableCUDA>(channelVolume);
 		volumeRenderable->rcp = rcpForChannelSkel;
 		openGL->AddRenderable("2volume", volumeRenderable.get());
 		volumeRenderable->SetVisibility(false);
+
+		//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+		//openGL->AddRenderable("0deform", deformFrameRenderable.get());
 
 		//sliceRenderable = std::make_shared<SliceRenderable>(channelVolume);
 		//openGL->AddRenderable("5volumeSlice", sliceRenderable.get());
@@ -162,6 +203,7 @@ Window::Window()
 	polyRenderable->immersiveMode = true;
 	openGL->AddRenderable("1poly", polyRenderable.get());
 	
+
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
@@ -359,7 +401,7 @@ void Window::isDeformColoringEnabledClicked(bool b)
 	}
 	else{
 		positionBasedDeformProcessor->isColoringDeformedPart = false;
-		polyMesh->setVertexColorVals(0);
+		polyMesh->setVertexDeviateVals();
 	}
 }
 

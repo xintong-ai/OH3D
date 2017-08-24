@@ -41,6 +41,7 @@
 #include <vtkPolyDataWriter.h>
 #include <vtkXMLImageDataWriter.h>
 #include <vtkCell.h>
+#include <itkConnectedComponentImageFilter.h>
 
 using namespace std;
 
@@ -263,6 +264,196 @@ inline float disToTri(float3 p, float3 p1, float3 p2, float3 p3, float thr)
 	return sqrt(disInPlaneSqu + disToPlane*disToPlane);
 }
 
+void computeDistanceMap(itk::Image< float, 3 >::Pointer image, vtkSmartPointer<vtkPolyData> data)
+{
+	//in this function, only process vtkPolyData that has been shifted and respaced
+	float3 originf3 = make_float3(0, 0, 0);
+	float3 spacing = make_float3(1.0, 1.0, 1.0);
+
+
+	int facecount = data->GetNumberOfCells();
+
+	ImageType::SizeType size = image->GetLargestPossibleRegion().GetSize();
+
+	for (int i = 0; i < facecount; i++) {
+		if (data->GetCell(i)->GetNumberOfPoints() != 3){
+			std::cout << "readed poly data contains non-triangles. the current program cannot handle" << std::endl;
+			exit(0);
+		}
+
+		int i1 = data->GetCell(i)->GetPointId(0);
+		int i2 = data->GetCell(i)->GetPointId(1);
+		int i3 = data->GetCell(i)->GetPointId(2);
+
+		double coord[3];
+		data->GetPoint(i1, coord);
+		float3 p1 = make_float3(coord[0], coord[1], coord[2]);
+		data->GetPoint(i2, coord);
+		float3 p2 = make_float3(coord[0], coord[1], coord[2]);
+		data->GetPoint(i3, coord);
+		float3 p3 = make_float3(coord[0], coord[1], coord[2]);
+
+		float3 v1 = p1 / spacing + originf3;
+		float3 v2 = p2 / spacing + originf3;
+		float3 v3 = p3 / spacing + originf3;
+
+		float bbMargin = 3;
+		int xstart = max(min(min(v1.x, v2.x), v3.x) - bbMargin, 0);
+		int xend = min(ceil(max(max(v1.x, v2.x), v3.x) + bbMargin), size[0] - 1);
+		int ystart = max(min(min(v1.y, v2.y), v3.y) - bbMargin, 0);
+		int yend = min(ceil(max(max(v1.y, v2.y), v3.y) + bbMargin), size[1] - 1);
+		int zstart = max(min(min(v1.z, v2.z), v3.z) - bbMargin, 0);
+		int zend = min(ceil(max(max(v1.z, v2.z), v3.z) + bbMargin), size[2] - 1);
+
+		for (unsigned int z = zstart; z <= zend; z++)
+		{
+			for (unsigned int y = ystart; y <= yend; y++)
+			{
+				for (unsigned int x = xstart; x <= xend; x++)
+				{
+					ImageType::IndexType pixelIndex;
+					pixelIndex[0] = x;
+					pixelIndex[1] = y;
+					pixelIndex[2] = z;
+
+					float cur = image->GetPixel(pixelIndex);
+					float v = disToTri(make_float3(x, y, z) * spacing + originf3, p1, p2, p3, cur);
+					if (v < cur){
+						image->SetPixel(pixelIndex, v);
+					}
+				}
+			}
+		}
+	}
+}
+
+
+void thresholdImage(itk::Image< float, 3 >::Pointer image, float disThr)
+{
+	ImageType::SizeType size = image->GetLargestPossibleRegion().GetSize();
+	for (unsigned int z = 0; z < size[2]; z++)
+	{
+		for (unsigned int y = 0; y < size[1]; y++)
+		{
+			for (unsigned int x = 0; x< size[0]; x++)
+			{
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = x;
+				pixelIndex[1] = y;
+				pixelIndex[2] = z;
+
+				if (image->GetPixel(pixelIndex) <= disThr){
+					image->SetPixel(pixelIndex, 0);
+				}
+				else{
+					image->SetPixel(pixelIndex, 1);
+				}
+			}
+		}
+	}
+}
+
+
+//the purpose for this function is, using a larger threshold for regions outside the polymesh, therefore the mesh will be deformed earlier when the eye is approaching
+void thresholdImageExteriorExtension(itk::Image< float, 3 >::Pointer image, float disThr, float disThrExt) //specifically for moortgat's data
+{
+	ImageType::SizeType size = image->GetLargestPossibleRegion().GetSize();
+
+	itk::Image< int, 3 >::Pointer labelImage = itk::Image< int, 3 >::New();
+	itk::Index<3> start; start.Fill(0);
+	ImageType::RegionType region(start, size);
+	labelImage->SetRegions(region);
+	double spacingDouble[3] = { 1,1,1 };
+	double origin[3] = { 0, 0, 0 };
+	labelImage->SetOrigin(origin);
+	labelImage->SetSpacing(spacingDouble);
+	labelImage->Allocate();
+	labelImage->FillBuffer(0);
+
+	for (unsigned int z = 0; z < size[2]; z++)
+	{
+		for (unsigned int y = 0; y < size[1]; y++)
+		{
+			for (unsigned int x = 0; x< size[0]; x++)
+			{
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = x;
+				pixelIndex[1] = y;
+				pixelIndex[2] = z;
+
+				if (image->GetPixel(pixelIndex) <= disThr){
+					labelImage->SetPixel(pixelIndex, 0);
+				}
+				else if((z == 84 && x <= 64 && y <= 64 && x >= 2 && y >= 2)
+					|| (z == 2 && x <= 64 && y <= 64 && x >= 2 && y >= 2)
+					|| (x == 2 && z <= 84 && y <= 64 && z >= 2 && y >= 2)
+					|| (x == 64 && z <= 84 && y <= 64 && z >= 6 && y >= 2)	//note here z >= 6 leaves some leak connection
+					|| (y == 2 && z <= 84 && x <= 64 && z >= 2 && x >= 2)
+					|| (y == 64 && z <= 84 && x <= 64 && z >= 2 && x >= 2)){
+
+					labelImage->SetPixel(pixelIndex, 0);
+				}
+				else{
+					labelImage->SetPixel(pixelIndex, 1);
+				}
+			}
+		}
+	}
+
+	typedef itk::ConnectedComponentImageFilter <itk::Image< int, 3 >, itk::Image< int, 3 > >
+		ConnectedComponentImageFilterType;
+	ConnectedComponentImageFilterType::Pointer connected =
+		ConnectedComponentImageFilterType::New();
+	connected->SetInput(labelImage);
+	connected->Update();
+	labelImage = connected->GetOutput();
+
+	ImageType::IndexType pixelIndex;
+	pixelIndex[0] = 0;
+	pixelIndex[1] = 0;
+	pixelIndex[2] = 0;
+	int exteriorLabel = labelImage->GetPixel(pixelIndex);
+
+
+	for (unsigned int z = 0; z < size[2]; z++)
+	{
+		for (unsigned int y = 0; y < size[1]; y++)
+		{
+			for (unsigned int x = 0; x< size[0]; x++)
+			{
+				ImageType::IndexType pixelIndex;
+				pixelIndex[0] = x;
+				pixelIndex[1] = y;
+				pixelIndex[2] = z;
+
+				if ((labelImage->GetPixel(pixelIndex) == exteriorLabel)
+					|| (z == 84 && x <= 64 && y <= 64 && x >= 2 && y >= 2)	//the boundary wall
+					|| (z == 2 && x <= 64 && y <= 64 && x >= 2 && y >= 2)
+					|| (x == 2 && z <= 84 && y <= 64 && z >= 2 && y >= 2)
+					|| (x == 64 && z <= 84 && y <= 64 && z >= 2 && y >= 2)
+					|| (y == 2 && z <= 84 && x <= 64 && z >= 2 && x >= 2)
+					|| (y == 64 && z <= 84 && x <= 64 && z >= 2 && x >= 2)){
+
+					if (image->GetPixel(pixelIndex) <= disThrExt){
+						image->SetPixel(pixelIndex, 0);
+					}
+					else{
+						image->SetPixel(pixelIndex, 1);
+					}
+				}
+				else{
+					if (image->GetPixel(pixelIndex) <= disThr){
+						image->SetPixel(pixelIndex, 0);
+					}
+					else{
+						image->SetPixel(pixelIndex, 1);
+					}
+				}				
+			}
+		}
+	}
+}
+
 void processSurfaceData()
 {
 	//this process is implemented in vtkImplicitModeller class
@@ -332,7 +523,8 @@ void processSurfaceData()
 			}
 		}
 	}
-
+	computeDistanceMap(image, data);
+	/*
 	int facecount = data->GetNumberOfCells();
 
 	for (int i = 0; i < facecount; i++) {
@@ -385,7 +577,81 @@ void processSurfaceData()
 			}
 		}
 	}
-	
+	*/
+
+	thresholdImage(image, disThr);
+
+	ImageType::SizeType inputSize = image->GetLargestPossibleRegion().GetSize();
+	std::cout << "Input size: " << inputSize << std::endl;
+
+	typedef  itk::ImageFileWriter<ImageType> WriterType;
+	std::cout << "Writing output... " << std::endl;
+	WriterType::Pointer outputWriter = WriterType::New();
+	outputWriter->SetFileName("cleanedChannel.mhd");
+	outputWriter->SetInput(image);
+	outputWriter->Update();
+}
+
+
+void processSurfaceMultiData()
+{
+	//similar to processSurfaceData(), but process multiple datasets into one cell volume, and shift and resample each of them
+	//this function does not use the config.txt
+
+	vtkSmartPointer<vtkPolyData> data[2];
+	std::string paths[2];
+	std::string folderpath = "D:/Data/moortgat/";
+	paths[0] = folderpath + "sand60_067_xw2_iso0.0005.vtp";
+	paths[1] = folderpath + "sand60_067_xw2_iso0.0012.vtp";
+
+	//assume the following parameters is the same for all datasets in data[]
+	float disThr;
+	float3 shift;
+	int3 dims;
+	float3 spacing;
+	string subfolder;
+	PolyMesh::dataParameters(paths[0], dims, spacing, disThr, shift, subfolder);
+
+	for (int i = 0; i < 2; i++){
+		vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+		reader->SetFileName(paths[i].c_str());
+		reader->Update();
+		data[i] = reader->GetOutput();
+
+		std::cout << "shifted " << shift.x << " " << shift.y << " " << shift.z << std::endl;
+		std::cout << "spacing " << spacing.x << " " << spacing.y << " " << spacing.z << std::endl;
+
+		//vtkPolyDataShift(data, shift);
+		vtkPolyDataShiftAndRespacing(data[i], shift, spacing);
+
+		vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+		writer4->SetFileName((string("shifted") + to_string(i) + string(".vtp")).c_str());
+		writer4->SetInputData(data[i]);
+		writer4->Write();
+	}
+
+	spacing = make_float3(1, 1, 1);
+
+
+	typedef float PixelType;
+	typedef itk::Image< PixelType, 3 > ImageType;
+	ImageType::Pointer image = ImageType::New();
+	itk::Index<3> start; start.Fill(0);
+	itk::Size<3> size;
+	size[0] = dims.x;
+	size[1] = dims.y;
+	size[2] = dims.z;
+	ImageType::RegionType region(start, size);
+	image->SetRegions(region);
+	double spacingDouble[3] = { spacing.x, spacing.y, spacing.z };
+	double origin[3] = { 0, 0, 0 };
+	float3 originf3 = make_float3(origin[0], origin[1], origin[2]);
+	image->SetOrigin(origin);
+	image->SetSpacing(spacingDouble);
+	image->Allocate();
+	image->FillBuffer(0);
+
+	// Make an empty data
 	for (unsigned int z = 0; z < size[2]; z++)
 	{
 		for (unsigned int y = 0; y < size[1]; y++)
@@ -396,17 +662,19 @@ void processSurfaceData()
 				pixelIndex[0] = x;
 				pixelIndex[1] = y;
 				pixelIndex[2] = z;
-				
-				if (image->GetPixel(pixelIndex) <= disThr){
-					image->SetPixel(pixelIndex, 0);
-				}
-				else{
-					image->SetPixel(pixelIndex, 1);
-				}
+
+				image->SetPixel(pixelIndex, 10);
 			}
 		}
 	}
-	
+
+	for (int i = 0; i < 2; i++){
+		computeDistanceMap(image, data[i]);
+	}
+
+	//thresholdImage(image, disThr);
+	thresholdImageExteriorExtension(image, disThr, 2 * disThr);
+
 	ImageType::SizeType inputSize = image->GetLargestPossibleRegion().GetSize();
 	std::cout << "Input size: " << inputSize << std::endl;
 
@@ -525,7 +793,9 @@ int main(int argc, char **argv)
 	sdkStartTimer(&timer);
 
 	//processVolumeData();
-	processSurfaceData();
+	//processSurfaceData();
+	processSurfaceMultiData();
+
 	//processParticleMeshData();
 
 	sdkStopTimer(&timer);

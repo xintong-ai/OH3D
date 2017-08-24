@@ -45,7 +45,8 @@ public:
 		if (d_indices) cudaFree(d_indices);
 		if (d_faceValid) cudaFree(d_faceValid);
 		if (d_numAddedFaces) cudaFree(d_numAddedFaces);
-		if (d_vertexColordVals) cudaFree(d_vertexColordVals);
+		if (d_vertexDeviateVals) cudaFree(d_vertexDeviateVals);
+		if (d_vertexColorVals) cudaFree(d_vertexColorVals);
 	};		
 
 	bool isColoringDeformedPart = false;
@@ -78,7 +79,8 @@ private:
 	float* d_vertexCoords_init = 0;
 	unsigned int* d_indices = 0;
 	float* d_norms = 0;
-	float* d_vertexColordVals = 0;
+	float* d_vertexDeviateVals = 0;
+	float* d_vertexColorVals = 0;
 
 	bool* d_faceValid = 0;
 	int* d_numAddedFaces = 0;
@@ -105,8 +107,7 @@ private:
 	float lastOpenFinalDegree;
 	float3 lastDeformationDirVertical;
 	float3 lastTunnelStart, lastTunnelEnd;
-
-
+	
 	void InitCudaSupplies();
 
 	void doVolumeDeform(float degree);

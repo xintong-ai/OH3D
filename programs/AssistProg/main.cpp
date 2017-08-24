@@ -602,10 +602,12 @@ void markReducedBloodCell()
 
 int main(int argc, char **argv)
 {
+	//generateIso();	//not ready . may delete later
+
+
 	//createSphere();
 	//labelPoly();
 
-	//generateIso();	//not ready . may delete later
 
 	//reduceBloodCell();
 	markReducedBloodCell();

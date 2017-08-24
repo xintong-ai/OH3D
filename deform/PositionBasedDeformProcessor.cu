@@ -56,7 +56,8 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyM
 	cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3*2);
 	//cudaMalloc(&d_faceValid, sizeof(bool)*poly->facecount);
 	cudaMalloc(&d_numAddedFaces, sizeof(int));
-	cudaMalloc(&d_vertexColordVals, sizeof(float)*poly->vertexcount * 2);
+	cudaMalloc(&d_vertexDeviateVals, sizeof(float)*poly->vertexcount * 2);
+	cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2);
 };
 
 PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
@@ -270,11 +271,11 @@ d_posInDeformedChannelVolume(float3 pos, int3 dims, float3 spacing, bool* inChan
 
 __global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, float* vertexCoords, int vertexcount, 
 	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd,
-	float* vertexColordVals)
+	float* vertexDeviateVals)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= vertexcount)	return;
-	vertexColordVals[i] = 0;
+	vertexDeviateVals[i] = 0;
 	
 	float3 pos = make_float3(vertexCoords_init[3 * i], vertexCoords_init[3 * i + 1], vertexCoords_init[3 * i + 2]) * spacing;
 	vertexCoords[3 * i] = pos.x;
@@ -302,7 +303,7 @@ __global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, floa
 				vertexCoords[3 * i + 1] = newPos.y;
 				vertexCoords[3 * i + 2] = newPos.z;
 
-				vertexColordVals[i] = length(newPos - pos) / (deformationScale / 2); //value range [0,1]
+				vertexDeviateVals[i] = length(newPos - pos) / (deformationScale / 2); //value range [0,1]
 			}
 		}
 	}
@@ -318,12 +319,12 @@ void PositionBasedDeformProcessor::doPolyDeform(float degree)
 	int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
 
 	d_updatePolyMeshbyMatrixInfo_rect << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount,
-		tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexColordVals);
+		tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexDeviateVals);
 
 	cudaMemcpy(poly->vertexCoords, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
 	if (isColoringDeformedPart)
 	{
-		cudaMemcpy(poly->vertexColorVals, d_vertexColordVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
+		cudaMemcpy(poly->vertexDeviateVals, d_vertexDeviateVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
 	}
 }
 
@@ -488,6 +489,31 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 {
 	if (isForceDeform) //just for testing, may not be precise
 	{
+		//when this funciton is called, suppose we already know that centerPoint is not inWall
+		float3 tunnelAxis = normalize(matrixMgr->getViewVecInLocal());
+		//rectVerticalDir = targetUpVecInLocal;
+		if (abs(dot(targetUpVecInLocal, tunnelAxis)) < 0.9){
+			rectVerticalDir = normalize(cross(cross(tunnelAxis, targetUpVecInLocal), tunnelAxis));
+		}
+		else{
+			rectVerticalDir = matrixMgr->getViewVecInLocal();
+		}
+
+		//old method
+		float step = 0.5;
+		tunnelStart = centerPoint;
+		while (!channelVolume->inRange(tunnelStart / spacing) || channelVolume->getVoxel(tunnelStart / spacing) > 0.5){
+			tunnelStart += tunnelAxis*step;
+		}
+		tunnelEnd = tunnelStart + tunnelAxis*step;
+		while (channelVolume->inRange(tunnelEnd / spacing) && channelVolume->getVoxel(tunnelEnd / spacing) < 0.5){
+			tunnelEnd += tunnelAxis*step;
+		}
+
+
+
+		/* //new method
+
 		//when this funciton is called, suppose we already know that centerPoint is NOT inWall
 		float3 tunnelAxis = normalize(matrixMgr->getViewVecInLocal());
 		//rectVerticalDir = targetUpVecInLocal;
@@ -537,6 +563,7 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		std::cout << "centerPoint: " << centerPoint.x << " " << centerPoint.y << " " << centerPoint.z << std::endl;
 		std::cout << "tunnelEnd: " << tunnelEnd.x << " " << tunnelEnd.y << " " << tunnelEnd.z << std::endl << std::endl;
 		cudaFree(d_planeHasSolid);
+		*/
 	}
 	else{	
 		//when this funciton is called, suppose we already know that centerPoint is inWall
@@ -661,7 +688,7 @@ __global__ void d_disturbVertex(float* vertexCoords, int vertexcount,
 	return;
 }
 
-__global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, 	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd, int* numAddedFaces)
+__global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd, int* numAddedFaces, float* vertexColorVals)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= facecount)	return;
@@ -768,6 +795,12 @@ __global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int fac
 		vertexCoords[3 * (curNumVertex + 3) + 1] = intersect2.y - disturb.y;
 		vertexCoords[3 * (curNumVertex + 3) + 2] = intersect2.z - disturb.z;
 
+
+		vertexColorVals[curNumVertex] = vertexColorVals[separateVectex];
+		vertexColorVals[curNumVertex + 1] = vertexColorVals[separateVectex];
+		vertexColorVals[curNumVertex + 2] = vertexColorVals[separateVectex];
+		vertexColorVals[curNumVertex + 3] = vertexColorVals[separateVectex];
+
 		norms[3 * curNumVertex] = intersectNorm1.x;
 		norms[3 * curNumVertex + 1] = intersectNorm1.y;
 		norms[3 * curNumVertex + 2] = intersectNorm1.z;
@@ -800,13 +833,15 @@ __global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int fac
 
 }
 
+
 void PositionBasedDeformProcessor::modifyPolyMesh()
 {
 	cudaMemcpy(d_vertexCoords, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_norms, poly->vertexNorms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 
-	cudaMemset(d_vertexColordVals, 0, sizeof(float)*poly->vertexcount * 2);
+	cudaMemset(d_vertexDeviateVals, 0, sizeof(float)*poly->vertexcount * 2);
+	cudaMemcpy(d_vertexColorVals, poly->vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyHostToDevice);
 
 	cudaMemset(d_numAddedFaces, 0, sizeof(int));
 	
@@ -821,7 +856,7 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
 	d_modifyMesh << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, poly->vertexcountOri, d_norms,
 		tunnelStart, tunnelEnd, channelVolume->spacing, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir,
-		d_numAddedFaces);
+		d_numAddedFaces, d_vertexColorVals);
 	
 	int numAddedFaces;
 	cudaMemcpy(&numAddedFaces, d_numAddedFaces, sizeof(int), cudaMemcpyDeviceToHost);
@@ -838,7 +873,8 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	cudaMemcpy(poly->indices, d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
 	cudaMemcpy(poly->vertexCoords, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
 	cudaMemcpy(poly->vertexNorms, d_norms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
-	
+	cudaMemcpy(poly->vertexColorVals, d_vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
+
 	cudaMemcpy(d_vertexCoords_init, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
 }
 

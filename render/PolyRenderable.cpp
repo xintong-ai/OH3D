@@ -150,29 +150,32 @@ void PolyRenderable::loadShadersImmer()
 	const char* vertexVS =
 		GLSL(
 		layout(location = 0) in vec3 VertexPosition;
-	layout(location = 1) in vec3 VertexNormal;
+		layout(location = 1) in vec3 VertexNormal;
 
-	layout(location = 2) in float VertexVal;
+		layout(location = 2) in float VertexDeviateVal;
+		layout(location = 3) in float VertexColorVal;
 
-	smooth out vec3 tnorm;
-	out vec4 eyeCoords;
-	out float colorVal;
+		smooth out vec3 tnorm;
+		out vec4 eyeCoords;
+		out float deviateVal;
+		out float colorVal;
 
-	uniform mat4 ModelViewMatrix;
-	uniform mat3 NormalMatrix;
-	uniform mat4 ProjectionMatrix;
-	uniform vec3 Transform;
-	void main()
-	{
-		mat4 MVP = ProjectionMatrix * ModelViewMatrix;
+		uniform mat4 ModelViewMatrix;
+		uniform mat3 NormalMatrix;
+		uniform mat4 ProjectionMatrix;
+		uniform vec3 Transform;
+		void main()
+		{
+			mat4 MVP = ProjectionMatrix * ModelViewMatrix;
 
-		tnorm = normalize(NormalMatrix * normalize(VertexNormal));
+			tnorm = normalize(NormalMatrix * normalize(VertexNormal));
 
-		eyeCoords = ModelViewMatrix * vec4(VertexPosition, 1.0);
+			eyeCoords = ModelViewMatrix * vec4(VertexPosition, 1.0);
 
-		gl_Position = MVP * vec4(VertexPosition + Transform, 1.0);
-		colorVal = VertexVal;
-	}
+			gl_Position = MVP * vec4(VertexPosition + Transform, 1.0);
+			deviateVal = VertexDeviateVal;
+			colorVal = VertexColorVal;
+		}
 	);
 
 	const char* vertexFS =
@@ -186,6 +189,7 @@ void PolyRenderable::loadShadersImmer()
 	
 	smooth in vec3 tnorm;
 	in vec4 eyeCoords;
+	in float deviateVal;
 	in float colorVal;
 
 	//layout(location = 0) 
@@ -197,8 +201,9 @@ void PolyRenderable::loadShadersImmer()
 		vec3 s = normalize(vec3(LightPosition - position));
 		vec3 v = normalize(-position.xyz);
 		vec3 r = reflect(-s, normal);
-		vec3 ambient = Ka * (1 - colorVal) + errorColor*colorVal;
-		//ambient = ambient*0.000001 + vec3(colorVal, colorVal, colorVal);
+		//vec3 ambient = Ka * (1 - deviateVal) + errorColor*deviateVal;
+		vec3 ccc = Ka*0.02 + (vec3(0.705882, 0.0156863, 0.14902)*colorVal + vec3(0.231373, 0.298039, 0.752941)*(1 - colorVal))*0.98;
+		vec3 ambient = ccc * (1 - deviateVal) + errorColor*deviateVal;
 		float sDotN = max(dot(s, normal), 0.0);
 		vec3 diffuse = Kd * sDotN ;
 		vec3 spec = vec3(0.0);
@@ -231,7 +236,8 @@ void PolyRenderable::loadShadersImmer()
 
 	glProgImmer->addAttribute("VertexPosition");
 	glProgImmer->addAttribute("VertexNormal");
-	glProgImmer->addAttribute("VertexVal");
+	glProgImmer->addAttribute("VertexDeviateVal");
+	glProgImmer->addAttribute("VertexColorVal");
 
 	glProgImmer->addUniform("LightPosition");
 	glProgImmer->addUniform("Ka");
@@ -282,7 +288,6 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 3, polyMesh->vertexNorms, GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-
 	qgl->glUniform4f(curGlProg->uniform("LightPosition"), 0, 0, 10, 1);
 
 	qgl->glUniform3f(curGlProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
@@ -327,10 +332,17 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 		}
 	}
 	else{
-		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
-		qgl->glVertexAttribPointer(curGlProg->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
-		qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 1, polyMesh->vertexColorVals, GL_STATIC_DRAW);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_deviationVal);
+		qgl->glVertexAttribPointer(curGlProg->attribute("VertexDeviateVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 1, polyMesh->vertexDeviateVals, GL_STATIC_DRAW);
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		if (immersiveMode){
+			qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
+			qgl->glVertexAttribPointer(curGlProg->attribute("VertexColorVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+			qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount * sizeof(float)* 1, polyMesh->vertexColorVals, GL_STATIC_DRAW);
+			qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+		}
 
 		qgl->glUniform3fv(curGlProg->uniform("Transform"), 1, &transform.x);
 
@@ -348,9 +360,7 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	m_vao->release();
 	curGlProg->disable();
 
-
 	glDisable(GL_BLEND);
-
 }
 
 
@@ -410,12 +420,19 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 	qgl->glEnableVertexAttribArray(glProg->attribute("VertexNormal"));
 
 	if (immersiveMode && !centerBasedRendering){
-		qgl->glGenBuffers(1, &vbo_val);
-		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
-		qgl->glVertexAttribPointer(glProgImmer->attribute("VertexVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glGenBuffers(1, &vbo_deviationVal);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_deviationVal);
+		qgl->glVertexAttribPointer(glProgImmer->attribute("VertexDeviateVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
 		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 1, 0, GL_STATIC_DRAW);
 		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-		qgl->glEnableVertexAttribArray(glProgImmer->attribute("VertexVal"));
+		qgl->glEnableVertexAttribArray(glProgImmer->attribute("VertexDeviateVal"));
+
+		qgl->glGenBuffers(1, &vbo_val);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
+		qgl->glVertexAttribPointer(glProgImmer->attribute("VertexColorVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 1, 0, GL_STATIC_DRAW);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+		qgl->glEnableVertexAttribArray(glProgImmer->attribute("VertexColorVal"));
 	}
 
 	m_vao->release();

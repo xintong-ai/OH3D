@@ -67,6 +67,7 @@ private:
 	//std::shared_ptr<RayCastingParameters> rcp;
 	
 	std::shared_ptr<PolyMesh> polyMesh;
+	std::vector<std::shared_ptr<PolyMesh>> polyMeshes;
 
 	std::shared_ptr<Volume> inputVolume;
 	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test

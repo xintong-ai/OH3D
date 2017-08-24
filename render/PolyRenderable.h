@@ -56,6 +56,7 @@ protected:
 
     unsigned int vbo_norm;
 	unsigned int vbo_vert;
+	unsigned int vbo_deviationVal; //value for coloring the deformed part of the data
 	unsigned int vbo_val; //value for color
 
 	ShaderProgram *glProg;

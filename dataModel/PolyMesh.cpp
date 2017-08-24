@@ -2,6 +2,9 @@
 #include "Particle.h"
 #include "BinaryTuplesReader.h"
 #include <helper_math.h>
+
+using namespace std;
+
 PolyMesh::~PolyMesh(){
 	if (vertexCoords) delete[]vertexCoords;
 	if (vertexNorms) delete[]vertexNorms;
@@ -11,14 +14,24 @@ PolyMesh::~PolyMesh(){
 	if (indicesOri) delete[]indicesOri;
 	if (faceValid) delete[]faceValid;
 
+	if (vertexDeviateVals) delete[]vertexDeviateVals;
+
 	if (vertexColorVals) delete[]vertexColorVals;
+}
+
+
+void PolyMesh::setVertexDeviateVals()
+{
+	if (vertexDeviateVals) delete[]vertexDeviateVals;
+	vertexDeviateVals = (float*)malloc(sizeof(float)* vertexcount * 2); //times 2 to prepare for newly added vertices
+	memset((void*)(vertexDeviateVals), 0, sizeof(float)* vertexcount * 2);
 }
 
 
 void PolyMesh::setVertexColorVals(float v)
 {
-	if (v != 0){
-		std::cout << "setVertexColorVals not implemented!!" << std::endl;
+	if (v < 0 || v > 1){
+		std::cout << "vertexColorVals not implemented!!" << std::endl;
 		exit(0);
 	}
 	if (vertexColorVals) delete[]vertexColorVals;
@@ -28,6 +41,7 @@ void PolyMesh::setVertexColorVals(float v)
 	}
 	memset((void*)(vertexColorVals + vertexcount), 0, sizeof(float)* vertexcount);//the rest will always be set to 0 regardless of v
 }
+
 
 void PolyMesh::find_center_and_range()
 {
@@ -101,7 +115,7 @@ void PolyMesh::reset()
 		memcpy(indices, indicesOri, sizeof(unsigned int)* 3 * facecount);
 		std::cout << "poly data successfully reset " << std::endl;
 
-		memset((void*)(vertexColorVals), 0, sizeof(float)* vertexcount*2);
+		memset((void*)(vertexDeviateVals), 0, sizeof(float)* vertexcount*2);
 	}
 }
 
@@ -163,4 +177,62 @@ void PolyMesh::doShift(float3 shift)
 		particle->posMin += shift;
 		particle->posMax += shift;
 	}
+}
+
+void PolyMesh::createByCombiningPolyMeshes(std::vector<std::shared_ptr<PolyMesh>> polyMeshes)
+{
+	int nMeshes = polyMeshes.size();
+	bool useVertexColor = true;
+	vertexcount = 0, facecount = 0;
+	for (int i = 0; i < nMeshes; i++){
+		vertexcount += polyMeshes[i]->vertexcount;
+		facecount += polyMeshes[i]->facecount;
+		useVertexColor = (useVertexColor && (polyMeshes[i]->vertexColorVals != 0));
+	}
+
+	vertexCoords = new float[3 * vertexcount];
+	vertexNorms = new float[3 * vertexcount];
+
+	int vid = 0;
+	for (int i = 0; i < nMeshes; i++){
+		for (int j = 0; j < polyMeshes[i]->vertexcount; j++) {	
+			vertexCoords[3 * vid] = polyMeshes[i]->vertexCoords[3 * j];
+			vertexCoords[3 * vid + 1] = polyMeshes[i]->vertexCoords[3 * j + 1];
+			vertexCoords[3 * vid + 2] = polyMeshes[i]->vertexCoords[3 * j + 2];
+			vertexNorms[3 * vid] = polyMeshes[i]->vertexNorms[3 * j];
+			vertexNorms[3 * vid + 1] = polyMeshes[i]->vertexNorms[3 * j + 1];
+			vertexNorms[3 * vid + 2] = polyMeshes[i]->vertexNorms[3 * j + 2];
+			vid++;
+		}
+	}
+
+	indices = new unsigned[3 * facecount];
+
+	int fid = 0;
+	int offset = 0;
+	for (int i = 0; i < nMeshes; i++){
+		for (int j = 0; j < polyMeshes[i]->facecount; j++) {	
+			indices[3 * fid] = polyMeshes[i]->indices[3 * j] + offset;
+			indices[3 * fid + 1] = polyMeshes[i]->indices[3 * j + 1] + offset;
+			indices[3 * fid + 2] = polyMeshes[i]->indices[3 * j + 2] + offset;
+			fid++;
+		}
+		offset += polyMeshes[i]->vertexcount;
+	}
+	
+	if (useVertexColor){
+		if (vertexColorVals) delete[]vertexColorVals;
+		vertexColorVals = (float*)malloc(sizeof(float)* vertexcount * 2); //times 2 to prepare for newly added vertices
+		memset((void*)(vertexColorVals + vertexcount), 0, sizeof(float)* vertexcount);//the rest will always be set to 0 regardless of v
+		
+		int vid = 0;
+		for (int i = 0; i < nMeshes; i++) {
+			for (int j = 0; j < polyMeshes[i]->vertexcount; j++) {
+				vertexColorVals[vid] = polyMeshes[i]->vertexColorVals[j];
+				vid++;
+			}
+		}
+	}
+
+	find_center_and_range();
 }

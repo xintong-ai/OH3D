@@ -28,8 +28,12 @@ public:
 	float* vertexNorms = 0;
 	unsigned int* indices = 0;
 
-	float* vertexColorVals = 0; //scalar used for coloring. may not be needed for many case. how to use it is also case by case
-	void setVertexColorVals(float v = 0);
+	float* vertexDeviateVals = 0; //scalar used for coloring the deformed part of the data. only used for deformation projects
+	void setVertexDeviateVals();
+
+	float* vertexColorVals = 0; //scalar used for coloring. may not be needed, depended on the polyRenderable class
+	void setVertexColorVals(float v);
+
 
 	bool readyForDeform = false;
 	unsigned int vertexcountOri = 0;
@@ -40,6 +44,8 @@ public:
 	bool* faceValid = 0;
 
 	~PolyMesh();
+
+	void createByCombiningPolyMeshes(std::vector<std::shared_ptr<PolyMesh>> polyMeshes);
 
 	float opacity = 1.0;
 	void find_center_and_range();
