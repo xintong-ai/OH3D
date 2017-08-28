@@ -187,6 +187,45 @@ void RawVolumeReader::OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v)
 	}
 }
 
+//only output to the volumeCUDA part of v
+void RawVolumeReader::OutputToVolume_OnlyVolumeCuda_NoNormalized(std::shared_ptr<Volume> v)
+{
+	std::cout << "min max:" << minVal << " " << maxVal << std::endl;
+	if (m_DataType == dtInt32){
+		v->~Volume();
+
+		v->size = dataSizes;
+
+		v->spacing = spacing;
+		v->dataOrigin = dataOrigin;
+
+		//v->values = new float[dataSizes.x*dataSizes.y*dataSizes.z];
+
+		//for (int k = 0; k < dataSizes.z; k++)
+		//{
+		//	for (int j = 0; j < dataSizes.y; j++)
+		//	{
+		//		for (int i = 0; i < dataSizes.x; i++)
+		//		{
+		//			int ind = k*dataSizes.y * dataSizes.x + j*dataSizes.x + i;
+		//			v->values[ind] = (((unsigned short*)m_Data)[ind] - minVal) / (maxVal - minVal);
+		//		}
+		//	}
+		//}
+
+		v->volumeCuda.VolumeCUDA_deinit();
+		v->volumeCuda.VolumeCUDA_init(v->size, (int*)m_Data, 1, 1); //the third parameter means allowStore or not
+		if (v->originSaved){
+			v->volumeCudaOri.VolumeCUDA_deinit();
+			v->volumeCudaOri.VolumeCUDA_init(v->size, (int*)m_Data, 1, 1); //for other problems volumeCudaOri mostly need not to be changed, but for the current particle time varying data, need to modify it sometimes
+		}
+	}
+	else{
+		std::cout << "not implement" << std::endl;
+		exit(0);
+	}
+}
+
 void RawVolumeReader::OutputToVolumeCUDAUnsignedShort(std::shared_ptr<VolumeCUDA> v)
 {
 	std::cout << "min max:" << minVal << " " << maxVal << std::endl;

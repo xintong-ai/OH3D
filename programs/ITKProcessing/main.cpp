@@ -42,6 +42,10 @@
 #include <vtkXMLImageDataWriter.h>
 #include <vtkCell.h>
 #include <itkConnectedComponentImageFilter.h>
+#include <vtkLongLongArray.h>
+#include <vtkPolyDataConnectivityFilter.h>
+
+#include <itkStatisticsImageFilter.h>
 
 using namespace std;
 
@@ -327,7 +331,6 @@ void computeDistanceMap(itk::Image< float, 3 >::Pointer image, vtkSmartPointer<v
 	}
 }
 
-
 void thresholdImage(itk::Image< float, 3 >::Pointer image, float disThr)
 {
 	ImageType::SizeType size = image->GetLargestPossibleRegion().GetSize();
@@ -352,7 +355,6 @@ void thresholdImage(itk::Image< float, 3 >::Pointer image, float disThr)
 		}
 	}
 }
-
 
 //the purpose for this function is, using a larger threshold for regions outside the polymesh, therefore the mesh will be deformed earlier when the eye is approaching
 void thresholdImageExteriorExtension(itk::Image< float, 3 >::Pointer image, float disThr, float disThrExt) //specifically for moortgat's data
@@ -592,7 +594,6 @@ void processSurfaceData()
 	outputWriter->Update();
 }
 
-
 void processSurfaceMultiData()
 {
 	//similar to processSurfaceData(), but process multiple datasets into one cell volume, and shift and resample each of them
@@ -686,6 +687,7 @@ void processSurfaceMultiData()
 	outputWriter->Update();
 }
 
+
 void processParticleMeshData()
 {
 	std::shared_ptr<DataMgr> dataMgr;
@@ -711,10 +713,10 @@ void processParticleMeshData()
 
 	vtkPolyDataShift(originalMesh, shift);
 
-	//vtkSmartPointer<vtkPolyDataWriter> writer4 = vtkSmartPointer<vtkPolyDataWriter>::New();
-	//writer4->SetFileName("shifted.vtk");
-	//writer4->SetInputData(originalMesh);
-	//writer4->Write();
+	vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+	writer4->SetFileName("D:/Data/Lin/Flow Simulations with Red Blood Cells/uDeviceX/ply/rbcs-0032-shifted.vtp");
+	writer4->SetInputData(originalMesh);
+	writer4->Write();
 
 	vtkSmartPointer<vtkImageData> whiteImage =
 		vtkSmartPointer<vtkImageData>::New();
@@ -784,6 +786,145 @@ void processParticleMeshData()
 	return;
 }
 
+
+void processParticleMeshTVData()
+{
+	std::shared_ptr<DataMgr> dataMgr;
+	dataMgr = std::make_shared<DataMgr>();
+	std::string folder = dataMgr->GetConfig("PARTICLE_DATA_FOLDER");
+
+	double spacing[3] = { 1, 1, 1 };
+	double origin[3] = { 0, 0, 0 };
+	float3 shift = make_float3(5, 3, 0);
+	//float3 shift = make_float3(0, 0, 0);
+	//int dim[3] = { 65 + shift.x, 225 + shift.y, 161 + shift.z };
+	int dim[3] = { 65 + shift.x, 121, 161 + shift.z };
+
+
+	int startTs = 6, endTs = 32;
+	for (int i = startTs; i <= endTs; i++){
+		stringstream ss;
+		ss << setw(4) << setfill('0') << i;
+		string s = ss.str();
+		string inputFileName = folder + "marked-reduced-rbcs-" + s + ".vtp";
+
+
+		vtkSmartPointer<vtkPolyData> originalMesh = vtkSmartPointer<vtkPolyData>::New();
+		vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+		reader->SetFileName(inputFileName.c_str());
+		reader->Update();
+		originalMesh = reader->GetOutput();
+		vtkPolyDataShift(originalMesh, shift);
+
+		vtkSmartPointer<vtkImageData> whiteImage =
+			vtkSmartPointer<vtkImageData>::New();
+		whiteImage->SetSpacing(spacing);
+		whiteImage->SetDimensions(dim);
+		whiteImage->SetOrigin(origin);
+		whiteImage->AllocateScalars(VTK_INT, 1);//note!! for this case VTK_UNSIGNED_CHAR is not enough!!
+		// fill the image with foreground voxels:
+		int inval = -2;
+		int outval = -1;
+		vtkIdType count = whiteImage->GetNumberOfPoints();
+		for (vtkIdType i = 0; i < count; ++i)
+		{
+			whiteImage->GetPointData()->GetScalars()->SetTuple1(i, inval);
+		}
+
+
+		// polygonal data --> image stencil:
+		vtkSmartPointer<vtkPolyDataToImageStencil> pol2stenc =
+			vtkSmartPointer<vtkPolyDataToImageStencil>::New();
+		//pol2stenc->SetInputData(pd);
+		pol2stenc->SetInputData(originalMesh);
+		pol2stenc->SetOutputOrigin(origin);
+		pol2stenc->SetOutputSpacing(spacing);
+		pol2stenc->SetOutputWholeExtent(whiteImage->GetExtent());
+		pol2stenc->Update();
+
+		// cut the corresponding white image and set the background:
+		vtkSmartPointer<vtkImageStencil> imgstenc =
+			vtkSmartPointer<vtkImageStencil>::New();
+		imgstenc->SetInputData(whiteImage);
+		imgstenc->SetStencilConnection(pol2stenc->GetOutputPort());
+		imgstenc->ReverseStencilOff();
+		imgstenc->SetBackgroundValue(outval);
+		imgstenc->Update();
+		vtkSmartPointer<vtkImageData> currentImage = imgstenc->GetOutput();
+
+
+		vtkLongLongArray *arrayRegionId = (vtkLongLongArray *)((originalMesh->GetPointData())->GetArray("RegionId"));
+		vtkPoints * points = originalMesh->GetPoints();
+		int n = arrayRegionId->GetNumberOfTuples();
+		//cout << "count of points: " << n << endl;
+		long long range[2];
+		arrayRegionId->GetValueRange(range);
+		cout << "range of region id: " << range[0] << " " << range[1] << endl;
+		//int nRegion = range[1] - range[0] + 1;
+		int nRegion = range[1] + 1;
+		//check if points belonging to the same region are consecutive or not. suppose consecutive region ids for vertices checked
+		vector<int> countRegionVerticex(nRegion, 0);
+		vector<int> regionId(nRegion, -1);
+		vector<double3> posSum(nRegion, make_double3(0, 0, 0));
+		vector<float3> minPos(nRegion, make_float3(999999, 999999, 999999));
+		vector<float3> maxPos(nRegion, make_float3(-999999, -999999, -999999));
+
+		for (int i = 0; i < n; i++){
+			long long d = arrayRegionId->GetValue(i);
+			double * coord = points->GetPoint(i);
+			posSum[d] = make_double3(posSum[d].x + coord[0], posSum[d].y + coord[1], posSum[d].z + coord[2]);
+			countRegionVerticex[d]++;
+			minPos[d] = make_float3(fmin(minPos[d].x, coord[0]), fmin(minPos[d].y, coord[1]), fmin(minPos[d].z, coord[2]));
+			maxPos[d] = make_float3(fmax(maxPos[d].x, coord[0]), fmax(maxPos[d].y, coord[1]), fmax(maxPos[d].z, coord[2]));
+		}
+		vector<float3> posAve(nRegion);
+		for (int i = 0; i < nRegion; i++){
+			if (countRegionVerticex[i] < 1) continue;
+			posAve[i] = make_float3(posSum[i].x / countRegionVerticex[i], posSum[i].y / countRegionVerticex[i], posSum[i].z / countRegionVerticex[i]);
+		}
+
+
+		for (int i = 0; i < nRegion; i++){
+			if (countRegionVerticex[i] < 1) continue;
+
+			// !!! NOT exactly precise
+			int xstart = max(minPos[i].x, 0);
+			int xend = min(ceil(maxPos[i].x), dim[0] - 1);
+			int ystart = max(minPos[i].y, 0);
+			int yend = min(ceil(maxPos[i].y), dim[1] - 1);
+			int zstart = max(minPos[i].z, 0);
+			int zend = min(ceil(maxPos[i].z), dim[2] - 1);
+
+			for (unsigned int z = zstart; z <= zend; z++)
+			{
+				for (unsigned int y = ystart; y <= yend; y++)
+				{
+					for (unsigned int x = xstart; x <= xend; x++)
+					{
+						ImageType::IndexType pixelIndex;
+						pixelIndex[0] = x;
+						pixelIndex[1] = y;
+						pixelIndex[2] = z;
+						int* pixel = static_cast<int*>(currentImage->GetScalarPointer(x, y, z));
+						if (*pixel == inval){
+							*pixel = i;
+						}
+					}
+				}
+			}
+		}
+
+		vtkSmartPointer<vtkMetaImageWriter> writer =
+			vtkSmartPointer<vtkMetaImageWriter>::New();
+		writer->SetFileName((folder + "marked-reduced-rbcs-channelVol-" + s + ".mhd").c_str());
+		writer->SetRAWFileName((folder + "marked-reduced-rbcs-channelVol-" + s + ".raw").c_str());
+		writer->SetCompression(false);
+		writer->SetInputData(currentImage);
+		writer->Write();
+	}
+}
+
+
 int main(int argc, char **argv)
 {
 	StopWatchInterface *timer = 0;
@@ -793,10 +934,14 @@ int main(int argc, char **argv)
 	sdkStartTimer(&timer);
 
 	//processVolumeData();
-	//processSurfaceData();
-	processSurfaceMultiData();
 
-	//processParticleMeshData();
+	//processSurfaceData();
+	//processSurfaceMultiData();
+
+	processParticleMeshData();
+	//processParticleMeshTVData();
+
+
 
 	sdkStopTimer(&timer);
 

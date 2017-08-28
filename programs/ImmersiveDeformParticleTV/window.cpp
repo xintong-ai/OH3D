@@ -1,5 +1,9 @@
 #include <window.h>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <chrono>
+#include <thread>
 
 #include "myDefineRayCasting.h"
 #include "GLWidget.h"
@@ -43,6 +47,7 @@
 
 #include "VolumeRenderableCUDAKernel.h"
 
+//assume the tuple file is always ready, or cannot run
 bool channelSkelViewReady = true;
 
 void fileInfo(std::string dataPath, DataType & channelVolDataType, float3 &shift, int3 & dims, std::string & subfolder)
@@ -50,12 +55,15 @@ void fileInfo(std::string dataPath, DataType & channelVolDataType, float3 &shift
 	if (std::string(dataPath).find("rbcs") != std::string::npos){
 		shift = make_float3(5, 3, 0);
 
-		dims = make_int3(65, 225, 161) + make_int3(shift.x, shift.y, shift.z);
+		//dims = make_int3(65, 225, 161) + make_int3(shift.x, shift.y, shift.z);
+		dims = make_int3(70, 121, 161);
+
 		//spacing = make_float3(1, 1, 1);
 		//rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false);
 		subfolder = "bloodCell";
-
-		channelVolDataType = RawVolumeReader::dtUint8;
+		subfolder = "D:/Data/Lin/reducedBloodCell/";
+		//channelVolDataType = RawVolumeReader::dtUint8;
+		channelVolDataType = RawVolumeReader::dtInt32;	//note!! for time varying case, the channel volume is not defined in the same way
 
 	}
 	else{
@@ -83,15 +91,19 @@ Window::Window()
 	fileInfo(polyDataPath, channelVolDataType, shift, dims, subfolder);
 	spacing = make_float3(1, 1, 1);
 
-	if (channelSkelViewReady){
-		channelVolume = std::make_shared<Volume>(true);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
-		reader2->OutputToVolumeByNormalizedValue(channelVolume);
-		channelVolume->initVolumeCuda();
-		reader2.reset();
-		channelVolume->spacing = spacing;
-	}
-
+	
+	//if (channelSkelViewReady){
+	//	channelVolume = std::make_shared<Volume>(true);
+	//	//std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
+	//	std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/marked-reduced-rbcs-channelVol-0006.raw").c_str(), dims, channelVolDataType);
+	//	reader2->OutputToVolumeByNormalizedValue(channelVolume);
+	//	channelVolume->initVolumeCuda();
+	//	reader2.reset();
+	//	channelVolume->spacing = spacing;
+	//}
+	
+	/*
+	//single time step
 	polyMesh = std::make_shared<PolyMesh>();
 	if (std::string(polyDataPath).find(".ply") != std::string::npos){
 		PlyVTKReader plyVTKReader;
@@ -110,7 +122,92 @@ Window::Window()
 	polyMesh->particle->valMax = 0;
 	polyMesh->particle->valMin = 0;
 
-	//polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
+	polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
+	*/
+
+
+	for (int i = timeStart; i <= timeEnd; i++){
+		std::cout << "reading data of timestep " << i << std::endl;
+		//single time step
+		std::shared_ptr<PolyMesh> polyMesh = std::make_shared<PolyMesh>();
+		std::stringstream ss;
+		ss << std::setw(4) << std::setfill('0') << i;
+		std::string s = ss.str();
+
+		std::string fname = subfolder + "marked-reduced-rbcs-" + s + "-withNormal.vtp";
+		VTPReader reader;
+		reader.readFile(fname.c_str(), polyMesh.get());
+		
+		polyMesh->setAssisParticle((subfolder + "marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str());
+		//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
+
+		//normally when a particle already used valTuple, we do not need to use val
+		//but here use val to record the amount of shiftness after deformation
+		polyMesh->particle->val.resize(polyMesh->particle->numParticles, 0);
+		polyMesh->particle->valMax = 0;
+		polyMesh->particle->valMin = 0;
+
+		polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
+
+		//create the cellMaps
+		if (i > timeStart){
+			std::shared_ptr<Particle> lastParticle = (polyMeshes.back())->particle;
+			int n = lastParticle->numParticles;
+			std::vector<int> cellMap(n, -1);
+
+			int m = polyMesh->particle->numParticles;
+			int tupleCount = polyMesh->particle->tupleCount; //10
+			for (int i = 0; i < n; i++){
+				int lastId = lastParticle->valTuple[i * tupleCount + 7];
+				bool notFound = true;
+
+				for (int j = 0; j < m && notFound; j++){
+					if (lastId == polyMesh->particle->valTuple[tupleCount * j + 7]){
+						cellMap[i] = j;
+						notFound = false;
+					}
+				}
+			}
+			cellMaps.push_back(cellMap);
+		}
+		polyMeshes.push_back(polyMesh);
+
+
+		if (channelSkelViewReady){
+			std::shared_ptr<Volume> channelVolume = std::make_shared<Volume>(true);
+			std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "marked-reduced-rbcs-channelVol-" + s + ".raw").c_str(), dims, channelVolDataType);
+			//reader2->OutputToVolumeByNormalizedValue(channelVolume);
+			reader2->OutputToVolume_OnlyVolumeCuda_NoNormalized(channelVolume);
+			//channelVolume->initVolumeCuda(); //already in OutputToVolume_OnlyVolumeCuda_NoNormalized()
+			reader2.reset();
+			channelVolume->spacing = spacing;
+			channelVolumes.push_back(channelVolume);
+		}
+		if (channelSkelViewReady && i == timeStart){
+			//save a copy of the channel vol of the first time step into the variable channelVolume
+
+			channelVolume = std::make_shared<Volume>(true);
+			std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "marked-reduced-rbcs-channelVol-" + s + ".raw").c_str(), dims, channelVolDataType);
+			//reader2->OutputToVolumeByNormalizedValue(channelVolume);
+			reader2->OutputToVolume_OnlyVolumeCuda_NoNormalized(channelVolume);
+			//channelVolume->initVolumeCuda(); //already in OutputToVolume_OnlyVolumeCuda_NoNormalized()
+			reader2.reset();
+			channelVolume->spacing = spacing;
+			channelVolumes.push_back(channelVolume);
+		}
+	}
+
+	polyMesh = polyMeshes[0];
+
+
+	//read wall
+	polyMeshWall = std::make_shared<PolyMesh>();
+	VTPReader reader;
+	reader.readFile((subfolder + "reduced-wall.vtp").c_str(), polyMeshWall.get());
+	//polyMeshWall->setVertexCoordsOri(); //not needed when vertex coords need not to change
+	polyMeshWall->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
+
+
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -136,6 +233,7 @@ Window::Window()
 	//////////////////////////////// Processor ////////////////////////////////
 	if (channelSkelViewReady){
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr, channelVolume);
+		positionBasedDeformProcessor->transformChannelVolForTVData();
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 		positionBasedDeformProcessor->deformationScale = 10;
@@ -146,9 +244,8 @@ Window::Window()
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 
-	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
-	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
 
 
 	if (channelSkelViewReady){
@@ -170,6 +267,11 @@ Window::Window()
 	if (channelSkelViewReady){
 		polyRenderable->positionBasedDeformProcessor = positionBasedDeformProcessor;
 	}
+
+
+	polyWallRenderable = std::make_shared<PolyRenderable>(polyMeshWall);
+	openGL->AddRenderable("5polyWall", polyWallRenderable.get());
+	polyMeshWall->opacity = 0.5;
 
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
@@ -272,7 +374,10 @@ Window::Window()
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
 
-	
+	QPushButton *startTVBtn = new QPushButton("Start Time Variant");
+	controlLayout->addWidget(startTVBtn);
+	connect(startTVBtn, SIGNAL(clicked()), this, SLOT(startTVBtnClicked()));
+
 
 	controlLayout->addStretch();
 
@@ -297,6 +402,11 @@ Window::Window()
 	vrVolumeRenderable->rcp = rcp;
 #endif
 
+
+	QTimer* qtimer = new QTimer(this);
+	//float timerl = 1000 / (numInter + 1);
+	qtimer->start(250);
+	connect(qtimer, SIGNAL(timeout()), this, SLOT(qtimerTimeOut()));
 }
 
 
@@ -412,7 +522,6 @@ void Window::SlotNonImmerRb(bool b)
 	}
 }
 
-
 void Window::doTourBtnClicked()
 {
 	//animationByMatrixProcessor->startAnimation();
@@ -422,3 +531,56 @@ void Window::saveScreenBtnClicked()
 {
 	openGL->saveCurrentImage();
 }
+
+void Window::startTVBtnClicked()
+{
+	startTV = true;
+	sdkResetTimer(&timer);
+	sdkStartTimer(&timer);
+	if (curT > -1){
+		std::cout << "need reset polyMeshes!!!" << std::endl;
+		for (int i = 0; i < polyMeshes.size(); i++){
+			polyMeshes[i]->reset();
+		}
+	}
+	curT = 0;
+}
+
+void Window::qtimerTimeOut()
+{
+	if (!startTV){
+		return;
+	}
+
+	sdkStopTimer(&timer);
+	float timePassed = sdkGetAverageTimerValue(&timer) / 1000.f;
+	if (curT % (numInter + 1) == 0){
+		int meshid = curT / (numInter + 1);
+	
+		polyMesh = polyMeshes[meshid];
+		polyRenderable->polyMesh = polyMesh;//NOTE!! the polymesh stored in other modules are not always combined with the pointer "polyMesh" here!!!
+	}
+	else{
+		int meshid1 = curT / (numInter + 1), meshid2 = meshid1 + 1;
+		float ratio = 1.0 * (curT % (numInter + 1)) / (numInter + 1);
+
+		//polyMesh = polyMeshes[meshid];//should not need to change polyMesh
+		int n = polyMesh->particle->numParticles;
+		for (int i = 0; i < n; i++){
+			int m = cellMaps[meshid1][i];
+			if (m > -1){
+				polyMesh->particle->pos[i] = polyMesh->particle->posOrig[i] * (1 - ratio) + polyMeshes[meshid2]->particle->posOrig[m] * ratio;
+			}
+		}
+	}
+
+	polyRenderable->dataChange();
+	std::cout << "used data from " << curT << std::endl;
+
+	curT++;	
+	if (curT > ((timeEnd - timeStart) * (numInter + 1))){
+		startTV = false;
+	}
+}
+
+

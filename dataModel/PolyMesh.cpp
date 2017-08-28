@@ -114,8 +114,10 @@ void PolyMesh::reset()
 		facecount = facecountOri;
 		memcpy(indices, indicesOri, sizeof(unsigned int)* 3 * facecount);
 		std::cout << "poly data successfully reset " << std::endl;
-
-		memset((void*)(vertexDeviateVals), 0, sizeof(float)* vertexcount*2);
+		
+		if (vertexDeviateVals){
+			memset((void*)(vertexDeviateVals), 0, sizeof(float)* vertexcount * 2);
+		}
 	}
 }
 

@@ -30,7 +30,7 @@ void PolyRenderable::init()
 	//glEnable(GL_DEPTH_TEST);
 
 //	GenVertexBuffer(m->numElements, m->Faces_Triangles, m->Normals);
-	GenVertexBuffer(polyMesh->vertexcount, polyMesh->vertexCoords,polyMesh->vertexNorms);
+	GenVertexBuffer(polyMesh->vertexcount, polyMesh->vertexCoords, polyMesh->vertexNorms);
 }
 
 
@@ -332,12 +332,12 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 		}
 	}
 	else{
-		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_deviationVal);
-		qgl->glVertexAttribPointer(curGlProg->attribute("VertexDeviateVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
-		qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 1, polyMesh->vertexDeviateVals, GL_STATIC_DRAW);
-		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
-
 		if (immersiveMode){
+			qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_deviationVal);
+			qgl->glVertexAttribPointer(curGlProg->attribute("VertexDeviateVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+			qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 1, polyMesh->vertexDeviateVals, GL_STATIC_DRAW);
+			qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 			qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
 			qgl->glVertexAttribPointer(curGlProg->attribute("VertexColorVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
 			qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount * sizeof(float)* 1, polyMesh->vertexColorVals, GL_STATIC_DRAW);
@@ -441,3 +441,45 @@ void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 //float3 PolyRenderable::GetPolyCenter(){
 //	//return m->center;
 //}
+
+void PolyRenderable::dataChange()
+{
+	int nv = polyMesh->vertexcount;
+	float* vertex = polyMesh->vertexCoords;
+	float* normal = polyMesh->vertexNorms;
+
+	m_vao->bind();
+
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_vert);
+	if (immersiveMode && !centerBasedRendering){
+	}
+	else{
+		qgl->glVertexAttribPointer(glProg->attribute("VertexPosition"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, vertex, GL_STATIC_DRAW);
+	}
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_norm);
+	if (immersiveMode && !centerBasedRendering){
+	}
+	else{
+		qgl->glVertexAttribPointer(glProg->attribute("VertexNormal"), 3, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 3, normal, GL_STATIC_DRAW);
+	}
+	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	if (immersiveMode && !centerBasedRendering){
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_deviationVal);
+		qgl->glVertexAttribPointer(glProgImmer->attribute("VertexDeviateVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 1, 0, GL_STATIC_DRAW);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, vbo_val);
+		qgl->glVertexAttribPointer(glProgImmer->attribute("VertexColorVal"), 1, GL_FLOAT, GL_FALSE, 0, NULL);
+		qgl->glBufferData(GL_ARRAY_BUFFER, nv * sizeof(float)* 1, 0, GL_STATIC_DRAW);
+		qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+
+	m_vao->release();
+
+}

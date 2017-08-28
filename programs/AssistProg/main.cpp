@@ -58,6 +58,8 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkFloatArray.h>
+#include <vtkPolyDataNormals.h>
 
 using namespace std;
 
@@ -99,7 +101,7 @@ void labelPoly()
 	dataMgr = std::make_shared<DataMgr>();
 	string dataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
-	if (std::string(dataPath).find("ply") != std::string::npos){
+	if (std::string(dataPath).find(".ply") != std::string::npos){
 		vtkSmartPointer<vtkPLYReader> reader =
 			vtkSmartPointer<vtkPLYReader>::New();
 		reader->SetFileName(dataPath.c_str());
@@ -107,8 +109,11 @@ void labelPoly()
 		reader->Update();
 	}
 	else{
-		std::cout << "file name not defined" << std::endl;
-		exit(0);
+		vtkSmartPointer<vtkXMLPolyDataReader> reader =
+			vtkSmartPointer<vtkXMLPolyDataReader>::New();
+		reader->SetFileName(dataPath.c_str());
+		data = reader->GetOutput();
+		reader->Update();
 	}
 
 	vtkSmartPointer<vtkPolyDataConnectivityFilter> connectivityFilter =
@@ -310,7 +315,7 @@ void reduceBloodCell()
 		string inputFileName = "D:/Data/Lin/Flow Simulations with Red Blood Cells/uDeviceX/ply/rbcs-" + s + ".ply";
 
 		vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
-		if (std::string(inputFileName).find("ply") != std::string::npos){
+		if (std::string(inputFileName).find(".ply") != std::string::npos){
 			vtkSmartPointer<vtkPLYReader> reader = vtkSmartPointer<vtkPLYReader>::New();
 			reader->SetFileName(inputFileName.c_str());
 			data = reader->GetOutput();
@@ -433,6 +438,98 @@ void reduceBloodCell()
 		std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
 	}
 
+
+
+	//wall
+	string inputFileName = "D:/Data/Lin/reducedBloodCell/wall.vtp";
+
+	vtkSmartPointer<vtkPolyData> data = vtkSmartPointer<vtkPolyData>::New();
+	vtkSmartPointer<vtkXMLPolyDataReader> reader = vtkSmartPointer<vtkXMLPolyDataReader>::New();
+	reader->SetFileName(inputFileName.c_str());
+	data = reader->GetOutput();
+	reader->Update();
+
+	std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
+	std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
+
+
+
+	//vtkFloatArray* normalDataFloat = vtkFloatArray::SafeDownCast(data->GetPointData()->GetArray("Normals"));
+	//polyMesh->vertexNorms[3 * i] = normalDataFloat->GetComponent(i, 0);
+	//vector<float3> wallnormal(data->GetNumberOfPoints());
+
+	vector<int> table(data->GetNumberOfPoints(), -1);
+	int newid = 0;
+	//http://www.vtk.org/Wiki/VTK/Examples/Cxx/PolyData/DeletePoint
+	int vertexcount = data->GetNumberOfPoints();
+	vtkSmartPointer<vtkPoints> newPoints = vtkSmartPointer<vtkPoints>::New();
+	for (int i = 0; i < vertexcount; i++) {
+		double coord[3];
+		data->GetPoint(i, coord);
+		if (!(coord[1] > yThr)){
+			double coord[3];
+			data->GetPoint(i, coord);
+			newPoints->InsertNextPoint(coord);
+			table[i] = newid;
+			newid++;
+		}
+	}
+	
+
+	vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
+	int facecount = data->GetNumberOfCells();
+	for (int i = 0; i < facecount; i++) {
+		bool needDel = false;
+		int id[3];
+		double yOfVertices[3];
+		for (int j = 0; j < 3; j++){
+			id[j] = data->GetCell(i)->GetPointId(j);
+			double coord[3];
+			data->GetPoint(id[j], coord);
+			yOfVertices[j] = coord[1];
+		}
+
+		if (yOfVertices[0] > yThr || yOfVertices[1] > yThr || yOfVertices[2] > yThr){
+
+		}
+		else{
+			vtkSmartPointer<vtkTriangle> triangle =
+				vtkSmartPointer<vtkTriangle>::New();
+			for (int j = 0; j < 3; j++){
+				triangle->GetPointIds()->SetId(j, table[id[j]]);
+			}
+			triangles->InsertNextCell(triangle);
+		}
+	}
+
+	vtkSmartPointer<vtkPolyData> datanew = vtkSmartPointer<vtkPolyData>::New();
+	datanew->SetPoints(newPoints);
+	//datanew->GetPoints()->ShallowCopy(newPoints);
+	datanew->SetPolys(triangles);
+
+	vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
+#if VTK_MAJOR_VERSION <= 5
+	normalGenerator->SetInput(polydata);
+#else
+	normalGenerator->SetInputData(datanew);
+#endif
+	normalGenerator->ComputePointNormalsOn();
+	normalGenerator->ComputeCellNormalsOff();
+	normalGenerator->SetSplitting(0);
+	normalGenerator->SetConsistency(1);
+	normalGenerator->Update();
+	datanew = normalGenerator->GetOutput();
+
+
+
+	vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+	writer4->SetFileName("D:/Data/Lin/reducedBloodCell/reduced-wall.vtp");
+	writer4->SetInputData(datanew);
+	writer4->Write();
+
+
+	std::cout << "vertexcount " << datanew->GetNumberOfPoints() << std::endl;
+	std::cout << "facecount: " << datanew->GetNumberOfCells() << std::endl;
 }
 
 void markReducedBloodCell()
@@ -499,6 +596,49 @@ void markReducedBloodCell()
 
 	int nextAvalableId = nRegion;
 
+	//record tuple file
+	vector<int> countFace(nRegion, 0);
+	int curid = 0;
+	int m = res->GetNumberOfCells();
+	for (int i = 0; i < m; i++){
+		int vertexId = data->GetCell(i)->GetPointId(0);
+		int d = arrayRegionId->GetValue(vertexId);
+		if (curid == d){
+			countFace[d]++;
+		}
+		else if (curid + 1 == d){
+			curid++;
+			countFace[d]++;
+		}
+		else {
+			cout << "not consecutive region id at face " << i << " with id " << curid << endl;
+			exit(0); //not implemented currently
+		}
+	}
+	int temp = 1;
+	FILE * fp = fopen(("D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str(), "wb");
+	fwrite(&temp, sizeof(int), 1, fp);
+	fwrite(&nRegion, sizeof(int), 1, fp);
+	int nc = 13;
+	fwrite(&nc, sizeof(int), 1, fp);
+	int startv = 0, startf = 0;
+	for (int i = 0; i < nRegion; i++){
+		float startvf = startv;
+		float endvf = startv + count[i] - 1;
+		float startff = startf;
+		float endff = startf + countFace[i] - 1;
+		fwrite(&(posAve[i].x), sizeof(float3), 1, fp);
+		fwrite(&startff, sizeof(float), 1, fp); //range of faces of the current region
+		fwrite(&endff, sizeof(float), 1, fp);
+		fwrite(&startvf, sizeof(float), 1, fp); //range of vertices of the current region
+		fwrite(&endvf, sizeof(float), 1, fp);
+		float3 tempf3 = make_float3(i, 0, 0);
+		fwrite(&(tempf3.x), sizeof(float3), 1, fp); //originally for bounding box of the current region. in time varying project, used for region id 
+		fwrite(&(tempf3.x), sizeof(float3), 1, fp);
+		startv = startv + count[i];
+		startf = startf + countFace[i];
+	}
+
 	for (int i = startTs+1; i <= endTs; i++){
 		stringstream ss;
 		ss << setw(4) << setfill('0') << i;
@@ -542,6 +682,28 @@ void markReducedBloodCell()
 		for (int i = 0; i < nRegion; i++){
 			posAve[i] = make_float3(posSum[i].x / count[i], posSum[i].y / count[i], posSum[i].z / count[i]);
 		}
+
+		//for record tuple file
+		vector<int> countFace(nRegion, 0);
+		int curid = 0;
+		int m = res->GetNumberOfCells();
+		for (int i = 0; i < m; i++){
+			int vertexId = data->GetCell(i)->GetPointId(0);
+			int d = arrayRegionId->GetValue(vertexId);
+			if (curid == d){
+				countFace[d]++;
+			}
+			else if (curid + 1 == d){
+				curid++;
+				countFace[d]++;
+			}
+			else {
+				cout << "not consecutive region id at face " << i << " with id " << curid << endl;
+				exit(0); //not implemented currently
+			}
+		}
+
+
 
 		vector<int> idChangeMap(nRegion, -1);
 
@@ -596,6 +758,34 @@ void markReducedBloodCell()
 
 		lastPosAve = posAve;
 		lastIds = idChangeMap;
+
+
+
+		
+		//record tuple file
+		int temp = 1;
+		FILE * fp = fopen(("D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str(), "wb");
+		fwrite(&temp, sizeof(int), 1, fp);
+		fwrite(&nRegion, sizeof(int), 1, fp);
+		int nc = 13;
+		fwrite(&nc, sizeof(int), 1, fp);
+		int startv = 0, startf = 0;
+		for (int i = 0; i < nRegion; i++){
+			float startvf = startv;
+			float endvf = startv + count[i] - 1;
+			float startff = startf;
+			float endff = startf + countFace[i] - 1;
+			fwrite(&(posAve[i].x), sizeof(float3), 1, fp);
+			fwrite(&startff, sizeof(float), 1, fp); //range of faces of the current region
+			fwrite(&endff, sizeof(float), 1, fp);
+			fwrite(&startvf, sizeof(float), 1, fp); //range of vertices of the current region
+			fwrite(&endvf, sizeof(float), 1, fp);
+			float3 tempf3 = make_float3(idChangeMap[i], 0, 0);
+			fwrite(&(tempf3.x), sizeof(float3), 1, fp); //originally for bounding box of the current region. in time varying project, used for region id 
+			fwrite(&(tempf3.x), sizeof(float3), 1, fp);
+			startv = startv + count[i];
+			startf = startf + countFace[i];
+		}
 	}
 }
 
@@ -606,11 +796,11 @@ int main(int argc, char **argv)
 
 
 	//createSphere();
-	//labelPoly();
+	labelPoly();
 
 
 	//reduceBloodCell();
-	markReducedBloodCell();
+	//markReducedBloodCell();
 
 	return 0;
 }

@@ -3,6 +3,7 @@
 
 #include <vtkPolyDataReader.h>
 #include <vtkXMLPolyDataReader.h>
+#include <vtkXMLPolyDataWriter.h>
 #include <vtkSmartPointer.h>
 
 
@@ -35,8 +36,8 @@ void VTPReader::readFile(const char* filename, PolyMesh* polyMesh)
 	//	data = reader->GetOutput();
 	//}
 	
-	std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
-	std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
+	//std::cout << "vertexcount " << data->GetNumberOfPoints() << std::endl;
+	//std::cout << "facecount: " << data->GetNumberOfCells() << std::endl;
 
 	
 	// Try to read normals directly
@@ -44,47 +45,54 @@ void VTPReader::readFile(const char* filename, PolyMesh* polyMesh)
 
 	if (!hasPointNormals)
 	{
-//		std::cout << "No point normals were found. Computing normals..." << std::endl;
-//
-//		// Generate normals
-//		vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
-//#if VTK_MAJOR_VERSION <= 5
-//		normalGenerator->SetInput(polydata);
-//#else
-//		normalGenerator->SetInputData(data);
-//#endif
-//		normalGenerator->ComputePointNormalsOn();
-//		normalGenerator->ComputeCellNormalsOff();
-//		/*
-//		// Optional settings
-//		normalGenerator->SetFeatureAngle(0.1);
-//		normalGenerator->SetSplitting(1);
-//		normalGenerator->SetConsistency(0);
-//		normalGenerator->SetAutoOrientNormals(0);
-//		normalGenerator->SetComputePointNormals(1);
-//		normalGenerator->SetComputeCellNormals(0);
-//		normalGenerator->SetFlipNormals(0);
-//		normalGenerator->SetNonManifoldTraversal(1);
-//		*/
-//		normalGenerator->SetSplitting(0);
-//		normalGenerator->SetConsistency(1);
-//
-//		normalGenerator->Update();
-//
-//		data = normalGenerator->GetOutput();
-//
-//		// Try to read normals again
-//		hasPointNormals = GetPointNormals(data);
-//
-//		std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
-//		if (!hasPointNormals){
-//			std::cout << "fail computing normals" << std::endl;
-//			exit(0);
-//		}
+		std::cout << "No point normals were found. Computing normals..." << std::endl;
+
+		// Generate normals
+		vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
+#if VTK_MAJOR_VERSION <= 5
+		normalGenerator->SetInput(polydata);
+#else
+		normalGenerator->SetInputData(data);
+#endif
+		normalGenerator->ComputePointNormalsOn();
+		normalGenerator->ComputeCellNormalsOff();
+		/*
+		// Optional settings
+		normalGenerator->SetFeatureAngle(0.1);
+		normalGenerator->SetSplitting(1);
+		normalGenerator->SetConsistency(0);
+		normalGenerator->SetAutoOrientNormals(0);
+		normalGenerator->SetComputePointNormals(1);
+		normalGenerator->SetComputeCellNormals(0);
+		normalGenerator->SetFlipNormals(0);
+		normalGenerator->SetNonManifoldTraversal(1);
+		*/
+		normalGenerator->SetSplitting(0);
+		normalGenerator->SetConsistency(1);
+
+		normalGenerator->Update();
+
+		data = normalGenerator->GetOutput();
+
+		// Try to read normals again
+		hasPointNormals = GetPointNormals(data);
+
+		//std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
+		if (!hasPointNormals){
+			std::cout << "fail computing normals" << std::endl;
+			exit(0);
+		}
+		std::string oldname = std::string(filename);
+		int l = oldname.length();
+		std::string newname = oldname.substr(0, l - 4) + "-withNormal.vtp";
+		vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+		writer->SetFileName(newname.c_str());
+		writer->SetInputData(data);
+		writer->Write();
 	}
 	else
 	{
-		std::cout << "Point normals were found!" << std::endl;
+		//std::cout << "Point normals were found!" << std::endl;
 	}
 
 
@@ -132,11 +140,11 @@ bool VTPReader::GetPointNormals(vtkPolyData* polydata)
 
 	// Count points
 	vtkIdType numPoints = polydata->GetNumberOfPoints();
-	std::cout << "There are " << numPoints << " points." << std::endl;
+	//std::cout << "There are " << numPoints << " points." << std::endl;
 
 	// Count triangles
 	vtkIdType numPolys = polydata->GetNumberOfPolys();
-	std::cout << "There are " << numPolys << " polys." << std::endl;
+	//std::cout << "There are " << numPolys << " polys." << std::endl;
 
 	////////////////////////////////////////////////////////////////
 	// Double normals in an array
@@ -146,8 +154,7 @@ bool VTPReader::GetPointNormals(vtkPolyData* polydata)
 	if (normalDataDouble)
 	{
 		int nc = normalDataDouble->GetNumberOfTuples();
-		std::cout << "There are " << nc
-			<< " components in normalDataDouble" << std::endl;
+		//std::cout << "There are " << nc	<< " components in normalDataDouble" << std::endl;
 		return true;
 	}
 

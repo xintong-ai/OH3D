@@ -3,3 +3,4 @@ DATA_PATH=D:/Data/moortgat/sand60_067_xw2.vtu
 
 POLY_DATA_PATH=C:/Users/lc/Dropbox/shareXin/rbcs-0032.ply
 POLY_DATA_PATH=D:/Data/Lin/Flow Simulations with Red Blood Cells/uDeviceX/ply/rbcs-0032.ply
+POLY_DATA_PATH=D:/Data/Lin/Flow Simulations with Red Blood Cells/uDeviceX/ply/rbcs-0032-shifted.vtp

@@ -44,11 +44,12 @@ public:
 	void setCenterBasedRendering(){ centerBasedRendering = true; }
 	bool immersiveMode = false;
 
+	std::shared_ptr<PolyMesh> polyMesh;
+	void dataChange();
+
 private:
 	void loadShaders();
 	void loadShadersImmer();
-
-	std::shared_ptr<PolyMesh> polyMesh;
 
 	bool centerBasedRendering = false;
 
@@ -67,7 +68,6 @@ protected:
 	float3 transform = make_float3(0,0,0);
 
 	float3 ka = make_float3(0.6f, 0.6f, 0.6f);
-
 
 	void GenVertexBuffer(int nv, float* vertex, float* normal);
 	void GenVertexBuffer(int nv);

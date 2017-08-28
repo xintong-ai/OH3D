@@ -67,7 +67,7 @@ void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 		// Try to read normals again
 		hasPointNormals = GetPointNormals(data);
 
-		std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
+		//std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
 		if (!hasPointNormals){
 			std::cout << "fail computing normals" << std::endl;
 			exit(0);

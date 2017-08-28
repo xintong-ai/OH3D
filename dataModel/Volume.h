@@ -25,6 +25,7 @@ public:
 	
 	void VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allowStore, int numChannels = 1);
 	void VolumeCUDA_init(int3 _size, unsigned short *volumeVoxelValues, int allowStore, int numChannels = 1);
+	void VolumeCUDA_init(int3 _size, int*volumeVoxelValues, int allowStore, int numChannels = 1);	
 	void VolumeCUDA_contentUpdate(unsigned short *volumeVoxelValues, int allowStore, int numChannels = 1);
 
 
