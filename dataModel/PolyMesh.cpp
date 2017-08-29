@@ -119,6 +119,9 @@ void PolyMesh::reset()
 			memset((void*)(vertexDeviateVals), 0, sizeof(float)* vertexcount * 2);
 		}
 	}
+	if (particle != 0){
+		particle->reset();
+	}
 }
 
 bool PolyMesh::inRange(float3 v)

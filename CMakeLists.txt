@@ -64,12 +64,12 @@ set(INTERACT_DIR	"${CMAKE_SOURCE_DIR}/interact")
 set(IO_DIR			"${CMAKE_SOURCE_DIR}/io")
 set(RENDER_DIR		"${CMAKE_SOURCE_DIR}/render")
 set(DATAMODEL_DIR		"${CMAKE_SOURCE_DIR}/dataModel")
-set(VPSEL_DIR		"${CMAKE_SOURCE_DIR}/vpsel")
+#set(VPSEL_DIR		"${CMAKE_SOURCE_DIR}/vpsel")
 
 include_directories(
 	${DEFORM_DIR}
 	${INTERACT_DIR}
-	${VPSEL_DIR}
+	#${VPSEL_DIR}
 	${IO_DIR}
 	${RENDER_DIR}
 	${GLM_INCLUDE_DIR}
@@ -79,7 +79,7 @@ include_directories(
 	)
 
 if(USE_ITK)
-	add_subdirectory(vpsel)
+	#add_subdirectory(vpsel)
 	#essentially vpsel does not need ITK. but all executables using vpsel will use ITK
 endif()
 

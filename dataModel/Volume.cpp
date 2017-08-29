@@ -191,7 +191,9 @@ void Volume::initVolumeCuda(){
 	volumeCuda.VolumeCUDA_init(size, values, 1, 1); //the third parameter means allowStore or not
 	if (originSaved){
 		volumeCudaOri.VolumeCUDA_deinit();
-		volumeCudaOri.VolumeCUDA_init(size, values, 0, 1);
+		//volumeCudaOri.VolumeCUDA_init(size, values, 0, 1);
+		volumeCudaOri.VolumeCUDA_init(size, values, 1, 1);//specifically set for time varying case
+
 	}
 }
 

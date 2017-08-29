@@ -66,7 +66,21 @@ public:
 	
 	static void dataParameters(std::string dataPath, int3 & dims, float3 & spacing, float & disThr, float3 &shift, std::string &subfolder)
 	{
-		if (std::string(dataPath).find("iso_t40_v3") != std::string::npos){
+		if (std::string(dataPath).find("reduced-rbcs") != std::string::npos){
+			dims = make_int3(70, 121, 161);
+			spacing = make_float3(1, 1, 1);
+			disThr = 0;
+			shift = make_float3(5, 3, 0);
+			subfolder = "D:/Data/Lin/reducedBloodCell";
+		}
+		else if (std::string(dataPath).find("rbcs") != std::string::npos){
+			spacing = make_float3(1, 1, 1);
+			disThr = 0;
+			shift = make_float3(5, 3, 0);
+			dims = make_int3(65 + shift.x, 225 + shift.y, 161 + shift.z);
+			subfolder = "bloodCell";
+		}
+		else if (std::string(dataPath).find("iso_t40_v3") != std::string::npos){
 			dims = make_int3(68, 68, 68);
 			spacing = make_float3(1, 1, 1);
 			disThr = 2;
@@ -86,6 +100,10 @@ public:
 			exit(0);
 		}
 	};
+
+
+	bool justChanged = false;
+	std::shared_ptr<PolyMesh> newPoly;
 
 private:
 	float cx, cy, cz;

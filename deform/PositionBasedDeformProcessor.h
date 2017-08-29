@@ -24,9 +24,9 @@ class MatrixManager;
 class PositionBasedDeformProcessor :public Processor
 {
 public:
-	std::shared_ptr<Volume> volume;
-	std::shared_ptr<PolyMesh> poly;
-	std::shared_ptr<Particle> particle;
+	std::shared_ptr<Volume> volume = 0;
+	std::shared_ptr<PolyMesh> poly = 0;
+	std::shared_ptr<Particle> particle = 0;
 
 	std::shared_ptr<Volume> channelVolume;
 
@@ -39,6 +39,8 @@ public:
 	~PositionBasedDeformProcessor(){
 		sdkDeleteTimer(&timer);
 		sdkDeleteTimer(&timerFrame);
+
+		if (d_regionMoveVecs) cudaFree(d_regionMoveVecs);
 
 		if (d_vertexCoords) cudaFree(d_vertexCoords);
 		if (d_vertexCoords_init) cudaFree(d_vertexCoords_init);
@@ -74,8 +76,18 @@ public:
 
 	bool deformData = true; //sometimes not need to modify the data, but just compute the deformation info like the frame, and just deform the channelVolume
 
-	void transformChannelVolForTVData();
+	//for time varying particle dataset
+	void updateParticleData(std::shared_ptr<Particle> ori);
+	void updateChannelWithTranformOfTVData(std::shared_ptr<Volume> v);
+	void updateChannelWithTranformOfTVData_Intermediate(std::shared_ptr<Volume> v1, const std::vector<float3> &regionMoveVec);
+	void initDeviceRegionMoveVec(int n); 
+
 private:
+
+	//for time varying particle dataset
+	float* d_regionMoveVecs = 0;
+	int maxLabel = -1;
+	
 	float* d_vertexCoords = 0;
 	float* d_vertexCoords_init = 0;
 	unsigned int* d_indices = 0;

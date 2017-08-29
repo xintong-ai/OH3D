@@ -11,3 +11,4 @@ dPOLY_DATA_PATH=C:/Users/lc/Dropbox/shareXin/rbcs-0032.ply
 POLY_DATA_PATH=D:/Data/moortgat/sand60_067_xw2_iso0.001.vtp
 POLY_DATA_PATH=D:/Data/Lin/Flow Simulations with Red Blood Cells/uDeviceX/ply/rbcs-0032.ply
 PARTICLE_DATA_FOLDER=D:/Data/Lin/reducedBloodCell/
+POLY_DATA_PATH=D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-0006.vtp

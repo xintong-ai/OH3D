@@ -694,29 +694,40 @@ void processParticleMeshData()
 	dataMgr = std::make_shared<DataMgr>();
 	dataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
+	int3 tdims; float3 tspacing; float tdisThr; float3 tshift; std::string tsubfolder;
+	PolyMesh::dataParameters(dataPath, tdims, tspacing, tdisThr, tshift, tsubfolder);
+
+
 	double spacing[3] = { 1, 1, 1 };
 	double origin[3] = { 0, 0, 0 };
 
-	float3 shift = make_float3(5, 3, 0);
-	//float3 shift = make_float3(0, 0, 0);
-
-	int dim[3] = { 65 + shift.x, 225 + shift.y, 161 + shift.z };
-
-	vtkSmartPointer<vtkPLYReader> reader =
-		vtkSmartPointer<vtkPLYReader>::New();
-	reader->SetFileName(dataPath.c_str());
-	vtkSmartPointer<vtkPolyData> pd = reader->GetOutput();
-	reader->Update();
-
+	float3 shift = tshift;
+	int dim[3] = { tdims.x, tdims.y, tdims.z };
+	
 	vtkSmartPointer<vtkPolyData> originalMesh;
-	originalMesh = reader->GetOutput();
+
+	if (std::string(dataPath).find(".ply") != std::string::npos){
+		vtkSmartPointer<vtkPLYReader> reader =
+			vtkSmartPointer<vtkPLYReader>::New();
+		reader->SetFileName(dataPath.c_str());
+		originalMesh = reader->GetOutput();
+		reader->Update();
+	}
+	else{
+		vtkSmartPointer<vtkXMLPolyDataReader> reader =
+			vtkSmartPointer<vtkXMLPolyDataReader>::New();
+		reader->SetFileName(dataPath.c_str());
+		originalMesh = reader->GetOutput();
+		reader->Update();
+	}
 
 	vtkPolyDataShift(originalMesh, shift);
 
+/*	//one time optional processing. get the shifted poly to debug
 	vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
 	writer4->SetFileName("D:/Data/Lin/Flow Simulations with Red Blood Cells/uDeviceX/ply/rbcs-0032-shifted.vtp");
 	writer4->SetInputData(originalMesh);
-	writer4->Write();
+	writer4->Write()*/;
 
 	vtkSmartPointer<vtkImageData> whiteImage =
 		vtkSmartPointer<vtkImageData>::New();
@@ -745,7 +756,6 @@ void processParticleMeshData()
 #if VTK_MAJOR_VERSION <= 5
 	pol2stenc->SetInput(pd);
 #else
-	//pol2stenc->SetInputData(pd);
 	pol2stenc->SetInputData(originalMesh);
 #endif
 	pol2stenc->SetOutputOrigin(origin);
@@ -835,7 +845,6 @@ void processParticleMeshTVData()
 		// polygonal data --> image stencil:
 		vtkSmartPointer<vtkPolyDataToImageStencil> pol2stenc =
 			vtkSmartPointer<vtkPolyDataToImageStencil>::New();
-		//pol2stenc->SetInputData(pd);
 		pol2stenc->SetInputData(originalMesh);
 		pol2stenc->SetOutputOrigin(origin);
 		pol2stenc->SetOutputSpacing(spacing);

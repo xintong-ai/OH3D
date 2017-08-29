@@ -20,15 +20,17 @@ set(SRCS Volume.cpp Particle.cpp GLMatrixManager.cpp
 	LabelVolumeProcessor.cpp
 	AnimationByMatrixProcessor.cpp Trace.cpp
 	PolyMesh.cpp
+	PositionBasedDeformProcessorForTV.cpp
 	)
 set(HDRS Volume.h Particle.h
- #Processor.h 
+ Processor.h 
     myDefine.h GLMatrixManager.h ColorGradient.h ScreenMarker.h
 	LabelVolumeProcessor.h
 	AnimationByMatrixProcessor.h
 	MatrixManager.h
 	myDefineRayCasting.h
 	PolyMesh.h Trace.h
+	PositionBasedDeformProcessorForTV.h
 )
 add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 

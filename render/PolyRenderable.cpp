@@ -19,6 +19,7 @@
 #include "PositionBasedDeformProcessor.h"
 
 
+#include "PositionBasedDeformProcessorForTV.h"
 
 void PolyRenderable::init()
 {
@@ -264,6 +265,19 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 {
 	if (!visible)
 		return;
+
+	//if (polyMesh->justChanged){
+	//	polyMesh->justChanged = false;
+	//	polyMesh = polyMesh->newPoly;
+	//	dataChange();
+	//}
+	if (positionBasedDeformProcessorForTV != 0 && positionBasedDeformProcessorForTV->justChangedForRenderer)
+	{
+		polyMesh = positionBasedDeformProcessorForTV->polyMesh;
+		dataChange();
+		positionBasedDeformProcessorForTV->justChangedForRenderer = false;
+	}
+
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -288,7 +302,7 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glBufferData(GL_ARRAY_BUFFER, polyMesh->vertexcount  * sizeof(float)* 3, polyMesh->vertexNorms, GL_STATIC_DRAW);
 	qgl->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	qgl->glUniform4f(curGlProg->uniform("LightPosition"), 0, 0, 10, 1);
+	qgl->glUniform4f(curGlProg->uniform("LightPosition"), 0, 0, 1000, 1);
 
 	qgl->glUniform3f(curGlProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
 	qgl->glUniform3f(curGlProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);

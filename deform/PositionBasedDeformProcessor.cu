@@ -1,6 +1,4 @@
 #include "PositionBasedDeformProcessor.h"
-#include "Lens.h"
-#include "MeshDeformProcessor.h"
 #include "TransformFunc.h"
 #include "MatrixManager.h"
 
@@ -15,13 +13,14 @@
 
 //!!! NOTE !!! spacing not considered yet!!!! in the global functions
 
-//#define USED_FOR_TV
+#define USED_FOR_TV
 
-#ifdef USED_FOR_TV
-typedef int channelVolumeVoxelType;
-#else
+//#ifdef USED_FOR_TV
+//typedef int channelVolumeVoxelType;
+//#else
+//typedef float channelVolumeVoxelType;
+//#endif
 typedef float channelVolumeVoxelType;
-#endif
 
 
 texture<float, 3, cudaReadModeElementType>  volumeTexInput;
@@ -30,7 +29,7 @@ surface<void, cudaSurfaceType3D>			volumeSurfaceOut;
 texture<channelVolumeVoxelType, 3, cudaReadModeElementType>  channelVolumeTex;
 surface<void, cudaSurfaceType3D>			channelVolumeSurface;
 
-
+texture<int, 3, cudaReadModeElementType>  tvChannelVolumeTex;
 
 PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
 {
@@ -75,6 +74,7 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Parti
 	channelVolume = ch;
 	spacing = channelVolume->spacing;
 
+	InitCudaSupplies();
 	sdkCreateTimer(&timer);
 	sdkCreateTimer(&timerFrame);
 
@@ -83,6 +83,23 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Parti
 	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
 	d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
 }
+
+void PositionBasedDeformProcessor::updateParticleData(std::shared_ptr<Particle> ori)
+{
+	particle = ori;
+	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+	//d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+	
+	//process(0, 0, 0, 0);
+
+	if (lastDataState == DEFORMED){
+		doParticleDeform(r);
+	}
+	else{
+
+	}
+}
+
 
 __device__ bool inTunnel(float3 pos, float3 start, float3 end, float deformationScale, float deformationScaleVertical, float3 dir2nd)
 {
@@ -1117,7 +1134,6 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		}
 	}
 	else if (hasOpenAnimeStarted){
-		//std::cout << "doing openning" << std::endl;
 
 		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
 		if (past >= totalDuration){
@@ -1132,6 +1148,9 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			closeStartingRadius = r;
 			closeDuration = past;
 		}
+
+		std::cout << "doing openning with r: " <<r<< std::endl;
+
 	}
 	else if (hasCloseAnimeStarted){
 		//std::cout << "doing closing" << std::endl;
@@ -1166,15 +1185,24 @@ void PositionBasedDeformProcessor::InitCudaSupplies()
 	channelVolumeTex.addressMode[1] = cudaAddressModeBorder;
 	channelVolumeTex.addressMode[2] = cudaAddressModeBorder;
 
-	volumeCudaIntermediate = std::make_shared<VolumeCUDA>();
-	volumeCudaIntermediate->VolumeCUDA_deinit();
-	volumeCudaIntermediate->VolumeCUDA_init(channelVolume->size, channelVolume->values, 1, 1);
-	//volumeCudaIntermediate.VolumeCUDA_init(volume->size, 0, 1, 1);//??
+	tvChannelVolumeTex.normalized = false;
+	tvChannelVolumeTex.filterMode = cudaFilterModePoint;
+	tvChannelVolumeTex.addressMode[0] = cudaAddressModeBorder;
+	tvChannelVolumeTex.addressMode[1] = cudaAddressModeBorder;
+	tvChannelVolumeTex.addressMode[2] = cudaAddressModeBorder;
+	
+	if (volume != 0){
+		//currently only for volume deformation
+		volumeCudaIntermediate = std::make_shared<VolumeCUDA>();
+		volumeCudaIntermediate->VolumeCUDA_deinit();
+		volumeCudaIntermediate->VolumeCUDA_init(channelVolume->size, channelVolume->values, 1, 1);
+		//volumeCudaIntermediate.VolumeCUDA_init(volume->size, 0, 1, 1);//??
+	}
 }
 
 
-__global__ void
-d_transformChannelVolForTVData(cudaExtent volumeSize)
+
+__global__ void d_transformChannelVolForTVDataFromExternal(cudaExtent volumeSize)
 {
 	int x = blockIdx.x*blockDim.x + threadIdx.x;
 	int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -1185,38 +1213,129 @@ d_transformChannelVolForTVData(cudaExtent volumeSize)
 		return;
 	}
 
-	channelVolumeVoxelType res2 = tex3D(channelVolumeTex, x, y, z);
-	if (res2 < 0){
-		int outv = 1;
+	int label = tex3D(tvChannelVolumeTex, x, y, z);
+	if (label < 0){
+		channelVolumeVoxelType outv = 1;
 		surf3Dwrite(outv, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
 	}
 	else{
-		int outv = 0;
+		channelVolumeVoxelType outv = 0;
 		surf3Dwrite(outv, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
 	}
+
+	return;
+}
+
+void PositionBasedDeformProcessor::updateChannelWithTranformOfTVData(std::shared_ptr<Volume> v)
+{
+	std::cout << "value exchanged!! " << std::endl;
+	cudaExtent size = v->volumeCuda.size;
+	unsigned int dim = 32;
+	dim3 blockSize(dim, dim, 1);
+	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 	
+	cudaChannelFormatDesc cd2 = v->volumeCudaOri.channelDesc;
+	checkCudaErrors(cudaBindTextureToArray(tvChannelVolumeTex, v->volumeCudaOri.content, cd2));
+	
+	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurface, channelVolume->volumeCudaOri.content));
+
+	d_transformChannelVolForTVDataFromExternal << <gridSize, blockSize >> >(size);
+
+	if (lastDataState == DEFORMED){
+		doChannelVolumeDeform();
+	}
+	else{
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcArray = channelVolume->volumeCudaOri.content;
+		copyParams.dstArray = channelVolume->volumeCuda.content;
+		copyParams.extent = channelVolume->volumeCuda.size;
+		copyParams.kind = cudaMemcpyDeviceToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+	}
+}
+
+
+__global__ void d_setToBackground(cudaExtent volumeSize)
+{
+	int x = blockIdx.x*blockDim.x + threadIdx.x;
+	int y = blockIdx.y*blockDim.y + threadIdx.y;
+	int z = blockIdx.z*blockDim.z + threadIdx.z;
+
+	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
+	{
+		return;
+	}
+
+	channelVolumeVoxelType outv = 1;
+	surf3Dwrite(outv, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
+
 	return;
 }
 
 
-void PositionBasedDeformProcessor::transformChannelVolForTVData()
+void PositionBasedDeformProcessor::initDeviceRegionMoveVec(int n)
 {
-	cudaExtent size = channelVolume->volumeCuda.size;
+	maxLabel = n;
+	checkCudaErrors(cudaMalloc(&d_regionMoveVecs, sizeof(float)* (n + 1) * 3));
+}
+
+__global__ void d_MoveChannelVol(cudaExtent volumeSize, float* regionMoveVecs)
+{
+	int x = blockIdx.x*blockDim.x + threadIdx.x;
+	int y = blockIdx.y*blockDim.y + threadIdx.y;
+	int z = blockIdx.z*blockDim.z + threadIdx.z;
+
+	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
+	{
+		return;
+	}
+
+
+	int label = tex3D(tvChannelVolumeTex, x, y, z);
+	if (label < 0){//do nothing
+		return;
+	}
+
+	float3 moveVec = make_float3(regionMoveVecs[3 * label], regionMoveVecs[3 * label + 1], regionMoveVecs[3 * label + 2]);
+	if (moveVec.x > 10000){
+		return; //a marker to denote that this region does not exist in the next time step
+	}
+	int3 newPos = make_int3(x + moveVec.x, y + moveVec.y, z + moveVec.z);
+
+	channelVolumeVoxelType outv = 0;
+	surf3Dwrite(outv, channelVolumeSurface, newPos.x * sizeof(channelVolumeVoxelType), newPos.y, newPos.z);
+
+	return;
+}
+
+void PositionBasedDeformProcessor::updateChannelWithTranformOfTVData_Intermediate(std::shared_ptr<Volume> v, const std::vector<float3> &regionMoveVec)
+{
+	cudaMemcpy(d_regionMoveVecs, &(regionMoveVec[0].x), sizeof(float)*(maxLabel + 1) * 3, cudaMemcpyHostToDevice);
+
+
+	//std::cout << "value exchanged!! " << std::endl;
+	cudaExtent size = v->volumeCuda.size;
 	unsigned int dim = 32;
 	dim3 blockSize(dim, dim, 1);
 	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
-	cudaChannelFormatDesc cd2 = channelVolume->volumeCudaOri.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCudaOri.content, cd2));
 	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurface, channelVolume->volumeCudaOri.content));
+	d_setToBackground << <gridSize, blockSize >> >(size);
 
-	d_transformChannelVolForTVData << <gridSize, blockSize >> >(size);
+	cudaChannelFormatDesc cd2 = v->volumeCudaOri.channelDesc;
+	checkCudaErrors(cudaBindTextureToArray(tvChannelVolumeTex, v->volumeCudaOri.content, cd2));
 
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCuda.content, cd2));
-	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurface, channelVolume->volumeCuda.content));
+	d_MoveChannelVol << <gridSize, blockSize >> >(size, d_regionMoveVecs);
 
-	d_transformChannelVolForTVData << <gridSize, blockSize >> >(size);
-
-
-	checkCudaErrors(cudaUnbindTexture(channelVolumeTex));
+	if (lastDataState == DEFORMED){
+		doChannelVolumeDeform();
+	}
+	else{
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcArray = channelVolume->volumeCudaOri.content;
+		copyParams.dstArray = channelVolume->volumeCuda.content;
+		copyParams.extent = channelVolume->volumeCuda.size;
+		copyParams.kind = cudaMemcpyDeviceToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+	}
 }

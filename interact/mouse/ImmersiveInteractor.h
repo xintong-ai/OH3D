@@ -4,8 +4,8 @@
 #include <QVector3D>
 #include <QMatrix4x4>
 
-#include <InfoGuideRenderable.h>
-#include <ViewpointEvaluator.h>
+//#include <InfoGuideRenderable.h>
+//#include <ViewpointEvaluator.h>
 
 #include "MatrixInteractor.h"
 
@@ -31,8 +31,8 @@ public:
 
 	bool noMoveMode = false;
 	
-	InfoGuideRenderable *infoGuideRenderable = 0;
-	ViewpointEvaluator *ve = 0;
+	//InfoGuideRenderable *infoGuideRenderable = 0;
+	//ViewpointEvaluator *ve = 0;
 
 };
 #endif

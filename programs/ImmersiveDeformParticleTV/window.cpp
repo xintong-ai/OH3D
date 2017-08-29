@@ -29,7 +29,10 @@
 #include "PlyVTKReader.h"
 #include "VTPReader.h"
 
+
 #include "PositionBasedDeformProcessor.h"
+#include "PositionBasedDeformProcessorForTV.h"
+
 #include "SliceRenderable.h"
 
 #include <thrust/device_vector.h>
@@ -61,7 +64,7 @@ void fileInfo(std::string dataPath, DataType & channelVolDataType, float3 &shift
 		//spacing = make_float3(1, 1, 1);
 		//rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false);
 		subfolder = "bloodCell";
-		subfolder = "D:/Data/Lin/reducedBloodCell/";
+		subfolder = "D:/Data/Lin/reducedBloodCell";
 		//channelVolDataType = RawVolumeReader::dtUint8;
 		channelVolDataType = RawVolumeReader::dtInt32;	//note!! for time varying case, the channel volume is not defined in the same way
 
@@ -91,16 +94,17 @@ Window::Window()
 	fileInfo(polyDataPath, channelVolDataType, shift, dims, subfolder);
 	spacing = make_float3(1, 1, 1);
 
-	
-	//if (channelSkelViewReady){
-	//	channelVolume = std::make_shared<Volume>(true);
-	//	//std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
-	//	std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/marked-reduced-rbcs-channelVol-0006.raw").c_str(), dims, channelVolDataType);
-	//	reader2->OutputToVolumeByNormalizedValue(channelVolume);
-	//	channelVolume->initVolumeCuda();
-	//	reader2.reset();
-	//	channelVolume->spacing = spacing;
-	//}
+
+	positionBasedDeformProcessorForTV = std::make_shared<PositionBasedDeformProcessorForTV>();
+		
+	if (channelSkelViewReady){
+		channelVolume = std::make_shared<Volume>(true);
+		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/marked-reduced-rbcs-channelVol-0006-oldStyle.raw").c_str(), dims, RawVolumeReader::dtUint8);
+		reader2->OutputToVolumeByNormalizedValue(channelVolume);
+		channelVolume->initVolumeCuda();
+		reader2.reset();
+		channelVolume->spacing = spacing;
+	}
 	
 	/*
 	//single time step
@@ -126,7 +130,7 @@ Window::Window()
 	*/
 
 
-	for (int i = timeStart; i <= timeEnd; i++){
+	for (int i = positionBasedDeformProcessorForTV->timeStart; i <= positionBasedDeformProcessorForTV->timeEnd; i++){
 		std::cout << "reading data of timestep " << i << std::endl;
 		//single time step
 		std::shared_ptr<PolyMesh> polyMesh = std::make_shared<PolyMesh>();
@@ -134,11 +138,11 @@ Window::Window()
 		ss << std::setw(4) << std::setfill('0') << i;
 		std::string s = ss.str();
 
-		std::string fname = subfolder + "marked-reduced-rbcs-" + s + "-withNormal.vtp";
+		std::string fname = subfolder + "/marked-reduced-rbcs-" + s + "-withNormal.vtp";
 		VTPReader reader;
 		reader.readFile(fname.c_str(), polyMesh.get());
 		
-		polyMesh->setAssisParticle((subfolder + "marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str());
+		polyMesh->setAssisParticle((subfolder + "/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str());
 		//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
 
 		//normally when a particle already used valTuple, we do not need to use val
@@ -150,60 +154,57 @@ Window::Window()
 		polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
 
 		//create the cellMaps
-		if (i > timeStart){
-			std::shared_ptr<Particle> lastParticle = (polyMeshes.back())->particle;
+		if (i > positionBasedDeformProcessorForTV->timeStart){
+			std::shared_ptr<Particle> lastParticle = (positionBasedDeformProcessorForTV->polyMeshes.back())->particle;
 			int n = lastParticle->numParticles;
 			std::vector<int> cellMap(n, -1);
 
 			int m = polyMesh->particle->numParticles;
 			int tupleCount = polyMesh->particle->tupleCount; //10
 			for (int i = 0; i < n; i++){
-				int lastId = lastParticle->valTuple[i * tupleCount + 7];
+				int lastLabel = lastParticle->valTuple[i * tupleCount + 7];
 				bool notFound = true;
 
 				for (int j = 0; j < m && notFound; j++){
-					if (lastId == polyMesh->particle->valTuple[tupleCount * j + 7]){
+					if (lastLabel == polyMesh->particle->valTuple[tupleCount * j + 7]){
 						cellMap[i] = j;
 						notFound = false;
 					}
 				}
 			}
-			cellMaps.push_back(cellMap);
+			positionBasedDeformProcessorForTV->cellMaps.push_back(cellMap);
 		}
-		polyMeshes.push_back(polyMesh);
+		positionBasedDeformProcessorForTV->polyMeshes.push_back(polyMesh);
 
+		int n = polyMesh->particle->numParticles;
+		int tupleCount = polyMesh->particle->tupleCount; //10
+		for (int i = 0; i < n; i++){
+			int label= polyMesh->particle->valTuple[i * tupleCount + 7];
+			positionBasedDeformProcessorForTV->maxLabel = max(positionBasedDeformProcessorForTV->maxLabel, label);
+		}
 
 		if (channelSkelViewReady){
 			std::shared_ptr<Volume> channelVolume = std::make_shared<Volume>(true);
-			std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "marked-reduced-rbcs-channelVol-" + s + ".raw").c_str(), dims, channelVolDataType);
+			std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/marked-reduced-rbcs-channelVol-" + s + ".raw").c_str(), dims, channelVolDataType);
 			//reader2->OutputToVolumeByNormalizedValue(channelVolume);
 			reader2->OutputToVolume_OnlyVolumeCuda_NoNormalized(channelVolume);
 			//channelVolume->initVolumeCuda(); //already in OutputToVolume_OnlyVolumeCuda_NoNormalized()
 			reader2.reset();
 			channelVolume->spacing = spacing;
-			channelVolumes.push_back(channelVolume);
+			positionBasedDeformProcessorForTV->channelVolumes.push_back(channelVolume);
 		}
-		if (channelSkelViewReady && i == timeStart){
-			//save a copy of the channel vol of the first time step into the variable channelVolume
 
-			channelVolume = std::make_shared<Volume>(true);
-			std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "marked-reduced-rbcs-channelVol-" + s + ".raw").c_str(), dims, channelVolDataType);
-			//reader2->OutputToVolumeByNormalizedValue(channelVolume);
-			reader2->OutputToVolume_OnlyVolumeCuda_NoNormalized(channelVolume);
-			//channelVolume->initVolumeCuda(); //already in OutputToVolume_OnlyVolumeCuda_NoNormalized()
-			reader2.reset();
-			channelVolume->spacing = spacing;
-			channelVolumes.push_back(channelVolume);
-		}
 	}
+	positionBasedDeformProcessorForTV->saveOriginalCopyOfMeshes();
 
-	polyMesh = polyMeshes[0];
-
+	polyMesh = positionBasedDeformProcessorForTV->polyMeshes[0];
+	//std::cout << "maxLabel: " << maxLabel << std::endl; 
+	positionBasedDeformProcessorForTV->regionMoveVecs.resize(positionBasedDeformProcessorForTV->maxLabel + 1, make_float3(0, 0, 0)); //label reange[0, maxLabel]
 
 	//read wall
 	polyMeshWall = std::make_shared<PolyMesh>();
 	VTPReader reader;
-	reader.readFile((subfolder + "reduced-wall.vtp").c_str(), polyMeshWall.get());
+	reader.readFile((subfolder + "/reduced-wall.vtp").c_str(), polyMeshWall.get());
 	//polyMeshWall->setVertexCoordsOri(); //not needed when vertex coords need not to change
 	polyMeshWall->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
 
@@ -233,8 +234,11 @@ Window::Window()
 	//////////////////////////////// Processor ////////////////////////////////
 	if (channelSkelViewReady){
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr, channelVolume);
-		positionBasedDeformProcessor->transformChannelVolForTVData();
-		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+		positionBasedDeformProcessor->updateChannelWithTranformOfTVData(positionBasedDeformProcessorForTV->channelVolumes[0]);
+		positionBasedDeformProcessor->initDeviceRegionMoveVec(positionBasedDeformProcessorForTV->maxLabel);
+
+		openGL->AddProcessor("1ForTV", positionBasedDeformProcessorForTV.get());
+		openGL->AddProcessor("2positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 		positionBasedDeformProcessor->deformationScale = 10;
 		positionBasedDeformProcessor->deformationScaleVertical = 14;
@@ -379,6 +383,11 @@ Window::Window()
 	connect(startTVBtn, SIGNAL(clicked()), this, SLOT(startTVBtnClicked()));
 
 
+	QPushButton *backToFirstTimestepBtn = new QPushButton("Back To the First Time Step");
+	controlLayout->addWidget(backToFirstTimestepBtn);
+	connect(backToFirstTimestepBtn, SIGNAL(clicked()), this, SLOT(backToFirstTimestepBtnClicked()));
+
+
 	controlLayout->addStretch();
 
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
@@ -403,10 +412,17 @@ Window::Window()
 #endif
 
 
-	QTimer* qtimer = new QTimer(this);
-	//float timerl = 1000 / (numInter + 1);
-	qtimer->start(250);
-	connect(qtimer, SIGNAL(timeout()), this, SLOT(qtimerTimeOut()));
+
+
+	polyRenderable->positionBasedDeformProcessorForTV = positionBasedDeformProcessorForTV;
+
+	positionBasedDeformProcessorForTV->polyMesh = polyMesh;
+	//positionBasedDeformProcessorForTV->channelVolume = channelVolume;
+	positionBasedDeformProcessorForTV->isActive = false;
+
+	positionBasedDeformProcessorForTV->positionBasedDeformProcessor = positionBasedDeformProcessor;
+	//positionBasedDeformProcessorForTV->polyRenderable = polyRenderable;
+
 }
 
 
@@ -534,53 +550,20 @@ void Window::saveScreenBtnClicked()
 
 void Window::startTVBtnClicked()
 {
-	startTV = true;
-	sdkResetTimer(&timer);
-	sdkStartTimer(&timer);
-	if (curT > -1){
-		std::cout << "need reset polyMeshes!!!" << std::endl;
-		for (int i = 0; i < polyMeshes.size(); i++){
-			polyMeshes[i]->reset();
-		}
-	}
-	curT = 0;
+	positionBasedDeformProcessorForTV->turnActive();
 }
 
-void Window::qtimerTimeOut()
+
+void Window::backToFirstTimestepBtnClicked()
 {
-	if (!startTV){
-		return;
-	}
-
-	sdkStopTimer(&timer);
-	float timePassed = sdkGetAverageTimerValue(&timer) / 1000.f;
-	if (curT % (numInter + 1) == 0){
-		int meshid = curT / (numInter + 1);
+	positionBasedDeformProcessorForTV->resetPolyMeshes();
 	
-		polyMesh = polyMeshes[meshid];
-		polyRenderable->polyMesh = polyMesh;//NOTE!! the polymesh stored in other modules are not always combined with the pointer "polyMesh" here!!!
-	}
-	else{
-		int meshid1 = curT / (numInter + 1), meshid2 = meshid1 + 1;
-		float ratio = 1.0 * (curT % (numInter + 1)) / (numInter + 1);
-
-		//polyMesh = polyMeshes[meshid];//should not need to change polyMesh
-		int n = polyMesh->particle->numParticles;
-		for (int i = 0; i < n; i++){
-			int m = cellMaps[meshid1][i];
-			if (m > -1){
-				polyMesh->particle->pos[i] = polyMesh->particle->posOrig[i] * (1 - ratio) + polyMeshes[meshid2]->particle->posOrig[m] * ratio;
-			}
-		}
-	}
-
+	polyMesh = positionBasedDeformProcessorForTV->polyMeshes[0];
+	positionBasedDeformProcessorForTV->polyMesh = polyMesh;
+	polyRenderable->polyMesh = polyMesh;
 	polyRenderable->dataChange();
-	std::cout << "used data from " << curT << std::endl;
 
-	curT++;	
-	if (curT > ((timeEnd - timeStart) * (numInter + 1))){
-		startTV = false;
-	}
-}
+	positionBasedDeformProcessor->updateParticleData(polyMesh->particle);
+	positionBasedDeformProcessor->updateChannelWithTranformOfTVData(positionBasedDeformProcessorForTV->channelVolumes[0]);
 
-
+}	

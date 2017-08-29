@@ -39,6 +39,7 @@ struct RayCastingParameters;
 class PolyRenderable;
 class PolyMesh;
 class SliceRenderable;
+class PositionBasedDeformProcessorForTV;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -53,6 +54,7 @@ class VRWidget;
 class VRVolumeRenderableCUDA;
 #endif
 
+
 class Window : public QWidget
 {
 	Q_OBJECT	//without this line, the slot does not work
@@ -63,15 +65,15 @@ public:
 	void init();
 
 private:
-	int timeStart = 6, timeEnd = 6;
+	//int timeStart = 6, timeEnd = 7;
 	int3 dims;
 	float3 spacing;
 	std::vector<float3> views;
 	
 	std::shared_ptr<PolyMesh> polyMesh;
-	std::vector < std::shared_ptr<PolyMesh>> polyMeshes;
+	//std::vector < std::shared_ptr<PolyMesh>> polyMeshes;
 	std::shared_ptr<PolyMesh> polyMeshWall;
-	std::vector < std::shared_ptr<Volume> > channelVolumes;
+	//std::vector < std::shared_ptr<Volume> > channelVolumes;
 	
 
 	std::shared_ptr<Volume> inputVolume;
@@ -79,6 +81,7 @@ private:
 	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
 	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
+	std::shared_ptr<PositionBasedDeformProcessorForTV> positionBasedDeformProcessorForTV = 0;
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
@@ -89,15 +92,7 @@ private:
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
 	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
-
-	//for miniature
-	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<RegularInteractor> regularInteractorMini;
-	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderableMini;
-	std::shared_ptr<GlyphRenderable> glyphRenderable;
-
-
+	
 
 	//for main view
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
@@ -137,10 +132,15 @@ private:
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
 	StopWatchInterface *timer = 0;
+
 	bool startTV = false;
-	int curT = -1;
-	const int numInter = 9;
-	std::vector<std::vector<int>> cellMaps;
+	
+	//int curT = -1;
+	//const int numInter = 9;
+	//std::vector<std::vector<int>> cellMaps;//given the index of a region in last timestep. get the index of the region in next timestep with the same label
+	////std::vector<std::vector<int>> labelToIdMap; //given the label of a region in the current timestep, find the index of 
+	//int maxLabel = -1;
+	//std::vector<float3> regionMoveVecs;
 
 private slots:
 	
@@ -162,7 +162,7 @@ private slots:
 	void saveScreenBtnClicked();
 
 	void startTVBtnClicked();
-	void qtimerTimeOut();
+	void backToFirstTimestepBtnClicked();
 };
 
 #endif

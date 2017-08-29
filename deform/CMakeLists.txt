@@ -26,7 +26,7 @@ set(SRCS
 	PhysicalVolumeDeformProcessor.cu
 	PhysicalParticleDeformProcessor.cu
 	PositionBasedDeformProcessor.cu
-	PositionBasedDeformProcessor2.cu
+	#PositionBasedDeformProcessorForTV.cu
 	)
 
 set(HDRS	Lens.h
@@ -38,7 +38,7 @@ set(HDRS	Lens.h
 			PhysicalParticleDeformProcessor.h
 			ScreenLensDisplaceProcessor.h
 			PositionBasedDeformProcessor.h
-			PositionBasedDeformProcessor2.h
+			#PositionBasedDeformProcessorForTV.h
 			)
 
 cuda_add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})

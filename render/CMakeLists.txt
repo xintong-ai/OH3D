@@ -41,7 +41,7 @@ set( Srcs
 		MeshRenderable.cpp
 		GLWidgetQtDrawing.cpp
 		MatrixMgrRenderable.cpp
-	InfoGuideRenderable.cpp
+	#InfoGuideRenderable.cpp
 		DeformFrameRenderable.cpp
 		TraceRenderable.cpp
 		SliceRenderable.cpp
@@ -67,7 +67,7 @@ set( Hdrs
 		MeshRenderable.h
 		GLWidgetQtDrawing.h
 		MatrixMgrRenderable.h
-	InfoGuideRenderable.h
+	#InfoGuideRenderable.h
 		DeformFrameRenderable.h
 		TraceRenderable.h
 	)

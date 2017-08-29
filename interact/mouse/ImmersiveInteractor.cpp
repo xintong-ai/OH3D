@@ -101,6 +101,7 @@ bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 
 void ImmersiveInteractor::keyPress(char key)
 {
+	
 	switch (key)
 	{
 	case 'a':
@@ -119,7 +120,7 @@ void ImmersiveInteractor::keyPress(char key)
 	case 'S':
 		moveViewVertically(0);
 		break;
-	case 'z':
+		/*case 'z':
 	case 'Z':
 		if (ve != 0 && infoGuideRenderable != 0){
 			//for Tao09Detail
@@ -148,9 +149,9 @@ void ImmersiveInteractor::keyPress(char key)
 		else{
 			std::cout << "ve or infoGuideRenderable not set!!" << std::endl << std::endl;
 		}
-		break;
+		break;*/
 	}
-
+	
 }
 
 void ImmersiveInteractor::moveViewHorizontally(int d)

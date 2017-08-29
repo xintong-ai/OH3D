@@ -11,7 +11,7 @@
 #include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableCUDAKernel.h"
 
-#include "ViewpointEvaluator.h"
+//#include "ViewpointEvaluator.h"
 
 using namespace std;
 
