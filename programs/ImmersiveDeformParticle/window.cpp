@@ -8,8 +8,6 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "VolumeRenderableCUDA.h"
-#include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
 #include "AnimationByMatrixProcessor.h"
@@ -26,7 +24,6 @@
 #include "VTPReader.h"
 
 #include "PositionBasedDeformProcessor.h"
-#include "SliceRenderable.h"
 
 #include <thrust/device_vector.h>
 
@@ -41,7 +38,6 @@
 #include "leap/MatrixLeapInteractor.h"
 #endif
 
-#include "VolumeRenderableCUDAKernel.h"
 
 bool channelSkelViewReady = true;
 
@@ -83,14 +79,7 @@ Window::Window()
 	fileInfo(polyDataPath, channelVolDataType, shift, dims, subfolder);
 	spacing = make_float3(1, 1, 1);
 
-	if (channelSkelViewReady){
-		channelVolume = std::make_shared<Volume>(true);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, channelVolDataType);
-		reader2->OutputToVolumeByNormalizedValue(channelVolume);
-		channelVolume->initVolumeCuda();
-		reader2.reset();
-		channelVolume->spacing = spacing;
-	}
+
 
 	polyMesh = std::make_shared<PolyMesh>();
 	if (std::string(polyDataPath).find(".ply") != std::string::npos){
@@ -135,7 +124,11 @@ Window::Window()
 
 	//////////////////////////////// Processor ////////////////////////////////
 	if (channelSkelViewReady){
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr, channelVolume);
+		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr);
+		positionBasedDeformProcessor->disThr = 4.1;
+		positionBasedDeformProcessor->minPos = -shift;
+		positionBasedDeformProcessor->maxPos = make_float3(dims.x, dims.y, dims.z);
+
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 		positionBasedDeformProcessor->deformationScale = 10;
@@ -148,19 +141,9 @@ Window::Window()
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
-	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
 
 
-	if (channelSkelViewReady){
-		volumeRenderable = std::make_shared<VolumeRenderableCUDA>(channelVolume);
-		volumeRenderable->rcp = rcpForChannelSkel;
-		openGL->AddRenderable("2volume", volumeRenderable.get());
-		volumeRenderable->SetVisibility(false);
-
-		//sliceRenderable = std::make_shared<SliceRenderable>(channelVolume);
-		//openGL->AddRenderable("5volumeSlice", sliceRenderable.get());
-	}
-
+	
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	openGL->AddRenderable("3matrix", matrixMgrRenderable.get()); 
 
@@ -179,9 +162,6 @@ Window::Window()
 	regularInteractor->isActive = false;
 	immersiveInteractor->isActive = true;
 
-	if (channelSkelViewReady){
-		//immersiveInteractor->noMoveMode = true;
-	}
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
 	
@@ -240,20 +220,7 @@ Window::Window()
 	eyePosGroup->setLayout(eyePosLayout2);
 	controlLayout->addWidget(eyePosGroup);
 
-	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
-	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel"));
-	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton"));
-	oriVolumeRb->setChecked(true);
-	deformModeLayout->addWidget(oriVolumeRb.get());
-	deformModeLayout->addWidget(channelVolumeRb.get());
-	deformModeLayout->addWidget(skelVolumeRb.get());
-	groupBox->setLayout(deformModeLayout);
-	controlLayout->addWidget(groupBox);
-	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
-	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
+
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -339,8 +306,6 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 	else{
 		positionBasedDeformProcessor->isActive = false;
-		//inputVolume->reset();
-		channelVolume->reset();
 	}
 }
 
@@ -354,43 +319,6 @@ void Window::isDeformColoringEnabledClicked(bool b)
 	}
 }
 
-void Window::SlotOriVolumeRb(bool b)
-{
-	volumeRenderable->SetVisibility(false);
-	polyRenderable->SetVisibility(true);
-}
-
-void Window::SlotChannelVolumeRb(bool b)
-{
-	if (b)
-	{
-		if (channelVolume){
-			//volumeRenderable->setVolume(channelVolume);
-			volumeRenderable->SetVisibility(true);
-			polyRenderable->SetVisibility(false);
-		}
-		else{
-			std::cout << "channelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-		}
-	}
-}
-
-void Window::SlotSkelVolumeRb(bool b)
-{
-	if (b)
-	{
-		if (skelVolume){
-			//volumeRenderable->setVolume(skelVolume);
-		}
-		else{
-			std::cout << "skelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-		}
-	}
-}
 
 void Window::SlotImmerRb(bool b)
 {

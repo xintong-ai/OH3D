@@ -65,10 +65,6 @@ private:
 	std::vector<float3> views;
 	
 	std::shared_ptr<PolyMesh> polyMesh;
-
-	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
-	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
 	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
@@ -82,21 +78,11 @@ private:
 
 	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
 
-	//for miniature
-	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<RegularInteractor> regularInteractorMini;
-	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderableMini;
-	std::shared_ptr<GlyphRenderable> glyphRenderable;
-
-
 
 	//for main view
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 	std::shared_ptr<PolyRenderable> polyRenderable;
-	std::shared_ptr<SliceRenderable> sliceRenderable;
 
 
 #ifdef USE_LEAP
@@ -119,10 +105,6 @@ private:
 	QLabel *meshResLabel;
 	QLineEdit *eyePosLineEdit;
 
-	std::shared_ptr<QRadioButton> oriVolumeRb;
-	std::shared_ptr<QRadioButton> channelVolumeRb;
-	std::shared_ptr<QRadioButton> skelVolumeRb;
-
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
@@ -135,9 +117,6 @@ private slots:
 	void isDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
 
-	void SlotOriVolumeRb(bool);
-	void SlotChannelVolumeRb(bool);
-	void SlotSkelVolumeRb(bool);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

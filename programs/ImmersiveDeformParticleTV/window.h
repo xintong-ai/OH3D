@@ -65,20 +65,13 @@ public:
 	void init();
 
 private:
-	//int timeStart = 6, timeEnd = 7;
 	int3 dims;
 	float3 spacing;
 	std::vector<float3> views;
 	
 	std::shared_ptr<PolyMesh> polyMesh;
-	//std::vector < std::shared_ptr<PolyMesh>> polyMeshes;
 	std::shared_ptr<PolyMesh> polyMeshWall;
-	//std::vector < std::shared_ptr<Volume> > channelVolumes;
-	
 
-	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
-	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
 	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 	std::shared_ptr<PositionBasedDeformProcessorForTV> positionBasedDeformProcessorForTV = 0;
@@ -95,11 +88,9 @@ private:
 	
 
 	//for main view
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 	std::shared_ptr<PolyRenderable> polyRenderable;
-	std::shared_ptr<SliceRenderable> sliceRenderable;
 
 	std::shared_ptr<PolyRenderable> polyWallRenderable;
 
@@ -124,10 +115,6 @@ private:
 	QLabel *meshResLabel;
 	QLineEdit *eyePosLineEdit;
 
-	std::shared_ptr<QRadioButton> oriVolumeRb;
-	std::shared_ptr<QRadioButton> channelVolumeRb;
-	std::shared_ptr<QRadioButton> skelVolumeRb;
-
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
@@ -135,13 +122,6 @@ private:
 
 	bool startTV = false;
 	
-	//int curT = -1;
-	//const int numInter = 9;
-	//std::vector<std::vector<int>> cellMaps;//given the index of a region in last timestep. get the index of the region in next timestep with the same label
-	////std::vector<std::vector<int>> labelToIdMap; //given the label of a region in the current timestep, find the index of 
-	//int maxLabel = -1;
-	//std::vector<float3> regionMoveVecs;
-
 private slots:
 	
 	void SlotSaveState();
@@ -151,9 +131,6 @@ private slots:
 	void isDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
 
-	void SlotOriVolumeRb(bool);
-	void SlotChannelVolumeRb(bool);
-	void SlotSkelVolumeRb(bool);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

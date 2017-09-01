@@ -53,3 +53,5 @@ endif()
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
 endif()
+
+set(CUDA_NVCC_FLAGS_DEBUG "-g -G")

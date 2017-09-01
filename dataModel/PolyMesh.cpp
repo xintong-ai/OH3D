@@ -12,7 +12,6 @@ PolyMesh::~PolyMesh(){
 	if (vertexCoordsOri) delete[]vertexCoordsOri;
 	if (vertexNormsOri) delete[]vertexNormsOri;
 	if (indicesOri) delete[]indicesOri;
-	if (faceValid) delete[]faceValid;
 
 	if (vertexDeviateVals) delete[]vertexDeviateVals;
 
@@ -95,10 +94,6 @@ void PolyMesh::setVertexCoordsOri() //needed when the data is used for deformati
 		indices = (unsigned int*)malloc(sizeof(unsigned int)* 3 * facecount * 2);
 		memcpy(indices, indicesOri, sizeof(unsigned int)* 3 * facecount);
 
-		faceValid = new bool[facecount];
-		for (int i = 0; i < facecount; i++){
-			faceValid[i] = true;
-		}
 	}
 	readyForDeform = true;
 }

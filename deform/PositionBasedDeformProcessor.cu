@@ -11,68 +11,75 @@
 #include <helper_math.h>
 
 
+#include <thrust/transform_reduce.h>
+#include <thrust/functional.h>
+#include <thrust/execution_policy.h>
+
 //!!! NOTE !!! spacing not considered yet!!!! in the global functions
 
-#define USED_FOR_TV
-
-//#ifdef USED_FOR_TV
-//typedef int channelVolumeVoxelType;
-//#else
-//typedef float channelVolumeVoxelType;
-//#endif
-typedef float channelVolumeVoxelType;
 
 
 texture<float, 3, cudaReadModeElementType>  volumeTexInput;
+texture<float, 3, cudaReadModeElementType>  volumePointTexture;
 surface<void, cudaSurfaceType3D>			volumeSurfaceOut;
 
-texture<channelVolumeVoxelType, 3, cudaReadModeElementType>  channelVolumeTex;
-surface<void, cudaSurfaceType3D>			channelVolumeSurface;
 
-texture<int, 3, cudaReadModeElementType>  tvChannelVolumeTex;
 
-PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
+PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m)
 {
 	volume = ori;
 	matrixMgr = _m;
-	channelVolume = ch;
-	spacing = volume->spacing;
 	InitCudaSupplies();
 	sdkCreateTimer(&timer);
 	sdkCreateTimer(&timerFrame);
 
+	minPos = make_float3(0, 0, 0);
+	maxPos = make_float3(volume->size.x, volume->size.y, volume->size.z);
+
 	dataType = VOLUME;
+
+	finalDeformedVolume.VolumeCUDA_deinit();
+	finalDeformedVolume.channelDesc = volume->volumeCudaOri.channelDesc;
+	finalDeformedVolume.size = volume->volumeCudaOri.size;
+	int allowStore = 1; //mostly compared to volumeCudaOri, volumeCuda allows store
+	checkCudaErrors(cudaMalloc3DArray(&(finalDeformedVolume.content), &(volume->volumeCudaOri.channelDesc), volume->volumeCudaOri.size, allowStore ? cudaArraySurfaceLoadStore : 0));
+
+	cudaMemcpy3DParms copyParams = { 0 };
+	copyParams.srcArray = volume->volumeCudaOri.content;
+	copyParams.dstArray = finalDeformedVolume.content;
+	copyParams.extent = finalDeformedVolume.size;
+	copyParams.kind = cudaMemcpyDeviceToDevice;
+	checkCudaErrors(cudaMemcpy3D(&copyParams));
 };
 
-PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
+PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m)
 {
 	poly = ori;
 	matrixMgr = _m;
-	channelVolume = ch;
-	spacing = channelVolume->spacing;
 
 	sdkCreateTimer(&timer);
 	sdkCreateTimer(&timerFrame);
 
 	dataType = MESH;
-	
+
 	//NOTE!! here doubled the space. Hopefully it is large enough
-	cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 *2);
+	cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 * 2);
+	cudaMalloc(&d_vertexCoords_finalDeformed, sizeof(float)*poly->vertexcount * 3 * 2);
 	cudaMalloc(&d_norms, sizeof(float)*poly->vertexcount * 3 * 2);
 	cudaMalloc(&d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3 * 2);
-	cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3*2);
-	//cudaMalloc(&d_faceValid, sizeof(bool)*poly->facecount);
+	cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3 * 2);
 	cudaMalloc(&d_numAddedFaces, sizeof(int));
 	cudaMalloc(&d_vertexDeviateVals, sizeof(float)*poly->vertexcount * 2);
 	cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2);
+
+	cudaMemcpy(d_vertexCoords_init, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
 };
 
-PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch)
+PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m)
 {
 	particle = ori;
 	matrixMgr = _m;
-	channelVolume = ch;
-	spacing = channelVolume->spacing;
 
 	InitCudaSupplies();
 	sdkCreateTimer(&timer);
@@ -82,6 +89,8 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Parti
 
 	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
 	d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+	d_vec_finalDeformedPosOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+
 }
 
 void PositionBasedDeformProcessor::updateParticleData(std::shared_ptr<Particle> ori)
@@ -89,10 +98,12 @@ void PositionBasedDeformProcessor::updateParticleData(std::shared_ptr<Particle> 
 	particle = ori;
 	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
 	//d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
-	
+
 	//process(0, 0, 0, 0);
 
 	if (lastDataState == DEFORMED){
+		computeFinalDeformCopy();
+
 		doParticleDeform(r);
 	}
 	else{
@@ -196,7 +207,7 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 			else if (dis < deformationScale){
 				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
 				float3 dir = normalize(pos - prjPoint);
-				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale; 
+				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale;
 				samplePos /= spacing;
 
 				float res = tex3D(volumeTexInput, samplePos.x + 0.5, samplePos.y + 0.5, samplePos.z + 0.5);
@@ -221,88 +232,15 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 }
 
 
-__global__ void
-d_updateVolumebyMatrixInfo_tunnel_rect(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
-{
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-	float3 pos = make_float3(x, y, z) * spacing;
-	float3 tunnelVec = normalize(end - start);
-	float tunnelLength = length(end - start);
-
-	float3 voxelVec = pos - start;
-	float l = dot(voxelVec, tunnelVec);
-	if (l > 0 && l < tunnelLength){
-		float disToStart = length(voxelVec);
-		float l2 = dot(voxelVec, dir2nd);
-		if (abs(l2) < deformationScaleVertical){
-			float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
-			float3 dir = normalize(pos - prjPoint);
-			float dis = length(pos - prjPoint);
-
-			if (dis < r / 2){
-				channelVolumeVoxelType res2 = 1;
-				surf3Dwrite(res2, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-			}
-			else if (dis < deformationScale){
-				float3 prjPoint = start + l*tunnelVec + l2*dir2nd;
-				float3 dir = normalize(pos - prjPoint);
-				float3 samplePos = prjPoint + dir* (dis - r) / (deformationScale - r)*deformationScale;
-				
-				samplePos /= spacing;
-				channelVolumeVoxelType res2 = tex3D(channelVolumeTex, samplePos.x, samplePos.y, samplePos.z);
-				surf3Dwrite(res2, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-			}
-			else{
-				channelVolumeVoxelType res2 = tex3D(channelVolumeTex, x, y, z);
-				surf3Dwrite(res2, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-			}
-		}
-		else{
-			channelVolumeVoxelType res2 = tex3D(channelVolumeTex, x, y, z);
-			surf3Dwrite(res2, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-		}
-	}
-	else{
-		channelVolumeVoxelType res2 = tex3D(channelVolumeTex, x, y, z);
-		surf3Dwrite(res2, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-	}
-	return;
-}
-
-__global__ void
-d_posInDeformedChannelVolume(float3 pos, int3 dims, float3 spacing, bool* inChannel)
-{
-	float3 ind = pos / spacing;
-	if (ind.x >= 0 && ind.x < dims.x && ind.y >= 0 && ind.y < dims.y && ind.z >= 0 && ind.z<dims.z) {
-		channelVolumeVoxelType res = tex3D(channelVolumeTex, ind.x, ind.y, ind.z);
-		if (res > 0.5)
-			*inChannel = true;
-		else
-			*inChannel = false;
-	}
-	else{
-		*inChannel = true;
-	}
-}
-
-
-__global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, float* vertexCoords, int vertexcount, 
-	float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd,
+__global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, float* vertexCoords, int vertexcount,
+	float3 start, float3 end , float r, float deformationScale, float deformationScaleVertical, float3 dir2nd,
 	float* vertexDeviateVals)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= vertexcount)	return;
 	vertexDeviateVals[i] = 0;
-	
-	float3 pos = make_float3(vertexCoords_init[3 * i], vertexCoords_init[3 * i + 1], vertexCoords_init[3 * i + 2]) * spacing;
+
+	float3 pos = make_float3(vertexCoords_init[3 * i], vertexCoords_init[3 * i + 1], vertexCoords_init[3 * i + 2]);
 	vertexCoords[3 * i] = pos.x;
 	vertexCoords[3 * i + 1] = pos.y;
 	vertexCoords[3 * i + 2] = pos.z;
@@ -344,7 +282,7 @@ void PositionBasedDeformProcessor::doPolyDeform(float degree)
 	int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
 
 	d_updatePolyMeshbyMatrixInfo_rect << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount,
-		tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexDeviateVals);
+		tunnelStart, tunnelEnd, degree, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexDeviateVals);
 
 	cudaMemcpy(poly->vertexCoords, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
 	if (isColoringDeformedPart)
@@ -357,13 +295,12 @@ struct functor_particleDeform
 {
 	int n;
 	float3 start, end, dir2nd;
-	float3 spacing;
 	float r, deformationScale, deformationScaleVertical;
-	
+
 	template<typename Tuple>
-	__device__ __host__ void operator() (Tuple t){//float2 screenPos, float4 clipPos) {
+	__device__ __host__ void operator() (Tuple t){
 		float4 posf4 = thrust::get<0>(t);
-		float3 pos = make_float3(posf4.x, posf4.y, posf4.z) * spacing;
+		float3 pos = make_float3(posf4.x, posf4.y, posf4.z);
 		float3 newPos;
 		float3 tunnelVec = normalize(end - start);
 		float tunnelLength = length(end - start);
@@ -398,8 +335,8 @@ struct functor_particleDeform
 	}
 
 
-	functor_particleDeform(int _n, float3 _start, float3 _end, float3 _spacing, float _r, float _deformationScale, float _deformationScaleVertical, float3 _dir2nd)
-		: n(_n), start(_start), end(_end), spacing(_spacing), r(_r), deformationScale(_deformationScale), deformationScaleVertical(_deformationScaleVertical), dir2nd(_dir2nd){}
+	functor_particleDeform(int _n, float3 _start, float3 _end, float _r, float _deformationScale, float _deformationScaleVertical, float3 _dir2nd)
+		: n(_n), start(_start), end(_end), r(_r), deformationScale(_deformationScale), deformationScaleVertical(_deformationScaleVertical), dir2nd(_dir2nd){}
 };
 
 void PositionBasedDeformProcessor::doParticleDeform(float degree)
@@ -409,9 +346,9 @@ void PositionBasedDeformProcessor::doParticleDeform(float degree)
 	int count = particle->numParticles;
 
 	//for debug
-//	std::vector<float4> tt(count);
-//	//thrust::copy(tt.begin(), tt.end(), d_vec_posTarget.begin());
-//	std::cout << "pos of region 0 before: " << tt[0].x << " " << tt[0].y << " " << tt[0].z << std::endl;
+	//	std::vector<float4> tt(count);
+	//	//thrust::copy(tt.begin(), tt.end(), d_vec_posTarget.begin());
+	//	std::cout << "pos of region 0 before: " << tt[0].x << " " << tt[0].y << " " << tt[0].z << std::endl;
 
 	thrust::for_each(
 		thrust::make_zip_iterator(
@@ -424,12 +361,12 @@ void PositionBasedDeformProcessor::doParticleDeform(float degree)
 		d_vec_posOrig.end(),
 		d_vec_posTarget.end()
 		)),
-		functor_particleDeform(count, tunnelStart, tunnelEnd, channelVolume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir));
+		functor_particleDeform(count, tunnelStart, tunnelEnd, degree, deformationScale, deformationScaleVertical, rectVerticalDir));
 
 	thrust::copy(d_vec_posTarget.begin(), d_vec_posTarget.end(), &(particle->pos[0]));
 
-//	std::cout << "moved particles by: " << degree <<" with count "<<count<< std::endl;
-//	std::cout << "pos of region 0: " << particle->pos[0].x << " " << particle->pos[0].y << " " << particle->pos[0].z << std::endl;
+	//	std::cout << "moved particles by: " << degree <<" with count "<<count<< std::endl;
+	//	std::cout << "pos of region 0: " << particle->pos[0].x << " " << particle->pos[0].y << " " << particle->pos[0].z << std::endl;
 
 }
 
@@ -460,7 +397,7 @@ void PositionBasedDeformProcessor::doVolumeDeform2Tunnel(float degree, float deg
 	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
 	cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
-	
+
 	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
 	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCudaIntermediate->content));
 	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, lastTunnelStart, lastTunnelEnd, volume->spacing, degreeClose, deformationScale, deformationScaleVertical, lastDeformationDirVertical);
@@ -474,40 +411,81 @@ void PositionBasedDeformProcessor::doVolumeDeform2Tunnel(float degree, float deg
 
 }
 
-void PositionBasedDeformProcessor::doChannelVolumeDeform()
+void PositionBasedDeformProcessor::computeFinalDeformCopy()
 {
-	cudaExtent size = channelVolume->volumeCuda.size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
+	if (dataType == VOLUME){
+		cudaExtent size = volume->volumeCuda.size;
+		unsigned int dim = 32;
+		dim3 blockSize(dim, dim, 1);
+		dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
 
-	cudaChannelFormatDesc cd2 = channelVolume->volumeCuda.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCudaOri.content, cd2));
-	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurface, channelVolume->volumeCuda.content));
+		cudaChannelFormatDesc cd2 = volume->volumeCuda.channelDesc;
+		checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd2));
+		checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, finalDeformedVolume.content));
+		//checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content)); //to test
+		
+		d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir);
+		checkCudaErrors(cudaUnbindTexture(volumeTexInput));
+	}
+	else if (dataType == MESH){
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
 
-	d_updateVolumebyMatrixInfo_tunnel_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, channelVolume->spacing, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir);
-	checkCudaErrors(cudaUnbindTexture(channelVolumeTex));
+		d_updatePolyMeshbyMatrixInfo_rect << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords_finalDeformed, poly->vertexcount,
+			tunnelStart, tunnelEnd, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexDeviateVals);
+	}
+	else if (dataType == PARTICLE){
+		int count = particle->numParticles;
+
+		//for debug
+		//	std::vector<float4> tt(count);
+		//	//thrust::copy(tt.begin(), tt.end(), d_vec_posTarget.begin());
+		//	std::cout << "pos of region 0 before: " << tt[0].x << " " << tt[0].y << " " << tt[0].z << std::endl;
+
+		thrust::for_each(
+			thrust::make_zip_iterator(
+			thrust::make_tuple(
+			d_vec_posOrig.begin(),
+			d_vec_finalDeformedPosOrig.begin()
+			)),
+			thrust::make_zip_iterator(
+			thrust::make_tuple(
+			d_vec_posOrig.end(),
+			d_vec_finalDeformedPosOrig.end()
+			)),
+			functor_particleDeform(count, tunnelStart, tunnelEnd, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir));
+
+		//thrust::copy(d_vec_posTarget.begin(), d_vec_posTarget.end(), &(tempparticle[0])); //for debug
+
+		//	std::cout << "moved particles by: " << degree <<" with count "<<count<< std::endl;
+		//	std::cout << "pos of region 0: " << particle->pos[0].x << " " << particle->pos[0].y << " " << particle->pos[0].z << std::endl;
+	}
+	else{
+		std::cout << " inRange not implemented " << std::endl;
+		exit(0);
+	}
+
 }
 
 __global__ void
-d_checkPlane(float3 planeCenter, int3 size, float3 spacing, float3 dir_y, float3 dir_z, int ycount, int zcount, bool* d_inchannel)
+d_checkPlane(float3 planeCenter, int3 size, float3 dir_y, float3 dir_z, int ycount, int zcount, bool* d_inchannel)
 {
-	int i = blockDim.x * blockIdx.x + threadIdx.x;
-	if (i >= ycount * zcount)	return;
+	//int i = blockDim.x * blockIdx.x + threadIdx.x;
+	//if (i >= ycount * zcount)	return;
 
-	int z = i / ycount;
-	int y = i - z * ycount;
-	z = z - zcount / 2;
-	y = y - ycount / 2;
-	float3 v = planeCenter + y*dir_y + z*dir_z;
-	
-	//assume spacing (1,1,1)
-	if (v.x >= 0 && v.x < size.x && v.y >= 0 && v.y < size.y && v.z >= 0 && v.z < size.z){
-		channelVolumeVoxelType res = tex3D(channelVolumeTex, v.x, v.y, v.z);
-		if (res < 0.5){
-			*d_inchannel = true;
-		}
-	}
+	//int z = i / ycount;
+	//int y = i - z * ycount;
+	//z = z - zcount / 2;
+	//y = y - ycount / 2;
+	//float3 v = planeCenter + y*dir_y + z*dir_z;
+
+	////assume spacing (1,1,1)
+	//if (v.x >= 0 && v.x < size.x && v.y >= 0 && v.y < size.y && v.z >= 0 && v.z < size.z){
+	//	channelVolumeVoxelType res = tex3D(channelVolumeTex, v.x, v.y, v.z);
+	//	if (res < 0.5){
+	//		*d_inchannel = true;
+	//	}
+	//}
 }
 
 void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
@@ -525,15 +503,13 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		}
 
 		//old method
-		float step = 0.5;
+		float step = 1;
 		tunnelStart = centerPoint;
-		//while (!channelVolume->inRange(tunnelStart / spacing) || channelVolume->getVoxel(tunnelStart / spacing) > 0.5){
-		while (!channelVolume->inRange(tunnelStart / spacing) || inChannelInOriData(tunnelStart / spacing)){
+		while (!inRange(tunnelStart) || atProperLocationInOriData(tunnelStart)){
 			tunnelStart += tunnelAxis*step;
 		}
 		tunnelEnd = tunnelStart + tunnelAxis*step;
-		//while (channelVolume->inRange(tunnelEnd / spacing) && channelVolume->getVoxel(tunnelEnd / spacing) < 0.5){
-		while (channelVolume->inRange(tunnelEnd / spacing) && !inChannelInOriData(tunnelEnd / spacing)){
+		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd)){
 			tunnelEnd += tunnelAxis*step;
 		}
 
@@ -545,18 +521,18 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		float3 tunnelAxis = normalize(matrixMgr->getViewVecInLocal());
 		//rectVerticalDir = targetUpVecInLocal;
 		if (abs(dot(targetUpVecInLocal, tunnelAxis)) < 0.9){
-			rectVerticalDir = normalize(cross(cross(tunnelAxis, targetUpVecInLocal), tunnelAxis));
+		rectVerticalDir = normalize(cross(cross(tunnelAxis, targetUpVecInLocal), tunnelAxis));
 		}
 		else{
-			rectVerticalDir = matrixMgr->getViewVecInLocal();
+		rectVerticalDir = matrixMgr->getViewVecInLocal();
 		}
 
 		float step = 1;
 
 		bool* d_planeHasSolid;
 		cudaMalloc(&d_planeHasSolid, sizeof(bool)* 1);
-		cudaChannelFormatDesc cd2 = channelVolume->volumeCudaOri.channelDesc;
-		checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCudaOri.content, cd2));
+		cudaChannelFormatDesc cd2 = volume->volumeCudaOri.channelDesc;
+		checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, volume->volumeCudaOri.content, cd2));
 
 		int ycount = ceil(deformationScale) * 2 + 1;
 		int zcount = ceil(deformationScaleVertical) * 2 + 1;
@@ -568,22 +544,22 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		tunnelStart = centerPoint;
 		bool startNotFound = true;
 		while (startNotFound){
-			tunnelStart += tunnelAxis*step;
-			bool temp = false;
-			cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
-			d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelStart, channelVolume->size, channelVolume->spacing, dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
-			cudaMemcpy(&startNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
-			startNotFound = !startNotFound;
+		tunnelStart += tunnelAxis*step;
+		bool temp = false;
+		cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
+		d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelStart, volume->size,  dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
+		cudaMemcpy(&startNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		startNotFound = !startNotFound;
 		}
 
 		tunnelEnd = tunnelStart;
 		bool endNotFound = true;
 		while (endNotFound){
-			tunnelEnd += tunnelAxis*step;
-			bool temp = false;
-			cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
-			d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelEnd, channelVolume->size, channelVolume->spacing, dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
-			cudaMemcpy(&endNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		tunnelEnd += tunnelAxis*step;
+		bool temp = false;
+		cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
+		d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelEnd, volume->size, dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
+		cudaMemcpy(&endNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
 		}
 
 		std::cout << "tunnelStart: " << tunnelStart.x << " " << tunnelStart.y << " " << tunnelStart.z << std::endl;
@@ -592,7 +568,7 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		cudaFree(d_planeHasSolid);
 		*/
 	}
-	else{	
+	else{
 		//when this funciton is called, suppose we already know that centerPoint is inWall
 		float3 tunnelAxis = normalize(matrixMgr->getViewVecInLocal());
 		//rectVerticalDir = targetUpVecInLocal;
@@ -603,28 +579,26 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 			rectVerticalDir = matrixMgr->getViewVecInLocal();
 		}
 
-		
+
 		//old method
-		float step = 0.5;
+		float step = 1;
 		tunnelEnd = centerPoint + tunnelAxis*step;
-		//while (channelVolume->inRange(tunnelEnd / spacing) && channelVolume->getVoxel(tunnelEnd / spacing) < 0.5){
-		while (channelVolume->inRange(tunnelEnd / spacing) && !inChannelInOriData(tunnelEnd / spacing)){
+		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd )){
 			tunnelEnd += tunnelAxis*step;
 		}
 		tunnelStart = centerPoint;
-		//while (channelVolume->inRange(tunnelStart / spacing) && channelVolume->getVoxel(tunnelStart / spacing) < 0.5){	
-		while (channelVolume->inRange(tunnelStart / spacing) && !inChannelInOriData(tunnelStart / spacing)){
+		while (inRange(tunnelStart) && !atProperLocationInOriData(tunnelStart)){
 			tunnelStart -= tunnelAxis*step;
 		}
-		
+
 
 		/* //new method
 		float step = 1;
 
 		bool* d_planeHasSolid;
 		cudaMalloc(&d_planeHasSolid, sizeof(bool)* 1);
-		cudaChannelFormatDesc cd2 = channelVolume->volumeCudaOri.channelDesc;
-		checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCudaOri.content, cd2));
+		cudaChannelFormatDesc cd2 = volume->volumeCudaOri.channelDesc;
+		checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, volume->volumeCudaOri.content, cd2));
 
 		int ycount = ceil(deformationScale) * 2 + 1;
 		int zcount = ceil(deformationScaleVertical) * 2 + 1;
@@ -636,21 +610,21 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		tunnelStart = centerPoint;
 		bool startNotFound = true;
 		while (startNotFound){
-			tunnelStart -= tunnelAxis*step;
-			bool temp = false;
-			cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
-			d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelStart, channelVolume->size, channelVolume->spacing, dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
-			cudaMemcpy(&startNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		tunnelStart -= tunnelAxis*step;
+		bool temp = false;
+		cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
+		d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelStart, volume->size, dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
+		cudaMemcpy(&startNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
 		}
-		
+
 		tunnelEnd = centerPoint;
 		bool endNotFound = true;
 		while (endNotFound){
-			tunnelEnd += tunnelAxis*step;
-			bool temp = false;
-			cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
-			d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelEnd, channelVolume->size, channelVolume->spacing, dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
-			cudaMemcpy(&endNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		tunnelEnd += tunnelAxis*step;
+		bool temp = false;
+		cudaMemcpy(d_planeHasSolid, &temp, sizeof(bool)* 1, cudaMemcpyHostToDevice);
+		d_checkPlane << <blocksPerGrid, threadsPerBlock >> >(tunnelEnd, volume->size, dir_y, rectVerticalDir, ycount, zcount, d_planeHasSolid);
+		cudaMemcpy(&endNotFound, d_planeHasSolid, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
 		}
 
 		//std::cout << "tunnelStart: " << tunnelStart.x << " " << tunnelStart.y << " " << tunnelStart.z << std::endl;
@@ -662,46 +636,215 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 }
 
 
-bool PositionBasedDeformProcessor::inChannelInDeformedData(float3 pos)
+
+
+__global__ void
+d_posInSafePositionOfVolume(float3 pos, int3 dims, float3 spacing, bool* atProper)
 {
-	bool* d_inchannel;
-	cudaMalloc(&d_inchannel, sizeof(bool)* 1);
-	cudaChannelFormatDesc cd2 = channelVolume->volumeCudaOri.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCuda.content, cd2));
-	d_posInDeformedChannelVolume << <1, 1 >> >(pos, channelVolume->size, channelVolume->spacing, d_inchannel);
-	bool inchannel;
-	cudaMemcpy(&inchannel, d_inchannel, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
-	cudaFree(d_inchannel);
-	return inchannel;
+	float transFuncP1 = 1.0, transFuncP2 = 0.3;
+
+	float3 ind = pos / spacing;
+	if (ind.x >= 0 && ind.x < dims.x && ind.y >= 0 && ind.y < dims.y && ind.z >= 0 && ind.z<dims.z) {
+		float res = tex3D(volumePointTexture, ind.x, ind.y, ind.z);
+		if (res <= transFuncP2)
+			*atProper = true;
+		else
+			*atProper = false;
+	}
+	else{
+		*atProper = true;
+	}
 }
 
-bool PositionBasedDeformProcessor::inChannelInOriData(float3 pos)
+
+
+struct functor_dis
 {
-	bool* d_inchannel;
-	cudaMalloc(&d_inchannel, sizeof(bool)* 1);
-	cudaChannelFormatDesc cd2 = channelVolume->volumeCudaOri.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCudaOri.content, cd2));
-	d_posInDeformedChannelVolume << <1, 1 >> >(pos, channelVolume->size, channelVolume->spacing, d_inchannel);
-	bool inchannel;
-	cudaMemcpy(&inchannel, d_inchannel, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
-	cudaFree(d_inchannel);
-	return inchannel;
+	float3 pos;
+	__device__ __host__ float operator() (float4 posf4){//float2 screenPos, float4 clipPos) {
+		float dis = length(make_float3(posf4.x, posf4.y, posf4.z) - pos);
+		return dis;
+	}
+	functor_dis(float3 _pos)
+		: pos(_pos){}
+};
+
+
+__device__ float d_disToTri(float3 p, float3 p1, float3 p2, float3 p3, float thr)
+{
+	float3 e12 = p2 - p1;
+	float3 e23 = p3 - p2;
+	float3 e31 = p1 - p3;
+
+	float3 n = normalize(cross(e12, -e31));
+	float disToPlane = dot(p - p1, n);
+	if (abs(disToPlane) >= thr){
+		return thr + 1; //no need further computation
+	}
+	float3 proj = p - n*disToPlane;
+
+	bool isInside = false;
+	if (dot(cross(e12, -e31), cross(e12, proj - p1)) >= 0){
+		if (dot(cross(e23, -e12), cross(e23, proj - p2)) >= 0){
+			if (dot(cross(e31, -e23), cross(e31, proj - p3)) >= 0){
+				isInside = true;
+			}
+		}
+	}
+	if (isInside){
+		return abs(disToPlane);
+	}
+	float disInPlaneSqu = min(min(dot(proj - p1, proj - p1), dot(proj - p2, proj - p2)), dot(proj - p3, proj - p3));
+	float d = dot(proj - p1, e12);
+	if (d > 0 && d < dot(e12, e12)){
+		float projL = d / length(e12);
+		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p1, proj - p1) - projL*projL);
+	}
+	d = dot(proj - p2, e23);
+	if (d > 0 && d < dot(e23, e23)){
+		float projL = d / length(e23);
+		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p2, proj - p2) - projL*projL);
+	}
+	d = dot(proj - p3, e31);
+	if (d > 0 && d < dot(e31, e31)){
+		float projL = d / length(e31);
+		disInPlaneSqu = min(disInPlaneSqu, dot(proj - p3, proj - p3) - projL*projL);
+	}
+	return sqrt(disInPlaneSqu + disToPlane*disToPlane);
 }
+
+__global__ void d_checkIfTooCloseToPoly(float3 pos, uint* indices, int faceCoords, float* vertexCoords, float thr, bool* res)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= faceCoords)	return;
+
+	uint3 inds = make_uint3(indices[3 * i], indices[3 * i + 1], indices[3 * i + 2]);
+	float3 v1 = make_float3(vertexCoords[3 * inds.x], vertexCoords[3 * inds.x + 1], vertexCoords[3 * inds.x + 2]);
+	float3 v2 = make_float3(vertexCoords[3 * inds.y], vertexCoords[3 * inds.y + 1], vertexCoords[3 * inds.y + 2]);
+	float3 v3 = make_float3(vertexCoords[3 * inds.z], vertexCoords[3 * inds.z + 1], vertexCoords[3 * inds.z + 2]);
+
+	float dis = min(min(length(pos - v1), length(pos - v2)), length(pos - v3));
+	//if (d_disToTri(pos, v1, v2, v3, thr) < thr)
+	if (dis < thr)
+	{
+		*res = true;
+	}
+
+	return;
+}
+
+bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos)
+{
+	if (dataType == VOLUME){
+		bool* d_atProper;
+		cudaMalloc(&d_atProper, sizeof(bool)* 1);
+		cudaChannelFormatDesc cd2 = volume->volumeCudaOri.channelDesc;
+		checkCudaErrors(cudaBindTextureToArray(volumePointTexture, volume->volumeCudaOri.content, cd2));
+		d_posInSafePositionOfVolume << <1, 1 >> >(pos, volume->size, volume->spacing, d_atProper);
+		bool atProper;
+		cudaMemcpy(&atProper, d_atProper, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		cudaFree(d_atProper);
+		return atProper;
+	}
+	else if (dataType == MESH){
+
+		bool* d_tooCloseToData;
+		cudaMalloc(&d_tooCloseToData, sizeof(bool)* 1);
+		cudaMemset(d_tooCloseToData, 0, sizeof(bool)* 1);
+
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
+
+		d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords_init, disThr, d_tooCloseToData);
+
+		bool tooCloseToData;
+		cudaMemcpy(&tooCloseToData, d_tooCloseToData, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		cudaFree(d_tooCloseToData);
+		return !tooCloseToData;
+	}
+	else if (dataType == PARTICLE){
+		float init = 10000;
+		float inSavePosition =
+			thrust::transform_reduce(
+			d_vec_posOrig.begin(),
+			d_vec_posOrig.end(),
+			functor_dis(pos),
+			init,
+			thrust::minimum<float>());
+		return (inSavePosition > disThr);
+	}
+	else{
+		std::cout << " in data not implemented " << std::endl;
+		exit(0);
+	}
+
+
+}
+
+
+bool PositionBasedDeformProcessor::atProperLocationInDeformedData(float3 pos)
+{
+	if (dataType == VOLUME){
+		bool* d_atProper;
+		cudaMalloc(&d_atProper, sizeof(bool)* 1);
+		cudaChannelFormatDesc cd2 = volume->volumeCudaOri.channelDesc;
+		checkCudaErrors(cudaBindTextureToArray(volumePointTexture, finalDeformedVolume.content, cd2));
+		d_posInSafePositionOfVolume << <1, 1 >> >(pos, volume->size, volume->spacing, d_atProper);
+		bool atProper;
+		cudaMemcpy(&atProper, d_atProper, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		cudaFree(d_atProper);
+		return atProper;
+	}
+	else if (dataType == MESH){
+
+		bool* d_tooCloseToData;
+		cudaMalloc(&d_tooCloseToData, sizeof(bool)* 1);
+		cudaMemset(d_tooCloseToData, 0, sizeof(bool)* 1);
+
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
+
+		d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords_finalDeformed, disThr, d_tooCloseToData);
+
+		bool tooCloseToData;
+		cudaMemcpy(&tooCloseToData, d_tooCloseToData, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
+		cudaFree(d_tooCloseToData);
+		return !tooCloseToData;
+
+	}
+	else if (dataType == PARTICLE){
+		float init = 10000;
+		float inSavePosition =
+			thrust::transform_reduce(
+			d_vec_finalDeformedPosOrig.begin(),
+			d_vec_finalDeformedPosOrig.end(),
+			functor_dis(pos),
+			init,
+			thrust::minimum<float>());
+		return (inSavePosition > disThr);
+	}
+	else{
+		std::cout << " in data not implemented " << std::endl;
+		exit(0);
+	}
+
+}
+
 
 __global__ void d_disturbVertex(float* vertexCoords, int vertexcount,
-	float3 start, float3 end, float3 spacing, float deformationScaleVertical, float3 dir2nd)
+	float3 start, float3 end, float deformationScaleVertical, float3 dir2nd)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= vertexcount)	return;
 
-	float3 pos = make_float3(vertexCoords[3 * i], vertexCoords[3 * i + 1], vertexCoords[3 * i + 2]) * spacing;
+	float3 pos = make_float3(vertexCoords[3 * i], vertexCoords[3 * i + 1], vertexCoords[3 * i + 2]);
 	vertexCoords[3 * i] = pos.x;
 	vertexCoords[3 * i + 1] = pos.y;
 	vertexCoords[3 * i + 2] = pos.z;
 
 	float3 tunnelVec = normalize(end - start);
 	float tunnelLength = length(end - start);
-	
+
 	float thr = 0.000001;
 	float disturb = 0.00001;
 
@@ -728,7 +871,7 @@ __global__ void d_disturbVertex(float* vertexCoords, int vertexcount,
 	return;
 }
 
-__global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd, int* numAddedFaces, float* vertexColorVals)
+__global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd, int* numAddedFaces, float* vertexColorVals)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= facecount)	return;
@@ -738,7 +881,7 @@ __global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int fac
 	float3 v1 = make_float3(vertexCoords[3 * inds.x], vertexCoords[3 * inds.x + 1], vertexCoords[3 * inds.x + 2]);
 	float3 v2 = make_float3(vertexCoords[3 * inds.y], vertexCoords[3 * inds.y + 1], vertexCoords[3 * inds.y + 2]);
 	float3 v3 = make_float3(vertexCoords[3 * inds.z], vertexCoords[3 * inds.z + 1], vertexCoords[3 * inds.z + 2]);
-	
+
 	float3 norm1 = make_float3(norms[3 * inds.x], norms[3 * inds.x + 1], norms[3 * inds.x + 2]);
 	float3 norm2 = make_float3(norms[3 * inds.y], norms[3 * inds.y + 1], norms[3 * inds.y + 2]);
 	float3 norm3 = make_float3(norms[3 * inds.z], norms[3 * inds.z + 1], norms[3 * inds.z + 2]);
@@ -753,7 +896,7 @@ __global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int fac
 
 	float3 tunnelVec = normalize(end - start);
 	float tunnelLength = length(end - start);
-	
+
 	//https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
 	float3 n = normalize(cross(dir2nd, tunnelVec));
 	bool para12 = abs(dot(l12, n)) < 0.000001;
@@ -797,7 +940,7 @@ __global__ void d_modifyMesh(float* vertexCoords, unsigned int* indices, int fac
 		separateVectex = inds.x; //separateVectex = 1;
 		if (dot(v1 - start, n) < 0) disturb = -disturb;
 		bottomV1 = inds.z;
-		bottomV2 = inds.y; 
+		bottomV2 = inds.y;
 		intersect1 = v3 + d31intersect * l31;
 		intersect2 = v1 + d12intersect * l12;
 
@@ -884,20 +1027,20 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	cudaMemcpy(d_vertexColorVals, poly->vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyHostToDevice);
 
 	cudaMemset(d_numAddedFaces, 0, sizeof(int));
-	
+
 
 	int threadsPerBlock = 64;
 	int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
 
 	d_disturbVertex << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, poly->vertexcount,
-		tunnelStart, tunnelEnd, channelVolume->spacing, deformationScaleVertical, rectVerticalDir);
+		tunnelStart, tunnelEnd, deformationScaleVertical, rectVerticalDir);
 
 	threadsPerBlock = 64;
 	blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
 	d_modifyMesh << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, poly->vertexcountOri, d_norms,
-		tunnelStart, tunnelEnd, channelVolume->spacing, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir,
+		tunnelStart, tunnelEnd, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir,
 		d_numAddedFaces, d_vertexColorVals);
-	
+
 	int numAddedFaces;
 	cudaMemcpy(&numAddedFaces, d_numAddedFaces, sizeof(int), cudaMemcpyDeviceToHost);
 	std::cout << "added new face count " << numAddedFaces << std::endl;
@@ -922,18 +1065,9 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 bool PositionBasedDeformProcessor::inRange(float3 v)
 {
 	if (dataType == VOLUME){
-		return volume->inRange(v / spacing);
+		v = v / volume->spacing;
 	}
-	else if (dataType == MESH){
-		return poly->inRange(v);
-	}
-	else if (dataType == PARTICLE){
-		return channelVolume->inRange(v / spacing); //actually currently channelVolume->inRange will serve all possibilities. Keep 3 cases in case of unexpected needs.
-	}
-	else{
-		std::cout << " inRange not implemented " << std::endl;
-		exit(0);
-	}
+	return v.x >= minPos.x && v.x < maxPos.x && v.y >= minPos.y && v.y < maxPos.y &&v.z >= minPos.z && v.z < maxPos.z;
 }
 
 void PositionBasedDeformProcessor::deformDataByDegree(float r)
@@ -951,7 +1085,7 @@ void PositionBasedDeformProcessor::deformDataByDegree(float r)
 		std::cout << " inRange not implemented " << std::endl;
 		exit(0);
 	}
-}				
+}
 
 void PositionBasedDeformProcessor::deformDataByDegree2Tunnel(float r, float rClose)
 {
@@ -974,7 +1108,6 @@ void PositionBasedDeformProcessor::resetData()
 {
 	if (dataType == VOLUME){
 		volume->reset();
-
 	}
 	else if (dataType == MESH){
 		poly->reset();
@@ -1001,38 +1134,39 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 	if (lastDataState == ORIGINAL){
 		if (isForceDeform){
 			//if (lastEyeState != inWall){
-				lastDataState = DEFORMED;
-				//lastEyeState = inWall;
+			lastDataState = DEFORMED;
+			//lastEyeState = inWall;
 
-				computeTunnelInfo(eyeInLocal);
-				doChannelVolumeDeform();
+			computeTunnelInfo(eyeInLocal);
 
-				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-					modifyPolyMesh();
-				}
+			if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
+				modifyPolyMesh();
+			}
 
-				//start a opening animation
-				hasOpenAnimeStarted = true;
-				hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
-				startOpen = std::clock();
+			computeFinalDeformCopy();
+
+			//start a opening animation
+			hasOpenAnimeStarted = true;
+			hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
+			startOpen = std::clock();
 			//}
 			//else if (lastEyeState == inWall){
-				//from wall to wall
+			//from wall to wall
 			//}
 		}
-		//else if (inRange(eyeInLocal) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
-		else if (inRange(eyeInLocal) && !inChannelInOriData(eyeInLocal / spacing)){	// in solid area
+		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal)){	// in solid area
 			// in this case, set the start of deformation
 			if (lastEyeState != inWall){
 				lastDataState = DEFORMED;
 				lastEyeState = inWall;
 
 				computeTunnelInfo(eyeInLocal);
-				doChannelVolumeDeform();
 
 				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
 					modifyPolyMesh();
 				}
+
+				computeFinalDeformCopy();
 
 				//start a opening animation
 				hasOpenAnimeStarted = true;
@@ -1044,7 +1178,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			}
 		}
 		else{
-			// either eyeInLocal is out of range, or eyeInLocal is in channel
+			// either eyeInLocal is out of range, or eyeInLocal is at proper location
 			//in this case, no state change
 		}
 	}
@@ -1052,11 +1186,10 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		if (isForceDeform){
 
 		}
-		//else if (inRange(eyeInLocal) && channelVolume->getVoxel(eyeInLocal / spacing) < 0.5){
-		else if (inRange(eyeInLocal) && !inChannelInOriData(eyeInLocal / spacing) ){
+		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal)){
 			//in area which is solid in the original volume
-			bool inchannel = inChannelInDeformedData(eyeInLocal);
-			if (inchannel){
+			bool atProper = atProperLocationInDeformedData(eyeInLocal);
+			if (atProper){
 				// not in the solid region in the deformed volume
 				// in this case, no change
 			}
@@ -1065,8 +1198,6 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				//even in the deformed volume, eye is still inside the solid region 
 				//eye should just move to a solid region
 
-				//poly->reset();
-				//channelVolume->reset();
 
 				sdkResetTimer(&timer);
 				sdkStartTimer(&timer);
@@ -1081,19 +1212,18 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				lastTunnelEnd = tunnelEnd;
 
 				computeTunnelInfo(eyeInLocal);
-				doChannelVolumeDeform();
+				computeFinalDeformCopy();
 
 				hasOpenAnimeStarted = true;//start a opening animation
 				hasCloseAnimeStarted = true; //since eye should just moved to the current solid, the previous solid should be closed 
 				startOpen = std::clock();
 			}
 		}
-		else{// in area which is channel in the original volume
+		else{// in area which is proper in the original volume
 			hasCloseAnimeStarted = true;
 			hasOpenAnimeStarted = false;
 			startClose = std::clock();
 
-			channelVolume->reset();
 			lastDataState = ORIGINAL;
 			lastEyeState = inCell;
 		}
@@ -1149,7 +1279,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			closeDuration = past;
 		}
 
-		std::cout << "doing openning with r: " <<r<< std::endl;
+		std::cout << "doing openning with r: " << r << std::endl;
 
 	}
 	else if (hasCloseAnimeStarted){
@@ -1179,163 +1309,21 @@ void PositionBasedDeformProcessor::InitCudaSupplies()
 	volumeTexInput.addressMode[1] = cudaAddressModeBorder;
 	volumeTexInput.addressMode[2] = cudaAddressModeBorder;
 
-	channelVolumeTex.normalized = false;
-	channelVolumeTex.filterMode = cudaFilterModePoint;
-	channelVolumeTex.addressMode[0] = cudaAddressModeBorder;
-	channelVolumeTex.addressMode[1] = cudaAddressModeBorder;
-	channelVolumeTex.addressMode[2] = cudaAddressModeBorder;
+	volumePointTexture.normalized = false;
+	volumePointTexture.filterMode = cudaFilterModePoint;
+	volumePointTexture.addressMode[0] = cudaAddressModeBorder;
+	volumePointTexture.addressMode[1] = cudaAddressModeBorder;
+	volumePointTexture.addressMode[2] = cudaAddressModeBorder;
 
-	tvChannelVolumeTex.normalized = false;
-	tvChannelVolumeTex.filterMode = cudaFilterModePoint;
-	tvChannelVolumeTex.addressMode[0] = cudaAddressModeBorder;
-	tvChannelVolumeTex.addressMode[1] = cudaAddressModeBorder;
-	tvChannelVolumeTex.addressMode[2] = cudaAddressModeBorder;
-	
 	if (volume != 0){
-		//currently only for volume deformation
+		//currently only for volume data
 		volumeCudaIntermediate = std::make_shared<VolumeCUDA>();
 		volumeCudaIntermediate->VolumeCUDA_deinit();
-		volumeCudaIntermediate->VolumeCUDA_init(channelVolume->size, channelVolume->values, 1, 1);
+		volumeCudaIntermediate->VolumeCUDA_init(volume->size, volume->values, 1, 1);
 		//volumeCudaIntermediate.VolumeCUDA_init(volume->size, 0, 1, 1);//??
 	}
 }
 
 
 
-__global__ void d_transformChannelVolForTVDataFromExternal(cudaExtent volumeSize)
-{
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
 
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-	int label = tex3D(tvChannelVolumeTex, x, y, z);
-	if (label < 0){
-		channelVolumeVoxelType outv = 1;
-		surf3Dwrite(outv, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-	}
-	else{
-		channelVolumeVoxelType outv = 0;
-		surf3Dwrite(outv, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-	}
-
-	return;
-}
-
-void PositionBasedDeformProcessor::updateChannelWithTranformOfTVData(std::shared_ptr<Volume> v)
-{
-	std::cout << "value exchanged!! " << std::endl;
-	cudaExtent size = v->volumeCuda.size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
-	
-	cudaChannelFormatDesc cd2 = v->volumeCudaOri.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(tvChannelVolumeTex, v->volumeCudaOri.content, cd2));
-	
-	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurface, channelVolume->volumeCudaOri.content));
-
-	d_transformChannelVolForTVDataFromExternal << <gridSize, blockSize >> >(size);
-
-	if (lastDataState == DEFORMED){
-		doChannelVolumeDeform();
-	}
-	else{
-		cudaMemcpy3DParms copyParams = { 0 };
-		copyParams.srcArray = channelVolume->volumeCudaOri.content;
-		copyParams.dstArray = channelVolume->volumeCuda.content;
-		copyParams.extent = channelVolume->volumeCuda.size;
-		copyParams.kind = cudaMemcpyDeviceToDevice;
-		checkCudaErrors(cudaMemcpy3D(&copyParams));
-	}
-}
-
-
-__global__ void d_setToBackground(cudaExtent volumeSize)
-{
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-	channelVolumeVoxelType outv = 1;
-	surf3Dwrite(outv, channelVolumeSurface, x * sizeof(channelVolumeVoxelType), y, z);
-
-	return;
-}
-
-
-void PositionBasedDeformProcessor::initDeviceRegionMoveVec(int n)
-{
-	maxLabel = n;
-	checkCudaErrors(cudaMalloc(&d_regionMoveVecs, sizeof(float)* (n + 1) * 3));
-}
-
-__global__ void d_MoveChannelVol(cudaExtent volumeSize, float* regionMoveVecs)
-{
-	int x = blockIdx.x*blockDim.x + threadIdx.x;
-	int y = blockIdx.y*blockDim.y + threadIdx.y;
-	int z = blockIdx.z*blockDim.z + threadIdx.z;
-
-	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
-	{
-		return;
-	}
-
-
-	int label = tex3D(tvChannelVolumeTex, x, y, z);
-	if (label < 0){//do nothing
-		return;
-	}
-
-	float3 moveVec = make_float3(regionMoveVecs[3 * label], regionMoveVecs[3 * label + 1], regionMoveVecs[3 * label + 2]);
-	if (moveVec.x > 10000){
-		return; //a marker to denote that this region does not exist in the next time step
-	}
-	int3 newPos = make_int3(x + moveVec.x, y + moveVec.y, z + moveVec.z);
-
-	channelVolumeVoxelType outv = 0;
-	surf3Dwrite(outv, channelVolumeSurface, newPos.x * sizeof(channelVolumeVoxelType), newPos.y, newPos.z);
-
-	return;
-}
-
-void PositionBasedDeformProcessor::updateChannelWithTranformOfTVData_Intermediate(std::shared_ptr<Volume> v, const std::vector<float3> &regionMoveVec)
-{
-	cudaMemcpy(d_regionMoveVecs, &(regionMoveVec[0].x), sizeof(float)*(maxLabel + 1) * 3, cudaMemcpyHostToDevice);
-
-
-	//std::cout << "value exchanged!! " << std::endl;
-	cudaExtent size = v->volumeCuda.size;
-	unsigned int dim = 32;
-	dim3 blockSize(dim, dim, 1);
-	dim3 gridSize(iDivUp(size.width, blockSize.x), iDivUp(size.height, blockSize.y), iDivUp(size.depth, blockSize.z));
-
-	checkCudaErrors(cudaBindSurfaceToArray(channelVolumeSurface, channelVolume->volumeCudaOri.content));
-	d_setToBackground << <gridSize, blockSize >> >(size);
-
-	cudaChannelFormatDesc cd2 = v->volumeCudaOri.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(tvChannelVolumeTex, v->volumeCudaOri.content, cd2));
-
-	d_MoveChannelVol << <gridSize, blockSize >> >(size, d_regionMoveVecs);
-
-	if (lastDataState == DEFORMED){
-		doChannelVolumeDeform();
-	}
-	else{
-		cudaMemcpy3DParms copyParams = { 0 };
-		copyParams.srcArray = channelVolume->volumeCudaOri.content;
-		copyParams.dstArray = channelVolume->volumeCuda.content;
-		copyParams.extent = channelVolume->volumeCuda.size;
-		copyParams.kind = cudaMemcpyDeviceToDevice;
-		checkCudaErrors(cudaMemcpy3D(&copyParams));
-	}
-}

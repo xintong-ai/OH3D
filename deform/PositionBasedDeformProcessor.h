@@ -9,6 +9,7 @@
 #include <ctime>
 #include <vector_types.h>
 #include <helper_timer.h>
+#include "Volume.h"
 
 
 
@@ -27,28 +28,31 @@ public:
 	std::shared_ptr<Volume> volume = 0;
 	std::shared_ptr<PolyMesh> poly = 0;
 	std::shared_ptr<Particle> particle = 0;
+	
+	//the range is usually the range of the data with a little margin
+	float3 minPos = make_float3(-3, -3, -3), maxPos = make_float3(70, 120, 165);
 
-	std::shared_ptr<Volume> channelVolume;
+
+	float disThr = 4.1;
 
 	std::shared_ptr<MatrixManager> matrixMgr;
 
-	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
-	PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
-	PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m, std::shared_ptr<Volume> ch);
+	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m);
+	PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m);
+	PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m);
 
 	~PositionBasedDeformProcessor(){
 		sdkDeleteTimer(&timer);
 		sdkDeleteTimer(&timerFrame);
-
-		if (d_regionMoveVecs) cudaFree(d_regionMoveVecs);
-
 		if (d_vertexCoords) cudaFree(d_vertexCoords);
 		if (d_vertexCoords_init) cudaFree(d_vertexCoords_init);
 		if (d_indices) cudaFree(d_indices);
-		if (d_faceValid) cudaFree(d_faceValid);
 		if (d_numAddedFaces) cudaFree(d_numAddedFaces);
 		if (d_vertexDeviateVals) cudaFree(d_vertexDeviateVals);
 		if (d_vertexColorVals) cudaFree(d_vertexColorVals);
+
+		if (d_vertexCoords_finalDeformed) cudaFree(d_vertexCoords_finalDeformed);
+		finalDeformedVolume.~VolumeCUDA();
 	};		
 
 	bool isColoringDeformedPart = false;
@@ -74,19 +78,21 @@ public:
 
 	float r = 0; //degree of deformation
 
-	bool deformData = true; //sometimes not need to modify the data, but just compute the deformation info like the frame, and just deform the channelVolume
+	bool deformData = true; //sometimes not need to modify the data, but just compute the deformation info like the frame, and just deform the internal data copy
 
 	//for time varying particle dataset
 	void updateParticleData(std::shared_ptr<Particle> ori);
-	void updateChannelWithTranformOfTVData(std::shared_ptr<Volume> v);
-	void updateChannelWithTranformOfTVData_Intermediate(std::shared_ptr<Volume> v1, const std::vector<float3> &regionMoveVec);
-	void initDeviceRegionMoveVec(int n); 
+
 
 private:
-
 	//for time varying particle dataset
-	float* d_regionMoveVecs = 0;
 	int maxLabel = -1;
+
+	
+	VolumeCUDA finalDeformedVolume;
+	thrust::device_vector<float4> d_vec_finalDeformedPosOrig;
+	float* d_vertexCoords_finalDeformed = 0;
+
 	
 	float* d_vertexCoords = 0;
 	float* d_vertexCoords_init = 0;
@@ -95,7 +101,6 @@ private:
 	float* d_vertexDeviateVals = 0;
 	float* d_vertexColorVals = 0;
 
-	bool* d_faceValid = 0;
 	int* d_numAddedFaces = 0;
 
 	void modifyPolyMesh();
@@ -116,9 +121,8 @@ private:
 	//NOTE !! in InitCudaSupplies(), this variable is initiated using channelVolume->values; therefore it is not suitable for time varying data
 	std::shared_ptr<VolumeCUDA> volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 
-	float3 spacing;
-	bool inChannelInDeformedData(float3 pos);
-	bool inChannelInOriData(float3 pos);
+	bool atProperLocationInDeformedData(float3 pos);
+	bool atProperLocationInOriData(float3 pos);
 
 	float lastOpenFinalDegree;
 	float3 lastDeformationDirVertical;
@@ -128,7 +132,7 @@ private:
 
 	void doVolumeDeform(float degree);
 	void doVolumeDeform2Tunnel(float degree, float degreeClose);
-	void doChannelVolumeDeform();
+	void computeFinalDeformCopy();
 	void doPolyDeform(float degree);
 	void doParticleDeform(float degree);
 

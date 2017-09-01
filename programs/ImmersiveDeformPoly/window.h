@@ -69,10 +69,6 @@ private:
 	std::shared_ptr<PolyMesh> polyMesh;
 	std::vector<std::shared_ptr<PolyMesh>> polyMeshes;
 
-	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
-	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
-	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
 	std::shared_ptr<GLWidget> openGL;
@@ -85,8 +81,6 @@ private:
 
 
 	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
-
-
 
 
 	//for main view
@@ -116,10 +110,6 @@ private:
 	QLabel *meshResLabel;
 	QLineEdit *eyePosLineEdit;
 
-	std::shared_ptr<QRadioButton> oriVolumeRb;
-	std::shared_ptr<QRadioButton> channelVolumeRb;
-	std::shared_ptr<QRadioButton> skelVolumeRb;
-
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
@@ -132,10 +122,6 @@ private slots:
 	void isDeformEnabledClicked(bool b);
 	void isForceDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
-
-	void SlotOriVolumeRb(bool);
-	void SlotChannelVolumeRb(bool);
-	void SlotSkelVolumeRb(bool);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

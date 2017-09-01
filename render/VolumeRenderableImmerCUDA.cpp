@@ -287,6 +287,7 @@ void VolumeRenderableImmerCUDA::updatePreIntTable()
 
 void VolumeRenderableImmerCUDA::startClipRendering(std::shared_ptr<Volume> channelVolume)
 {
-	useClipRendering = true;
-	InitChannelVolumeTex(channelVolume);
+	//other places changed, but not changed this function yet!!!
+	//useClipRendering = true;
+	//InitChannelVolumeTex(channelVolume);
 }

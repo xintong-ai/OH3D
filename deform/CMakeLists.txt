@@ -42,6 +42,7 @@ set(HDRS	Lens.h
 			)
 
 cuda_add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
+set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
 
 endif()

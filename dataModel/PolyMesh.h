@@ -41,7 +41,6 @@ public:
 	float* vertexCoordsOri = 0;
 	float* vertexNormsOri = 0;
 	unsigned int* indicesOri = 0;
-	bool* faceValid = 0;
 
 	~PolyMesh();
 

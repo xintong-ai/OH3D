@@ -55,9 +55,7 @@ Window::Window()
 	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
 	rcp = std::make_shared<RayCastingParameters>();
-
-
-
+	
 	std::string subfolder;
 	DataType volDataType = RawVolumeReader::dtUint16;
 	bool hasLabelFromFile;
@@ -65,7 +63,7 @@ Window::Window()
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	
-	//rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
 
 	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
@@ -83,16 +81,6 @@ Window::Window()
 		rcp->secondCutOffLow = 0.19f;
 		rcp->secondCutOffHigh = 0.72f;
 		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
-	}
-
-	if (channelSkelViewReady){
-		channelVolume = std::make_shared<Volume>(true);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		reader2->OutputToVolumeByNormalizedValue(channelVolume);
-		channelVolume->spacing = spacing;
-		channelVolume->initVolumeCuda();
-		reader2.reset();
-
 	}
 
 	////////////////matrix manager
@@ -132,7 +120,7 @@ Window::Window()
 
 	//////////////////////////////// Processor ////////////////////////////////		
 	if (channelSkelViewReady){
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
+		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
@@ -147,9 +135,9 @@ Window::Window()
 	//volumeRenderable->setPreIntegrate(true);
 
 	
-	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
-	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
+	volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
 
 	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//openGL->AddRenderable("3matrixMgr", matrixMgrRenderable.get()); 
@@ -207,8 +195,6 @@ Window::Window()
 		controlLayout->addWidget(isDeformColoringEnabled);
 		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 	
-
-
 		QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
 		QHBoxLayout *orModeLayout = new QHBoxLayout;
 		originalRb = std::make_shared<QRadioButton>(tr("&original"));
@@ -441,25 +427,17 @@ Window::Window()
 	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout = new QHBoxLayout;
 	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
-	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel"));
-	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton"));
 	surfaceRb = std::make_shared<QRadioButton>(tr("&surface"));
 	oriVolumeRb->setChecked(true);
 	deformModeLayout->addWidget(oriVolumeRb.get());
-	deformModeLayout->addWidget(channelVolumeRb.get());
-	deformModeLayout->addWidget(skelVolumeRb.get());
 	deformModeLayout->addWidget(surfaceRb.get());
 	groupBox->setLayout(deformModeLayout);
 	assistLayout->addWidget(groupBox);
 	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
-	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
 	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
 
 	if (!channelSkelViewReady){
 		oriVolumeRb->setDisabled(true);
-		channelVolumeRb->setDisabled(true);
-		skelVolumeRb->setDisabled(true);
 		surfaceRb->setDisabled(true);
 	}
 
@@ -611,7 +589,6 @@ void Window::isDeformEnabledClicked(bool b)
 	else{
 		positionBasedDeformProcessor->isActive = false;
 		inputVolume->reset();
-		channelVolume->reset();
 	}
 }
 
@@ -623,7 +600,6 @@ void Window::isForceDeformEnabledClicked(bool b)
 	else{
 		positionBasedDeformProcessor->isForceDeform = false;
 		//inputVolume->reset();
-		//channelVolume->reset();
 	}
 }
 
@@ -641,7 +617,6 @@ void Window::SlotOriginalRb(bool b)
 	if (b){
 		positionBasedDeformProcessor->isActive = false;
 		inputVolume->reset();
-		channelVolume->reset();
 		volumeRenderable->endClipRendering();
 	}
 	else{
@@ -666,8 +641,7 @@ void  Window::SlotClipRb(bool b)
 		positionBasedDeformProcessor->isActive = true;
 		positionBasedDeformProcessor->deformData = false;
 		inputVolume->reset();
-		channelVolume->reset();
-		volumeRenderable->startClipRendering(channelVolume);
+		//volumeRenderable->startClipRendering(channelVolume);
 	}
 	else{
 	}
@@ -686,32 +660,7 @@ void Window::SlotOriVolumeRb(bool b)
 	}
 }
 
-void Window::SlotChannelVolumeRb(bool b)
-{
-	if (b)
-	{
-		if (channelVolume){
-			volumeRenderable->setVolume(channelVolume);
-			volumeRenderable->rcp = rcpForChannelSkel;
-			volumeRenderable->SetVisibility(true);
-		}
-		else{
-			std::cout << "channelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-		}
-	}
-}
 
-void Window::SlotSkelVolumeRb(bool b)
-{
-	if (b)
-	{
-			std::cout << "skelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-	}
-}
 
 void Window::SlotSurfaceRb(bool b)
 {

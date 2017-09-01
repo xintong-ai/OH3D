@@ -60,17 +60,13 @@ bool PositionBasedDeformProcessorForTV::process(float* modelview, float* project
 		//polyMesh->newPoly = polyMeshes[meshid];
 		
 		polyMesh = polyMeshes[meshid];
-		//channelVolume = channelVolumes[meshid];
 		
 		justChangedForRenderer = true;
 		
 		//polyRenderable->polyMesh = polyMesh;//NOTE!! the polymesh stored in other modules are not always combined with the pointer "polyMesh" here!!!
 		//polyRenderable->dataChange();
 
-		positionBasedDeformProcessor->updateChannelWithTranformOfTVData(channelVolumes[meshid]);
 		positionBasedDeformProcessor->updateParticleData(polyMesh->particle);
-		//
-
 	}
 	else{
 		int meshid1 = curT / (numInter + 1), meshid2 = meshid1 + 1;
@@ -85,18 +81,14 @@ bool PositionBasedDeformProcessorForTV::process(float* modelview, float* project
 			if (m > -1){
 				polyMesh->particle->posOrig[i] = polyMeshesOri[meshid1]->particle->posOrig[i] * (1 - ratio) + polyMeshesOri[meshid2]->particle->posOrig[m] * ratio;
 				polyMesh->particle->pos[i] = polyMesh->particle->posOrig[i];
-				regionMoveVecs[label] = make_float3(polyMesh->particle->pos[i] - polyMeshesOri[meshid1]->particle->posOrig[i]);
 			}
 			else{
 				//can think of someway to remove it from being shown
 				polyMesh->particle->posOrig[i] = make_float4(-10000, -10000, -10000, 1);
 				polyMesh->particle->pos[i] = polyMesh->particle->posOrig[i];
-
-				regionMoveVecs[label] = make_float3(10001, 0, 0);//as a marker to denote that this region does not exist in the next time step
 			}
 		}
-		
-		positionBasedDeformProcessor->updateChannelWithTranformOfTVData_Intermediate(channelVolumes[meshid1], regionMoveVecs);
+
 		positionBasedDeformProcessor->updateParticleData(polyMesh->particle); //actually pointer address of the particle is not changed, but the content is changed
 
 	}

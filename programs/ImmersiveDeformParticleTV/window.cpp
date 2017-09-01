@@ -12,8 +12,6 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "VolumeRenderableCUDA.h"
-#include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
 #include "AnimationByMatrixProcessor.h"
@@ -33,7 +31,6 @@
 #include "PositionBasedDeformProcessor.h"
 #include "PositionBasedDeformProcessorForTV.h"
 
-#include "SliceRenderable.h"
 
 #include <thrust/device_vector.h>
 
@@ -48,7 +45,6 @@
 #include "leap/MatrixLeapInteractor.h"
 #endif
 
-#include "VolumeRenderableCUDAKernel.h"
 
 //assume the tuple file is always ready, or cannot run
 bool channelSkelViewReady = true;
@@ -97,15 +93,6 @@ Window::Window()
 
 	positionBasedDeformProcessorForTV = std::make_shared<PositionBasedDeformProcessorForTV>();
 		
-	if (channelSkelViewReady){
-		channelVolume = std::make_shared<Volume>(true);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/marked-reduced-rbcs-channelVol-0006-oldStyle.raw").c_str(), dims, RawVolumeReader::dtUint8);
-		reader2->OutputToVolumeByNormalizedValue(channelVolume);
-		channelVolume->initVolumeCuda();
-		reader2.reset();
-		channelVolume->spacing = spacing;
-	}
-	
 	/*
 	//single time step
 	polyMesh = std::make_shared<PolyMesh>();
@@ -137,8 +124,8 @@ Window::Window()
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill('0') << i;
 		std::string s = ss.str();
+		std::string fname = subfolder + "/marked-reduced-rbcs-" + s + ".vtp";
 
-		std::string fname = subfolder + "/marked-reduced-rbcs-" + s + "-withNormal.vtp";
 		VTPReader reader;
 		reader.readFile(fname.c_str(), polyMesh.get());
 		
@@ -160,13 +147,13 @@ Window::Window()
 			std::vector<int> cellMap(n, -1);
 
 			int m = polyMesh->particle->numParticles;
-			int tupleCount = polyMesh->particle->tupleCount; //10
+			int tupleCount = polyMesh->particle->tupleCount; //should be 11
 			for (int i = 0; i < n; i++){
-				int lastLabel = lastParticle->valTuple[i * tupleCount + 7];
+				int lastLabel = lastParticle->valTuple[i * tupleCount + 10];
 				bool notFound = true;
 
 				for (int j = 0; j < m && notFound; j++){
-					if (lastLabel == polyMesh->particle->valTuple[tupleCount * j + 7]){
+					if (lastLabel == polyMesh->particle->valTuple[tupleCount * j + 10]){
 						cellMap[i] = j;
 						notFound = false;
 					}
@@ -177,29 +164,16 @@ Window::Window()
 		positionBasedDeformProcessorForTV->polyMeshes.push_back(polyMesh);
 
 		int n = polyMesh->particle->numParticles;
-		int tupleCount = polyMesh->particle->tupleCount; //10
+		int tupleCount = polyMesh->particle->tupleCount; //should be 11
 		for (int i = 0; i < n; i++){
-			int label= polyMesh->particle->valTuple[i * tupleCount + 7];
+			int label = polyMesh->particle->valTuple[i * tupleCount + 10];
 			positionBasedDeformProcessorForTV->maxLabel = max(positionBasedDeformProcessorForTV->maxLabel, label);
 		}
-
-		if (channelSkelViewReady){
-			std::shared_ptr<Volume> channelVolume = std::make_shared<Volume>(true);
-			std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/marked-reduced-rbcs-channelVol-" + s + ".raw").c_str(), dims, channelVolDataType);
-			//reader2->OutputToVolumeByNormalizedValue(channelVolume);
-			reader2->OutputToVolume_OnlyVolumeCuda_NoNormalized(channelVolume);
-			//channelVolume->initVolumeCuda(); //already in OutputToVolume_OnlyVolumeCuda_NoNormalized()
-			reader2.reset();
-			channelVolume->spacing = spacing;
-			positionBasedDeformProcessorForTV->channelVolumes.push_back(channelVolume);
-		}
-
 	}
 	positionBasedDeformProcessorForTV->saveOriginalCopyOfMeshes();
 
 	polyMesh = positionBasedDeformProcessorForTV->polyMeshes[0];
 	//std::cout << "maxLabel: " << maxLabel << std::endl; 
-	positionBasedDeformProcessorForTV->regionMoveVecs.resize(positionBasedDeformProcessorForTV->maxLabel + 1, make_float3(0, 0, 0)); //label reange[0, maxLabel]
 
 	//read wall
 	polyMeshWall = std::make_shared<PolyMesh>();
@@ -233,9 +207,12 @@ Window::Window()
 
 	//////////////////////////////// Processor ////////////////////////////////
 	if (channelSkelViewReady){
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr, channelVolume);
-		positionBasedDeformProcessor->updateChannelWithTranformOfTVData(positionBasedDeformProcessorForTV->channelVolumes[0]);
-		positionBasedDeformProcessor->initDeviceRegionMoveVec(positionBasedDeformProcessorForTV->maxLabel);
+		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr);
+		positionBasedDeformProcessor->disThr = 4.1;
+		positionBasedDeformProcessor->minPos = -shift;
+		positionBasedDeformProcessor->maxPos = make_float3(dims.x, dims.y, dims.z);
+
+
 
 		openGL->AddProcessor("1ForTV", positionBasedDeformProcessorForTV.get());
 		openGL->AddProcessor("2positionBasedDeformProcessor", positionBasedDeformProcessor.get());
@@ -253,13 +230,6 @@ Window::Window()
 
 
 	if (channelSkelViewReady){
-		volumeRenderable = std::make_shared<VolumeRenderableCUDA>(channelVolume);
-		volumeRenderable->rcp = rcpForChannelSkel;
-		openGL->AddRenderable("2volume", volumeRenderable.get());
-		volumeRenderable->SetVisibility(false);
-
-		//sliceRenderable = std::make_shared<SliceRenderable>(channelVolume);
-		//openGL->AddRenderable("5volumeSlice", sliceRenderable.get());
 	}
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
@@ -346,21 +316,6 @@ Window::Window()
 	eyePosGroup->setLayout(eyePosLayout2);
 	controlLayout->addWidget(eyePosGroup);
 
-	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
-	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel"));
-	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton"));
-	oriVolumeRb->setChecked(true);
-	deformModeLayout->addWidget(oriVolumeRb.get());
-	deformModeLayout->addWidget(channelVolumeRb.get());
-	deformModeLayout->addWidget(skelVolumeRb.get());
-	groupBox->setLayout(deformModeLayout);
-	controlLayout->addWidget(groupBox);
-	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
-	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
-
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
 	immerRb = std::make_shared<QRadioButton>(tr("&immersive mode"));
@@ -417,7 +372,6 @@ Window::Window()
 	polyRenderable->positionBasedDeformProcessorForTV = positionBasedDeformProcessorForTV;
 
 	positionBasedDeformProcessorForTV->polyMesh = polyMesh;
-	//positionBasedDeformProcessorForTV->channelVolume = channelVolume;
 	positionBasedDeformProcessorForTV->isActive = false;
 
 	positionBasedDeformProcessorForTV->positionBasedDeformProcessor = positionBasedDeformProcessor;
@@ -466,7 +420,6 @@ void Window::isDeformEnabledClicked(bool b)
 	else{
 		positionBasedDeformProcessor->isActive = false;
 		//inputVolume->reset();
-		channelVolume->reset();
 	}
 }
 
@@ -480,43 +433,6 @@ void Window::isDeformColoringEnabledClicked(bool b)
 	}
 }
 
-void Window::SlotOriVolumeRb(bool b)
-{
-	volumeRenderable->SetVisibility(false);
-	polyRenderable->SetVisibility(true);
-}
-
-void Window::SlotChannelVolumeRb(bool b)
-{
-	if (b)
-	{
-		if (channelVolume){
-			//volumeRenderable->setVolume(channelVolume);
-			volumeRenderable->SetVisibility(true);
-			polyRenderable->SetVisibility(false);
-		}
-		else{
-			std::cout << "channelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-		}
-	}
-}
-
-void Window::SlotSkelVolumeRb(bool b)
-{
-	if (b)
-	{
-		if (skelVolume){
-			//volumeRenderable->setVolume(skelVolume);
-		}
-		else{
-			std::cout << "skelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-		}
-	}
-}
 
 void Window::SlotImmerRb(bool b)
 {
@@ -564,6 +480,4 @@ void Window::backToFirstTimestepBtnClicked()
 	polyRenderable->dataChange();
 
 	positionBasedDeformProcessor->updateParticleData(polyMesh->particle);
-	positionBasedDeformProcessor->updateChannelWithTranformOfTVData(positionBasedDeformProcessorForTV->channelVolumes[0]);
-
 }	

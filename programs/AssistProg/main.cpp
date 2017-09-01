@@ -204,7 +204,7 @@ void labelPoly()
 	fwrite(&temp, sizeof(int), 1, fp);
 
 	fwrite(&nRegion, sizeof(int), 1, fp);
-	int nc = 13;
+	int nc = 14;
 	fwrite(&nc, sizeof(int), 1, fp);
 	int startv = 0, startf = 0;
 	for (int i = 0; i < nRegion; i++){
@@ -219,6 +219,8 @@ void labelPoly()
 		fwrite(&endvf, sizeof(float), 1, fp);
 		fwrite(&(minPos[i].x), sizeof(float3), 1, fp); //bounding box of the current region
 		fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
+		float tempi = i;
+		fwrite(&tempi, sizeof(int), 1, fp); //id of the region
 
 		startv = startv + count[i];
 		startf = startf + countFace[i];
@@ -226,84 +228,8 @@ void labelPoly()
 
 }
 
-//for moortgat data, compute isosurface
-void generateIso()
-{
 
-	vtkSmartPointer<vtkUnstructuredGrid> data = vtkSmartPointer<vtkUnstructuredGrid>::New();
-
-	std::shared_ptr<DataMgr> dataMgr;
-	dataMgr = std::make_shared<DataMgr>();
-	string dataPath = dataMgr->GetConfig("DATA_PATH");
-
-	//read all the data from the file
-	vtkSmartPointer<vtkXMLUnstructuredGridReader> reader =
-		vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
-
-	if (std::string(dataPath).find("vtu") == std::string::npos){
-		std::cout << "file name not defined" << std::endl;
-		exit(0);
-	}
-
-	//reader->SetFileName(dataPath.c_str());
-	//reader->Update();
-	//data = reader->GetOutput();
-
-	reader->SetFileName(dataPath.c_str());
-	reader->Update();
-
-	data = reader->GetOutput();
-
-	//Create a mapper and actor
-	vtkSmartPointer<vtkDataSetMapper> mapper =
-		vtkSmartPointer<vtkDataSetMapper>::New();
-	mapper->SetInputConnection(reader->GetOutputPort());
-
-	vtkSmartPointer<vtkActor> actor =
-		vtkSmartPointer<vtkActor>::New();
-	actor->SetMapper(mapper);
-
-	//Create a renderer, render window, and interactor
-	vtkSmartPointer<vtkRenderer> renderer =
-		vtkSmartPointer<vtkRenderer>::New();
-	vtkSmartPointer<vtkRenderWindow> renderWindow =
-		vtkSmartPointer<vtkRenderWindow>::New();
-	renderWindow->AddRenderer(renderer);
-	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor =
-		vtkSmartPointer<vtkRenderWindowInteractor>::New();
-	renderWindowInteractor->SetRenderWindow(renderWindow);
-
-	//Add the actor to the scene
-	renderer->AddActor(actor);
-	renderer->SetBackground(.3, .6, .3); // Background color green
-
-	//Render and interact
-	renderWindow->Render();
-	renderWindowInteractor->Start();
-
-	//cout << reader->GetOutput()->GetPointData()->GetNumberOfArrays() << endl;
-	//cout << reader->GetOutput()->GetPointData()->GetNumberOfComponents() << endl;
-	//cout << reader->GetOutput()->GetPointData()->GetNumberOfTuples() << endl;
-	cout << reader->GetOutput()->GetNumberOfCells() << endl;
-
-	vtkSmartPointer<vtkContourGrid> filter =
-		vtkSmartPointer<vtkContourGrid>::New();
-	filter->SetInputData(reader->GetOutput());
-	//filter->SetNumberOfContours(1);
-	filter->SetValue(0, 0.00051);
-	filter->Update();
-
-
-
-	vtkSmartPointer<vtkXMLPolyDataWriter> writer =
-		vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-	writer->SetFileName("iso.vtp");
-	writer->SetInputData(filter->GetOutput());
-	writer->Write();
-
-}
-
-void reduceBloodCell()
+void reduceBloodCell()	//also generate the normal
 {
 	int startTs = 6, endTs = 32;
 	float yThr = 112;
@@ -426,6 +352,19 @@ void reduceBloodCell()
 
 		data->GetPoints()->ShallowCopy(newPoints);
 		data->SetPolys(triangles);
+
+		vtkSmartPointer<vtkPolyDataNormals> normalGenerator = vtkSmartPointer<vtkPolyDataNormals>::New();
+#if VTK_MAJOR_VERSION <= 5
+		normalGenerator->SetInput(data);
+#else
+		normalGenerator->SetInputData(data);
+#endif
+		normalGenerator->ComputePointNormalsOn();
+		normalGenerator->ComputeCellNormalsOff();
+		normalGenerator->SetSplitting(0);
+		normalGenerator->SetConsistency(1);
+		normalGenerator->Update();
+		data = normalGenerator->GetOutput();
 
 
 		vtkSmartPointer<vtkXMLPolyDataWriter> writer4 = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
@@ -579,10 +518,15 @@ void markReducedBloodCell()
 
 	vector<int> count(nRegion, 0);
 	vector<double3> posSum(nRegion, make_double3(0, 0, 0));
+	vector<float3> minPos(nRegion, make_float3(999999, 999999, 999999));
+	vector<float3> maxPos(nRegion, make_float3(-999999, -999999, -999999));
+
 	for (int i = 0; i < n; i++){
 		long long d = arrayRegionId->GetValue(i);
 		double * coord = data->GetPoint(i);
 		posSum[d] = make_double3(posSum[d].x + coord[0], posSum[d].y + coord[1], posSum[d].z + coord[2]);
+		minPos[d] = make_float3(fmin(minPos[d].x, coord[0]), fmin(minPos[d].y, coord[1]), fmin(minPos[d].z, coord[2]));
+		maxPos[d] = make_float3(fmax(maxPos[d].x, coord[0]), fmax(maxPos[d].y, coord[1]), fmax(maxPos[d].z, coord[2])); 
 		count[d]++;
 	}
 	vector<float3> posAve(nRegion);
@@ -619,7 +563,7 @@ void markReducedBloodCell()
 	FILE * fp = fopen(("D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str(), "wb");
 	fwrite(&temp, sizeof(int), 1, fp);
 	fwrite(&nRegion, sizeof(int), 1, fp);
-	int nc = 13;
+	int nc = 14;
 	fwrite(&nc, sizeof(int), 1, fp);
 	int startv = 0, startf = 0;
 	for (int i = 0; i < nRegion; i++){
@@ -632,14 +576,17 @@ void markReducedBloodCell()
 		fwrite(&endff, sizeof(float), 1, fp);
 		fwrite(&startvf, sizeof(float), 1, fp); //range of vertices of the current region
 		fwrite(&endvf, sizeof(float), 1, fp);
-		float3 tempf3 = make_float3(i, 0, 0);
-		fwrite(&(tempf3.x), sizeof(float3), 1, fp); //originally for bounding box of the current region. in time varying project, used for region id 
-		fwrite(&(tempf3.x), sizeof(float3), 1, fp);
+		fwrite(&(minPos[i].x), sizeof(float3), 1, fp); //for bounding box of the current region
+		fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
+		float tempi = i;
+		fwrite(&tempi, sizeof(int), 1, fp); //id of the region
 		startv = startv + count[i];
 		startf = startf + countFace[i];
 	}
 
 	for (int i = startTs+1; i <= endTs; i++){
+		std::cout << "processing time step " << i << std::endl;
+
 		stringstream ss;
 		ss << setw(4) << setfill('0') << i;
 		string s = ss.str();
@@ -672,10 +619,15 @@ void markReducedBloodCell()
 		//no need to check if points belonging to the same region are consecutive or not, since it has been checked in reduceBloodCell()
 		vector<int> count(nRegion, 0);
 		vector<double3> posSum(nRegion, make_double3(0, 0, 0));
+		vector<float3> minPos(nRegion, make_float3(999999, 999999, 999999));
+		vector<float3> maxPos(nRegion, make_float3(-999999, -999999, -999999));
+
 		for (int i = 0; i < n; i++){
 			long long d = arrayRegionId->GetValue(i);
 			double * coord = data->GetPoint(i);
 			posSum[d] = make_double3(posSum[d].x + coord[0], posSum[d].y + coord[1], posSum[d].z + coord[2]);
+			minPos[d] = make_float3(fmin(minPos[d].x, coord[0]), fmin(minPos[d].y, coord[1]), fmin(minPos[d].z, coord[2]));
+			maxPos[d] = make_float3(fmax(maxPos[d].x, coord[0]), fmax(maxPos[d].y, coord[1]), fmax(maxPos[d].z, coord[2])); 
 			count[d]++;
 		}
 		vector<float3> posAve(nRegion);
@@ -767,7 +719,7 @@ void markReducedBloodCell()
 		FILE * fp = fopen(("D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str(), "wb");
 		fwrite(&temp, sizeof(int), 1, fp);
 		fwrite(&nRegion, sizeof(int), 1, fp);
-		int nc = 13;
+		int nc = 14;
 		fwrite(&nc, sizeof(int), 1, fp);
 		int startv = 0, startf = 0;
 		for (int i = 0; i < nRegion; i++){
@@ -780,9 +732,10 @@ void markReducedBloodCell()
 			fwrite(&endff, sizeof(float), 1, fp);
 			fwrite(&startvf, sizeof(float), 1, fp); //range of vertices of the current region
 			fwrite(&endvf, sizeof(float), 1, fp);
-			float3 tempf3 = make_float3(idChangeMap[i], 0, 0);
-			fwrite(&(tempf3.x), sizeof(float3), 1, fp); //originally for bounding box of the current region. in time varying project, used for region id 
-			fwrite(&(tempf3.x), sizeof(float3), 1, fp);
+			fwrite(&(minPos[i].x), sizeof(float3), 1, fp); //for bounding box of the current region
+			fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
+			float tempi = idChangeMap[i];
+			fwrite(&tempi, sizeof(int), 1, fp); //id of the region
 			startv = startv + count[i];
 			startf = startf + countFace[i];
 		}
@@ -792,15 +745,11 @@ void markReducedBloodCell()
 
 int main(int argc, char **argv)
 {
-	//generateIso();	//not ready . may delete later
-
-
 	//createSphere();
-	labelPoly();
-
+	//labelPoly();
 
 	//reduceBloodCell();
-	//markReducedBloodCell();
+	markReducedBloodCell();
 
 	return 0;
 }

@@ -69,7 +69,6 @@ private:
 	std::shared_ptr<RayCastingParameters> rcpForChannelSkel;
 
 	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
 
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
@@ -123,8 +122,6 @@ private:
 	QLineEdit *eyePosLineEdit;
 
 	std::shared_ptr<QRadioButton> oriVolumeRb;
-	std::shared_ptr<QRadioButton> channelVolumeRb;
-	std::shared_ptr<QRadioButton> skelVolumeRb;
 	std::shared_ptr<QRadioButton> surfaceRb;
 
 	std::shared_ptr<QRadioButton> originalRb;
@@ -164,8 +161,6 @@ private slots:
 	void SlotTranspRb(bool b);
 
 	void SlotOriVolumeRb(bool);
-	void SlotChannelVolumeRb(bool);
-	void SlotSkelVolumeRb(bool);
 	void SlotSurfaceRb(bool);
 
 	void SlotImmerRb(bool);
