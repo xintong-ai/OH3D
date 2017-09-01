@@ -23,10 +23,6 @@ class GLMatrixManager;
 class QLineEdit;
 class QTimer;
 
-class Volume;
-class VolumeCUDA;
-class VolumeRenderableImmerCUDA;
-class VolumeRenderableCUDA;
 class ImmersiveInteractor;
 class RegularInteractor;
 class AnimationByMatrixProcessor;
@@ -38,8 +34,7 @@ class GlyphRenderable;
 struct RayCastingParameters;
 class PolyRenderable;
 class PolyMesh;
-class SliceRenderable;
-class PositionBasedDeformProcessorForTV;
+class TimeVaryingParticleDeformerManager;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -65,8 +60,6 @@ public:
 	void init();
 
 private:
-	int3 dims;
-	float3 spacing;
 	std::vector<float3> views;
 	
 	std::shared_ptr<PolyMesh> polyMesh;
@@ -74,7 +67,7 @@ private:
 
 	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
-	std::shared_ptr<PositionBasedDeformProcessorForTV> positionBasedDeformProcessorForTV = 0;
+	std::shared_ptr<TimeVaryingParticleDeformerManager> tvParticleDeformerManager = 0;
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;

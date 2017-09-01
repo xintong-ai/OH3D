@@ -8,7 +8,7 @@ class PositionBasedDeformProcessor;
 class PolyMesh;
 class ShaderProgram;
 enum COLOR_MAP;
-class PositionBasedDeformProcessorForTV;
+class TimeVaryingParticleDeformerManager;
 
 class PolyRenderable :public Renderable
 {
@@ -48,7 +48,7 @@ public:
 	std::shared_ptr<PolyMesh> polyMesh;
 	void dataChange();
 
-	std::shared_ptr<PositionBasedDeformProcessorForTV> positionBasedDeformProcessorForTV = 0;
+	std::shared_ptr<TimeVaryingParticleDeformerManager> tvParticleDeformerManager = 0;
 
 private:
 	void loadShaders();

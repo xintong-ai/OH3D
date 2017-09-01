@@ -28,9 +28,6 @@ surface<void, cudaSurfaceType3D> volumeSurfaceOut;
 texture<float, 3, cudaReadModeElementType>   tex_inputImageDepth;
 texture<uchar4, 2, cudaReadModeElementType>   tex_inputImageColor;
 
-//essentially the same with channelVolumeTex in PositionBasedDeformProcessor.cu, but use different names to avoid compile error
-texture<float, 3, cudaReadModeElementType>  channelVolumeTex;
-
 
 __constant__ float4x4 c_MVMatrix;
 __constant__ float4x4 c_MVPMatrix;
@@ -1959,14 +1956,3 @@ void VolumeRender_renderWithDepthInput(uint *d_output, uint imageW, uint imageH,
 }
 
 
-void InitChannelVolumeTex(std::shared_ptr<Volume> channelVolume)
-{
-	channelVolumeTex.normalized = false;
-	channelVolumeTex.filterMode = cudaFilterModePoint;
-	channelVolumeTex.addressMode[0] = cudaAddressModeBorder;
-	channelVolumeTex.addressMode[1] = cudaAddressModeBorder;
-	channelVolumeTex.addressMode[2] = cudaAddressModeBorder;
-
-	cudaChannelFormatDesc cd2 = channelVolume->volumeCuda.channelDesc;
-	checkCudaErrors(cudaBindTextureToArray(channelVolumeTex, channelVolume->volumeCudaOri.content, cd2));
-}

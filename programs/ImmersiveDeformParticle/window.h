@@ -60,8 +60,6 @@ public:
 	void init();
 
 private:
-	int3 dims;
-	float3 spacing;
 	std::vector<float3> views;
 	
 	std::shared_ptr<PolyMesh> polyMesh;

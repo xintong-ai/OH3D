@@ -746,10 +746,10 @@ void markReducedBloodCell()
 int main(int argc, char **argv)
 {
 	//createSphere();
-	//labelPoly();
+	labelPoly();
 
 	//reduceBloodCell();
-	markReducedBloodCell();
+	//markReducedBloodCell();
 
 	return 0;
 }

@@ -89,6 +89,7 @@ void VTPReader::readFile(const char* filename, PolyMesh* polyMesh)
 		writer->SetFileName(newname.c_str());
 		writer->SetInputData(data);
 		writer->Write();
+		std::cout << "created a new file with normal at: " << newname << std::endl;
 	}
 	else
 	{

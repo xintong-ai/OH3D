@@ -63,36 +63,34 @@ public:
 
 	void doShift(float3 shift);
 	
-	static void dataParameters(std::string dataPath, int3 & dims, float3 & spacing, float & disThr, float3 &shift, std::string &subfolder)
+
+	static void dataParameters(std::string dataPath, float & disThr) //when subfolder is not needed
+	{
+		std::string subfolder_useless;
+		dataParameters(dataPath, disThr, subfolder_useless);
+	}
+
+	static void dataParameters(std::string dataPath, float & disThr, std::string &subfolder)
 	{
 		if (std::string(dataPath).find("reduced-rbcs") != std::string::npos){
-			dims = make_int3(70, 121, 161);
-			spacing = make_float3(1, 1, 1);
-			disThr = 0;
-			shift = make_float3(5, 3, 0);
-			subfolder = "D:/Data/Lin/reducedBloodCell";
+			disThr = 4.1;
+			std::size_t found = dataPath.find_last_of("/\\");
+			if (found == std::string::npos){
+				subfolder = dataPath;//rarely
+			}
+			else{
+				subfolder = dataPath.substr(0, found); //in the same folder
+			}
 		}
 		else if (std::string(dataPath).find("rbcs") != std::string::npos){
-			spacing = make_float3(1, 1, 1);
-			disThr = 0;
-			shift = make_float3(5, 3, 0);
-			dims = make_int3(65 + shift.x, 225 + shift.y, 161 + shift.z);
+			disThr = 4.1;
 			subfolder = "bloodCell";
 		}
 		else if (std::string(dataPath).find("iso_t40_v3") != std::string::npos){
-			dims = make_int3(68, 68, 68);
-			spacing = make_float3(1, 1, 1);
 			disThr = 2;
-			shift = make_float3(ceil(disThr) + 1, ceil(disThr) + 1, ceil(disThr) + 1); //+1 for more margin
-			subfolder = "FPM";
 		}
 		else if (std::string(dataPath).find("moortgat") != std::string::npos){
-			dims = make_int3(73, 73, 93);
-			spacing = make_float3(0.5, 0.5, 0.5);
-			disThr = 1; //in a minimal case, this number should be no less than sqrt(3)/2
-			shift = make_float3(ceil(disThr) + 1, ceil(disThr) + 1, ceil(disThr) + 1); //+1 for more 
-			shift = make_float3(std::max(shift.x, 3.0f), std::max(shift.y, 3.0f), std::max(shift.z, 3.0f));//set a lower bound
-			subfolder = "moortgat";
+			disThr = 2.1; //in a minimal case, this number should be no less than sqrt(3)/2
 		}
 		else{
 			std::cout << "poly data name not recognized" << std::endl;

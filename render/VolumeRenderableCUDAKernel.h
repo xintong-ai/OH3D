@@ -42,8 +42,6 @@ extern "C" {
 
 	void setInputImageInfo(const cudaArray_t c_inputImageDepthArray, const cudaArray_t c_inputImageColorArray);
 
-	void InitChannelVolumeTex(std::shared_ptr<Volume> channelVolume);
-
 };
 
 #endif //VOLUMERENDERABLECUDAKERNEL_H

@@ -66,7 +66,6 @@ private:
 	std::vector<float3> views;
 
 	std::shared_ptr<RayCastingParameters> rcp;
-	std::shared_ptr<RayCastingParameters> rcpForChannelSkel;
 
 	std::shared_ptr<Volume> inputVolume;
 

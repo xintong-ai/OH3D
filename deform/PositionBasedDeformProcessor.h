@@ -117,8 +117,6 @@ private:
 	void deformDataByDegree2Tunnel(float r, float rClose);
 	void resetData();
 
-
-	//NOTE !! in InitCudaSupplies(), this variable is initiated using channelVolume->values; therefore it is not suitable for time varying data
 	std::shared_ptr<VolumeCUDA> volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 
 	bool atProperLocationInDeformedData(float3 pos);

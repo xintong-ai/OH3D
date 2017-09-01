@@ -20,10 +20,6 @@ class QTimer;
 class GLMatrixManager;
 class QLineEdit;
 
-class Volume;
-class VolumeCUDA;
-class VolumeRenderableImmerCUDA;
-class VolumeRenderableCUDA;
 class ImmersiveInteractor;
 class RegularInteractor;
 class AnimationByMatrixProcessor;
@@ -32,10 +28,8 @@ class SphereRenderable;
 class MatrixMgrRenderable;
 class DeformFrameRenderable;
 class GlyphRenderable;
-struct RayCastingParameters;
 class PolyRenderable;
 class PolyMesh;
-class SliceRenderable;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -60,12 +54,11 @@ public:
 	void init();
 
 private:
-	int3 dims;
-	float3 spacing;
+
 	std::vector<float3> views;
 
 	//std::shared_ptr<RayCastingParameters> rcp;
-	
+
 	std::shared_ptr<PolyMesh> polyMesh;
 	std::vector<std::shared_ptr<PolyMesh>> polyMeshes;
 
@@ -84,15 +77,13 @@ private:
 
 
 	//for main view
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 	std::shared_ptr<PolyRenderable> polyRenderable;
-	std::shared_ptr<SliceRenderable> sliceRenderable;
 
 #ifdef USE_LEAP
 	LeapListener* listener;
-	Leap::Controller* controller; 
+	Leap::Controller* controller;
 	std::shared_ptr<MatrixLeapInteractor> matrixMgrLeapInteractor;
 #endif
 
@@ -113,8 +104,8 @@ private:
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
-private slots:
-	
+	private slots:
+
 	void SlotSaveState();
 	void SlotLoadState();
 	void applyEyePos();

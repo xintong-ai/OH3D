@@ -39,26 +39,7 @@
 #endif
 
 
-bool channelSkelViewReady = true;
-
-void fileInfo(std::string dataPath, DataType & channelVolDataType, float3 &shift, int3 & dims, std::string & subfolder)
-{
-	if (std::string(dataPath).find("rbcs") != std::string::npos){
-		shift = make_float3(5, 3, 0);
-
-		dims = make_int3(65, 225, 161) + make_int3(shift.x, shift.y, shift.z);
-		//spacing = make_float3(1, 1, 1);
-		//rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false);
-		subfolder = "bloodCell";
-
-		channelVolDataType = RawVolumeReader::dtUint8;
-
-	}
-	else{
-		std::cout << "file name not defined in fileInfo()" << std::endl;
-		exit(0);
-	}
-}
+bool regionLabelReady = false;
 
 
 Window::Window()
@@ -69,16 +50,11 @@ Window::Window()
 	//////////////////Volume and RayCastingParameters
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	
-	std::shared_ptr<RayCastingParameters> rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
+
 	std::string subfolder;
-	float3 shift;
+	float disThr;
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
-
-	DataType channelVolDataType;
-	fileInfo(polyDataPath, channelVolDataType, shift, dims, subfolder);
-	spacing = make_float3(1, 1, 1);
-
+	PolyMesh::dataParameters(polyDataPath, disThr, subfolder);
 
 
 	polyMesh = std::make_shared<PolyMesh>();
@@ -90,16 +66,16 @@ Window::Window()
 		VTPReader reader;
 		reader.readFile(polyDataPath.c_str(), polyMesh.get());
 	}
-	polyMesh->setAssisParticle((subfolder+"/polyMeshRegions.mytup").c_str());
-	//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
-	
-	//normally when a particle already used valTuple, we do not need to use val
-	//but here use val to record the amount of shiftness?
-	polyMesh->particle->val.resize(polyMesh->particle->numParticles, 0);
-	polyMesh->particle->valMax = 0;
-	polyMesh->particle->valMin = 0;
+	if (regionLabelReady){
+		polyMesh->setAssisParticle((subfolder + "/polyMeshRegions.mytup").c_str());
+		//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
 
-	//polyMesh->doShift(shift); //note the order of shift, and processing assistParticle and cleanedChannel volume
+		//normally when a particle already used valTuple, we do not need to use val
+		//but here use val to record the amount of shiftness?
+		polyMesh->particle->val.resize(polyMesh->particle->numParticles, 0);
+		polyMesh->particle->valMax = 0;
+		polyMesh->particle->valMin = 0;
+	}
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -123,11 +99,11 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////
-	if (channelSkelViewReady){
+	if (regionLabelReady){
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr);
-		positionBasedDeformProcessor->disThr = 4.1;
-		positionBasedDeformProcessor->minPos = -shift;
-		positionBasedDeformProcessor->maxPos = make_float3(dims.x, dims.y, dims.z);
+		positionBasedDeformProcessor->disThr = disThr;
+		positionBasedDeformProcessor->minPos = posMin - make_float3(disThr + 1, disThr + 1, disThr + 1);
+		positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);
 
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
@@ -149,8 +125,8 @@ Window::Window()
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	openGL->AddRenderable("1poly", polyRenderable.get());
-	polyRenderable->setCenterBasedRendering();
-	if (channelSkelViewReady){
+	if (regionLabelReady){
+		polyRenderable->setCenterBasedRendering();
 		polyRenderable->positionBasedDeformProcessor = positionBasedDeformProcessor;
 	}
 
@@ -190,7 +166,7 @@ Window::Window()
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 
-	if (channelSkelViewReady){
+	if (regionLabelReady){
 		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
 		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);

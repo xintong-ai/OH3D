@@ -1,8 +1,7 @@
-#include "PositionBasedDeformProcessorForTV.h"
+#include "TimeVaryingParticleDeformerManager.h"
 #include "TransformFunc.h"
 #include "MatrixManager.h"
 
-#include "Volume.h"
 #include "Particle.h"
 #include "PolyMesh.h"
 
@@ -14,8 +13,7 @@
 //#include "PolyRenderable.h"
 
 
-////// !!!!!!!!!!!!!!!!!!!!!! the reset here actually do not work for real reset  !!!!!!!!!!!!!!!
-void PositionBasedDeformProcessorForTV::turnActive()
+void TimeVaryingParticleDeformerManager::turnActive()
 {
 	isActive = true;
 	if (curT > -1){
@@ -24,7 +22,8 @@ void PositionBasedDeformProcessorForTV::turnActive()
 	curT = 0;
 }
 
-void PositionBasedDeformProcessorForTV::resetPolyMeshes()
+////// not actual full reset, just reset the parts that might be changed
+void TimeVaryingParticleDeformerManager::resetPolyMeshes()
 {
 	for (int i = 0; i < polyMeshes.size(); i++){
 		//polyMeshes[i]->reset();
@@ -33,7 +32,7 @@ void PositionBasedDeformProcessorForTV::resetPolyMeshes()
 	}
 }
 
-void PositionBasedDeformProcessorForTV::saveOriginalCopyOfMeshes()
+void TimeVaryingParticleDeformerManager::saveOriginalCopyOfMeshes()
 {
 	for (int i = 0; i < polyMeshes.size(); i++){
 		std::shared_ptr<PolyMesh> polyMesh = std::make_shared<PolyMesh>();
@@ -44,27 +43,22 @@ void PositionBasedDeformProcessorForTV::saveOriginalCopyOfMeshes()
 	}
 }
 
-bool PositionBasedDeformProcessorForTV::process(float* modelview, float* projection, int winWidth, int winHeight)
+bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projection, int winWidth, int winHeight)
 {
 	if (!isActive){
 		return false;
 	}
 
-
 	//sdkStopTimer(&timer);
 	//float timePassed = sdkGetAverageTimerValue(&timer) / 1000.f;
 	if (curT % (numInter + 1) == 0){
-		int meshid = curT / (numInter + 1);
-		
-		//polyMesh->justChanged = true;
-		//polyMesh->newPoly = polyMeshes[meshid];
-		
+		int meshid = curT / (numInter + 1);				
 		polyMesh = polyMeshes[meshid];
-		
-		justChangedForRenderer = true;
-		
+
 		//polyRenderable->polyMesh = polyMesh;//NOTE!! the polymesh stored in other modules are not always combined with the pointer "polyMesh" here!!!
 		//polyRenderable->dataChange();
+		justChangedForRenderer = true;	
+		//the best method is to set both polyRenderable and positionBasedDeformProcessor here, but they cannot be included in this file together, because the conflict of QT and CUDA. so use this alternative method, to let polyRenderable have a link to TimeVaryingParticleDeformerManager object
 
 		positionBasedDeformProcessor->updateParticleData(polyMesh->particle);
 	}

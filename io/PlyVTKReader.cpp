@@ -15,7 +15,7 @@
 #include <vtkPolyDataNormals.h>
 #include <vtkPointData.h>
 #include <vtkSphereSource.h>
-
+#include <vtkXMLPolyDataWriter.h>
 
 void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 {
@@ -72,6 +72,14 @@ void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 			std::cout << "fail computing normals" << std::endl;
 			exit(0);
 		}
+		std::string oldname = std::string(fname);
+		int l = oldname.length();
+		std::string newname = oldname.substr(0, l - 4) + "-withNormal.vtp";
+		vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+		writer->SetFileName(newname.c_str());
+		writer->SetInputData(data);
+		writer->Write();
+		std::cout << "created a new file with normal at: " << newname << std::endl;
 	}
 	else
 	{

@@ -19,7 +19,7 @@
 #include "PositionBasedDeformProcessor.h"
 
 
-#include "PositionBasedDeformProcessorForTV.h"
+#include "TimeVaryingParticleDeformerManager.h"
 
 void PolyRenderable::init()
 {
@@ -271,11 +271,11 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	//	polyMesh = polyMesh->newPoly;
 	//	dataChange();
 	//}
-	if (positionBasedDeformProcessorForTV != 0 && positionBasedDeformProcessorForTV->justChangedForRenderer)
+	if (tvParticleDeformerManager != 0 && tvParticleDeformerManager->justChangedForRenderer)
 	{
-		polyMesh = positionBasedDeformProcessorForTV->polyMesh;
+		polyMesh = tvParticleDeformerManager->polyMesh;
 		dataChange();
-		positionBasedDeformProcessorForTV->justChangedForRenderer = false;
+		tvParticleDeformerManager->justChangedForRenderer = false;
 	}
 
 	glEnable(GL_BLEND);

@@ -8,20 +8,17 @@
 #include "DataMgr.h"
 #include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "ScreenMarker.h"
 #include "VolumeRenderableCUDA.h"
 #include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
 #include "mouse/ScreenBrushInteractor.h"
-//#include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
 #include "Particle.h"
 
 #include "PositionBasedDeformProcessor.h"
 #include "MatrixMgrRenderable.h"
-//#include "InfoGuideRenderable.h"
 #include "BinaryTuplesReader.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
@@ -42,7 +39,6 @@
 #include <thrust/device_vector.h>
 
 
-bool channelSkelViewReady = true;
 
 Window::Window()
 {
@@ -66,7 +62,6 @@ Window::Window()
 	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
 
-	rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 1024, 0.25f, 1.0, false);
 
 	inputVolume = std::make_shared<Volume>(true);
 	std::shared_ptr<RawVolumeReader> reader;
@@ -106,8 +101,6 @@ Window::Window()
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 
-	//////////////ScreenMarker, ViewpointEvaluator
-
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
 	QSurfaceFormat format;
@@ -119,14 +112,13 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////		
-	if (channelSkelViewReady){
 		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr);
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
 		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 		//animationByMatrixProcessor->setViews(views);
 		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
-	}
+
 
 	//////////////////////////////// Renderable ////////////////////////////////	
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, positionBasedDeformProcessor);
@@ -179,7 +171,6 @@ Window::Window()
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 
-	if (channelSkelViewReady){
 		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
 		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 		controlLayout->addWidget(isDeformEnabled);
@@ -213,7 +204,7 @@ Window::Window()
 		connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
 		connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
 		connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));	
-	}
+	
 
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
 	controlLayout->addWidget(saveScreenBtn);
@@ -436,10 +427,9 @@ Window::Window()
 	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
 	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
 
-	if (!channelSkelViewReady){
 		oriVolumeRb->setDisabled(true);
 		surfaceRb->setDisabled(true);
-	}
+	
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -474,9 +464,8 @@ Window::Window()
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	if (channelSkelViewReady){
 		immersiveInteractor->noMoveMode = true;
-	}
+	
 
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
@@ -641,7 +630,7 @@ void  Window::SlotClipRb(bool b)
 		positionBasedDeformProcessor->isActive = true;
 		positionBasedDeformProcessor->deformData = false;
 		inputVolume->reset();
-		//volumeRenderable->startClipRendering(channelVolume);
+		//volumeRenderable->startClipRendering(volume);
 	}
 	else{
 	}

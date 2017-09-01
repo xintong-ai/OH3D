@@ -481,7 +481,7 @@ d_checkPlane(float3 planeCenter, int3 size, float3 dir_y, float3 dir_z, int ycou
 
 	////assume spacing (1,1,1)
 	//if (v.x >= 0 && v.x < size.x && v.y >= 0 && v.y < size.y && v.z >= 0 && v.z < size.z){
-	//	channelVolumeVoxelType res = tex3D(channelVolumeTex, v.x, v.y, v.z);
+	//	float res = tex3D(volumeTex, v.x, v.y, v.z);
 	//	if (res < 0.5){
 	//		*d_inchannel = true;
 	//	}

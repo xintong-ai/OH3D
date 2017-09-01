@@ -3,13 +3,8 @@
 
 #include "myDefineRayCasting.h"
 #include "GLWidget.h"
-#include "Volume.h"
-#include "RawVolumeReader.h"
 #include "DataMgr.h"
-#include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "VolumeRenderableCUDA.h"
-#include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
 #include "AnimationByMatrixProcessor.h"
@@ -40,25 +35,7 @@
 #endif
 
 
-bool channelSkelViewReady = true;
 bool useMultiplePolyData = false;
-
-void rawfileInfo(std::string dataPath, DataType & channelVolDataType)
-{
-	if (std::string(dataPath).find("sphere") != std::string::npos){
-		channelVolDataType = RawVolumeReader::dtUint16;
-	}
-	else if (std::string(dataPath).find("iso_t") != std::string::npos){
-		channelVolDataType = RawVolumeReader::dtFloat32;
-	}
-	else if (std::string(dataPath).find("moortgat") != std::string::npos){
-		channelVolDataType = RawVolumeReader::dtFloat32;
-	}
-	else{
-		std::cout << "file name not defined" << std::endl;
-		exit(0);
-	}
-}
 
 Window::Window()
 {
@@ -69,13 +46,8 @@ Window::Window()
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
 
-	std::string subfolder;
 	float disThr;
-	float3 shift;
-	int3 dims;
-	float3 spacing;
-	DataType channelVolDataType;
-	std::shared_ptr<RayCastingParameters> rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
+
 
 	if (useMultiplePolyData){
 		const std::string polyDatasFolder = dataMgr->GetConfig("POLY_DATAS_FOLDER");
@@ -83,8 +55,7 @@ Window::Window()
 		paths[0] = polyDatasFolder + "sand60_067_xw2_iso0.0005_shiftedAndRespaced.vtp";
 		paths[1] = polyDatasFolder + "sand60_067_xw2_iso0.0012_shiftedAndRespaced.vtp";
 
-		PolyMesh::dataParameters(paths[0], dims, spacing, disThr, shift, subfolder);
-		subfolder = subfolder + "Multi";
+		PolyMesh::dataParameters(paths[0], disThr);
 
 		for (int i = 0; i < 2; i++){
 			std::shared_ptr<PolyMesh> curpolyMesh = std::make_shared<PolyMesh>();
@@ -112,12 +83,11 @@ Window::Window()
 		polyMesh->setVertexCoordsOri();
 		polyMesh->setVertexDeviateVals();
 
-		rawfileInfo(paths[0], channelVolDataType);
 	}
 	else{
 		const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
-		PolyMesh::dataParameters(polyDataPath, dims, spacing, disThr, shift, subfolder);
+		PolyMesh::dataParameters(polyDataPath, disThr);
 
 		polyMesh = std::make_shared<PolyMesh>();
 		if (std::string(polyDataPath).find(".ply") != std::string::npos){
@@ -128,18 +98,15 @@ Window::Window()
 			VTPReader reader;
 			reader.readFile(polyDataPath.c_str(), polyMesh.get());
 		}
-		//polyMesh->doShift(shift); //do it before setVertexCoordsOri()!!! //not needed if the data is already shifted
+
 		polyMesh->setVertexCoordsOri();
 		polyMesh->setVertexDeviateVals();
 		polyMesh->setVertexColorVals(0);
 
 		std::cout << "Read data from : " << polyDataPath << std::endl;
 
-		rawfileInfo(polyDataPath, channelVolDataType);
 	}
 
-	shift = make_float3(0, 0, 0); //already shifted and respaced data
-	spacing = make_float3(1, 1, 1); //already shifted and respaced data
 
 
 
@@ -150,7 +117,7 @@ Window::Window()
 	std::cout << "posMin: " << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 	std::cout << "posMax: " << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
-	matrixMgr->setDefaultForImmersiveMode();		
+	matrixMgr->setDefaultForImmersiveMode();
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
@@ -166,34 +133,30 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////
-	if (channelSkelViewReady){
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh, matrixMgr);
+	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh, matrixMgr);
 
+	positionBasedDeformProcessor->disThr = disThr;
+	positionBasedDeformProcessor->minPos = posMin - make_float3(disThr + 1, disThr + 1, disThr + 1);
+	positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);
 
-		positionBasedDeformProcessor->disThr = 2.1;
-		float3 p1, p2;
-		polyMesh->GetPosRange(p1,p2);
-		positionBasedDeformProcessor->minPos = p1 - make_float3(disThr + 1, disThr + 1, disThr + 1);
-		positionBasedDeformProcessor->maxPos = p2 + make_float3(disThr + 1, disThr + 1, disThr + 1);
+	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	positionBasedDeformProcessor->deformationScale = 2;
+	positionBasedDeformProcessor->deformationScaleVertical = 2.5;
 
-		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
-		positionBasedDeformProcessor->deformationScale = 2; 
-		positionBasedDeformProcessor->deformationScaleVertical = 2.5;
-	}
 
 	//////////////////////////////// Renderable ////////////////////////////////	
 
-		//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-		//openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
 
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("3matrix", matrixMgrRenderable.get()); 
+	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	polyRenderable->immersiveMode = true;
 	openGL->AddRenderable("1poly", polyRenderable.get());
-	
+
 
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
@@ -203,12 +166,10 @@ Window::Window()
 	regularInteractor->isActive = false;
 	immersiveInteractor->isActive = true;
 
-	if (channelSkelViewReady){
-		//immersiveInteractor->noMoveMode = true;
-	}
+
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
-	
+
 
 
 #ifdef USE_LEAP
@@ -222,34 +183,33 @@ Window::Window()
 	listener->AddLeapInteractor("matrixMgr", (LeapInteractor*)(matrixMgrLeapInteractor.get()));
 #endif
 
-	
+
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
-	
+
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	
+
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 
-	if (channelSkelViewReady){
-		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
-		controlLayout->addWidget(isDeformEnabled);
-		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
-		
-		QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
-		isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
-		controlLayout->addWidget(isForceDeformEnabled);
-		connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
+	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+	controlLayout->addWidget(isDeformEnabled);
+	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 
-		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
-		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
-		controlLayout->addWidget(isDeformColoringEnabled);
-		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
-	}
+	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+	controlLayout->addWidget(isForceDeformEnabled);
+	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+
+	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+	controlLayout->addWidget(isDeformColoringEnabled);
+	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
+
 
 
 	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
@@ -269,7 +229,7 @@ Window::Window()
 	eyePosGroup->setLayout(eyePosLayout2);
 	controlLayout->addWidget(eyePosGroup);
 
-	
+
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -288,7 +248,7 @@ Window::Window()
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
 
-	
+
 
 	controlLayout->addStretch();
 
@@ -308,7 +268,7 @@ Window::Window()
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	
+
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
 #endif
