@@ -14,7 +14,7 @@ extern "C" {
 	void VolumeRender_init();
 	void VolumeRender_deinit();
 	
-	void updatePreIntTabel(float r1, float r2);
+	void updatePreIntTabelNew(cudaArray *d_transferFunc);
 
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);
 	void OmniVolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);

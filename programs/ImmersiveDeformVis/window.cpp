@@ -37,8 +37,25 @@
 #include "VolumeRenderableCUDAKernel.h"
 
 #include <thrust/device_vector.h>
+#include "VTIReader.h"
 
+//
 
+void positionBasedDeformerConfigure(std::string dataPath, float & densityThr, int & checkRadius)
+{
+	if (std::string(dataPath).find("181") != std::string::npos){
+		densityThr = 0.01;
+		checkRadius = 1;
+	}
+	else if (std::string(dataPath).find("moortgat") != std::string::npos){
+		densityThr = 0.0007;
+		checkRadius = 1;
+	}
+	else{
+		std::cout << "volume data name not recognized" << std::endl;
+		exit(0);
+	}
+};
 
 Window::Window()
 {
@@ -51,26 +68,37 @@ Window::Window()
 	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
 	rcp = std::make_shared<RayCastingParameters>();
-	
+
 	std::string subfolder;
 	DataType volDataType = RawVolumeReader::dtUint16;
 	bool hasLabelFromFile;
+	float densityThr;
+	int checkRadius;
 
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
-	
-	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	positionBasedDeformerConfigure(dataPath, densityThr, checkRadius);
+
+	//rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
+
+	//rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.3, 0.18, 0.1, 512, 0.125f, 1.0, true); //for moortgat data, non cubic spline interpolation. Note this data is not suitable to use cubic spline interpolation. also the Shininess for specular light for this data is 5
 
 
 	inputVolume = std::make_shared<Volume>(true);
-	std::shared_ptr<RawVolumeReader> reader;
-	reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, volDataType);	
-	reader->OutputToVolumeByNormalizedValue(inputVolume);
-	reader.reset();
+	if (std::string(dataPath).find(".vti") != std::string::npos){
+		VTIReader vtiReader(dataPath.c_str(), inputVolume);
+	}
+	else{
+		std::shared_ptr<RawVolumeReader> reader;
+		reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, volDataType);
+		reader->OutputToVolumeByNormalizedValue(inputVolume);
+		reader.reset();
+	}
+
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
-	
+
 	if (rcp->use2DInteg){
 		inputVolume->computeGradient();
 		rcp->secondCutOffLow = 0.19f;
@@ -82,7 +110,7 @@ Window::Window()
 	float3 posMin, posMax;
 	inputVolume->GetPosRange(posMin, posMax);
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
-	matrixMgr->setDefaultForImmersiveMode();		
+	matrixMgr->setDefaultForImmersiveMode();
 	if (std::string(dataPath).find("engine") != std::string::npos){
 		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -20, 60));
 	}
@@ -98,6 +126,10 @@ Window::Window()
 	else if (std::string(dataPath).find("colon") != std::string::npos){
 		matrixMgr->moveEyeInLocalByModeMat(make_float3(177, 152, 32)*spacing);
 	}
+	else if (std::string(dataPath).find("moortgat") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
+
+	}
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 
@@ -112,24 +144,31 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////		
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr);
-		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr);
+	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	positionBasedDeformProcessor->rcp = rcp;
+	positionBasedDeformProcessor->densityThr = densityThr;
+	positionBasedDeformProcessor->checkRadius = checkRadius;
+	positionBasedDeformProcessor->deformationScale = 15;
 
-		//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
-		//animationByMatrixProcessor->setViews(views);
-		//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
+	//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
+	//animationByMatrixProcessor->setViews(views);
+	//openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
 
 
 	//////////////////////////////// Renderable ////////////////////////////////	
 	volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, positionBasedDeformProcessor);
 	volumeRenderable->rcp = rcp;
+	volumeRenderable->updateColorTable(); //must be called once beforehand
+
 	openGL->AddRenderable("2volume", volumeRenderable.get());
 	//volumeRenderable->setPreIntegrate(true);
 
-	
-	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
-	volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+
+	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+	////!!!!! once turned on blending, some render technique is not implemented yet !!!!!!
 
 	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//openGL->AddRenderable("3matrixMgr", matrixMgrRenderable.get()); 
@@ -146,7 +185,7 @@ Window::Window()
 
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
-		
+
 
 #ifdef USE_LEAP
 	listener = new LeapListener();
@@ -161,9 +200,9 @@ Window::Window()
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
-	
+
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	
+
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 	std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
@@ -171,45 +210,45 @@ Window::Window()
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 
-		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
-		controlLayout->addWidget(isDeformEnabled);
-		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
+	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+	controlLayout->addWidget(isDeformEnabled);
+	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 
-		QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
-		isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
-		controlLayout->addWidget(isForceDeformEnabled);
-		connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+	controlLayout->addWidget(isForceDeformEnabled);
+	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
 
-		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part (when preintegrate)", this);
-		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
-		controlLayout->addWidget(isDeformColoringEnabled);
-		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
-	
-		QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
-		QHBoxLayout *orModeLayout = new QHBoxLayout;
-		originalRb = std::make_shared<QRadioButton>(tr("&original"));
-		deformRb = std::make_shared<QRadioButton>(tr("&deform"));
-		clipRb = std::make_shared<QRadioButton>(tr("&clip"));
-		transpRb = std::make_shared<QRadioButton>(tr("&transparent"));
+	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part (when preintegrate)", this);
+	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+	controlLayout->addWidget(isDeformColoringEnabled);
+	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 
-		deformRb->setChecked(true);
-		orModeLayout->addWidget(originalRb.get());
-		orModeLayout->addWidget(deformRb.get());
-		orModeLayout->addWidget(clipRb.get());
-		orModeLayout->addWidget(transpRb.get());
-		groupBoxORModes->setLayout(orModeLayout);
-		controlLayout->addWidget(groupBoxORModes);
-		connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
-		connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
-		connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
-		connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));	
-	
+	QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
+	QHBoxLayout *orModeLayout = new QHBoxLayout;
+	originalRb = std::make_shared<QRadioButton>(tr("&original"));
+	deformRb = std::make_shared<QRadioButton>(tr("&deform"));
+	clipRb = std::make_shared<QRadioButton>(tr("&clip"));
+	transpRb = std::make_shared<QRadioButton>(tr("&transparent"));
+
+	deformRb->setChecked(true);
+	orModeLayout->addWidget(originalRb.get());
+	orModeLayout->addWidget(deformRb.get());
+	orModeLayout->addWidget(clipRb.get());
+	orModeLayout->addWidget(transpRb.get());
+	groupBoxORModes->setLayout(orModeLayout);
+	controlLayout->addWidget(groupBoxORModes);
+	connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
+	connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
+	connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
+	connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));
+
 
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
 	controlLayout->addWidget(saveScreenBtn);
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
-	
+
 
 
 	///////////////ray casting settings
@@ -262,8 +301,8 @@ Window::Window()
 	QLabel *dsLabelLit = new QLabel("Density of the volume: ");
 	//controlLayout->addWidget(dsLabelLit);
 	QSlider* dsSlider = new QSlider(Qt::Horizontal);
-	dsSlider->setRange(0, 100);
-	dsSlider->setValue(rcp->density * 20);
+	dsSlider->setRange(0, 200);
+	dsSlider->setValue(rcp->density * 50);
 	connect(dsSlider, SIGNAL(valueChanged(int)), this, SLOT(dsSliderValueChanged(int)));
 	dsLabel = new QLabel(QString::number(rcp->density));
 	QHBoxLayout *dsLayout = new QHBoxLayout;
@@ -320,7 +359,7 @@ Window::Window()
 	QLabel *transFuncP2SecondSliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
 	QSlider *transFuncP2SecondLabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP2SecondLabelSlider->setRange(0, 100);
-	transFuncP2SecondLabelSlider->setValue(rcp->secondCutOffLow* 100);
+	transFuncP2SecondLabelSlider->setValue(rcp->secondCutOffLow * 100);
 	connect(transFuncP2SecondLabelSlider, SIGNAL(valueChanged(int)), this, SLOT(transFuncP2SecondLabelSliderValueChanged(int)));
 	transFuncP2SecondLabel = new QLabel(QString::number(rcp->secondCutOffLow));
 	QHBoxLayout *transFuncP2SecondLayout = new QHBoxLayout;
@@ -350,7 +389,7 @@ Window::Window()
 	rcLayout->addWidget(transFuncP2SecondSliderLabelLit);
 	rcLayout->addLayout(transFuncP2SecondLayout);
 
-	//controlLayout->addWidget(rcGroupBox);
+	controlLayout->addWidget(rcGroupBox);
 
 	controlLayout->addStretch();
 
@@ -384,14 +423,14 @@ Window::Window()
 
 	QLabel *zSliderLabelLit = new QLabel("Z index: ");
 	QSlider *zSlider = new QSlider(Qt::Horizontal);
-	zSlider->setRange(0, inputVolume->size.z-1);
+	zSlider->setRange(0, inputVolume->size.z - 1);
 	zSlider->setValue(helper.z);
 	connect(zSlider, SIGNAL(valueChanged(int)), this, SLOT(zSliderValueChanged(int)));
 	QHBoxLayout *zLayout = new QHBoxLayout;
 	zLayout->addWidget(zSliderLabelLit);
 	zLayout->addWidget(zSlider);
 	assistLayout->addLayout(zLayout);
-	
+
 	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
 	assistLayout->addWidget(doTourBtn);
 	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
@@ -427,9 +466,9 @@ Window::Window()
 	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
 	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
 
-		oriVolumeRb->setDisabled(true);
-		surfaceRb->setDisabled(true);
-	
+	oriVolumeRb->setDisabled(true);
+	surfaceRb->setDisabled(true);
+
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -446,9 +485,9 @@ Window::Window()
 
 	mainLayout->addLayout(assistLayout, 1);
 	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
-	
-	
-	
+
+
+
 	//openGL->setFixedSize(1000, 1000);
 	//openGLMini->setFixedSize(300, 300);
 	openGL->setFixedSize(600, 600);
@@ -464,8 +503,8 @@ Window::Window()
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-		immersiveInteractor->noMoveMode = true;
-	
+	immersiveInteractor->noMoveMode = true;
+
 
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
@@ -480,7 +519,10 @@ Window::Window()
 
 Window::~Window()
 {
-
+	if (rcp->d_transferFunc != 0){
+		cudaFreeArray(rcp->d_transferFunc);
+	}
+	rcp->d_transferFunc = 0;
 }
 
 void Window::init()
@@ -521,11 +563,13 @@ void Window::transFuncP1LabelSliderValueChanged(int v)
 {
 	rcp->transFuncP1 = 1.0*v / 100;
 	transFuncP1Label->setText(QString::number(1.0*v / 100));
+	volumeRenderable->preIntTableNeedUpdate();
 }
 void Window::transFuncP2LabelSliderValueChanged(int v)
 {
 	rcp->transFuncP2 = 1.0*v / 100;
 	transFuncP2Label->setText(QString::number(1.0*v / 100));
+	volumeRenderable->preIntTableNeedUpdate();
 }
 
 void Window::transFuncP1SecondLabelSliderValueChanged(int v)
@@ -548,7 +592,7 @@ void Window::brSliderValueChanged(int v)
 
 void Window::dsSliderValueChanged(int v)
 {
-	rcp->density = v*1.0 / 20.0;
+	rcp->density = v*1.0 / 50.0;
 	dsLabel->setText(QString::number(rcp->density));
 }
 
@@ -655,9 +699,9 @@ void Window::SlotSurfaceRb(bool b)
 {
 	if (b)
 	{
-			std::cout << "polymesh not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
+		std::cout << "polymesh not set!!" << std::endl;
+		oriVolumeRb->setChecked(true);
+		SlotOriVolumeRb(true);
 	}
 }
 

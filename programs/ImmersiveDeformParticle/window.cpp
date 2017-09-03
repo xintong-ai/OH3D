@@ -39,7 +39,7 @@
 #endif
 
 
-bool regionLabelReady = false;
+bool regionLabelReady = true;
 
 
 Window::Window()

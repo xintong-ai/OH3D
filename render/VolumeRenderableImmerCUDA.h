@@ -43,7 +43,7 @@ public:
 		useSplineInterpolation = v;
 	}
 
-	void updatePreIntTable(); //!!! MUST be called after the gl loop started. cannot be called beforehand
+	void preIntTableNeedUpdate(); //!!! MUST be called after the gl loop started. cannot be called beforehand
 
 
 	bool isFixed = false;
@@ -64,6 +64,9 @@ public:
 	void endClipRendering(){
 		useClipRendering = false;
 	};
+
+	void updateColorTable(); //may not be a good design. should be placed into RCP
+
 private:
 	bool useClipRendering = false;
 
@@ -116,6 +119,13 @@ private:
 	cudaArray_t c_inputImageDepthArray = 0;
 	cudaArray_t c_inputImageColorArray; //no allocation or deallocation
 	float *localDepthArray = 0; //used to transfer opengl depth to cuda array
+
+
+	//may not be a good design. should all be placed into RCP
+	//cudaArray *d_transferFunc = 0;
+	const int numColors = 1024;
+	std::vector<float4> colorTable;
+
 };
 
 #endif

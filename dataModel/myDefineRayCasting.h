@@ -41,6 +41,7 @@ struct RayCastingParameters
 		useColor = j;
 	}
 
+	cudaArray *d_transferFunc = 0;
 
 };
 

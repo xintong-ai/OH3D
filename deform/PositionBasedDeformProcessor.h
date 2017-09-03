@@ -11,12 +11,11 @@
 #include <helper_timer.h>
 #include "Volume.h"
 
-
-
 enum EYE_STATE { inCell, inWall };
 enum DATA_DEFORM_STATE { ORIGINAL, DEFORMED};
 enum DEFORMED_DATA_TYPE { VOLUME, MESH, PARTICLE };
 
+struct RayCastingParameters;
 class Volume;
 class VolumeCUDA;
 class PolyMesh;
@@ -33,7 +32,9 @@ public:
 	float3 minPos = make_float3(-3, -3, -3), maxPos = make_float3(70, 120, 165);
 
 
-	float disThr = 4.1;
+	float densityThr = 0.01; //used for volume
+	int checkRadius = 1;  //used for volume. can combine with disThr?
+	float disThr = 4.1;	//used for poly and particle
 
 	std::shared_ptr<MatrixManager> matrixMgr;
 
@@ -51,8 +52,6 @@ public:
 		if (d_vertexDeviateVals) cudaFree(d_vertexDeviateVals);
 		if (d_vertexColorVals) cudaFree(d_vertexColorVals);
 
-		if (d_vertexCoords_finalDeformed) cudaFree(d_vertexCoords_finalDeformed);
-		finalDeformedVolume.~VolumeCUDA();
 	};		
 
 	bool isColoringDeformedPart = false;
@@ -61,12 +60,10 @@ public:
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
-	EYE_STATE lastEyeState = inCell;
-	DATA_DEFORM_STATE lastDataState = ORIGINAL;
-	DEFORMED_DATA_TYPE dataType = VOLUME;
-
 	float deformationScale = 5; // for rect, the width of opening
 	float deformationScaleVertical = 7; // for rectangular, it is the other side length
+	double totalDuration = 3; //time to fully open/close
+	double closeDuration = 3;
 
 	void reset(){}
 
@@ -83,17 +80,16 @@ public:
 	//for time varying particle dataset
 	void updateParticleData(std::shared_ptr<Particle> ori);
 
+	std::shared_ptr<RayCastingParameters> rcp;
 
 private:
 	//for time varying particle dataset
 	int maxLabel = -1;
 
-	
-	VolumeCUDA finalDeformedVolume;
-	thrust::device_vector<float4> d_vec_finalDeformedPosOrig;
-	float* d_vertexCoords_finalDeformed = 0;
+	EYE_STATE lastEyeState = inCell;
+	DATA_DEFORM_STATE lastDataState = ORIGINAL;
+	DEFORMED_DATA_TYPE dataType = VOLUME;
 
-	
 	float* d_vertexCoords = 0;
 	float* d_vertexCoords_init = 0;
 	unsigned int* d_indices = 0;
@@ -130,7 +126,6 @@ private:
 
 	void doVolumeDeform(float degree);
 	void doVolumeDeform2Tunnel(float degree, float degreeClose);
-	void computeFinalDeformCopy();
 	void doPolyDeform(float degree);
 	void doParticleDeform(float degree);
 
@@ -138,10 +133,8 @@ private:
 
 	std::clock_t startOpen;
 	std::clock_t startClose;
-	double totalDuration = 3;
-
 	float closeStartingRadius;
-	double closeDuration = 3;
+
 
 	float3 targetUpVecInLocal = make_float3(0, 0, 1);	//note! the vector make_float3(0,0,1) may also be used in ImmersiveInteractor class
 

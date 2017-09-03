@@ -162,6 +162,11 @@ public:
 			rcp = std::make_shared<RayCastingParameters>(1.1, 1, 0.3, 0.19, 0.1, 1.05, 1024, 0.125f, 0.4, true);
 			subfolder = "colon";
 		}
+		else if (std::string(dataPath).find("moortgat") != std::string::npos){
+			//dims = make_int3(351, 257, 257);
+			spacing = make_float3(1, 1, 1);
+			rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.3, 0.18, 0.36, 512, 0.125f, 1.0, true);
+		}
 		else{
 			std::cout << "volume data name not recognized" << std::endl;
 			exit(0);

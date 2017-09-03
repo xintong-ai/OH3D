@@ -195,6 +195,9 @@ surface<void, 1>                                      transferIntegrateSurf;
 texture<float4, cudaTextureType2DLayered, cudaReadModeElementType>   transferLayerPreintTex;
 surface<void, cudaSurfaceType2DLayered>                             transferLayerPreintSurf;
 
+// 1D transfer function texture
+texture<float4, 1, cudaReadModeElementType>           transferTex;
+
 //float curfuncRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
 //float lastFuncRes = clamp((lastSample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
 
@@ -216,16 +219,18 @@ d_integrate_trapezoidal(cudaExtent extent, float transFuncP1, float transFuncP2)
 	float4 outclr = make_float4(0, 0, 0, 0);
 	float incr = stepsize;
 
-	float funcRes = __saturatef((0.0 - transFuncP2) / (transFuncP1 - transFuncP2));
-	float4 lastval = make_float4(funcRes, funcRes, funcRes, funcRes);	// tex1D(transferTex, 0);
+	//float funcRes = __saturatef((0.0 - transFuncP2) / (transFuncP1 - transFuncP2));
+	//float4 lastval = make_float4(funcRes, funcRes, funcRes, funcRes);	// tex1D(transferTex, 0);
+	float4 lastval = tex1D(transferTex, 0);
 
 	float cur = incr;
 
 	while (cur < to + incr * 0.5)
 	{
-		float funcRes = __saturatef((cur - transFuncP2) / (transFuncP1 - transFuncP2));
+		//float funcRes = __saturatef((cur - transFuncP2) / (transFuncP1 - transFuncP2));
+		//float4 val = make_float4(funcRes, funcRes, funcRes, funcRes); // tex1D(transferTex, cur);
+		float4 val = tex1D(transferTex, cur);
 
-		float4 val = make_float4(funcRes, funcRes, funcRes, funcRes); // tex1D(transferTex, cur);
 		float4 trapezoid = (lastval + val) / 2.0f;
 		lastval = val;
 
@@ -273,8 +278,10 @@ d_preintegrate(float steps, cudaExtent extent, float transFuncP1, float transFun
 	}
 	else
 	{
-		float funcRes = __saturatef((smin - transFuncP2) / (transFuncP1 - transFuncP2));
-		float4 sample = make_float4(funcRes, funcRes, funcRes, funcRes);  //tex1D(transferTex, smin);
+		//float funcRes = __saturatef((smin - transFuncP2) / (transFuncP1 - transFuncP2));
+		//float4 sample = make_float4(funcRes, funcRes, funcRes, funcRes);  //tex1D(transferTex, smin);
+		float4 sample = tex1D(transferTex, smin);
+
 		iv.x = sample.x;
 		iv.y = sample.y;
 		iv.z = sample.z;
@@ -291,23 +298,27 @@ d_preintegrate(float steps, cudaExtent extent, float transFuncP1, float transFun
 	surf2DLayeredwrite(iv, transferLayerPreintSurf, x * sizeof(float4), y, 0);
 }
 
-void updatePreIntTabel(float r1, float r2)
+
+void updatePreIntTabelNew(cudaArray *d_transferFunc)
 {
+	cudaChannelFormatDesc channelFloat4 = cudaCreateChannelDesc<float4>();
+	checkCudaErrors(cudaBindTextureToArray(transferTex, d_transferFunc, channelFloat4));
+
 	{
 		cudaExtent extent = { VOLUMERENDER_TF_PREINTSTEPS, 0, 0 };
 		dim3 blockSize(32, 1, 1);
 		dim3 gridSize(iDivUp(extent.width, blockSize.x), 1, 1);
-		d_integrate_trapezoidal << <gridSize, blockSize >> >(extent, r1, r2);
+		d_integrate_trapezoidal << <gridSize, blockSize >> >(extent, 0,0);
 	}
 	{
 		cudaExtent extent = { VOLUMERENDER_TF_PREINTSIZE, VOLUMERENDER_TF_PREINTSIZE, 1 };
 		dim3 blockSize(16, 16, 1);
 		dim3 gridSize(iDivUp(extent.width, blockSize.x), iDivUp(extent.height, blockSize.y), 1);
-		d_preintegrate << <gridSize, blockSize >> >(float(VOLUMERENDER_TF_PREINTSTEPS), extent, r1, r2);
+		d_preintegrate << <gridSize, blockSize >> >(float(VOLUMERENDER_TF_PREINTSTEPS), extent, 0,0);
 		//d_preintegrate << <gridSize, blockSize >> >(4.0, extent, r1, r2);
-
 	}
 }
+
 
 void initPreIntTabel()
 {
@@ -404,6 +415,10 @@ void VolumeRender_init()
 	tex_inputImageColor.addressMode[0] = cudaAddressModeBorder;
 	tex_inputImageColor.addressMode[1] = cudaAddressModeBorder;
 
+	transferTex.normalized = true;
+	transferTex.filterMode = cudaFilterModeLinear;
+	transferTex.addressMode[0] = cudaAddressModeClamp;
+
 	initPreIntTabel();
 }
 
@@ -453,10 +468,11 @@ __device__ uint rgbaFloatToInt(float4 rgba)
 
 
 __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
-	//float la = 1.0, ld = 1.0, ls = 1.0;
-	float Shininess = 25;
+	float Shininess = 5;// 25;
 
-	float3 light_in_eye = make_float3(0.0, 2.0, 0.0);
+	//float3 light_in_eye = make_float3(0.0, 2.0, 0.0);
+	//float3 light_in_eye = make_float3(0.0, -200.0, 0.0);
+	float3 light_in_eye = make_float3(0.0, -200.0, 200);
 
 	float3 s = normalize(light_in_eye - pos_in_eye);
 	float3 v = normalize(-pos_in_eye);

@@ -55,7 +55,7 @@ Window::Window()
 	//////////////////Volume and RayCastingParameters
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	
+
 	std::shared_ptr<RayCastingParameters> rcpForChannelSkel = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
 	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
@@ -76,7 +76,7 @@ Window::Window()
 
 		VTPReader reader;
 		reader.readFile(fname.c_str(), polyMesh.get());
-		
+
 		polyMesh->setAssisParticle((subfolder + "/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str());
 		//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
 
@@ -134,10 +134,13 @@ Window::Window()
 	std::cout << "posMin: " << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 	std::cout << "posMax: " << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
-	matrixMgr->setDefaultForImmersiveMode();		
+	matrixMgr->setDefaultForImmersiveMode();
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
-	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x, -20, matrixMgr->getEyeInLocal().z));
+	//matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x, -20, matrixMgr->getEyeInLocal().z));
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(32.9, 13.6, 67.2));
+	//matrixMgr->setViewAndUpInWorld(QVector3D(1, 0, 0), QVector3D(0, 0, 1));
+	
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -150,34 +153,35 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr);
-		positionBasedDeformProcessor->disThr = disThr;
-		positionBasedDeformProcessor->minPos = posMin - make_float3(disThr + 1, disThr + 1, disThr + 1);
-		positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);
+	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr);
+	positionBasedDeformProcessor->disThr = disThr;
+	positionBasedDeformProcessor->minPos = posMin - make_float3(disThr + 1, disThr + 1, disThr + 1);
+	positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);
 
-		openGL->AddProcessor("1ForTV", tvParticleDeformerManager.get());
-		openGL->AddProcessor("2positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	openGL->AddProcessor("1ForTV", tvParticleDeformerManager.get());
+	openGL->AddProcessor("2positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
-		positionBasedDeformProcessor->deformationScale = 10;
-		positionBasedDeformProcessor->deformationScaleVertical = 14;
+	positionBasedDeformProcessor->deformationScale = 10;
+	positionBasedDeformProcessor->deformationScaleVertical = 14;
 
-
+	positionBasedDeformProcessor->totalDuration = 1.5;
+	positionBasedDeformProcessor->closeDuration = 1.5;
 
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 
 	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
+	openGL->AddRenderable("0deform", deformFrameRenderable.get());
 
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("3matrix", matrixMgrRenderable.get()); 
+	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	openGL->AddRenderable("1poly", polyRenderable.get());
 	polyRenderable->setCenterBasedRendering();
 	polyRenderable->positionBasedDeformProcessor = positionBasedDeformProcessor;
-	
+
 
 
 	polyWallRenderable = std::make_shared<PolyRenderable>(polyMeshWall);
@@ -195,7 +199,7 @@ Window::Window()
 
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
-	
+
 
 
 #ifdef USE_LEAP
@@ -209,27 +213,27 @@ Window::Window()
 	listener->AddLeapInteractor("matrixMgr", (LeapInteractor*)(matrixMgrLeapInteractor.get()));
 #endif
 
-	
+
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
-	
+
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	
+
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 
 	controlLayout->addWidget(saveStateBtn.get());
 	controlLayout->addWidget(loadStateBtn.get());
 
-		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
-		controlLayout->addWidget(isDeformEnabled);
-		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
+	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+	controlLayout->addWidget(isDeformEnabled);
+	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 
-		QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
-		isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
-		controlLayout->addWidget(isDeformColoringEnabled);
-		connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
+	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+	controlLayout->addWidget(isDeformColoringEnabled);
+	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 
 
 
@@ -295,7 +299,7 @@ Window::Window()
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	
+
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
 #endif
@@ -332,6 +336,7 @@ void Window::init()
 
 void Window::SlotSaveState()
 {
+	std::cout << matrixMgr->getEyeInLocal().x << " " << matrixMgr->getEyeInLocal().y << " " << matrixMgr->getEyeInLocal().z << std::endl;
 }
 
 void Window::SlotLoadState()
@@ -353,7 +358,10 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 	else{
 		positionBasedDeformProcessor->isActive = false;
-		//inputVolume->reset();
+		//polyMesh->reset(); //polyMesh here is not directly used later
+		//polyRenderable->polyMesh->reset(); //should be the same with the object in tvParticleDeformerManager
+		tvParticleDeformerManager->polyMesh->reset();
+		polyRenderable->polyMesh->reset();
 	}
 }
 
@@ -407,11 +415,11 @@ void Window::startTVBtnClicked()
 void Window::backToFirstTimestepBtnClicked()
 {
 	tvParticleDeformerManager->resetPolyMeshes();
-	
+
 	polyMesh = tvParticleDeformerManager->polyMeshes[0];
 	tvParticleDeformerManager->polyMesh = polyMesh;
 	polyRenderable->polyMesh = polyMesh;
 	polyRenderable->dataChange();
 
 	positionBasedDeformProcessor->updateParticleData(polyMesh->particle);
-}	
+}
