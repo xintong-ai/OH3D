@@ -434,11 +434,11 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		//old method
 		float step = 1;
 		tunnelStart = centerPoint;
-		while (!inRange(tunnelStart) || atProperLocationInOriData(tunnelStart)){
+		while (!inRange(tunnelStart) || atProperLocationInOriData(tunnelStart, true)){
 			tunnelStart += tunnelAxis*step;
 		}
 		tunnelEnd = tunnelStart + tunnelAxis*step;
-		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd)){
+		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd, true)){
 			tunnelEnd += tunnelAxis*step;
 		}
 
@@ -512,11 +512,11 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		//old method
 		float step = 1;
 		tunnelEnd = centerPoint + tunnelAxis*step;
-		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd )){
+		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd, true)){
 			tunnelEnd += tunnelAxis*step;
 		}
 		tunnelStart = centerPoint;
-		while (inRange(tunnelStart) && !atProperLocationInOriData(tunnelStart)){
+		while (inRange(tunnelStart) && !atProperLocationInOriData(tunnelStart, true)){
 			tunnelStart -= tunnelAxis*step;
 		}
 
@@ -679,8 +679,32 @@ __global__ void d_checkIfTooCloseToPoly(float3 pos, uint* indices, int faceCoord
 	return;
 }
 
-bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos)
+bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos, bool useOriData)
 {
+	if (!useOriData){
+		if (lastDataState == DEFORMED){
+			//first check if inside the deform frame	
+			float3 tunnelVec = normalize(tunnelEnd - tunnelStart);
+			float tunnelLength = length(tunnelEnd - tunnelStart);
+			float3 n = normalize(cross(rectVerticalDir, tunnelVec));
+			float3 voxelVec = pos - tunnelStart;
+			float l = dot(voxelVec, tunnelVec);
+			if (l >= 0 && l <= tunnelLength){
+				float l2 = dot(voxelVec, rectVerticalDir);
+				if (abs(l2) < deformationScaleVertical){
+					float l3 = dot(voxelVec, n);
+					if (abs(l3) < deformationScale / 2){
+						return true;
+					}
+				}
+			}
+		}
+		else{
+			std::cout << "should not use atProperLocationInDeformedData function !!!" << std::endl;
+			exit(0);
+		}
+	}
+
 	if (dataType == VOLUME){
 
 		cudaChannelFormatDesc channelFloat4 = cudaCreateChannelDesc<float4>();
@@ -689,7 +713,12 @@ bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos)
 		bool* d_atProper;
 		cudaMalloc(&d_atProper, sizeof(bool)* 1);
 		cudaChannelFormatDesc cd2 = volume->volumeCudaOri.channelDesc;
-		checkCudaErrors(cudaBindTextureToArray(volumePointTexture, volume->volumeCudaOri.content, cd2));
+		if (useOriData){
+			checkCudaErrors(cudaBindTextureToArray(volumePointTexture, volume->volumeCudaOri.content, cd2));
+		}
+		else{
+			checkCudaErrors(cudaBindTextureToArray(volumePointTexture, volume->volumeCuda.content, cd2));
+		}
 		d_posInSafePositionOfVolume << <1, 1 >> >(pos, volume->size, volume->spacing, d_atProper, densityThr, checkRadius);
 		bool atProper;
 		cudaMemcpy(&atProper, d_atProper, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
@@ -704,9 +733,12 @@ bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos)
 
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
-
-		d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords_init, disThr, d_tooCloseToData);
-
+		if (useOriData){
+			d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords_init, disThr, d_tooCloseToData);
+		}
+		else{
+			d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords, disThr, d_tooCloseToData);
+		}
 		bool tooCloseToData;
 		cudaMemcpy(&tooCloseToData, d_tooCloseToData, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
 		cudaFree(d_tooCloseToData);
@@ -714,13 +746,15 @@ bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos)
 	}
 	else if (dataType == PARTICLE){
 		float init = 10000;
-		float inSavePosition =
-			thrust::transform_reduce(
-			d_vec_posOrig.begin(),
-			d_vec_posOrig.end(),
-			functor_dis(pos),
-			init,
-			thrust::minimum<float>());
+		float inSavePosition;
+		if (useOriData){
+			inSavePosition = thrust::transform_reduce(
+				d_vec_posOrig.begin(), d_vec_posOrig.end(), functor_dis(pos), init, thrust::minimum<float>());
+		}
+		else{
+			inSavePosition = thrust::transform_reduce(
+				d_vec_posTarget.begin(), d_vec_posTarget.end(), functor_dis(pos), init, thrust::minimum<float>());
+		}
 		return (inSavePosition > disThr);
 	}
 	else{
@@ -1130,7 +1164,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			//from wall to wall
 			//}
 		}
-		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal)){	// in solid area
+		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal, true)){	// in solid area
 			// in this case, set the start of deformation
 			if (lastEyeState != inWall){
 				lastDataState = DEFORMED;
@@ -1160,7 +1194,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		if (isForceDeform){
 
 		}
-		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal)){
+		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal, true)){
 			//in area which is solid in the original volume
 			bool atProper = atProperLocationInDeformedData(eyeInLocal);
 			if (atProper){

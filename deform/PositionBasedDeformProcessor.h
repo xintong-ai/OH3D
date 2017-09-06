@@ -14,6 +14,7 @@
 enum EYE_STATE { inCell, inWall };
 enum DATA_DEFORM_STATE { ORIGINAL, DEFORMED};
 enum DEFORMED_DATA_TYPE { VOLUME, MESH, PARTICLE };
+enum SHAPE_MODEL { CIRCLE, CUBOID };
 
 struct RayCastingParameters;
 class Volume;
@@ -24,6 +25,8 @@ class MatrixManager;
 class PositionBasedDeformProcessor :public Processor
 {
 public:
+	SHAPE_MODEL deformModel = CIRCLE;
+
 	std::shared_ptr<Volume> volume = 0;
 	std::shared_ptr<PolyMesh> poly = 0;
 	std::shared_ptr<Particle> particle = 0;
@@ -116,7 +119,7 @@ private:
 	std::shared_ptr<VolumeCUDA> volumeCudaIntermediate; //when mixing opening and closing, an intermediate volume is needed
 
 	bool atProperLocationInDeformedData(float3 pos);
-	bool atProperLocationInOriData(float3 pos);
+	bool atProperLocationInOriData(float3 pos, bool useOriData); //useOriData = true: check if proper in original data; false: check if proper in deformed data
 
 	float lastOpenFinalDegree;
 	float3 lastDeformationDirVertical;

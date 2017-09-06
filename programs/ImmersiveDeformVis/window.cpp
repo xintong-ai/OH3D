@@ -79,7 +79,7 @@ Window::Window()
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	positionBasedDeformerConfigure(dataPath, densityThr, checkRadius);
 
-	//rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
 
 	//rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.3, 0.18, 0.1, 512, 0.125f, 1.0, true); //for moortgat data, non cubic spline interpolation. Note this data is not suitable to use cubic spline interpolation. also the Shininess for specular light for this data is 5
@@ -488,9 +488,9 @@ Window::Window()
 
 
 
-	//openGL->setFixedSize(1000, 1000);
+	openGL->setFixedSize(1000, 1000);
 	//openGLMini->setFixedSize(300, 300);
-	openGL->setFixedSize(600, 600);
+	//openGL->setFixedSize(600, 600);
 
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);

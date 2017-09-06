@@ -30,9 +30,9 @@ public:
 	std::vector < std::shared_ptr<PolyMesh>> polyMeshesOri; //the renderable and the processor can both operate and change polyMeshes. Save the original copy here. It may not save all info, but only saves the one that might be changed.
 
 
-	int timeStart = 6, timeEnd = 8;
+	int timeStart = 6, timeEnd = 7;
 	int curT = -1;
-	int numInter = 80;
+	int numInter = 40;
 	std::vector<std::vector<int>> cellMaps;//given the index of a region in last timestep. get the index of the region in next timestep with the same label
 
 
