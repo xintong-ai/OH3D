@@ -55,3 +55,10 @@ if(USE_OSVR)
 endif()
 
 set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
+
+
+if(USE_VTK)
+	find_package(VTK REQUIRED)
+	include(${VTK_USE_FILE}) 
+	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
+endif()

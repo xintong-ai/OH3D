@@ -32,19 +32,18 @@ void DeformFrameRenderable::draw(float modelview[16], float projection[16])
 
 	glColor4f(0.89f, 0.29f, 0.26f, 0.8f);
 	glLineWidth(4);
-	//if (processor->hasOpenAnimeStarted || processor->hasCloseAnimeStarted)
 	{
 
-		float3 zaxisn = normalize(processor->tunnelEnd - processor->tunnelStart);
-		float3 yaxis = processor->rectVerticalDir;
+		float3 zaxisn = normalize(processor->getTunnelEnd() - processor->getTunnelStart());
+		float3 yaxis = processor->getRectVerticalDir();
 		float3 xaxis = normalize(cross(zaxisn, yaxis));
-		float deformationScale = processor->deformationScale;
-		float deformationScaleVertical = processor->deformationScaleVertical;
+		float deformationScale = processor->getDeformationScale();
+		float deformationScaleVertical = processor->getDeformationScaleVertical();
 
-		float3 p0 = processor->tunnelStart - xaxis*deformationScale - yaxis*deformationScaleVertical;
-		float3 p1 = processor->tunnelStart + xaxis*deformationScale - yaxis*deformationScaleVertical;
-		float3 p2 = processor->tunnelStart + xaxis*deformationScale + yaxis*deformationScaleVertical;
-		float3 p3 = processor->tunnelStart - xaxis*deformationScale + yaxis*deformationScaleVertical;
+		float3 p0 = processor->getTunnelStart() - xaxis*deformationScale - yaxis*deformationScaleVertical;
+		float3 p1 = processor->getTunnelStart() + xaxis*deformationScale - yaxis*deformationScaleVertical;
+		float3 p2 = processor->getTunnelStart() + xaxis*deformationScale + yaxis*deformationScaleVertical;
+		float3 p3 = processor->getTunnelStart() - xaxis*deformationScale + yaxis*deformationScaleVertical;
 
 		//cout <<endl;
 		glBegin(GL_LINE_LOOP);
@@ -54,10 +53,10 @@ void DeformFrameRenderable::draw(float modelview[16], float projection[16])
 		glVertex3fv(&(p3.x));
 		glEnd();
 
-		float3 p4 = processor->tunnelEnd - xaxis*deformationScale - yaxis*deformationScaleVertical;
-		float3 p5 = processor->tunnelEnd + xaxis*deformationScale - yaxis*deformationScaleVertical;
-		float3 p6 = processor->tunnelEnd + xaxis*deformationScale + yaxis*deformationScaleVertical;
-		float3 p7 = processor->tunnelEnd - xaxis*deformationScale + yaxis*deformationScaleVertical;
+		float3 p4 = processor->getTunnelEnd() - xaxis*deformationScale - yaxis*deformationScaleVertical;
+		float3 p5 = processor->getTunnelEnd() + xaxis*deformationScale - yaxis*deformationScaleVertical;
+		float3 p6 = processor->getTunnelEnd() + xaxis*deformationScale + yaxis*deformationScaleVertical;
+		float3 p7 = processor->getTunnelEnd() - xaxis*deformationScale + yaxis*deformationScaleVertical;
 
 		glBegin(GL_LINE_LOOP);
 		glVertex3fv(&(p4.x));
@@ -83,17 +82,17 @@ void DeformFrameRenderable::draw(float modelview[16], float projection[16])
 
 	bool blockFurtherObjects = false;
 	if (blockFurtherObjects){
-		float3 zaxisn = normalize(processor->tunnelEnd - processor->tunnelStart);
-		float3 yaxis = processor->rectVerticalDir;
+		float3 zaxisn = normalize(processor->getTunnelEnd() - processor->getTunnelStart());
+		float3 yaxis = processor->getRectVerticalDir();
 		float3 xaxis = normalize(cross(zaxisn, yaxis));
-		float deformationScale = processor->deformationScale;
-		float deformationScaleVertical = processor->deformationScaleVertical;
+		float deformationScale = processor->getDeformationScale();
+		float deformationScaleVertical = processor->getDeformationScaleVertical();
 
 		glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
-		float3 pp4 = processor->tunnelEnd - xaxis*deformationScale * 100 - yaxis*deformationScaleVertical * 100;
-		float3 pp5 = processor->tunnelEnd + xaxis*deformationScale * 100 - yaxis*deformationScaleVertical * 100;
-		float3 pp6 = processor->tunnelEnd + xaxis*deformationScale * 100 + yaxis*deformationScaleVertical * 100;
-		float3 pp7 = processor->tunnelEnd - xaxis*deformationScale * 100 + yaxis*deformationScaleVertical * 100;
+		float3 pp4 = processor->getTunnelEnd() - xaxis*deformationScale * 100 - yaxis*deformationScaleVertical * 100;
+		float3 pp5 = processor->getTunnelEnd() + xaxis*deformationScale * 100 - yaxis*deformationScaleVertical * 100;
+		float3 pp6 = processor->getTunnelEnd() + xaxis*deformationScale * 100 + yaxis*deformationScaleVertical * 100;
+		float3 pp7 = processor->getTunnelEnd() - xaxis*deformationScale * 100 + yaxis*deformationScaleVertical * 100;
 
 		glBegin(GL_TRIANGLES);
 		glVertex3fv(&(pp4.x));

@@ -10,6 +10,10 @@
 
 #include <vtkPointData.h>
 
+
+#include <vtkMarchingCubes.h>
+#include <vtkXMLPolyDataWriter.h>
+
 using namespace std;
 
 VTIReader::VTIReader(const char* fname, std::shared_ptr<Volume> v)

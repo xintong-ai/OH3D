@@ -50,6 +50,11 @@ public:
 	void find_center_and_range();
 
 	void GetPosRange(float3& posMin, float3& posMax);
+	void SetPosRange(float3 posMin, float3 posMax)
+	{
+		min_x = posMin.x, max_x = posMax.x, min_y = posMin.y, max_y = posMax.y, min_z = posMin.z, max_z = posMax.z;
+	}
+
 	void setVertexCoordsOri();
 	void reset();
 	bool inRange(float3 v);

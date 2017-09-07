@@ -6,8 +6,10 @@ POLY_DATA_PATH=C:/Users/lc/Data/FPM/iso_t40_v3.vtp
 sPOLY_DATA_PATH=C:/Users/lc/Project/OH3DPana/programs/ITKProcessing/sphere.vtp
 
 POLY_DATA_PATH=D:/Data/moortgat/sand60_067_xw2_iso0.001.vtp
-POLY_DATA_PATH=D:/Data/moortgat/sand60_067_xw2_iso0.001_shiftedAndRespaced.vtp
 
 POLY_DATA_PATH=C:/Users/lc/Data/moortgat/sand60_067_xw2_iso0.001_shiftedAndRespaced.vtp
+
+POLY_DATA_PATH=D:/Data/moortgat/sand60_067_xw2_iso0.001_shiftedAndRespaced.vtp
+POLY_DATA_PATH=D:/Data/moortgat/sand60_067_xw2_resample_61x61x81.vti
 
 POLY_DATAS_FOLDER=D:/Data/moortgat/

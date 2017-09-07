@@ -33,7 +33,9 @@
 #include "leap/LeapListener.h"
 #include "leap/MatrixLeapInteractor.h"
 #endif
-
+#include "MarchingCube.h"
+#include "VTIReader.h"
+#include "MarchingCube2.h"
 
 bool useMultiplePolyData = false;
 
@@ -90,7 +92,16 @@ Window::Window()
 		PolyMesh::dataParameters(polyDataPath, disThr);
 
 		polyMesh = std::make_shared<PolyMesh>();
-		if (std::string(polyDataPath).find(".ply") != std::string::npos){
+		if (std::string(polyDataPath).find(".vti") != std::string::npos){
+
+			std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
+			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
+					
+			//std::shared_ptr<MarchingCube> mc = std::make_shared<MarchingCube>(inputVolume, polyMesh);
+			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.001);
+
+		}
+		else if(std::string(polyDataPath).find(".ply") != std::string::npos){
 			PlyVTKReader plyVTKReader;
 			plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
 		}
@@ -106,9 +117,6 @@ Window::Window()
 		std::cout << "Read data from : " << polyDataPath << std::endl;
 
 	}
-
-
-
 
 
 	////////////////matrix manager
@@ -140,8 +148,8 @@ Window::Window()
 	positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);
 
 	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
-	positionBasedDeformProcessor->deformationScale = 2;
-	positionBasedDeformProcessor->deformationScaleVertical = 2.5;
+	positionBasedDeformProcessor->setDeformationScale(2);
+	positionBasedDeformProcessor->setDeformationScaleVertical(2.5);
 
 
 	//////////////////////////////// Renderable ////////////////////////////////	
@@ -246,6 +254,19 @@ Window::Window()
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
 	controlLayout->addWidget(saveScreenBtn);
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+
+
+
+	QLabel *transFuncP1SliderLabelLit = new QLabel("Iso Value");
+	QSlider *isoValueSlider = new QSlider(Qt::Horizontal);
+	isoValueSlider->setRange(0, 38); //0-0.0038
+	isoValueSlider->setValue(mc->isoValue / 0.0001);
+	connect(isoValueSlider, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged(int)));
+	isoValueLabel = new QLabel(QString::number(mc->isoValue));
+	QHBoxLayout *isoValueSliderLayout = new QHBoxLayout;
+	isoValueSliderLayout->addWidget(isoValueSlider);
+	isoValueSliderLayout->addWidget(isoValueLabel);
+	controlLayout->addLayout(isoValueSliderLayout);
 
 
 
@@ -367,4 +388,18 @@ void Window::doTourBtnClicked()
 void Window::saveScreenBtnClicked()
 {
 	openGL->saveCurrentImage();
+}
+
+
+void Window::isoValueSliderValueChanged(int v)
+{
+	//isoValueSlider->setRange(0, 38); //0-0.0038
+	//isoValueSlider->setValue(mc->isoValue / 0.0001);
+	mc->isoValue = v*0.0001;
+	isoValueLabel->setText(QString::number(mc->isoValue));
+	mc->newIsoValue(v*0.0001);
+
+	polyMesh->setVertexCoordsOri();
+	polyMesh->setVertexDeviateVals();
+	polyMesh->setVertexColorVals(0);
 }

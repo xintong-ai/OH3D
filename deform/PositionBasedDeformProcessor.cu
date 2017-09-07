@@ -34,8 +34,8 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Volum
 	matrixMgr = _m;
 	InitCudaSupplies();
 	sdkCreateTimer(&timer);
-	sdkCreateTimer(&timerFrame);
-
+	sdkCreateTimer(&timerFrame);	
+	
 	minPos = make_float3(0, 0, 0);
 	maxPos = make_float3(volume->size.x, volume->size.y, volume->size.z);
 
@@ -64,6 +64,29 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyM
 	cudaMemcpy(d_vertexCoords_init, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
 };
+
+void PositionBasedDeformProcessor::polyMeshDataUpdated()
+{
+	if (d_vertexCoords) cudaFree(d_vertexCoords);
+	if (d_vertexCoords_init) cudaFree(d_vertexCoords_init);
+	if (d_indices) cudaFree(d_indices);
+	if (d_numAddedFaces) cudaFree(d_numAddedFaces);
+	if (d_vertexDeviateVals) cudaFree(d_vertexDeviateVals);
+	if (d_vertexColorVals) cudaFree(d_vertexColorVals);
+
+	//NOTE!! here doubled the space. Hopefully it is large enough
+	cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 * 2);
+	cudaMalloc(&d_norms, sizeof(float)*poly->vertexcount * 3 * 2);
+	cudaMalloc(&d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3 * 2);
+	cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3 * 2);
+	cudaMalloc(&d_numAddedFaces, sizeof(int));
+	cudaMalloc(&d_vertexDeviateVals, sizeof(float)*poly->vertexcount * 2);
+	cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2);
+
+	cudaMemcpy(d_vertexCoords_init, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
+}
+
 
 PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m)
 {
@@ -154,10 +177,55 @@ __device__ float3 sampleDis(float3 pos, float3 start, float3 end, float r, float
 	}
 }
 
+__global__ void
+d_deformVolume_CircleModel(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float radius){
+	int x = blockIdx.x*blockDim.x + threadIdx.x;
+	int y = blockIdx.y*blockDim.y + threadIdx.y;
+	int z = blockIdx.z*blockDim.z + threadIdx.z;
+
+	if (x >= volumeSize.width || y >= volumeSize.height || z >= volumeSize.depth)
+	{
+		return;
+	}
+
+	float3 pos = make_float3(x, y, z) * spacing;
+
+	float3 tunnelVec = normalize(end - start);
+	float tunnelLength = length(end - start);
+
+	float3 voxelVec = pos - start;
+	float l = dot(voxelVec, tunnelVec);
+	if (l > 0 && l < tunnelLength){
+		float disToStart = length(voxelVec);
+		float dis = sqrt(disToStart*disToStart - l*l);
+
+		if (dis < r){
+			float res = 0;
+			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
+		}
+		else if (dis < radius){
+			float3 prjPoint = start + l*tunnelVec;
+			float3 dir = normalize(pos - prjPoint);
+			float3 samplePos = prjPoint + dir* (dis - r) / (radius - r)*radius;
+			samplePos /= spacing;
+			float res = tex3D(volumeTexInput, samplePos.x + 0.5, samplePos.y + 0.5, samplePos.z + 0.5);
+			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
+		}
+		else{
+			float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
+			surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
+		}
+	}
+	else{
+		float res = tex3D(volumeTexInput, x + 0.5, y + 0.5, z + 0.5);
+		surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
+	}
+	return;
+}
 
 
 __global__ void
-d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
+d_deformVolume_CuboidModel(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
 {
 	int x = blockIdx.x*blockDim.x + threadIdx.x;
 	int y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -213,7 +281,6 @@ d_updateVolumebyMatrixInfo_rect(cudaExtent volumeSize, float3 start, float3 end,
 	}
 	return;
 }
-
 
 __global__ void d_updatePolyMeshbyMatrixInfo_rect(float* vertexCoords_init, float* vertexCoords, int vertexcount,
 	float3 start, float3 end , float r, float deformationScale, float deformationScaleVertical, float3 dir2nd,
@@ -367,8 +434,12 @@ void PositionBasedDeformProcessor::doVolumeDeform(float degree)
 	cudaChannelFormatDesc cd = volume->volumeCudaOri.channelDesc;
 	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
 	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
-
-	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir);
+	if (shapeModel == CUBOID){
+		d_deformVolume_CuboidModel << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir);
+	}
+	else if (shapeModel == CIRCLE){
+		d_deformVolume_CircleModel << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, r, radius);
+	}
 	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
 }
 
@@ -383,12 +454,12 @@ void PositionBasedDeformProcessor::doVolumeDeform2Tunnel(float degree, float deg
 
 	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volume->volumeCudaOri.content, cd));
 	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volumeCudaIntermediate->content));
-	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, lastTunnelStart, lastTunnelEnd, volume->spacing, degreeClose, deformationScale, deformationScaleVertical, lastDeformationDirVertical);
+	d_deformVolume_CuboidModel << <gridSize, blockSize >> >(size, lastTunnelStart, lastTunnelEnd, volume->spacing, degreeClose, deformationScale, deformationScaleVertical, lastDeformationDirVertical);
 	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
 
 	checkCudaErrors(cudaBindTextureToArray(volumeTexInput, volumeCudaIntermediate->content, cd));
 	checkCudaErrors(cudaBindSurfaceToArray(volumeSurfaceOut, volume->volumeCuda.content));
-	d_updateVolumebyMatrixInfo_rect << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir); //this function is not changed for time varying particle data yet
+	d_deformVolume_CuboidModel << <gridSize, blockSize >> >(size, tunnelStart, tunnelEnd, volume->spacing, degree, deformationScale, deformationScaleVertical, rectVerticalDir); //this function is not changed for time varying particle data yet
 
 	checkCudaErrors(cudaUnbindTexture(volumeTexInput));
 
@@ -434,11 +505,11 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		//old method
 		float step = 1;
 		tunnelStart = centerPoint;
-		while (!inRange(tunnelStart) || atProperLocationInOriData(tunnelStart, true)){
+		while (!inRange(tunnelStart) || atProperLocation(tunnelStart, true)){
 			tunnelStart += tunnelAxis*step;
 		}
 		tunnelEnd = tunnelStart + tunnelAxis*step;
-		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd, true)){
+		while (inRange(tunnelEnd) && !atProperLocation(tunnelEnd, true)){
 			tunnelEnd += tunnelAxis*step;
 		}
 
@@ -512,11 +583,11 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		//old method
 		float step = 1;
 		tunnelEnd = centerPoint + tunnelAxis*step;
-		while (inRange(tunnelEnd) && !atProperLocationInOriData(tunnelEnd, true)){
+		while (inRange(tunnelEnd) && !atProperLocation(tunnelEnd, true)){
 			tunnelEnd += tunnelAxis*step;
 		}
 		tunnelStart = centerPoint;
-		while (inRange(tunnelStart) && !atProperLocationInOriData(tunnelStart, true)){
+		while (inRange(tunnelStart) && !atProperLocation(tunnelStart, true)){
 			tunnelStart -= tunnelAxis*step;
 		}
 
@@ -679,10 +750,14 @@ __global__ void d_checkIfTooCloseToPoly(float3 pos, uint* indices, int faceCoord
 	return;
 }
 
-bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos, bool useOriData)
+bool PositionBasedDeformProcessor::atProperLocation(float3 pos, bool useOriData)
 {
+	if (!inRange(pos)){
+		return true;
+	}
+
 	if (!useOriData){
-		if (lastDataState == DEFORMED){
+		if (lastDataState != ORIGINAL && lastDataState != CLOSING){
 			//first check if inside the deform frame	
 			float3 tunnelVec = normalize(tunnelEnd - tunnelStart);
 			float tunnelLength = length(tunnelEnd - tunnelStart);
@@ -766,81 +841,6 @@ bool PositionBasedDeformProcessor::atProperLocationInOriData(float3 pos, bool us
 }
 
 
-bool PositionBasedDeformProcessor::atProperLocationInDeformedData(float3 pos)
-{
-
-	if (lastDataState == DEFORMED){ 
-		//first check if inside the deform frame	
-		float3 tunnelVec = normalize(tunnelEnd - tunnelStart);
-		float tunnelLength = length(tunnelEnd - tunnelStart);
-		float3 n = normalize(cross(rectVerticalDir, tunnelVec));
-		float3 voxelVec = pos - tunnelStart;
-		float l = dot(voxelVec, tunnelVec);
-		if (l >= 0 && l <= tunnelLength){
-			float l2 = dot(voxelVec, rectVerticalDir);
-			if (abs(l2) < deformationScaleVertical){
-				float l3 = dot(voxelVec, n);
-				if (abs(l3) < deformationScale / 2){
-					return true;
-				}
-			}
-		}
-	}
-	else{
-		std::cout << "should not use atProperLocationInDeformedData function !!!" << std::endl;
-		exit(0);
-	}
-
-	if (dataType == VOLUME){
-		cudaChannelFormatDesc channelFloat4 = cudaCreateChannelDesc<float4>();
-		checkCudaErrors(cudaBindTextureToArray(transferTex2, rcp->d_transferFunc, channelFloat4));
-
-		bool* d_atProper;
-		cudaMalloc(&d_atProper, sizeof(bool)* 1);
-		cudaChannelFormatDesc cd2 = volume->volumeCudaOri.channelDesc;
-		checkCudaErrors(cudaBindTextureToArray(volumePointTexture, volume->volumeCuda.content, cd2));
-
-		d_posInSafePositionOfVolume << <1, 1 >> >(pos, volume->size, volume->spacing, d_atProper, densityThr, checkRadius);
-		bool atProper;
-		cudaMemcpy(&atProper, d_atProper, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
-		cudaFree(d_atProper);
-		return atProper;
-	}
-	else if (dataType == MESH){
-
-		bool* d_tooCloseToData;
-		cudaMalloc(&d_tooCloseToData, sizeof(bool)* 1);
-		cudaMemset(d_tooCloseToData, 0, sizeof(bool)* 1);
-
-		int threadsPerBlock = 64;
-		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
-
-
-		d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords, disThr, d_tooCloseToData);
-
-		bool tooCloseToData;
-		cudaMemcpy(&tooCloseToData, d_tooCloseToData, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
-		cudaFree(d_tooCloseToData);
-		return !tooCloseToData;
-
-	}
-	else if (dataType == PARTICLE){
-		float init = 10000;
-		float inSavePosition =
-			thrust::transform_reduce(
-			d_vec_posTarget.begin(),
-			d_vec_posTarget.end(),
-			functor_dis(pos),
-			init,
-			thrust::minimum<float>());
-		return (inSavePosition > disThr);
-	}
-	else{
-		std::cout << " in data not implemented " << std::endl;
-		exit(0);
-	}
-
-}
 
 
 __global__ void d_disturbVertex(float* vertexCoords, int vertexcount,
@@ -1102,14 +1102,20 @@ void PositionBasedDeformProcessor::deformDataByDegree(float r)
 void PositionBasedDeformProcessor::deformDataByDegree2Tunnel(float r, float rClose)
 {
 	if (dataType == VOLUME){
-		doVolumeDeform2Tunnel(r, rClose);
+		if (shapeModel == CUBOID){
+			doVolumeDeform2Tunnel(r, rClose);
+		}
+		else{
+			std::cout << " deformDataByDegree2Tunnel not implemented " << std::endl;
+			exit(0);
+		}
 	}
 	else if (dataType == MESH){
 	}
 	else if (dataType == PARTICLE){
 	}
 	else{
-		std::cout << " inRange not implemented " << std::endl;
+		std::cout << " deformDataByDegree2Tunnel not implemented " << std::endl;
 		exit(0);
 	}
 
@@ -1136,6 +1142,19 @@ void PositionBasedDeformProcessor::resetData()
 }
 
 
+bool PositionBasedDeformProcessor::sameTunnel(){
+	if (shapeModel == CUBOID){
+		float thr = 0.0001;
+		return length(lastTunnelStart - tunnelStart) < thr	&& length(lastTunnelEnd - tunnelEnd) < thr && length(lastDeformationDirVertical - rectVerticalDir) < thr;
+	}
+	else{
+		std::cout << " sameTunnel not implemented " << std::endl;
+		return false;
+	}
+
+}
+
+//isForceDeform is not supported yet
 bool PositionBasedDeformProcessor::process(float* modelview, float* projection, int winWidth, int winHeight)
 {
 	if (!isActive)
@@ -1144,168 +1163,131 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 	float3 eyeInLocal = matrixMgr->getEyeInLocal();
 
 	if (lastDataState == ORIGINAL){
-		if (isForceDeform){
-			//if (lastEyeState != inWall){
-			lastDataState = DEFORMED;
-			//lastEyeState = inWall;
-
+		if (!atProperLocation(eyeInLocal, true)){
+			lastDataState = OPENING;
 			computeTunnelInfo(eyeInLocal);
+			tunnelTimer1.init(outTime, 0);
 
 			if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
 				modifyPolyMesh();
 			}
 
-			//start a opening animation
-			hasOpenAnimeStarted = true;
-			hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
-			startOpen = std::clock();
-			//}
-			//else if (lastEyeState == inWall){
-			//from wall to wall
-			//}
-		}
-		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal, true)){	// in solid area
-			// in this case, set the start of deformation
-			if (lastEyeState != inWall){
-				lastDataState = DEFORMED;
-				lastEyeState = inWall;
-
-				computeTunnelInfo(eyeInLocal);
-
-				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-					modifyPolyMesh();
-				}
-
-				//start a opening animation
-				hasOpenAnimeStarted = true;
-				hasCloseAnimeStarted = false; //currently if there is closing procedure for other tunnels, they are finished suddenly
-				startOpen = std::clock();
-			}
-			else if (lastEyeState == inWall){
-				//from wall to wall
-			}
-		}
-		else{
-			// either eyeInLocal is out of range, or eyeInLocal is at proper location
-			//in this case, no state change
 		}
 	}
-	else{ //lastDataState == Deformed
-		if (isForceDeform){
-
+	else if (lastDataState == OPENING){
+		if (tunnelTimer1.out()){
+			lastDataState = DEFORMED;
+			tunnelTimer1.end();
+			r = deformationScale / 2; //reset r
 		}
-		else if (inRange(eyeInLocal) && !atProperLocationInOriData(eyeInLocal, true)){
-			//in area which is solid in the original volume
-			bool atProper = atProperLocationInDeformedData(eyeInLocal);
-			if (atProper){
-				// not in the solid region in the deformed volume
-				// in this case, no change
+		else{
+			if (atProperLocation(eyeInLocal, true)){
+				lastDataState = CLOSING;			
+				float passed = tunnelTimer1.getTime();
+				tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
 			}
-			else{
-				//std::cout <<"Triggered "<< lastDataState << " " << lastEyeState << " " << hasOpenAnimeStarted << " " << hasCloseAnimeStarted << std::endl;
-				//even in the deformed volume, eye is still inside the solid region 
-				//eye should just move to a solid region
-
-
-				sdkResetTimer(&timer);
-				sdkStartTimer(&timer);
-
-				sdkResetTimer(&timerFrame);
-
-				fpsCount = 0;
-
-				lastOpenFinalDegree = closeStartingRadius;
-				lastDeformationDirVertical = rectVerticalDir;
-				lastTunnelStart = tunnelStart;
-				lastTunnelEnd = tunnelEnd;
-
-				computeTunnelInfo(eyeInLocal);
-
-				hasOpenAnimeStarted = true;//start a opening animation
-				hasCloseAnimeStarted = true; //since eye should just moved to the current solid, the previous solid should be closed 
-				startOpen = std::clock();
+			else if (!atProperLocation(eyeInLocal, false)){
+				lastDataState = MIXING;
+				float passed = tunnelTimer1.getTime();
+				tunnelTimer2.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));			
+				tunnelTimer1.init(outTime, 0);
 			}
 		}
-		else{// in area which is proper in the original volume
-			hasCloseAnimeStarted = true;
-			hasOpenAnimeStarted = false;
-			startClose = std::clock();
-
+	}
+	else if (lastDataState == CLOSING){
+		if (tunnelTimer1.out()){
 			lastDataState = ORIGINAL;
-			lastEyeState = inCell;
+			tunnelTimer1.end();
+			r = 0; //reset r
+			resetData();
 		}
-	}
-
-	if (hasOpenAnimeStarted && hasCloseAnimeStarted){
-		//std::cout << "processing as wanted" << std::endl;
-		float rClose;
-		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
-		if (past >= totalDuration){
-			r = deformationScale / 2;
-			hasOpenAnimeStarted = false;
-			hasCloseAnimeStarted = false;
-
-			sdkStopTimer(&timer);
-			std::cout << "Mixed animation fps: " << fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f) << std::endl;
-
-			sdkStopTimer(&timer);
-			std::cout << "Mixed animation cost each frame: " << sdkGetAverageTimerValue(&timerFrame) << " ms" << std::endl;
-		}
-		else{
-			sdkStartTimer(&timerFrame);
-			fpsCount++;
-
-			r = past / totalDuration*deformationScale / 2;
-			if (past >= closeDuration){
-				hasCloseAnimeStarted = false;
-				rClose = 0;
-				deformDataByDegree(r);
+		else if (!atProperLocation(eyeInLocal, true)){	
+			storeCurrentTunnel();
+			computeTunnelInfo(eyeInLocal);
+			if (sameTunnel()){
+				lastDataState = OPENING;
+				float passed = tunnelTimer1.getTime();
+				tunnelTimer1.init(outTime, outTime - passed);
 			}
 			else{
-				rClose = (1 - past / closeDuration)*closeStartingRadius;
-				//doVolumeDeform2Tunnel(r, rClose);  //TO BE IMPLEMENTED
-				deformDataByDegree2Tunnel(r, rClose);
+				lastDataState = MIXING;
+				//tunnelTimer2 = tunnelTimer1;//cannot assign in this way!!!
+				tunnelTimer2.init(outTime, tunnelTimer1.getTime());
+				tunnelTimer1.init(outTime, 0);
 			}
-
-			sdkStopTimer(&timerFrame);
 		}
 	}
-	else if (hasOpenAnimeStarted){
-
-		double past = (std::clock() - startOpen) / (double)CLOCKS_PER_SEC;
-		if (past >= totalDuration){
-			r = deformationScale / 2;
-			hasOpenAnimeStarted = false;
-			//closeStartingRadius = r;
-			closeDuration = totalDuration;//or else closeDuration may be less than totalDuration
+	else if (lastDataState == MIXING){
+		if (tunnelTimer1.out() && tunnelTimer2.out()){
+			lastDataState = DEFORMED;
+			tunnelTimer1.end();
+			tunnelTimer2.end();
+			r = deformationScale / 2; //reset r
+		}
+		else if (atProperLocation(eyeInLocal, true)){
+			//tunnelTimer2 may not have been out() yet, but here ignore the 2nd tunnel
+			lastDataState = CLOSING;
+			float passed = tunnelTimer1.getTime();
+			tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
 		}
 		else{
-			r = past / totalDuration*deformationScale / 2;
-			deformDataByDegree(r);
-			closeStartingRadius = r;
-			closeDuration = past;
+			//new mixture or old mixture. todo
 		}
+	}
+	else if (lastDataState == DEFORMED){
+		if (atProperLocation(eyeInLocal, true)){
+			lastDataState = CLOSING;
+			float passed = tunnelTimer1.getTime();
+			tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
+		}
+		else if (!atProperLocation(eyeInLocal, false)){
+			storeCurrentTunnel();
+			computeTunnelInfo(eyeInLocal);
+			lastDataState = MIXING;
+			tunnelTimer2.init(outTime, 0);
+			tunnelTimer1.init(outTime, 0);
+		}
+	}
+	else{
+		std::cout << "STATE NOT DEFINED" << std::endl;
+		exit(0);
+	}
 
+	
+	if (lastDataState == MIXING){
+		if (tunnelTimer2.out()){
+			r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+			deformDataByDegree(r);
+			std::cout << "doing mixinig with r: " << r << " and 0"<< std::endl;
+		}
+		else{
+			if (tunnelTimer1.out()){
+				std::cout << "impossible combination!" << std::endl;
+				exit(0);
+			}
+			else{
+				float rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+				float rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
+				deformDataByDegree2Tunnel(rOpen, rClose);
+				std::cout << "doing mixinig with r: " << rOpen << " and " << rClose << std::endl;
+			}
+		}
+	}
+	else if (lastDataState == OPENING){
+		r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+		deformDataByDegree(r);
 		std::cout << "doing openning with r: " << r << std::endl;
-
 	}
-	else if (hasCloseAnimeStarted){
-		//std::cout << "doing closing" << std::endl;
-
-		double past = (std::clock() - startClose) / (double)CLOCKS_PER_SEC;
-		if (past >= closeDuration){
-			resetData();
-			hasCloseAnimeStarted = false;
-			r = 0;
-		}
-		else{
-			r = (1 - past / closeDuration)*closeStartingRadius;
-			deformDataByDegree(r);
-		}
+	else if (lastDataState == CLOSING){
+		r = (1 - tunnelTimer1.getTime() / outTime) * deformationScale / 2;
+		deformDataByDegree(r);
+		std::cout << "doing closing with r: " << r << std::endl;
 	}
 
 	return false;
 }
+
+
 
 
 void PositionBasedDeformProcessor::InitCudaSupplies()

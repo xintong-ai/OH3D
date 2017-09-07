@@ -1583,12 +1583,12 @@ void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
 
 	if (useCliping){
 		d_render_immer_withClipping << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation,
-			pd->tunnelStart, pd->tunnelEnd, pd->rectVerticalDir, pd->r, pd->deformationScale, pd->deformationScaleVertical);
+			pd->getTunnelStart(), pd->getTunnelEnd(), pd->getRectVerticalDir(), pd->r, pd->getDeformationScale(), pd->getDeformationScaleVertical());
 	}
 	else if (usePreInt){
 		if (pd->isColoringDeformedPart){ //care!! pd must be non-0 here
 			d_render_preint_coloringDeformedElement << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation,
-				pd->tunnelStart, pd->tunnelEnd, pd->rectVerticalDir, pd->r, pd->deformationScale, pd->deformationScaleVertical);
+				pd->getTunnelStart(), pd->getTunnelEnd(), pd->getRectVerticalDir(), pd->r, pd->getDeformationScale(), pd->getDeformationScaleVertical());
 		}
 		else{
 			d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation);

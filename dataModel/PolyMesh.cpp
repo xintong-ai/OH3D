@@ -6,16 +6,20 @@
 using namespace std;
 
 PolyMesh::~PolyMesh(){
-	if (vertexCoords) delete[]vertexCoords;
-	if (vertexNorms) delete[]vertexNorms;
-	if (indices) delete[]indices;
-	if (vertexCoordsOri) delete[]vertexCoordsOri;
-	if (vertexNormsOri) delete[]vertexNormsOri;
-	if (indicesOri) delete[]indicesOri;
+	if (vertexCoords){
+		delete[]vertexCoords; vertexCoords = 0;
+	}
+	if (vertexNorms){ delete[]vertexNorms; vertexNorms = 0; }
+	if (indices){
+		delete[]indices; indices = 0;
+	}
+	if (vertexCoordsOri) { delete[]vertexCoordsOri; vertexCoordsOri = 0; }
+	if (vertexNormsOri){ delete[]vertexNormsOri; vertexNormsOri = 0; }
+	if (indicesOri){ delete[]indicesOri; indicesOri = 0; }
 
-	if (vertexDeviateVals) delete[]vertexDeviateVals;
+	if (vertexDeviateVals){ delete[]vertexDeviateVals; vertexDeviateVals = 0; }
 
-	if (vertexColorVals) delete[]vertexColorVals;
+	if (vertexColorVals){ delete[]vertexColorVals; vertexColorVals = 0; }
 }
 
 

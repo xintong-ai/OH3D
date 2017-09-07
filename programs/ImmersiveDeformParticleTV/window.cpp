@@ -161,11 +161,10 @@ Window::Window()
 	openGL->AddProcessor("1ForTV", tvParticleDeformerManager.get());
 	openGL->AddProcessor("2positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
-	positionBasedDeformProcessor->deformationScale = 10;
-	positionBasedDeformProcessor->deformationScaleVertical = 14;
+	positionBasedDeformProcessor->setDeformationScale(10);
+	positionBasedDeformProcessor->setDeformationScaleVertical(14);
 
-	positionBasedDeformProcessor->totalDuration = 1.5;
-	positionBasedDeformProcessor->closeDuration = 1.5;
+	positionBasedDeformProcessor->setOutTime(1.5);
 
 	//////////////////////////////// Renderable ////////////////////////////////	
 

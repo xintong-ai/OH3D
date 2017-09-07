@@ -45,6 +45,7 @@ set( Srcs
 		DeformFrameRenderable.cpp
 		TraceRenderable.cpp
 		SliceRenderable.cpp
+		#MarchingCube.cu
 	)
 set( Hdrs  
 	glwidget.h 
@@ -70,6 +71,7 @@ set( Hdrs
 	#InfoGuideRenderable.h
 		DeformFrameRenderable.h
 		TraceRenderable.h
+		#MarchingCube.h
 	)
 
 if(USE_TEEM)

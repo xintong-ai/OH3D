@@ -30,6 +30,7 @@ class DeformFrameRenderable;
 class GlyphRenderable;
 class PolyRenderable;
 class PolyMesh;
+class MarchingCube2;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -95,11 +96,11 @@ private:
 private:
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
-	QLabel *laLabel, *ldLabel, *lsLabel;
-	QLabel *transFuncP1Label, *transFuncP2Label, *transFuncP1SecondLabel, *transFuncP2SecondLabel, *brLabel, *dsLabel;
-	QLabel *deformForceLabel;
-	QLabel *meshResLabel;
+
+	std::shared_ptr<MarchingCube2> mc;
 	QLineEdit *eyePosLineEdit;
+
+	QLabel *isoValueLabel;
 
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
@@ -116,6 +117,8 @@ private:
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);
+	
+	void isoValueSliderValueChanged(int v);
 
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();

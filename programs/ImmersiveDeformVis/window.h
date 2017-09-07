@@ -123,6 +123,10 @@ private:
 	std::shared_ptr<QRadioButton> oriVolumeRb;
 	std::shared_ptr<QRadioButton> surfaceRb;
 
+	std::shared_ptr<QRadioButton> circularRb;
+	std::shared_ptr<QRadioButton> cuboidRb;
+	std::shared_ptr<QRadioButton> physicallyRb;
+
 	std::shared_ptr<QRadioButton> originalRb;
 	std::shared_ptr<QRadioButton> deformRb;
 	std::shared_ptr<QRadioButton> clipRb;
@@ -131,6 +135,7 @@ private:
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
+	void addRayCastingInterfaces(QGroupBox *);
 private slots:
 	
 	void SlotSaveState();
@@ -154,10 +159,16 @@ private slots:
 	void isDeformColoringEnabledClicked(bool b);
 	void isForceDeformEnabledClicked(bool b);
 
+
+	void SlotCircularRb(bool b);
+	void SlotCuboidRb(bool b);
+	void SlotPhysicallyRb(bool b);
+
+
+	void SlotTranspRb(bool b);
 	void SlotOriginalRb(bool b);
 	void SlotDeformRb(bool b);
 	void SlotClipRb(bool b);
-	void SlotTranspRb(bool b);
 
 	void SlotOriVolumeRb(bool);
 	void SlotSurfaceRb(bool);

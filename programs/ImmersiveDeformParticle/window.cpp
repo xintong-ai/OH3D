@@ -107,8 +107,8 @@ Window::Window()
 
 		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
-		positionBasedDeformProcessor->deformationScale = 10;
-		positionBasedDeformProcessor->deformationScaleVertical = 14;
+		positionBasedDeformProcessor->setDeformationScale(10);
+		positionBasedDeformProcessor->setDeformationScaleVertical(14);
 	}
 
 

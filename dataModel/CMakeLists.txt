@@ -21,6 +21,7 @@ set(SRCS Volume.cpp Particle.cpp GLMatrixManager.cpp
 	AnimationByMatrixProcessor.cpp Trace.cpp
 	PolyMesh.cpp
 	TimeVaryingParticleDeformerManager.cpp
+	MarchingCube2.cpp
 	)
 set(HDRS Volume.h Particle.h
  Processor.h 
@@ -31,11 +32,20 @@ set(HDRS Volume.h Particle.h
 	myDefineRayCasting.h
 	PolyMesh.h Trace.h
 	TimeVaryingParticleDeformerManager.h
+	MarchingCube2.h
 )
 add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 
 target_link_libraries(${PROJECT_NAME} 
 	Qt5::Widgets  
 	)
+
+
+
+if(USE_VTK)
+	find_package(VTK REQUIRED)
+	include(${VTK_USE_FILE}) 
+	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
+endif()
 
 endif()

@@ -149,7 +149,7 @@ Window::Window()
 	positionBasedDeformProcessor->rcp = rcp;
 	positionBasedDeformProcessor->densityThr = densityThr;
 	positionBasedDeformProcessor->checkRadius = checkRadius;
-	positionBasedDeformProcessor->deformationScale = 15;
+	//positionBasedDeformProcessor->getDeformationScale() = 15;
 
 	//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 	//animationByMatrixProcessor->setViews(views);
@@ -225,6 +225,26 @@ Window::Window()
 	controlLayout->addWidget(isDeformColoringEnabled);
 	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 
+
+
+
+	QGroupBox *groupBoxShapeModes = new QGroupBox(tr("deformation shape modes"));
+	QHBoxLayout *shapeModeLayout = new QHBoxLayout;
+	circularRb = std::make_shared<QRadioButton>(tr("&Circular"));
+	cuboidRb = std::make_shared<QRadioButton>(tr("&Cuboid"));
+	physicallyRb = std::make_shared<QRadioButton>(tr("&Physically"));
+
+	cuboidRb->setChecked(true);
+	shapeModeLayout->addWidget(circularRb.get());
+	shapeModeLayout->addWidget(cuboidRb.get());
+	shapeModeLayout->addWidget(physicallyRb.get());
+	groupBoxShapeModes->setLayout(shapeModeLayout);
+	controlLayout->addWidget(groupBoxShapeModes);
+	connect(circularRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotCircularRb(bool)));
+	connect(cuboidRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotCuboidRb(bool)));
+	connect(physicallyRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotPhysicallyRb(bool)));
+
+
 	QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
 	QHBoxLayout *orModeLayout = new QHBoxLayout;
 	originalRb = std::make_shared<QRadioButton>(tr("&original"));
@@ -245,13 +265,14 @@ Window::Window()
 	connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));
 
 
+
+
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
 	controlLayout->addWidget(saveScreenBtn);
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
 
 
-	///////////////ray casting settings
 	QCheckBox* usePreIntCB = new QCheckBox("Use Pre-Integrate", this);
 	usePreIntCB->setChecked(volumeRenderable->usePreInt);
 	controlLayout->addWidget(usePreIntCB);
@@ -261,6 +282,137 @@ Window::Window()
 	useSplineInterpolationCB->setChecked(volumeRenderable->useSplineInterpolation);
 	controlLayout->addWidget(useSplineInterpolationCB);
 	connect(useSplineInterpolationCB, SIGNAL(clicked(bool)), this, SLOT(useSplineInterpolationCBClicked(bool)));
+
+	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
+	addRayCastingInterfaces(rcGroupBox);
+//	controlLayout->addWidget(rcGroupBox);
+
+	controlLayout->addStretch();
+
+	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
+	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
+
+
+
+	//////////////////////////miniature
+	QVBoxLayout *assistLayout = new QVBoxLayout;
+	QLabel *miniatureLabel = new QLabel("miniature");
+	//assistLayout->addWidget(miniatureLabel);
+
+	openGLMini = std::make_shared<GLWidget>(matrixMgrExocentric);
+
+	QSurfaceFormat format2;
+	format2.setDepthBufferSize(24);
+	format2.setStencilBufferSize(8);
+	format2.setVersion(2, 0);
+	format2.setProfile(QSurfaceFormat::CoreProfile);
+	openGLMini->setFormat(format2);
+
+	////////////////////2D slice view
+	helper.setData(inputVolume, 0);
+
+	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
+	assistLayout->addWidget(openGL2D, 0);
+	QTimer *timer = new QTimer(this);
+	connect(timer, &QTimer::timeout, openGL2D, &GLWidgetQtDrawing::animate);
+	timer->start(5);
+
+	QLabel *zSliderLabelLit = new QLabel("Z index: ");
+	QSlider *zSlider = new QSlider(Qt::Horizontal);
+	zSlider->setRange(0, inputVolume->size.z - 1);
+	zSlider->setValue(helper.z);
+	connect(zSlider, SIGNAL(valueChanged(int)), this, SLOT(zSliderValueChanged(int)));
+	QHBoxLayout *zLayout = new QHBoxLayout;
+	zLayout->addWidget(zSliderLabelLit);
+	zLayout->addWidget(zSlider);
+	assistLayout->addLayout(zLayout);
+
+	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
+	assistLayout->addWidget(doTourBtn);
+	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
+
+	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
+	QHBoxLayout *eyePosLayout = new QHBoxLayout;
+	QVBoxLayout *eyePosLayout2 = new QVBoxLayout;
+	QLabel *eyePosxLabel = new QLabel("x");
+	QLabel *eyePosyLabel = new QLabel("y");
+	QLabel *eyePoszLabel = new QLabel("z");
+	eyePosLineEdit = new QLineEdit;
+	QPushButton *eyePosBtn = new QPushButton("Apply");
+	eyePosLayout->addWidget(eyePosxLabel);
+	eyePosLayout->addWidget(eyePosyLabel);
+	eyePosLayout->addWidget(eyePoszLabel);
+	eyePosLayout->addWidget(eyePosLineEdit);
+	eyePosLayout2->addLayout(eyePosLayout);
+	eyePosLayout2->addWidget(eyePosBtn);
+	eyePosGroup->setLayout(eyePosLayout2);
+	assistLayout->addWidget(eyePosGroup);
+	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
+
+
+	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
+	QHBoxLayout *deformModeLayout = new QHBoxLayout;
+	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
+	surfaceRb = std::make_shared<QRadioButton>(tr("&surface"));
+	oriVolumeRb->setChecked(true);
+	deformModeLayout->addWidget(oriVolumeRb.get());
+	deformModeLayout->addWidget(surfaceRb.get());
+	groupBox->setLayout(deformModeLayout);
+	assistLayout->addWidget(groupBox);
+	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
+	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
+
+	oriVolumeRb->setDisabled(true);
+	surfaceRb->setDisabled(true);
+
+
+	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
+	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
+	immerRb = std::make_shared<QRadioButton>(tr("&immersive mode"));
+	nonImmerRb = std::make_shared<QRadioButton>(tr("&non immer"));
+	immerRb->setChecked(true);
+	deformModeLayout2->addWidget(immerRb.get());
+	deformModeLayout2->addWidget(nonImmerRb.get());
+	groupBox2->setLayout(deformModeLayout2);
+	assistLayout->addWidget(groupBox2);
+	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
+	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
+
+
+	mainLayout->addLayout(assistLayout, 1);
+	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
+
+
+
+	//openGL->setFixedSize(1000, 1000);
+	//openGLMini->setFixedSize(300, 300);
+	openGL->setFixedSize(600, 600);
+
+	mainLayout->addWidget(openGL.get(), 5);
+	mainLayout->addLayout(controlLayout, 1);
+	setLayout(mainLayout);
+
+
+#ifdef USE_OSVR
+	vrWidget = std::make_shared<VRWidget>(matrixMgr);
+	vrWidget->setWindowFlags(Qt::Window);
+	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
+
+	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
+	immersiveInteractor->noMoveMode = true;
+
+
+	openGL->SetVRWidget(vrWidget.get());
+	vrVolumeRenderable->rcp = rcp;
+#endif
+
+}
+
+
+void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
+{
+	///////////////ray casting settings
+
 
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
 	//controlLayout->addWidget(transFuncP1SliderLabelLit);
@@ -366,9 +518,7 @@ Window::Window()
 	transFuncP2SecondLayout->addWidget(transFuncP2SecondLabelSlider);
 	transFuncP2SecondLayout->addWidget(transFuncP2SecondLabel);
 
-	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
 	QVBoxLayout *rcLayout = new QVBoxLayout;
-	rcLayout->addWidget(usePreIntCB);
 	rcLayout->addWidget(transFuncP1SliderLabelLit);
 	rcLayout->addLayout(transFuncP1Layout);
 	rcLayout->addWidget(transFuncP2SliderLabelLit);
@@ -388,132 +538,7 @@ Window::Window()
 	rcLayout->addLayout(transFuncP1SecondLayout);
 	rcLayout->addWidget(transFuncP2SecondSliderLabelLit);
 	rcLayout->addLayout(transFuncP2SecondLayout);
-
-	controlLayout->addWidget(rcGroupBox);
-
-	controlLayout->addStretch();
-
-	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
-	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
-
-
-
-	//////////////////////////miniature
-	QVBoxLayout *assistLayout = new QVBoxLayout;
-	QLabel *miniatureLabel = new QLabel("miniature");
-	//assistLayout->addWidget(miniatureLabel);
-
-	openGLMini = std::make_shared<GLWidget>(matrixMgrExocentric);
-
-	QSurfaceFormat format2;
-	format2.setDepthBufferSize(24);
-	format2.setStencilBufferSize(8);
-	format2.setVersion(2, 0);
-	format2.setProfile(QSurfaceFormat::CoreProfile);
-	openGLMini->setFormat(format2);
-
-	////////////////////2D slice view
-	helper.setData(inputVolume, 0);
-
-	GLWidgetQtDrawing *openGL2D = new GLWidgetQtDrawing(&helper, this);
-	assistLayout->addWidget(openGL2D, 0);
-	QTimer *timer = new QTimer(this);
-	connect(timer, &QTimer::timeout, openGL2D, &GLWidgetQtDrawing::animate);
-	timer->start(5);
-
-	QLabel *zSliderLabelLit = new QLabel("Z index: ");
-	QSlider *zSlider = new QSlider(Qt::Horizontal);
-	zSlider->setRange(0, inputVolume->size.z - 1);
-	zSlider->setValue(helper.z);
-	connect(zSlider, SIGNAL(valueChanged(int)), this, SLOT(zSliderValueChanged(int)));
-	QHBoxLayout *zLayout = new QHBoxLayout;
-	zLayout->addWidget(zSliderLabelLit);
-	zLayout->addWidget(zSlider);
-	assistLayout->addLayout(zLayout);
-
-	QPushButton *doTourBtn = new QPushButton("Do the Animation Tour");
-	assistLayout->addWidget(doTourBtn);
-	connect(doTourBtn, SIGNAL(clicked()), this, SLOT(doTourBtnClicked()));
-
-	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
-	QHBoxLayout *eyePosLayout = new QHBoxLayout;
-	QVBoxLayout *eyePosLayout2 = new QVBoxLayout;
-	QLabel *eyePosxLabel = new QLabel("x");
-	QLabel *eyePosyLabel = new QLabel("y");
-	QLabel *eyePoszLabel = new QLabel("z");
-	eyePosLineEdit = new QLineEdit;
-	QPushButton *eyePosBtn = new QPushButton("Apply");
-	eyePosLayout->addWidget(eyePosxLabel);
-	eyePosLayout->addWidget(eyePosyLabel);
-	eyePosLayout->addWidget(eyePoszLabel);
-	eyePosLayout->addWidget(eyePosLineEdit);
-	eyePosLayout2->addLayout(eyePosLayout);
-	eyePosLayout2->addWidget(eyePosBtn);
-	eyePosGroup->setLayout(eyePosLayout2);
-	assistLayout->addWidget(eyePosGroup);
-	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
-
-
-	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
-	surfaceRb = std::make_shared<QRadioButton>(tr("&surface"));
-	oriVolumeRb->setChecked(true);
-	deformModeLayout->addWidget(oriVolumeRb.get());
-	deformModeLayout->addWidget(surfaceRb.get());
-	groupBox->setLayout(deformModeLayout);
-	assistLayout->addWidget(groupBox);
-	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(surfaceRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSurfaceRb(bool)));
-
-	oriVolumeRb->setDisabled(true);
-	surfaceRb->setDisabled(true);
-
-
-	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
-	immerRb = std::make_shared<QRadioButton>(tr("&immersive mode"));
-	nonImmerRb = std::make_shared<QRadioButton>(tr("&non immer"));
-	immerRb->setChecked(true);
-	deformModeLayout2->addWidget(immerRb.get());
-	deformModeLayout2->addWidget(nonImmerRb.get());
-	groupBox2->setLayout(deformModeLayout2);
-	assistLayout->addWidget(groupBox2);
-	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
-	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
-
-
-	mainLayout->addLayout(assistLayout, 1);
-	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
-
-
-
-	openGL->setFixedSize(1000, 1000);
-	//openGLMini->setFixedSize(300, 300);
-	//openGL->setFixedSize(600, 600);
-
-	mainLayout->addWidget(openGL.get(), 5);
-	mainLayout->addLayout(controlLayout, 1);
-	setLayout(mainLayout);
-
-
-#ifdef USE_OSVR
-	vrWidget = std::make_shared<VRWidget>(matrixMgr);
-	vrWidget->setWindowFlags(Qt::Window);
-	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
-
-	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	immersiveInteractor->noMoveMode = true;
-
-
-	openGL->SetVRWidget(vrWidget.get());
-	vrVolumeRenderable->rcp = rcp;
-#endif
-
 }
-
-
-
 
 
 
@@ -683,6 +708,39 @@ void  Window::SlotTranspRb(bool b)
 {
 	//to be done later
 }
+
+
+void  Window::SlotCircularRb(bool b)
+{
+	if (positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE)){
+	}
+	else{
+		if (positionBasedDeformProcessor->getShapeModel() == SHAPE_MODEL::CUBOID){
+			cuboidRb->setChecked(true);
+		}
+		else if (positionBasedDeformProcessor->getShapeModel() == SHAPE_MODEL::PHYSICALLY){
+			physicallyRb->setChecked(true);
+		}
+	}
+}
+void  Window::SlotCuboidRb(bool b)
+{
+	if (positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CUBOID)){
+	}
+	else{
+		if (positionBasedDeformProcessor->getShapeModel() == SHAPE_MODEL::CIRCLE){
+			circularRb->setChecked(true);
+		}
+		else if (positionBasedDeformProcessor->getShapeModel() == SHAPE_MODEL::PHYSICALLY){
+			physicallyRb->setChecked(true);
+		}
+	}
+}
+void  Window::SlotPhysicallyRb(bool b)
+{
+	//to be done later
+}
+
 
 void Window::SlotOriVolumeRb(bool b)
 {
