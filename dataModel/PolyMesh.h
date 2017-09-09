@@ -97,6 +97,9 @@ public:
 		else if (std::string(dataPath).find("moortgat") != std::string::npos){
 			disThr = 2.1; //in a minimal case, this number should be no less than sqrt(3)/2
 		}
+		else if (std::string(dataPath).find("testDummy") != std::string::npos){
+			disThr = 4;
+		}	
 		else{
 			std::cout << "poly data name not recognized" << std::endl;
 			exit(0);
@@ -106,7 +109,7 @@ public:
 
 	bool justChanged = false;
 	std::shared_ptr<PolyMesh> newPoly;
-
+	void createTestDummy();
 private:
 	float cx, cy, cz;
 	float min_x, max_x, min_y, max_y, min_z, max_z;

@@ -240,3 +240,63 @@ void PolyMesh::createByCombiningPolyMeshes(std::vector<std::shared_ptr<PolyMesh>
 
 	find_center_and_range();
 }
+
+
+void PolyMesh::createTestDummy()
+{
+	vertexcount = 60;
+	facecount = 60;
+
+	vertexCoords = new float[3 * vertexcount];
+	vertexNorms = new float[3 * vertexcount];
+	vertexCoords[3 * 0] = 0;
+	vertexCoords[3 * 0 + 1] = 0;
+	vertexCoords[3 * 0 + 2] = 0;
+	vertexCoords[3 * 1] = 20;
+	vertexCoords[3 * 1 + 1] = 0;
+	vertexCoords[3 * 1 + 2] = 0;
+	vertexCoords[3 * 2] = 10;
+	vertexCoords[3 * 2 + 1] = 0;
+	vertexCoords[3 * 2 + 2] = 10;
+	vertexCoords[3 * 3] = 0;
+	vertexCoords[3 * 3 + 1] = -1;
+	vertexCoords[3 * 3 + 2] = 20;
+	vertexCoords[3 * 4] = 20;
+	vertexCoords[3 * 4 + 1] = -1;
+	vertexCoords[3 * 4 + 2] = 20;
+	vertexCoords[3 * 5] = 10;
+	vertexCoords[3 * 5 + 1] = -1;
+	vertexCoords[3 * 5 + 2] = -10;
+	for (int i = 6; i < vertexcount; i++) {
+		vertexCoords[3 * i] = 0;
+		vertexCoords[3 * i + 1] = 0;
+		vertexCoords[3 * i + 2] = 0;
+	}
+	for (int i = 0; i < vertexcount; i++) {
+		vertexNorms[3 * i] = 0;
+		vertexNorms[3 * i + 1] = -1;
+		vertexNorms[3 * i + 2] = 0;
+	}
+
+	indices = new unsigned[3 * facecount];
+	indices[3 * 0] = 0;
+	indices[3 * 0 + 1] = 1;
+	indices[3 * 0 + 2] = 2;
+	indices[3 * 1] = 0;
+	indices[3 * 1 + 1] = 2;
+	indices[3 * 1 + 2] = 3;
+	indices[3 * 2] = 1;
+	indices[3 * 2 + 1] = 4;
+	indices[3 * 2 + 2] = 2;
+	indices[3 * 3] = 0;
+	indices[3 * 3 + 1] = 5;
+	indices[3 * 3 + 2] = 1;
+	for (int i = 4; i < facecount; i++) {
+		indices[3 * i] = 0;
+		indices[3 * i + 1] = 0;
+		indices[3 * i + 2] = 0;
+	}
+	
+	find_center_and_range();
+
+}

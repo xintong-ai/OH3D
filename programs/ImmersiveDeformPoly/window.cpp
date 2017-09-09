@@ -92,14 +92,17 @@ Window::Window()
 		PolyMesh::dataParameters(polyDataPath, disThr);
 
 		polyMesh = std::make_shared<PolyMesh>();
-		if (std::string(polyDataPath).find(".vti") != std::string::npos){
+		if (std::string(polyDataPath).find("testDummy") != std::string::npos){
+			polyMesh->createTestDummy();
+		}
+		else if (std::string(polyDataPath).find(".vti") != std::string::npos){
 
 			std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
 					
 			//std::shared_ptr<MarchingCube> mc = std::make_shared<MarchingCube>(inputVolume, polyMesh);
 			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.001);
-
+			useIsoAdjust = true;
 		}
 		else if(std::string(polyDataPath).find(".ply") != std::string::npos){
 			PlyVTKReader plyVTKReader;
@@ -129,6 +132,8 @@ Window::Window()
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
+	////matrixMgr->moveEyeInLocalByModeMat(make_float3(5,-10, 5)); //for test with testDummy
+
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -151,7 +156,7 @@ Window::Window()
 	positionBasedDeformProcessor->setDeformationScale(2);
 	positionBasedDeformProcessor->setDeformationScaleVertical(2.5);
 
-
+	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
@@ -256,18 +261,18 @@ Window::Window()
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
 
-
-	QLabel *transFuncP1SliderLabelLit = new QLabel("Iso Value");
-	QSlider *isoValueSlider = new QSlider(Qt::Horizontal);
-	isoValueSlider->setRange(0, 38); //0-0.0038
-	isoValueSlider->setValue(mc->isoValue / 0.0001);
-	connect(isoValueSlider, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged(int)));
-	isoValueLabel = new QLabel(QString::number(mc->isoValue));
-	QHBoxLayout *isoValueSliderLayout = new QHBoxLayout;
-	isoValueSliderLayout->addWidget(isoValueSlider);
-	isoValueSliderLayout->addWidget(isoValueLabel);
-	controlLayout->addLayout(isoValueSliderLayout);
-
+	if (useIsoAdjust){
+		QLabel *transFuncP1SliderLabelLit = new QLabel("Iso Value");
+		QSlider *isoValueSlider = new QSlider(Qt::Horizontal);
+		isoValueSlider->setRange(0, 38); //0-0.0038
+		isoValueSlider->setValue(mc->isoValue / 0.0001);
+		connect(isoValueSlider, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged(int)));
+		isoValueLabel = new QLabel(QString::number(mc->isoValue));
+		QHBoxLayout *isoValueSliderLayout = new QHBoxLayout;
+		isoValueSliderLayout->addWidget(isoValueSlider);
+		isoValueSliderLayout->addWidget(isoValueLabel);
+		controlLayout->addLayout(isoValueSliderLayout);
+	}
 
 
 

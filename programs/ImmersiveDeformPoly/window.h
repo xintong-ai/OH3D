@@ -55,7 +55,7 @@ public:
 	void init();
 
 private:
-
+	bool useIsoAdjust = false;
 	std::vector<float3> views;
 
 	//std::shared_ptr<RayCastingParameters> rcp;

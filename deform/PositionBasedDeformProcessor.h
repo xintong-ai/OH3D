@@ -16,6 +16,8 @@ enum SYSTEM_STATE { ORIGINAL, DEFORMED, OPENING, CLOSING, MIXING };
 enum DEFORMED_DATA_TYPE { VOLUME, MESH, PARTICLE };
 enum SHAPE_MODEL { CIRCLE, CUBOID, PHYSICALLY };
 
+#define MAX_CIRCLE_INTERACT 10
+
 
 class TunnelTimer
 {
@@ -83,14 +85,14 @@ public:
 
 
 	bool setOutTime(float v){
-		if (lastDataState == ORIGINAL) { outTime = v * 1000; return true; }
+		if (systemState == ORIGINAL) { outTime = v * 1000; return true; }
 		else{ return false; }
 	}
 
 	//shape model
 	SHAPE_MODEL getShapeModel(){ return shapeModel; }
 	bool setShapeModel(SHAPE_MODEL s){
-		if (lastDataState == ORIGINAL) { shapeModel = s; return true; }
+		if (systemState == ORIGINAL) { shapeModel = s; return true; }
 		else{ return false; }
 	}
 
@@ -100,11 +102,11 @@ public:
 	float getDeformationScaleVertical(){ return deformationScaleVertical; }
 	float getDeformationScale(){ return deformationScale; }
 	bool setDeformationScale(float v){
-		if (lastDataState == ORIGINAL) { deformationScale = v; return true; }
+		if (systemState == ORIGINAL) { deformationScale = v; return true; }
 		else{ return false; }
 	}
 	bool setDeformationScaleVertical(float v){
-		if (lastDataState == ORIGINAL) { deformationScaleVertical = v; return true; }
+		if (systemState == ORIGINAL) { deformationScaleVertical = v; return true; }
 		else{ return false; }
 	}
 
@@ -126,19 +128,23 @@ public:
 	~PositionBasedDeformProcessor(){
 		sdkDeleteTimer(&timer);
 		sdkDeleteTimer(&timerFrame);
-		if (d_vertexCoords) cudaFree(d_vertexCoords);
-		if (d_norms) cudaFree(d_norms);
-		if (d_vertexCoords_init) cudaFree(d_vertexCoords_init);
-		if (d_indices) cudaFree(d_indices);
-		if (d_numAddedFaces) cudaFree(d_numAddedFaces);
-		if (d_vertexDeviateVals) cudaFree(d_vertexDeviateVals);
-		if (d_vertexColorVals) cudaFree(d_vertexColorVals);
+		if (d_vertexCoords) { cudaFree(d_vertexCoords); d_vertexCoords = 0; };
+		if (d_vertexCoords_init){ cudaFree(d_vertexCoords_init); d_vertexCoords_init = 0; };
+		if (d_indices){ cudaFree(d_indices); d_indices = 0; };
+		if (d_norms){ cudaFree(d_norms); d_norms = 0; };
+		if (d_vertexDeviateVals){ cudaFree(d_vertexDeviateVals); d_vertexDeviateVals = 0; };
+		if (d_vertexColorVals) { cudaFree(d_vertexColorVals); d_vertexColorVals = 0; };
+		if (d_numAddedFaces){ cudaFree(d_numAddedFaces); d_numAddedFaces = 0; };
 
+		if (d_intersectedTris){ cudaFree(d_intersectedTris); d_intersectedTris = 0; };
+		if (d_neighborIdsOfIntersectedTris){ cudaFree(d_neighborIdsOfIntersectedTris); d_neighborIdsOfIntersectedTris = 0; };
 	};
+
+
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
 
 private:
-	SYSTEM_STATE lastDataState = ORIGINAL;
+	SYSTEM_STATE systemState = ORIGINAL;
 	DEFORMED_DATA_TYPE dataType = VOLUME;
 	SHAPE_MODEL shapeModel = CUBOID;
 
@@ -156,7 +162,7 @@ private:
 		lastDeformationDirVertical = rectVerticalDir;
 	}
 	//circle
-	float radius = 10;
+	float radius = 8;
 
 	float deformationScale = 5; // for rect, the width of opening
 	float deformationScaleVertical = 7; // for rectangular, it is the other side length
@@ -169,8 +175,18 @@ private:
 	float* d_norms = 0;
 	float* d_vertexDeviateVals = 0;
 	float* d_vertexColorVals = 0;
-
 	int* d_numAddedFaces = 0;
+
+	unsigned int* d_intersectedTris = 0;
+	int* d_neighborIdsOfIntersectedTris = 0;
+
+	void initIntersectionInfoForCircleAndPoly(){
+		cudaMalloc(&d_intersectedTris, sizeof(unsigned int)*MAX_CIRCLE_INTERACT);
+		cudaMalloc(&d_neighborIdsOfIntersectedTris, sizeof(int)* 3 * MAX_CIRCLE_INTERACT);
+		std::vector<int> temp(MAX_CIRCLE_INTERACT * 3, -1);
+		cudaMemcpy(d_neighborIdsOfIntersectedTris, &(temp[0]), sizeof(int)* 3 * MAX_CIRCLE_INTERACT, cudaMemcpyHostToDevice);
+	}
+
 
 	void modifyPolyMesh();
 
@@ -195,7 +211,8 @@ private:
 
 
 	
-	void InitCudaSupplies();
+	void PrepareDataStructureForVolumeDeform();
+	void PrepareDataStructureForPolyDeform();
 
 	void doVolumeDeform(float degree);
 	void doVolumeDeform2Tunnel(float degree, float degreeClose);

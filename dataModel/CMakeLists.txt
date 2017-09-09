@@ -20,7 +20,7 @@ set(SRCS Volume.cpp Particle.cpp GLMatrixManager.cpp
 	LabelVolumeProcessor.cpp
 	AnimationByMatrixProcessor.cpp Trace.cpp
 	PolyMesh.cpp
-	TimeVaryingParticleDeformerManager.cpp
+	#TimeVaryingParticleDeformerManager.cpp #temporarily to speed up for testing...
 	MarchingCube2.cpp
 	)
 set(HDRS Volume.h Particle.h
@@ -31,7 +31,7 @@ set(HDRS Volume.h Particle.h
 	MatrixManager.h
 	myDefineRayCasting.h
 	PolyMesh.h Trace.h
-	TimeVaryingParticleDeformerManager.h
+	#TimeVaryingParticleDeformerManager.h
 	MarchingCube2.h
 )
 add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
