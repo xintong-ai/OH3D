@@ -317,7 +317,8 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glUniformMatrix3fv(curGlProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
 
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	if (useWireFrame)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	if (centerBasedRendering){
 		ka = make_float3(0.2f, 0, 0);
@@ -368,7 +369,8 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 		glDrawElements(GL_TRIANGLES, polyMesh->facecount * 3, GL_UNSIGNED_INT, polyMesh->indices);
 	}
 
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	if (useWireFrame)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	//glBindVertexArray(0);
 	m_vao->release();

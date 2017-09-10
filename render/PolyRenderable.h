@@ -20,6 +20,7 @@ public:
 
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;//may not be a good design
 
+	bool useWireFrame = false;
 
 	void init() override;
 

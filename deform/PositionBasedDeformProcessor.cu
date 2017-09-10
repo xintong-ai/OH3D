@@ -77,30 +77,48 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyM
 	dataType = MESH;
 	//minPos and maxPos need to be set externally
 
-	initIntersectionInfoForCircleAndPoly();
 };
 
 void PositionBasedDeformProcessor::PrepareDataStructureForPolyDeform()
 {
-	if (d_vertexCoords) { cudaFree(d_vertexCoords); d_vertexCoords = 0; };
-	if (d_vertexCoords_init){ cudaFree(d_vertexCoords_init); d_vertexCoords_init = 0; };
-	if (d_indices){ cudaFree(d_indices); d_indices = 0; };
-	if (d_norms){ cudaFree(d_norms); d_norms = 0; };
-	if (d_vertexDeviateVals){ cudaFree(d_vertexDeviateVals); d_vertexDeviateVals = 0; };
-	if (d_vertexColorVals) { cudaFree(d_vertexColorVals); d_vertexColorVals = 0; };
-	if (d_numAddedFaces){ cudaFree(d_numAddedFaces); d_numAddedFaces = 0; };
+	//if (d_vertexCoords) { cudaFree(d_vertexCoords); d_vertexCoords = 0; };
+	//if (d_vertexCoords_init){ cudaFree(d_vertexCoords_init); d_vertexCoords_init = 0; };
+	//if (d_indices){ cudaFree(d_indices); d_indices = 0; };
+	//if (d_norms){ cudaFree(d_norms); d_norms = 0; };
+	//if (d_vertexDeviateVals){ cudaFree(d_vertexDeviateVals); d_vertexDeviateVals = 0; };
+	//if (d_vertexColorVals) { cudaFree(d_vertexColorVals); d_vertexColorVals = 0; };
+	//if (d_numAddedFaces){ cudaFree(d_numAddedFaces); d_numAddedFaces = 0; };
 
-	//NOTE!! here doubled the space. Hopefully it is large enough
-	cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 * 2);
-	cudaMalloc(&d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3 * 2);
-	cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3 * 2);
-	cudaMalloc(&d_norms, sizeof(float)*poly->vertexcount * 3 * 2);
-	cudaMalloc(&d_vertexDeviateVals, sizeof(float)*poly->vertexcount * 2);
-	cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2);
-	cudaMalloc(&d_numAddedFaces, sizeof(int));
 
+	////NOTE!! here doubled the space. Hopefully it is large enough
+	//cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 * 2);
+	//cudaMalloc(&d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3 * 2);
+	//cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3 * 2);
+	//cudaMalloc(&d_norms, sizeof(float)*poly->vertexcount * 3 * 2);
+	//cudaMalloc(&d_vertexDeviateVals, sizeof(float)*poly->vertexcount * 2);
+	//cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2);
+	//cudaMalloc(&d_numAddedFaces, sizeof(int));
+
+	if (!d_vertexCoords) { cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 * 2); };
+	if (!d_vertexCoords_init){ cudaMalloc(&d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3 * 2); };
+	if (!d_indices){ cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3 * 2); };
+	if (!d_indices_init){ cudaMalloc(&d_indices_init, sizeof(unsigned int)*poly->facecount * 3 * 2); };
+	if (!d_norms){ cudaMalloc(&d_norms, sizeof(float)*poly->vertexcount * 3 * 2); };
+	if (!d_vertexDeviateVals){ cudaMalloc(&d_vertexDeviateVals, sizeof(float)*poly->vertexcount * 2); };
+	if (!d_vertexColorVals) { cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2); };
+	if (!d_numAddedFaces){ cudaMalloc(&d_numAddedFaces, sizeof(int)); };
+
+
+	cudaMemcpy(d_vertexCoords, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_vertexCoords_init, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_indices_init, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_norms, poly->vertexNorms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
+	cudaMemset(d_vertexDeviateVals, 0, sizeof(float)*poly->vertexcount * 2);
+	cudaMemcpy(d_vertexColorVals, poly->vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyHostToDevice);
+	cudaMemset(d_numAddedFaces, 0, sizeof(int));
+
+	prepareIntersectionInfoForCircleAndPoly();
 }
 
 void PositionBasedDeformProcessor::polyMeshDataUpdated()
@@ -145,7 +163,7 @@ void PositionBasedDeformProcessor::resetData()
 	}
 	else if (dataType == MESH){
 		poly->reset();
-		PrepareDataStructureForPolyDeform();
+		PrepareDataStructureForPolyDeform(); //must do it once now, since 
 	}
 	else if (dataType == PARTICLE){
 		particle->reset();
@@ -586,7 +604,271 @@ __device__ inline void setNew(float* vertexCoords, float3 pos)
 	*(vertexCoords + 2) = pos.z;
 }
 
-__global__ void d_disturbVertex_CircleModel(float* vertexCoords, unsigned int* indices, int facecount, float3 start, float3 end)
+
+__global__ void d_disturbVertices_CircleModel(float* vertexCoords, unsigned int* indices, int vertexcount, float3 start, float3 end)
+//if a vertex or an egde is too close to the cutting axis, then disturb it a little to avoid numerical error
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= vertexcount)	return;
+
+	float3 pos = make_float3(vertexCoords[3 * i], vertexCoords[3 * i + 1], vertexCoords[3 * i + 2]);
+
+	float3 tunnelVec = normalize(end - start);
+	float tunnelLength = length(end - start);
+
+	float thr = 0.0001;
+	float disturb = 0.0002;
+
+	float3 voxelVec = pos - start;
+	float l = dot(voxelVec, tunnelVec);
+	if (l > 0 && l < tunnelLength){
+		float3 prjPoint = start + l*tunnelVec;
+		float dis = length(pos - prjPoint);
+
+		//when dis==0 , disturb the vertex a little to avoid numerical error
+		if (dis < thr){
+			float3 ref = make_float3(0, 0, 1);
+			float3 disturbVec;
+			if (abs(dot(ref, tunnelVec)) < 0.9){
+				disturbVec = normalize(cross(ref, tunnelVec))*disturb;
+			}
+			else{
+				disturbVec = normalize(cross(make_float3(0, 1, 0), tunnelVec))*disturb;
+			}
+
+			pos += disturbVec;
+
+			vertexCoords[3 * i] = pos.x;
+			vertexCoords[3 * i + 1] = pos.y;
+			vertexCoords[3 * i + 2] = pos.z;
+		}
+	}
+	return;
+
+}
+
+
+__global__ void d_disturbEdges_CircleModel(float* vertexCoords, unsigned int* indices, int facecount, float3 start, float3 end, float *d_tt)
+//if a vertex or an egde is too close to the cutting axis, then disturb it a little to avoid numerical error
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= facecount)	return;
+	uint3 inds = make_uint3(indices[3 * i], indices[3 * i + 1], indices[3 * i + 2]);
+	float3 v1 = make_float3(vertexCoords[3 * inds.x], vertexCoords[3 * inds.x + 1], vertexCoords[3 * inds.x + 2]);
+	float3 v2 = make_float3(vertexCoords[3 * inds.y], vertexCoords[3 * inds.y + 1], vertexCoords[3 * inds.y + 2]);
+	float3 v3 = make_float3(vertexCoords[3 * inds.z], vertexCoords[3 * inds.z + 1], vertexCoords[3 * inds.z + 2]);
+
+	float thr = 0.0001;
+	float disturb = 0.0002;
+	float3 tunnelVec = normalize(end - start);
+
+	//suppose any 2 points of the triangle are not overlapping
+	float dis12 = length(v2 - v1);
+	float3 l12 = normalize(v2 - v1);
+	float dis23 = length(v3 - v2);
+	float3 l23 = normalize(v3 - v2);
+	float dis31 = length(v1 - v3);
+	float3 l31 = normalize(v1 - v3);
+
+	//https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+	float3 triNormal = normalize(cross(l12, l31));
+	bool isPara = abs(dot(tunnelVec, triNormal)) < 0.000001;
+	float dis_startToIntersectionPoint = dot(v1 - start, triNormal) / (isPara ? 0.000001 : dot(tunnelVec, triNormal));
+	bool hasIntersect = (!isPara) && dis_startToIntersectionPoint > 0 && dis_startToIntersectionPoint < length(end - start);
+	if (!hasIntersect){
+		d_tt[i] = 2;
+		return;
+	}
+
+	float3 intersect = start + dis_startToIntersectionPoint * tunnelVec;
+	bool isInside = false;
+	float numericalThr = 0.000001;
+	//if (dot(cross(l12, -l31), cross(l12, intersect - v1)) >= 0){
+	//	if (dot(cross(l23, -l12), cross(l23, intersect - v2)) >= 0){
+	//		if (dot(cross(l31, -l23), cross(l31, intersect - v3)) >= 0){
+	if (dot(cross(l12, -l31), cross(l12, intersect - v1)) >= -numericalThr){
+		if (dot(cross(l23, -l12), cross(l23, intersect - v2)) >= -numericalThr){
+			if (dot(cross(l31, -l23), cross(l31, intersect - v3)) >= -numericalThr){
+				isInside = true;
+			}
+		}
+	}
+	if (!isInside){
+		d_tt[i] = 1;
+		return;
+	}
+
+	d_tt[i] = 3;
+	{
+		float3 prjOn12 = v1 + dot(intersect - v1, l12) * l12;
+		float disTo12 = length(intersect - prjOn12);
+		if (disTo12 < thr){ //<= numericalThr){//== 0){
+			float3 refVec = make_float3(0, 0, 1);
+			//make sure the refVec and the edge are not perpendicular
+			if (abs(dot(refVec, l12)) < 0.01){
+				refVec = make_float3(0, 1, 0);
+			}
+			if (abs(dot(refVec, l12)) < 0.01){
+				refVec = make_float3(1, 0, 0);
+			}
+
+			//make sure the edge is pointing to the same direction as the refVec
+			float3 vEgde = l12;
+			if (dot(refVec, vEgde) < 0){
+				vEgde = -vEgde;
+			}
+			float3 disturbVec = normalize(cross(vEgde, tunnelVec))*disturb;
+			
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			return;
+		}
+		else if (disTo12 < thr){
+			float3 disturbVec = normalize(prjOn12 - intersect)*disturb;
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			return;
+		}
+	}
+	{
+		float3 prjOn23 = v2 + dot(intersect - v2, l23) * l23;
+		float disTo23 = length(intersect - prjOn23);
+		if (disTo23 < thr){ // <= numericalThr){// == 0){
+			float3 refVec = make_float3(0, 0, 1);
+			//make sure the refVec and the edge are not perpendicular
+			if (abs(dot(refVec, l23)) < 0.01){
+				refVec = make_float3(0, 1, 0);
+			}
+			if (abs(dot(refVec, l23)) < 0.01){
+				refVec = make_float3(1, 0, 0);
+			}
+
+			//make sure the edge is pointing to the same direction as the refVec
+			float3 vEgde = l23;
+			if (dot(refVec, vEgde) < 0){
+				vEgde = -vEgde;
+			}
+			float3 disturbVec = normalize(cross(vEgde, tunnelVec))*disturb;
+
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			return;
+		}
+		else if (disTo23 < thr){
+			float3 disturbVec = normalize(prjOn23 - intersect)*disturb;
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			return;
+		}
+	}
+
+	{
+		float3 prjOn31 = v3 + dot(intersect - v3, l31) * l31;
+		float disTo31 = length(intersect - prjOn31);
+		if (disTo31 < thr){ //<= numericalThr){//== 0){
+			float3 refVec = make_float3(0, 0, 1);
+			//make sure the refVec and the edge are not perpendicular
+			if (abs(dot(refVec, l31)) < 0.01){
+				refVec = make_float3(0, 1, 0);
+			}
+			if (abs(dot(refVec, l31)) < 0.01){
+				refVec = make_float3(1, 0, 0);
+			}
+
+			//make sure the edge is pointing to the same direction as the refVec
+			float3 vEgde = l31;
+			if (dot(refVec, vEgde) < 0){
+				vEgde = -vEgde;
+			}
+			float3 disturbVec = normalize(cross(vEgde, tunnelVec))*disturb;
+
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			return;
+		}
+		else if (disTo31 < thr){
+			float3 disturbVec = normalize(prjOn31 - intersect)*disturb;
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			return;
+		}
+	}
+
+
+
+	/*{
+		float3 prjOn12 = v1 + dot(intersect - v1, l12) * l12;
+		float disTo12 = length(intersect - prjOn12);
+		if (disTo12 == 0){
+			float3 disturbVec;
+			if (abs(dot(make_float3(0, 0, 1), tunnelVec)) < 0.9){
+				disturbVec = normalize(cross(make_float3(0, 0, 1), tunnelVec))*disturb;
+			}
+			else{
+				disturbVec = normalize(cross(make_float3(0, 1, 0), tunnelVec))*disturb;
+			}
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			return;
+		}
+		else if (disTo12 < thr){
+			float3 disturbVec = normalize(prjOn12 - intersect)*disturb;
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			return;
+		}
+	}
+
+	{
+		float3 prjOn23 = v2 + dot(intersect - v2, l23) * l23;
+		float disTo23 = length(intersect - prjOn23);
+		if (disTo23 == 0){
+			float3 disturbVec;
+			if (abs(dot(make_float3(0, 0, 1), tunnelVec)) < 0.9){
+				disturbVec = normalize(cross(make_float3(0, 0, 1), tunnelVec))*disturb;
+			}
+			else{
+				disturbVec = normalize(cross(make_float3(0, 1, 0), tunnelVec))*disturb;
+			}
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			return;
+		}
+		else if (disTo23 < thr){
+			float3 disturbVec = normalize(prjOn23 - intersect)*disturb;
+			setNew(vertexCoords + 3 * inds.y, v2 + disturbVec);
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			return;
+		}
+	}
+
+	{
+		float3 prjOn31 = v3 + dot(intersect - v3, l31) * l31;
+		float disTo31 = length(intersect - prjOn31);
+		if (disTo31 == 0){
+			float3 disturbVec;
+			if (abs(dot(make_float3(0, 0, 1), tunnelVec)) < 0.9){
+				disturbVec = normalize(cross(make_float3(0, 0, 1), tunnelVec))*disturb;
+			}
+			else{
+				disturbVec = normalize(cross(make_float3(0, 1, 0), tunnelVec))*disturb;
+			}
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			return;
+		}
+		else if (disTo31 < thr){
+			float3 disturbVec = normalize(prjOn31 - intersect)*disturb;
+			setNew(vertexCoords + 3 * inds.z, v3 + disturbVec);
+			setNew(vertexCoords + 3 * inds.x, v1 + disturbVec);
+			return;
+		}
+	}*/
+
+	return;
+}
+
+__global__ void d_disturb_CircleModel(float* vertexCoords, unsigned int* indices, int facecount, float3 start, float3 end)
 //if a vertex or an egde is too close to the cutting axis, then disturb it a little to avoid numerical error
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -827,7 +1109,7 @@ __device__ float3 d_intersectPoint(float3 o, float3 d, float3 a, float3 b) //get
 
 	float3 v1 = o - a;
 	float3 v2 = b - a;
-	if (abs(dot(normalize(v2), d)) > 0.999999){
+	if (abs(dot(normalize(v2), d)) > 0.99999999){
 		return make_float3(-1000, -1000, -1000);
 	}
 
@@ -836,7 +1118,7 @@ __device__ float3 d_intersectPoint(float3 o, float3 d, float3 a, float3 b) //get
 	return o + d*t1;
 }
 
-__global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, int* numAddedFaces, int* numAddedVertices, float* vertexColorVals, unsigned int* intersectedTris, int* neighborIdsOfIntersectedTris, int numIntersectTris)
+__global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, int* numAddedFaces, int* numAddedVertices, float* vertexColorVals, unsigned int* intersectedTris, int* neighborIdsOfIntersectedTris, int numIntersectTris, int* minThr)
 {
 	//now the point is inside of the triangle. Due to the distrubance, it is supposed to be far enough from the 3 edges and vertices of the triangle
 
@@ -921,6 +1203,11 @@ __global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsi
 	float3 nNewToOld[3] = { normalize(v1 - intersect), normalize(v2 - intersect), normalize(v3 - intersect) };
 	float angles[3] = { acosf(dot(nNewToOld[0], nNewToOld[1])), acosf(dot(nNewToOld[1], nNewToOld[2])), acosf(dot(nNewToOld[2], nNewToOld[0])) };
 	float rotateMat[3][9];
+
+	float halfRotateAngles[3] = { angles[0] / (RESOLU + 1.0) / 2.0, angles[1] / (RESOLU + 1.0) / 2.0, angles[2] / (RESOLU + 1.0) / 2.0 };
+	float minArcRatio = cosf(min(min(halfRotateAngles[0], halfRotateAngles[1]), halfRotateAngles[2]));
+	int minArcRatioInt = minArcRatio * 1000000;
+	atomicMin(minThr, minArcRatioInt);
 
 	for (int j = 0; j < 3; j++){
 		for (int jj = 1; jj <= RESOLU; jj++){
@@ -1240,14 +1527,14 @@ __global__ void d_modifyMeshKernel_CuboidModel(float* vertexCoords, unsigned int
 
 void PositionBasedDeformProcessor::modifyPolyMesh()
 {
-	cudaMemcpy(d_vertexCoords, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_norms, poly->vertexNorms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
+	//cudaMemcpy(d_vertexCoords, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
+	//cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
+	//cudaMemcpy(d_norms, poly->vertexNorms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 
-	cudaMemset(d_vertexDeviateVals, 0, sizeof(float)*poly->vertexcount * 2);
-	cudaMemcpy(d_vertexColorVals, poly->vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyHostToDevice);
+	//cudaMemset(d_vertexDeviateVals, 0, sizeof(float)*poly->vertexcount * 2);
+	//cudaMemcpy(d_vertexColorVals, poly->vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyHostToDevice);
 
-	cudaMemset(d_numAddedFaces, 0, sizeof(int));
+	//cudaMemset(d_numAddedFaces, 0, sizeof(int));
 
 	if (shapeModel == CUBOID){
 		int threadsPerBlock = 64;
@@ -1256,9 +1543,32 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 			tunnelStart, tunnelEnd, deformationScaleVertical, rectVerticalDir);
 	}
 	else if (shapeModel == CIRCLE){
+		//int threadsPerBlock = 64;
+		//int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
+		//d_disturb_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, tunnelStart, tunnelEnd);
 		int threadsPerBlock = 64;
-		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
-		d_disturbVertex_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, tunnelStart, tunnelEnd);
+		int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
+		d_disturbVertices_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->vertexcount, tunnelStart, tunnelEnd);
+
+
+		float *d_tt;
+		cudaMalloc(&d_tt, sizeof(float)* poly->facecountOri);
+		cudaMemset(d_tt, 0, sizeof(float)*poly->facecountOri);
+
+
+
+		threadsPerBlock = 64;
+		blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
+		d_disturbEdges_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecount, tunnelStart, tunnelEnd, d_tt);
+
+
+
+		std::vector<float> xxx(poly->facecountOri, 0);
+		cudaMemcpy(&(xxx[0]), d_tt, sizeof(float)* poly->facecountOri, cudaMemcpyDeviceToHost);
+		int y = 9;
+		y++;
+
+
 	}
 
 
@@ -1266,7 +1576,7 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	int numAddedVertices;
 	if (shapeModel == CUBOID){
 		int threadsPerBlock = 64;
-		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock; 
+		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
 		d_modifyMeshKernel_CuboidModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, poly->vertexcountOri, d_norms,
 			tunnelStart, tunnelEnd, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir,
 			d_numAddedFaces, d_vertexColorVals);
@@ -1288,7 +1598,7 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 		cudaMemcpy(&numIntersectTris, d_numIntersectTris, sizeof(int), cudaMemcpyDeviceToHost);
 		std::cout << "num of Intersect Triangles: " << numIntersectTris << std::endl;
 		if (numIntersectTris > MAX_CIRCLE_INTERACT){
-			std::cout << "too many Intersect Triangles "<< std::endl;
+			std::cout << "too many Intersect Triangles " << std::endl;
 			exit(0);
 		}
 
@@ -1301,21 +1611,29 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 		std::vector<int> l_neighborIdsOfIntersectedTris(MAX_CIRCLE_INTERACT * 3, -1);
 		cudaMemcpy(&(l_neighborIdsOfIntersectedTris[0]), d_neighborIdsOfIntersectedTris, sizeof(int)* 3 * MAX_CIRCLE_INTERACT, cudaMemcpyDeviceToHost);
 
-		
-
 
 		int *d_numAddedVertices;
 		cudaMalloc(&d_numAddedVertices, sizeof(int));
 		cudaMemset(d_numAddedVertices, 0, sizeof(int));
+
+		int *d_minThr; //using int because cuda atomicMin() does not suppport float?
+		cudaMalloc(&d_minThr, sizeof(int));
+		int temp = 10000000;
+		cudaMemcpy(d_minThr, &temp, sizeof(int), cudaMemcpyHostToDevice);
+
+
 		threadsPerBlock = 16;
 		blocksPerGrid = (numIntersectTris + threadsPerBlock - 1) / threadsPerBlock;
-		d_modifyMeshKernel_CircledModel_round3 << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, poly->vertexcountOri, d_norms, tunnelStart, tunnelEnd, d_numAddedFaces, d_numAddedVertices, d_vertexColorVals, d_intersectedTris, d_neighborIdsOfIntersectedTris, numIntersectTris);
+		d_modifyMeshKernel_CircledModel_round3 << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecountOri, poly->vertexcountOri, d_norms, tunnelStart, tunnelEnd, d_numAddedFaces, d_numAddedVertices, d_vertexColorVals, d_intersectedTris, d_neighborIdsOfIntersectedTris, numIntersectTris, d_minThr);
 		cudaMemcpy(&numAddedFaces, d_numAddedFaces, sizeof(int), cudaMemcpyDeviceToHost);
 		cudaMemcpy(&numAddedVertices, d_numAddedVertices, sizeof(int), cudaMemcpyDeviceToHost);
 		std::cout << "added new face count " << numAddedFaces << std::endl;
 		std::cout << "added new vertice count " << numAddedVertices << std::endl;
 
+		cudaMemcpy(&temp, d_minThr, sizeof(int), cudaMemcpyDeviceToHost);
 
+		circleThr = temp * 1.0 / 1000000 * 0.95; //0.95 is a selected parameter
+		std::cout << "circleThr: " << circleThr << std::endl;
 
 
 		if (numAddedVertices > 0){
@@ -1327,10 +1645,7 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 		}
 
 		cudaFree(d_numAddedVertices);
-
 		cudaFree(d_numIntersectTris);
-
-
 	}
 
 	poly->facecount += numAddedFaces;
@@ -1348,7 +1663,17 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	cudaMemcpy(poly->vertexColorVals, d_vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
 
 	cudaMemcpy(d_vertexCoords_init, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+
+	int d1 = poly->facecountOri, d2 = poly->facecountOri + RESOLU + 1 + RESOLU, d3 = poly->facecountOri + 2 * (RESOLU + 1 + RESOLU);
+	intersect = (
+		make_float3(poly->vertexCoords[3 * d1], poly->vertexCoords[3 * d1 + 1], poly->vertexCoords[3 * d1 + 2]) +
+		make_float3(poly->vertexCoords[3 * d2], poly->vertexCoords[3 * d2 + 1], poly->vertexCoords[3 * d2 + 2]) +
+		make_float3(poly->vertexCoords[3 * d3], poly->vertexCoords[3 * d3 + 1], poly->vertexCoords[3 * d3 + 2])) / 3;
+	usedFaceCount = poly->facecount;
+	usedVertexCount = poly->vertexcount;
+	cudaMemcpy(d_indices_init, d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToDevice);
 }
+
 
 
 
@@ -1393,6 +1718,495 @@ __global__ void d_deformPolyMesh_CuboidModel(float* vertexCoords_init, float* ve
 				vertexDeviateVals[i] = length(newPos - pos) / (deformationScale / 2); //value range [0,1]
 			}
 		}
+	}
+
+	return;
+}
+
+
+
+
+//http://geomalgorithms.com/a07-_distance.html#dist3D_Segment_to_Segment
+__device__ float4 dist3D_Segment_to_Segment(float3 S1_0, float3 S1_1, float3 S2_0, float3 S2_1) //return (closest point on S2, plus the closest distance)
+{
+	float SMALL_NUM = 0.00000001;
+	float3   u = S1_1 - S1_0;
+	float3   v = S2_1 - S2_0;
+	float3   w = S1_0 - S2_0;
+	float    a = dot(u, u);         // always >= 0
+	float    b = dot(u, v);
+	float    c = dot(v, v);         // always >= 0
+	float    d = dot(u, w);
+	float    e = dot(v, w);
+	float    D = a*c - b*b;        // always >= 0
+	float    sc, sN, sD = D;       // sc = sN / sD, default sD = D >= 0
+	float    tc, tN, tD = D;       // tc = tN / tD, default tD = D >= 0
+
+	// compute the line parameters of the two closest points
+	if (D < SMALL_NUM) { // the lines are almost parallel
+		sN = 0.0;         // force using point P0 on segment S1
+		sD = 1.0;         // to prevent possible division by 0.0 later
+		tN = e;
+		tD = c;
+	}
+	else {                 // get the closest points on the infinite lines
+		sN = (b*e - c*d);
+		tN = (a*e - b*d);
+		if (sN < 0.0) {        // sc < 0 => the s=0 edge is visible
+			sN = 0.0;
+			tN = e;
+			tD = c;
+		}
+		else if (sN > sD) {  // sc > 1  => the s=1 edge is visible
+			sN = sD;
+			tN = e + b;
+			tD = c;
+		}
+	}
+
+	if (tN < 0.0) {            // tc < 0 => the t=0 edge is visible
+		tN = 0.0;
+		// recompute sc for this edge
+		if (-d < 0.0)
+			sN = 0.0;
+		else if (-d > a)
+			sN = sD;
+		else {
+			sN = -d;
+			sD = a;
+		}
+	}
+	else if (tN > tD) {      // tc > 1  => the t=1 edge is visible
+		tN = tD;
+		// recompute sc for this edge
+		if ((-d + b) < 0.0)
+			sN = 0;
+		else if ((-d + b) > a)
+			sN = sD;
+		else {
+			sN = (-d + b);
+			sD = a;
+		}
+	}
+	// finally do the division to get sc and tc
+	sc = (abs(sN) < SMALL_NUM ? 0.0 : sN / sD);
+	tc = (abs(tN) < SMALL_NUM ? 0.0 : tN / tD);
+
+	// get the difference of the two closest points
+	float3   dP = w + (sc * u) - (tc * v);  // =  S1(sc) - S2(tc)
+
+	//return length(dP);   // return the closest distance
+	return make_float4(S2_0 + (tc * v), length(dP));
+}
+//===================================================================
+
+
+__global__ void d_checkEdge_afterDeformPolyMeshByCircleModel(float* vertexCoords, unsigned int * indices, int facecount, 	float3 start, float3 end, float r, float circleThr, int4* errorEdgeInfo, float3* closestPoint) //errorEdgeInfo:(faceid, edgevertex1, edgevertex2)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= facecount)	return;
+
+	uint3 inds = make_uint3(indices[3 * i], indices[3 * i + 1], indices[3 * i + 2]);
+	float3 v1 = make_float3(vertexCoords[3 * inds.x], vertexCoords[3 * inds.x + 1], vertexCoords[3 * inds.x + 2]);
+	float3 v2 = make_float3(vertexCoords[3 * inds.y], vertexCoords[3 * inds.y + 1], vertexCoords[3 * inds.y + 2]);
+	float3 v3 = make_float3(vertexCoords[3 * inds.z], vertexCoords[3 * inds.z + 1], vertexCoords[3 * inds.z + 2]);
+
+	float3 tunnelVec = normalize(end - start);
+	float tunnelLength = length(end - start);
+
+	{
+		float3 sToP1 = v1 - start, sToP2 = v2 - start;
+		float l1 = dot(tunnelVec, sToP1), l2 = dot(tunnelVec, sToP2);
+		if ((l1 <= -tunnelLength && l2 <= -tunnelLength) || (l1 >= tunnelLength && l2 >= tunnelLength))
+		{
+		}
+		else{
+			float4 disvec= dist3D_Segment_to_Segment(start, end, v1, v2);
+			float dis = disvec.w;
+			if (dis < circleThr * r){
+				*errorEdgeInfo = make_int4(i, inds.x, inds.y, inds.z);
+				*closestPoint = make_float3(disvec);
+				return;
+			}
+		}			
+	}
+
+	{
+		float3 sToP1 = v2 - start, sToP2 = v3 - start;
+		float l1 = dot(tunnelVec, sToP1), l2 = dot(tunnelVec, sToP2);
+		if ((l1 <= -tunnelLength && l2 <= -tunnelLength) || (l1 >= tunnelLength && l2 >= tunnelLength))
+		{
+		}
+		else{
+			float4 disvec = dist3D_Segment_to_Segment(start, end, v2, v3);
+			float dis = disvec.w;	
+			if (dis < circleThr * r){
+				*errorEdgeInfo = make_int4(i, inds.y, inds.z, inds.x);
+				*closestPoint = make_float3(disvec);
+				return;
+			}
+		}
+	}
+
+	{
+		float3 sToP1 = v3 - start, sToP2 = v1 - start;
+		float l1 = dot(tunnelVec, sToP1), l2 = dot(tunnelVec, sToP2);
+		if ((l1 <= -tunnelLength && l2 <= -tunnelLength) || (l1 >= tunnelLength && l2 >= tunnelLength))
+		{
+		}
+		else{
+			float4 disvec = dist3D_Segment_to_Segment(start, end, v3, v1);
+			float dis = disvec.w;		
+			if (dis < circleThr * r){
+				*errorEdgeInfo = make_int4(i, inds.z, inds.x, inds.y);
+				*closestPoint = make_float3(disvec);
+				return;
+			}
+		}
+	}
+	return;
+}
+
+
+
+__global__ void d_checkEdge_afterDeformPolyMeshByCircleModel_new(float* vertexCoords, unsigned int * indices, int facecount, float3 start, float3 end, float r, float circleThr, int* numErrorEdges, int4* errorEdgeInfo, float3* closestPoint) //errorEdgeInfo:(faceid, edgevertex1, edgevertex2)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= facecount)	return;
+
+	uint3 inds = make_uint3(indices[3 * i], indices[3 * i + 1], indices[3 * i + 2]);
+	float3 v1 = make_float3(vertexCoords[3 * inds.x], vertexCoords[3 * inds.x + 1], vertexCoords[3 * inds.x + 2]);
+	float3 v2 = make_float3(vertexCoords[3 * inds.y], vertexCoords[3 * inds.y + 1], vertexCoords[3 * inds.y + 2]);
+	float3 v3 = make_float3(vertexCoords[3 * inds.z], vertexCoords[3 * inds.z + 1], vertexCoords[3 * inds.z + 2]);
+
+	float3 tunnelVec = normalize(end - start);
+	float tunnelLength = length(end - start);
+
+	{
+		float3 sToP1 = v1 - start, sToP2 = v2 - start;
+		float l1 = dot(tunnelVec, sToP1), l2 = dot(tunnelVec, sToP2);
+		if ((l1 <= -tunnelLength && l2 <= -tunnelLength) || (l1 >= tunnelLength && l2 >= tunnelLength))
+		{
+		}
+		else{
+			float4 disvec = dist3D_Segment_to_Segment(start, end, v1, v2);
+			float dis = disvec.w;
+			if (dis < circleThr * r){
+				int id = atomicAdd(numErrorEdges, 1);
+				if (id < MAX_ERROR_EDGE){
+					*(errorEdgeInfo+id) = make_int4(i, inds.x, inds.y, inds.z);
+					*(closestPoint + id) = make_float3(disvec);
+				}
+				return;
+			}
+		}
+	}
+
+	{
+		float3 sToP1 = v2 - start, sToP2 = v3 - start;
+		float l1 = dot(tunnelVec, sToP1), l2 = dot(tunnelVec, sToP2);
+		if ((l1 <= -tunnelLength && l2 <= -tunnelLength) || (l1 >= tunnelLength && l2 >= tunnelLength))
+		{
+		}
+		else{
+			float4 disvec = dist3D_Segment_to_Segment(start, end, v2, v3);
+			float dis = disvec.w;
+			if (dis < circleThr * r){
+				int id = atomicAdd(numErrorEdges, 1);
+				if (id < MAX_ERROR_EDGE){
+					*(errorEdgeInfo + id) = make_int4(i, inds.y, inds.z, inds.x);
+					*(closestPoint + id) = make_float3(disvec);
+				}
+				//*errorEdgeInfo = make_int4(i, inds.x, inds.y, inds.z);
+				//*closestPoint = make_float3(disvec); 
+				return;
+			}
+		}
+	}
+
+	{
+		float3 sToP1 = v3 - start, sToP2 = v1 - start;
+		float l1 = dot(tunnelVec, sToP1), l2 = dot(tunnelVec, sToP2);
+		if ((l1 <= -tunnelLength && l2 <= -tunnelLength) || (l1 >= tunnelLength && l2 >= tunnelLength))
+		{
+		}
+		else{
+			float4 disvec = dist3D_Segment_to_Segment(start, end, v3, v1);
+			float dis = disvec.w;
+			if (dis < circleThr * r){
+				int id = atomicAdd(numErrorEdges, 1);
+				if (id < MAX_ERROR_EDGE){
+					*(errorEdgeInfo + id) = make_int4(i, inds.z, inds.x, inds.y);
+					*(closestPoint + id) = make_float3(disvec);
+				}
+				/**errorEdgeInfo = make_int4(i, inds.x, inds.y, inds.z);
+				*closestPoint = make_float3(disvec); */
+				return;
+			}
+		}
+	}
+	return;
+}
+
+__global__ void removeDup(int* numErrorEdges, int4* errorEdgeInfo, float3* closestPoints, int* d_anotherFaceOfErrorEdge)
+{
+	int realCount = 0;
+	for (int i = 0; i < *numErrorEdges; i++){
+		bool noDup = true;
+		for (int j = 0; j < realCount && noDup; j++){
+			if ((errorEdgeInfo[j].y == errorEdgeInfo[i].y &&errorEdgeInfo[j].z == errorEdgeInfo[i].z)
+				|| (errorEdgeInfo[j].z == errorEdgeInfo[i].y &&errorEdgeInfo[j].y == errorEdgeInfo[i].z)){
+				noDup = false;
+				d_anotherFaceOfErrorEdge[j] = errorEdgeInfo[i].x;
+			}
+		}
+		if (noDup){			
+			if (i > realCount){
+				errorEdgeInfo[realCount] = errorEdgeInfo[i];
+				closestPoints[realCount] = closestPoints[i];
+			}
+			realCount++;
+		}
+	}
+	*numErrorEdges = realCount;
+}
+
+__global__ void d_reworkErrorEdges_new(float* vertexCoords, int vertexcount, unsigned int* indices, int facecount, int4* errorEdgeInfos, int* d_face2, float* norms, float* vertexColorVals, float3* d_closestPoint, float3 intersect, float r, float radius, int numErrorEdges, int* addedVertices, int * addedFaces)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= numErrorEdges)	return;
+
+	int4 errorEdgeInfo = errorEdgeInfos[i];
+	float3 closestPoint = d_closestPoint[i];
+
+	const int N = 5;
+	
+	//we know the order of the vertices in the face of errorEdgeInfo.x, but not in face2
+	int inde1 = errorEdgeInfo.y, inde2 = errorEdgeInfo.z;
+	int indtop1 = errorEdgeInfo.w;
+	//float3 v1 = make_float3(vertexCoords[3 * indtop1], vertexCoords[3 * indtop1 + 1], vertexCoords[3 * indtop1 + 2]);
+	float3 ve1 = make_float3(vertexCoords[3 * inde1], vertexCoords[3 * inde1 + 1], vertexCoords[3 * inde1 + 2]);
+	float3 ve2 = make_float3(vertexCoords[3 * inde2], vertexCoords[3 * inde2 + 1], vertexCoords[3 * inde2 + 2]);
+
+	float chord = sqrt(r*r - length(closestPoint - intersect) *length(closestPoint - intersect) ) * 2;
+	float seg = length(closestPoint - ve1) - chord / 2;
+	float3 chordDir = normalize(ve2 - ve1);
+	float3 left = ve1 + chordDir * seg;
+	//float3 right = ve2 - normalize(ve2 - ve1) * seg;
+
+	
+	int addedVerticesBefore = atomicAdd(addedVertices, N);
+	int vid = vertexcount + addedVerticesBefore;
+	for (int i = 0; i < N; i++){
+		float3 curp = left + chordDir* chord / (N + 1) * (i + 1);
+		float3 newv, newNormal;
+		float newColVal;
+		float targetDis = r* 1.001;
+		float3 outvec = normalize(curp - intersect);
+		newv = intersect + outvec *targetDis;
+
+		float ratio = length(curp - ve1) / (length(curp - ve1) + length(curp - ve2));
+		newNormal = make_float3(norms[3 * inde1], norms[3 * inde1 + 1], norms[3 * inde1 + 2]) * (1 - ratio) + make_float3(norms[3 * inde2], norms[3 * inde2 + 1], norms[3 * inde2 + 2]) * ratio;
+		newColVal = vertexColorVals[inde1] * (1 - ratio) + vertexColorVals[inde2] * ratio;
+
+		norms[3 * (vid + i)] = newNormal.x;
+		norms[3 * (vid + i) + 1] = newNormal.y;
+		norms[3 * (vid + i) + 2] = newNormal.z;
+		vertexColorVals[(vid + i)] = newColVal;
+		vertexCoords[3 * (vid + i)] = newv.x;
+		vertexCoords[3 * (vid + i) + 1] = newv.y;
+		vertexCoords[3 * (vid + i) + 2] = newv.z;
+	}
+
+	
+	int addedFacesBefore = atomicAdd(addedFaces, N + 1);
+	int fid = facecount + addedFacesBefore;
+	for (int i = 0; i <= N; i++){
+		if (i == 0){
+			indices[3 * (fid+i)] = inde1;
+			indices[3 * (fid + i) + 1] = vid+i;
+			indices[3 * (fid + i) + 2] = indtop1;
+		}
+		else if (i == N){
+			indices[3 * (fid + i)] = vid + i - 1;
+			indices[3 * (fid + i) + 1] = inde2;
+			indices[3 * (fid + i) + 2] = indtop1;
+		}
+		else{
+			indices[3 * (fid + i)] = vid + i - 1;
+			indices[3 * (fid + i) + 1] = vid + i;
+			indices[3 * (fid + i) + 2] = indtop1;
+		}
+	}
+
+	//erase old face
+	indices[3 * errorEdgeInfo.x] = 0;
+	indices[3 * errorEdgeInfo.x + 1] = 0;
+	indices[3 * errorEdgeInfo.x + 2] = 0;
+
+	int faceid2 = d_face2[i];
+	if (faceid2 > -1){
+		uint3 inds = make_uint3(indices[3 * faceid2], indices[3 * faceid2 + 1], indices[3 * faceid2 + 2]);
+		int inde1, inde2, indtop1;
+		if ((inds.x == errorEdgeInfo.y && inds.y == errorEdgeInfo.z) || (inds.y == errorEdgeInfo.y && inds.x == errorEdgeInfo.z)){
+			inde1 = inds.x, inde2 = inds.y, indtop1 = inds.z;
+		}
+		else if ((inds.x == errorEdgeInfo.y && inds.z == errorEdgeInfo.z) || (inds.z == errorEdgeInfo.y && inds.x == errorEdgeInfo.z)){
+			inde1 = inds.z, inde2 = inds.x, indtop1 = inds.y;
+		}
+		else if ((inds.y == errorEdgeInfo.y && inds.z == errorEdgeInfo.z) || (inds.z == errorEdgeInfo.y && inds.y == errorEdgeInfo.z)){
+			inde1 = inds.y, inde2 = inds.z, indtop1 = inds.x;
+		}
+
+		int addedFacesBefore = atomicAdd(addedFaces, N+1);
+		int fid = facecount + addedFacesBefore;
+		for (int i = 0; i < N; i++){
+			if (i == 0){
+				indices[3 * (fid + i)] = inde1;
+				indices[3 * (fid + i) + 1] = vid + i;
+				indices[3 * (fid + i) + 2] = indtop1;
+			}
+			else if (i == N){
+				indices[3 * (fid + i)] = vid + i - 1;
+				indices[3 * (fid + i) + 1] = inde2;
+				indices[3 * (fid + i) + 2] = indtop1;
+			}
+			else{
+				indices[3 * (fid + i)] = vid + i - 1;
+				indices[3 * (fid + i) + 1] = vid + i;
+				indices[3 * (fid + i) + 2] = indtop1;
+			}
+		}
+
+		//erase old face
+		indices[3 * errorEdgeInfo.x] = 0;
+		indices[3 * errorEdgeInfo.x + 1] = 0;
+		indices[3 * errorEdgeInfo.x + 2] = 0;
+
+		//erase old face
+		indices[3 * faceid2] = 0;
+		indices[3 * faceid2 + 1] = 0;
+		indices[3 * faceid2 + 2] = 0;
+	}
+
+	return;
+}
+
+
+
+__global__ void d_findAnotherFaceOfErrorEdge(unsigned int* indices, int facecount, int4 errorEdgeInfo, int* face2)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= facecount)	return;
+	if (i == errorEdgeInfo.x) return;
+
+	uint3 inds = make_uint3(indices[3 * i], indices[3 * i + 1], indices[3 * i + 2]);
+
+	if ((inds.x == errorEdgeInfo.y && inds.y == errorEdgeInfo.z) || (inds.y == errorEdgeInfo.y && inds.x == errorEdgeInfo.z)){
+		*face2 = i;
+	}
+	else if ((inds.x == errorEdgeInfo.y && inds.z == errorEdgeInfo.z) || (inds.z == errorEdgeInfo.y && inds.x == errorEdgeInfo.z)){
+		*face2 = i;
+	}
+	else if ((inds.y == errorEdgeInfo.y && inds.z == errorEdgeInfo.z) || (inds.z == errorEdgeInfo.y && inds.y == errorEdgeInfo.z)){
+		*face2 = i;
+	}
+	return;		
+}
+
+
+__global__ void d_reworkErrorEdges(float* vertexCoords, float* vertexCoords_init, int vertexcount, unsigned int* indices, int facecount, int4 errorEdgeInfo, int* face2, float* norms, float* vertexColorVals, float3* d_closestPoint, float3 intersect, float r, float radius)
+{
+	//we know the order of the vertices in the face of errorEdgeInfo.x, but not in face2
+	int inde1 = errorEdgeInfo.y, inde2 = errorEdgeInfo.z;
+	int indtop1 = errorEdgeInfo.w;
+
+	//float3 v1 = make_float3(vertexCoords[3 * indtop1], vertexCoords[3 * indtop1 + 1], vertexCoords[3 * indtop1 + 2]);
+	float3 ve1 = make_float3(vertexCoords[3 * inde1], vertexCoords[3 * inde1 + 1], vertexCoords[3 * inde1 + 2]);
+	float3 ve2 = make_float3(vertexCoords[3 * inde2], vertexCoords[3 * inde2 + 1], vertexCoords[3 * inde2 + 2]);
+	
+	//float3 newv = (make_float3(vertexCoords[3 * inde1], vertexCoords[3 * inde1 + 1], vertexCoords[3 * inde1 + 2]) + make_float3(vertexCoords[3 * inde2], vertexCoords[3 * inde2 + 1], vertexCoords[3 * inde2 + 2])) / 2;
+	//float3 newNormal = (make_float3(norms[3 * inde1], norms[3 * inde1 + 1], norms[3 * inde1 + 2]) + make_float3(norms[3 * inde2], norms[3 * inde2 + 1], norms[3 * inde2 + 2])) / 2;
+	//float newColVal = (vertexColorVals[inde1] + vertexColorVals[inde2]) / 2;
+
+	float3 closestPoint = *d_closestPoint;
+	float3 newv, newv_init, newNormal;
+	float newColVal;
+
+	if (length(closestPoint - ve1) < 0.00001 || length(closestPoint - ve2) < 0.00001){
+		newv = (make_float3(vertexCoords[3 * inde1], vertexCoords[3 * inde1 + 1], vertexCoords[3 * inde1 + 2]) + make_float3(vertexCoords[3 * inde2], vertexCoords[3 * inde2 + 1], vertexCoords[3 * inde2 + 2])) / 2;
+		newv_init = (make_float3(vertexCoords_init[3 * inde1], vertexCoords_init[3 * inde1 + 1], vertexCoords_init[3 * inde1 + 2]) + make_float3(vertexCoords_init[3 * inde2], vertexCoords_init[3 * inde2 + 1], vertexCoords_init[3 * inde2 + 2])) / 2;
+		newNormal = (make_float3(norms[3 * inde1], norms[3 * inde1 + 1], norms[3 * inde1 + 2]) + make_float3(norms[3 * inde2], norms[3 * inde2 + 1], norms[3 * inde2 + 2])) / 2;
+		newColVal = (vertexColorVals[inde1] + vertexColorVals[inde2]) / 2;
+	}
+	else{
+		//newv = closestPoint;
+		float targetDis = r* 1.001;
+		float3 outvec = normalize(closestPoint - intersect);
+			newv = intersect + outvec *targetDis;
+
+		float ratio = length(closestPoint - ve1) / (length(closestPoint - ve1) + length(closestPoint - ve2));
+		newNormal = make_float3(norms[3 * inde1], norms[3 * inde1 + 1], norms[3 * inde1 + 2]) * (1-ratio) + make_float3(norms[3 * inde2], norms[3 * inde2 + 1], norms[3 * inde2 + 2]) * ratio;
+		newColVal = vertexColorVals[inde1] * (1 - ratio) + vertexColorVals[inde2] * ratio;
+		//newv_init = make_float3(vertexCoords_init[3 * inde1], vertexCoords_init[3 * inde1 + 1], vertexCoords_init[3 * inde1 + 2]) * (1 - ratio) + make_float3(vertexCoords_init[3 * inde2], vertexCoords_init[3 * inde2 + 1], vertexCoords_init[3 * inde2 + 2]) * ratio;
+		newv_init = intersect + outvec* (targetDis - r) / (radius - r)*radius;
+
+	}
+
+	int newId = vertexcount;
+	norms[3 * newId] = newNormal.x;
+	norms[3 * newId + 1] = newNormal.y;
+	norms[3 * newId + 2] = newNormal.z;
+	vertexColorVals[newId] = newColVal;
+	vertexCoords[3 * newId] = newv.x;
+	vertexCoords[3 * newId + 1] = newv.y;
+	vertexCoords[3 * newId + 2] = newv.z;
+	vertexCoords_init[3 * newId] = newv_init.x;
+	vertexCoords_init[3 * newId + 1] = newv_init.y;
+	vertexCoords_init[3 * newId + 2] = newv_init.z;
+
+
+	int faceid = facecount;
+	indices[3 * faceid] = inde1;
+	indices[3 * faceid + 1] = newId ;
+	indices[3 * faceid + 2] = indtop1;
+	faceid++;
+	indices[3 * faceid] = newId;
+	indices[3 * faceid + 1] = inde2;
+	indices[3 * faceid + 2] = indtop1;
+
+	//erase old face
+	indices[3 * errorEdgeInfo.x] = 0;
+	indices[3 * errorEdgeInfo.x + 1] = 0;
+	indices[3 * errorEdgeInfo.x + 2] = 0;
+
+	if (*face2 > -1){
+		int faceid2 = *face2;
+		uint3 inds = make_uint3(indices[3 * faceid2], indices[3 * faceid2 + 1], indices[3 * faceid2 + 2]);
+		int inde1, inde2, indtop1;
+		if ((inds.x == errorEdgeInfo.y && inds.y == errorEdgeInfo.z) || (inds.y == errorEdgeInfo.y && inds.x == errorEdgeInfo.z)){
+			inde1 = inds.x, inde2 = inds.y, indtop1 = inds.z;
+		}
+		else if ((inds.x == errorEdgeInfo.y && inds.z == errorEdgeInfo.z) || (inds.z == errorEdgeInfo.y && inds.x == errorEdgeInfo.z)){
+			inde1 = inds.z, inde2 = inds.x, indtop1 = inds.y;
+		}
+		else if ((inds.y == errorEdgeInfo.y && inds.z == errorEdgeInfo.z) || (inds.z == errorEdgeInfo.y && inds.y == errorEdgeInfo.z)){
+			inde1 = inds.y, inde2 = inds.z, indtop1 = inds.x;
+		}
+
+		faceid++;
+		indices[3 * faceid] = inde1;
+		indices[3 * faceid + 1] = newId;
+		indices[3 * faceid + 2] = indtop1;
+		faceid++;
+		indices[3 * faceid] = newId;
+		indices[3 * faceid + 1] = inde2;
+		indices[3 * faceid + 2] = indtop1;
+
+		//erase old face
+		indices[3 * faceid2] = 0;
+		indices[3 * faceid2 + 1] = 0;
+		indices[3 * faceid2 + 2] = 0;
 	}
 
 	return;
@@ -1446,10 +2260,196 @@ void PositionBasedDeformProcessor::doPolyDeform(float degree)
 
 	}
 	else if (shapeModel == CIRCLE){
-		d_deformPolyMesh_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount, tunnelStart, tunnelEnd, degree, radius, d_vertexDeviateVals);
+		int threadsPerBlock = 64;
+		int blocksPerGrid = (usedVertexCount + threadsPerBlock - 1) / threadsPerBlock;
+
+		d_deformPolyMesh_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, usedVertexCount, tunnelStart, tunnelEnd, degree, radius, d_vertexDeviateVals);
+
+		if (degree > 0.1){
+			int *d_numErrorEdges; 
+			int numErrorEdges;
+			cudaMalloc(&d_numErrorEdges, sizeof(int));
+			cudaMemset(d_numErrorEdges, 0, sizeof(int));
+
+			threadsPerBlock = 64;
+			blocksPerGrid = (usedFaceCount + threadsPerBlock - 1) / threadsPerBlock;
+
+			d_checkEdge_afterDeformPolyMeshByCircleModel_new << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices_init, usedFaceCount, tunnelStart, tunnelEnd, degree, circleThr, d_numErrorEdges, d_errorEdgeInfos, d_closestPoints); //errorEdgeInfo:(faceid, edgevertex1, edgevertex2)
+			cudaMemcpy(&numErrorEdges, d_numErrorEdges, sizeof(int), cudaMemcpyDeviceToHost);
+
+
+	
+			if (numErrorEdges >0){
+				std::vector<float3> qq(MAX_ERROR_EDGE, make_float3(-1, -2, -3));
+				cudaMemcpy(&(qq[0].x), d_closestPoints, sizeof(float)* 3 * MAX_ERROR_EDGE, cudaMemcpyDeviceToHost);
+
+				std::vector<int4> aa(MAX_ERROR_EDGE, make_int4(-1,-2,-3,-4));
+				cudaMemcpy(&(aa[0].x), d_errorEdgeInfos, sizeof(int)* 4 * MAX_ERROR_EDGE, cudaMemcpyDeviceToHost);
+				
+
+				//std::cout << "found bad edge at face " << errorEdgeInfo.x << ", with vertices " << errorEdgeInfo.y << " " << errorEdgeInfo.z << std::endl;
+				std::cout << "found bad edge count: " << numErrorEdges << std::endl;
+
+				std::vector<int> temp22(MAX_ERROR_EDGE, -1);
+				cudaMemcpy(d_anotherFaceOfErrorEdge, &(temp22[0]), sizeof(int)* MAX_ERROR_EDGE, cudaMemcpyHostToDevice);
+				removeDup << <1, 1 >> >(d_numErrorEdges, d_errorEdgeInfos, d_closestPoints, d_anotherFaceOfErrorEdge);
+				cudaMemcpy(&numErrorEdges, d_numErrorEdges, sizeof(int), cudaMemcpyDeviceToHost); //numErrorEdges will be reduced
+
+
+			/*	cudaMemcpy(&tempface2, d_face2, sizeof(int), cudaMemcpyDeviceToHost);
+				std::cout << "the 2nd bad edge at face " << tempface2 << std::endl;*/
+
+
+				//std::vector<uint3> ddd(poly->facecount);
+				//cudaMemcpy(&(ddd[0].x), d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
+
+				threadsPerBlock = 32;
+				blocksPerGrid = (numErrorEdges + threadsPerBlock - 1) / threadsPerBlock;
+
+
+				int *d_addf; 
+				cudaMalloc(&d_addf, sizeof(int));
+				cudaMemset(d_addf, 0, sizeof(int));
+				int *d_addv;
+				cudaMalloc(&d_addv, sizeof(int));
+				cudaMemset(d_addv, 0, sizeof(int));
+
+
+				cudaMemcpy(d_indices, d_indices_init, sizeof(unsigned int)*usedFaceCount * 3, cudaMemcpyDeviceToDevice);
+
+
+				d_reworkErrorEdges_new << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, usedVertexCount, d_indices, usedFaceCount, d_errorEdgeInfos, d_anotherFaceOfErrorEdge, d_norms, d_vertexColorVals, d_closestPoints, intersect, r, radius, numErrorEdges, d_addv, d_addf);
+				
+				int numAddedVertices;
+				int numAddedFaces;
+				cudaMemcpy(&numAddedVertices, d_addv, sizeof(int), cudaMemcpyDeviceToHost);
+				cudaMemcpy(&numAddedFaces, d_addf, sizeof(int), cudaMemcpyDeviceToHost);
+
+
+				std::cout << "added new face count " << numAddedFaces << std::endl;
+				std::cout << "added new vertice count " << numAddedVertices << std::endl;
+				poly->vertexcount += numAddedVertices;
+				poly->facecount += numAddedFaces;
+				std::cout << "current face count " << poly->facecount << std::endl;
+				std::cout << "current vertice count " << poly->vertexcount << std::endl;
+
+				std::vector<float3> bbb(numAddedVertices);
+				cudaMemcpy(&(bbb[0].x), d_vertexCoords + usedVertexCount * 3, sizeof(float)*numAddedVertices * 3, cudaMemcpyDeviceToHost);
+				std::vector<uint3> aaa(numAddedFaces);
+				cudaMemcpy(&(aaa[0].x), d_indices + usedFaceCount * 3, sizeof(unsigned int)*numAddedFaces * 3, cudaMemcpyDeviceToHost);
+
+			
+
+			/*	std::vector<uint3> aaa(poly->facecount);
+				cudaMemcpy(&(aaa[0].x), d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
+				std::vector<float3> bbb(poly->vertexcount);
+				cudaMemcpy(&(bbb[0].x), d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+				std::vector<float3> ccc(poly->vertexcount);
+				cudaMemcpy(&(ccc[0].x), d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);*/
+
+				cudaMemcpy(poly->indices, d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
+				cudaMemcpy(poly->vertexNorms, d_norms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+				cudaMemcpy(poly->vertexColorVals, d_vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
+			}
+		}
 	}
 
 	cudaMemcpy(poly->vertexCoords, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+
+	if (isColoringDeformedPart)
+	{
+		cudaMemcpy(poly->vertexDeviateVals, d_vertexDeviateVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
+	}
+}
+
+
+
+
+
+void PositionBasedDeformProcessor::doPolyDeform2(float degree)
+{
+	if (!deformData)
+		return;
+	int threadsPerBlock = 64;
+	int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
+
+	if (shapeModel == CUBOID){
+		d_deformPolyMesh_CuboidModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount, tunnelStart, tunnelEnd, degree, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexDeviateVals);
+
+	}
+	else if (shapeModel == CIRCLE){
+		d_deformPolyMesh_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount, tunnelStart, tunnelEnd, degree, radius, d_vertexDeviateVals);
+		//d_deformPolyMesh_CircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, usedVertexCount, tunnelStart, tunnelEnd, degree, radius, d_vertexDeviateVals);
+
+		if (degree > 0.1){
+			int4 *d_errorEdgeInfo;
+			cudaMalloc(&d_errorEdgeInfo, sizeof(int4));
+			int4 errorEdgeInfo = make_int4(-1, -1, -1, -1);
+			cudaMemcpy(d_errorEdgeInfo, &(errorEdgeInfo.x), sizeof(int4), cudaMemcpyHostToDevice);
+
+
+			float3 *d_closestPoint;
+			cudaMalloc(&d_closestPoint, sizeof(float3));
+
+
+			threadsPerBlock = 64;
+			blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
+
+			d_checkEdge_afterDeformPolyMeshByCircleModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecount, tunnelStart, tunnelEnd, degree, circleThr, d_errorEdgeInfo, d_closestPoint); //errorEdgeInfo:(faceid, edgevertex1, edgevertex2)
+
+			float3 closestPoint;
+			cudaMemcpy(&(closestPoint.x), d_closestPoint, sizeof(float3), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(&(errorEdgeInfo.x), d_errorEdgeInfo, sizeof(int4), cudaMemcpyDeviceToHost);
+			if (errorEdgeInfo.x > -1){
+				std::cout << "found bad edge at face " << errorEdgeInfo.x << ", with vertices " << errorEdgeInfo.y << " " << errorEdgeInfo.z << std::endl;
+
+				int* d_face2;
+				cudaMalloc(&d_face2, sizeof(int));
+				int tempface2 = -1;
+				cudaMemcpy(d_face2, &tempface2, sizeof(int), cudaMemcpyHostToDevice);
+
+				d_findAnotherFaceOfErrorEdge << <blocksPerGrid, threadsPerBlock >> >(d_indices, poly->facecount, errorEdgeInfo, d_face2);
+
+				cudaMemcpy(&tempface2, d_face2, sizeof(int), cudaMemcpyDeviceToHost);
+				std::cout << "the 2nd bad edge at face " << tempface2 << std::endl;
+
+				std::vector<uint3> ddd(poly->facecount);
+				cudaMemcpy(&(ddd[0].x), d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
+
+
+				d_reworkErrorEdges << <	1, 1 >> >(d_vertexCoords, d_vertexCoords_init, poly->vertexcount, d_indices, poly->facecount, errorEdgeInfo, d_face2, d_norms, d_vertexColorVals, d_closestPoint, intersect, r, radius);
+				int numAddedVertices = 1;
+				int numAddedFaces = ((tempface2 > (-1)) ? 4 : 2);
+
+
+				std::cout << "added new face count " << numAddedFaces << std::endl;
+				std::cout << "added new vertice count " << numAddedVertices << std::endl;
+				poly->vertexcount += numAddedVertices;
+				poly->facecount += numAddedFaces;
+				std::cout << "current face count " << poly->facecount << std::endl;
+				std::cout << "current vertice count " << poly->vertexcount << std::endl;
+
+				cudaFree(d_face2);
+
+				std::vector<uint3> aaa(poly->facecount);
+				cudaMemcpy(&(aaa[0].x), d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
+				std::vector<float3> bbb(poly->vertexcount);
+				cudaMemcpy(&(bbb[0].x), d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+				std::vector<float3> ccc(poly->vertexcount);
+				cudaMemcpy(&(ccc[0].x), d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+
+				cudaMemcpy(poly->indices, d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
+				cudaMemcpy(poly->vertexNorms, d_norms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+				cudaMemcpy(poly->vertexColorVals, d_vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
+			}
+
+			cudaFree(d_errorEdgeInfo);
+		}
+	}
+
+	cudaMemcpy(poly->vertexCoords, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
+
 	if (isColoringDeformedPart)
 	{
 		cudaMemcpy(poly->vertexDeviateVals, d_vertexDeviateVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
@@ -1868,7 +2868,12 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 
 	if (systemState == MIXING){
 		if (tunnelTimer2.out()){
-			r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+			if (shapeModel == CUBOID){
+				r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+			}
+			else if (shapeModel == CIRCLE){
+				r = tunnelTimer1.getTime() / outTime * radius / 2;
+			}
 			deformDataByDegree(r);
 			//std::cout << "doing mixinig with r: " << r << " and 0" << std::endl;
 		}
@@ -1878,20 +2883,38 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				exit(0);
 			}
 			else{
-				float rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
-				float rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
+				float rOpen, rClose;
+				if (shapeModel == CUBOID){
+					float rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+					float rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
+				}
+				else if (shapeModel == CIRCLE){
+					float rOpen = tunnelTimer1.getTime() / outTime * radius / 2;
+					float rClose = (1 - tunnelTimer2.getTime() / outTime) * radius / 2;
+				}		
+				r = rOpen;//might be used elsewhere
 				deformDataByDegree2Tunnel(rOpen, rClose);
 				//std::cout << "doing mixinig with r: " << rOpen << " and " << rClose << std::endl;
 			}
 		}
 	}
 	else if (systemState == OPENING){
-		r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+		if (shapeModel == CUBOID){
+			r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+		}
+		else if (shapeModel == CIRCLE){
+			r = tunnelTimer1.getTime() / outTime * radius / 2;
+		}
 		deformDataByDegree(r);
 		//std::cout << "doing openning with r: " << r << std::endl;
 	}
 	else if (systemState == CLOSING){
-		r = (1 - tunnelTimer1.getTime() / outTime) * deformationScale / 2;
+		if (shapeModel == CUBOID){
+			r = (1 - tunnelTimer1.getTime() / outTime) * deformationScale / 2;
+		}
+		else if (shapeModel == CIRCLE){
+			r = (1 - tunnelTimer1.getTime() / outTime) * radius / 2;
+		}
 		deformDataByDegree(r);
 		//std::cout << "doing closing with r: " << r << std::endl;
 	}

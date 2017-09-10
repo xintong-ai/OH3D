@@ -26,5 +26,8 @@ public:
 	~DeformFrameRenderable()
 	{
 	};
+private:
+	void drawCuboidModel(float modelview[16], float projection[16]);
+	void drawCircileModel(float modelview[16], float projection[16]);
 };
 #endif

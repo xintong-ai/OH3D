@@ -114,6 +114,8 @@ private:
 	void isDeformEnabledClicked(bool b);
 	void isForceDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
+	
+	void toggleWireframeClicked(bool b);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

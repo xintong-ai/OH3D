@@ -18,6 +18,7 @@ enum SHAPE_MODEL { CIRCLE, CUBOID, PHYSICALLY };
 
 #define MAX_CIRCLE_INTERACT 10
 
+#define MAX_ERROR_EDGE 80
 
 class TunnelTimer
 {
@@ -89,6 +90,8 @@ public:
 		else{ return false; }
 	}
 
+	SYSTEM_STATE getSystemState(){ return systemState; }
+
 	//shape model
 	SHAPE_MODEL getShapeModel(){ return shapeModel; }
 	bool setShapeModel(SHAPE_MODEL s){
@@ -131,6 +134,7 @@ public:
 		if (d_vertexCoords) { cudaFree(d_vertexCoords); d_vertexCoords = 0; };
 		if (d_vertexCoords_init){ cudaFree(d_vertexCoords_init); d_vertexCoords_init = 0; };
 		if (d_indices){ cudaFree(d_indices); d_indices = 0; };
+		if (d_indices_init){ cudaFree(d_indices_init); d_indices_init = 0; };
 		if (d_norms){ cudaFree(d_norms); d_norms = 0; };
 		if (d_vertexDeviateVals){ cudaFree(d_vertexDeviateVals); d_vertexDeviateVals = 0; };
 		if (d_vertexColorVals) { cudaFree(d_vertexColorVals); d_vertexColorVals = 0; };
@@ -142,6 +146,12 @@ public:
 
 
 	bool process(float* modelview, float* projection, int winWidth, int winHeight) override;
+
+	//circle
+	float radius = 5;
+	float3 intersect;
+	int usedFaceCount;
+	int usedVertexCount;
 
 private:
 	SYSTEM_STATE systemState = ORIGINAL;
@@ -161,8 +171,7 @@ private:
 		lastTunnelEnd = tunnelEnd;
 		lastDeformationDirVertical = rectVerticalDir;
 	}
-	//circle
-	float radius = 8;
+
 
 	float deformationScale = 5; // for rect, the width of opening
 	float deformationScaleVertical = 7; // for rectangular, it is the other side length
@@ -170,8 +179,9 @@ private:
 
 
 	float* d_vertexCoords = 0;
-	float* d_vertexCoords_init = 0;
+	float* d_vertexCoords_init = 0;	//the so-called "original" vertex after modifying mesh
 	unsigned int* d_indices = 0;
+	unsigned int* d_indices_init = 0;
 	float* d_norms = 0;
 	float* d_vertexDeviateVals = 0;
 	float* d_vertexColorVals = 0;
@@ -180,15 +190,34 @@ private:
 	unsigned int* d_intersectedTris = 0;
 	int* d_neighborIdsOfIntersectedTris = 0;
 
-	void initIntersectionInfoForCircleAndPoly(){
-		cudaMalloc(&d_intersectedTris, sizeof(unsigned int)*MAX_CIRCLE_INTERACT);
-		cudaMalloc(&d_neighborIdsOfIntersectedTris, sizeof(int)* 3 * MAX_CIRCLE_INTERACT);
+	int4* d_errorEdgeInfos = 0;
+	int* d_anotherFaceOfErrorEdge = 0;
+	float3* d_closestPoints = 0;
+
+	void prepareIntersectionInfoForCircleAndPoly(){
+		if (!d_intersectedTris) { cudaMalloc(&d_intersectedTris, sizeof(unsigned int)*MAX_CIRCLE_INTERACT); };
+		if (!d_neighborIdsOfIntersectedTris){ cudaMalloc(&d_neighborIdsOfIntersectedTris, sizeof(int)* 3 * MAX_CIRCLE_INTERACT); };
+
 		std::vector<int> temp(MAX_CIRCLE_INTERACT * 3, -1);
 		cudaMemcpy(d_neighborIdsOfIntersectedTris, &(temp[0]), sizeof(int)* 3 * MAX_CIRCLE_INTERACT, cudaMemcpyHostToDevice);
+
+		if (!d_errorEdgeInfos) { cudaMalloc(&d_errorEdgeInfos, sizeof(int4)*MAX_ERROR_EDGE); };
+		if (!d_anotherFaceOfErrorEdge){ cudaMalloc(&d_anotherFaceOfErrorEdge, sizeof(int)* MAX_ERROR_EDGE); };
+		if (!d_closestPoints){ cudaMalloc(&d_closestPoints, sizeof(float3)* MAX_ERROR_EDGE); }
+
+
+		std::vector<int4> temp3(MAX_ERROR_EDGE, make_int4(-1, -1, -1, -1));
+		cudaMemcpy(d_errorEdgeInfos, &(temp3[0].x), sizeof(int4)* MAX_ERROR_EDGE, cudaMemcpyHostToDevice);
+	
+		std::vector<int> temp22(MAX_ERROR_EDGE, -1);
+		cudaMemcpy(d_anotherFaceOfErrorEdge, &(temp22[0]), sizeof(int)* MAX_ERROR_EDGE, cudaMemcpyHostToDevice);
+
+		std::vector<float3> temp33(MAX_ERROR_EDGE, make_float3(-1, -1, -1));
+		cudaMemcpy(d_closestPoints, &(temp33[0].x), sizeof(float3)* MAX_ERROR_EDGE, cudaMemcpyHostToDevice);
 	}
 
-
 	void modifyPolyMesh();
+	float circleThr = -1;
 
 	bool processVolumeData(float* modelview, float* projection, int winWidth, int winHeight);
 	bool processMeshData(float* modelview, float* projection, int winWidth, int winHeight);
@@ -219,6 +248,7 @@ private:
 	void doPolyDeform(float degree);
 	void doParticleDeform(float degree);
 
+	void doPolyDeform2(float degree);
 
 
 	std::shared_ptr<MatrixManager> matrixMgr;
@@ -230,5 +260,9 @@ private:
 
 	TunnelTimer tunnelTimer1, tunnelTimer2;
 	float outTime = 3000;//miliseconds
+
+
+
+
 };
 #endif

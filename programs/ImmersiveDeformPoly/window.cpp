@@ -161,12 +161,17 @@ Window::Window()
 	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 	positionBasedDeformProcessor->setDeformationScale(2);
 	positionBasedDeformProcessor->setDeformationScaleVertical(2.5);
+	
+	
+	if (std::string(polyDataPath).find("testDummy") != std::string::npos){
+		positionBasedDeformProcessor->radius = 25;
+	}
 
 	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
 	//////////////////////////////// Renderable ////////////////////////////////	
 
-	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	openGL->AddRenderable("0deform", deformFrameRenderable.get());
 
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
@@ -281,6 +286,11 @@ Window::Window()
 	}
 
 
+	QCheckBox* toggleWireframe = new QCheckBox("Toggle Wireframe", this);
+	toggleWireframe->setChecked(polyRenderable->useWireFrame);
+	controlLayout->addWidget(toggleWireframe);
+	connect(toggleWireframe, SIGNAL(clicked(bool)), this, SLOT(toggleWireframeClicked(bool)));
+
 
 	controlLayout->addStretch();
 
@@ -369,6 +379,11 @@ void Window::isDeformColoringEnabledClicked(bool b)
 		positionBasedDeformProcessor->isColoringDeformedPart = false;
 		polyMesh->setVertexDeviateVals();
 	}
+}
+
+void Window::toggleWireframeClicked(bool b)
+{
+	polyRenderable->useWireFrame = b;	
 }
 
 void Window::SlotImmerRb(bool b)
