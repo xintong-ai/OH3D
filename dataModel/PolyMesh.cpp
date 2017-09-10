@@ -244,8 +244,8 @@ void PolyMesh::createByCombiningPolyMeshes(std::vector<std::shared_ptr<PolyMesh>
 
 void PolyMesh::createTestDummy()
 {
-	vertexcount = 60;
-	facecount = 60;
+	vertexcount = 160;
+	facecount = 160;
 
 	vertexCoords = new float[3 * vertexcount];
 	vertexNorms = new float[3 * vertexcount];
@@ -299,4 +299,23 @@ void PolyMesh::createTestDummy()
 	
 	find_center_and_range();
 
+}
+
+void PolyMesh::checkShortestEdge()
+{
+	float minL = 999999;
+	for (int i = 0; i < facecount; i++) {
+		int x = indices[3 * i];
+		int y = indices[3 * i + 1];
+		int z = indices[3 * i + 2];
+		float3 v1 = make_float3(vertexCoords[3 * x], vertexCoords[3 * x + 1], vertexCoords[3 * x + 2]);
+		float3 v2 = make_float3(vertexCoords[3 * y], vertexCoords[3 * y + 1], vertexCoords[3 * y + 2]);
+		float3 v3 = make_float3(vertexCoords[3 * z], vertexCoords[3 * z + 1], vertexCoords[3 * z + 2]);
+
+		if (length(v1 - v2) < minL) minL = length(v1 - v2);
+		if (length(v3 - v2) < minL) minL = length(v3 - v2);
+		if (length(v1 - v3) < minL) minL = length(v1 - v3);
+	}
+
+	cout << "minimum edge length is: " << minL << endl;
 }

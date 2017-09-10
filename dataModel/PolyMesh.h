@@ -110,9 +110,11 @@ public:
 	bool justChanged = false;
 	std::shared_ptr<PolyMesh> newPoly;
 	void createTestDummy();
+
+	void checkShortestEdge();
+
 private:
 	float cx, cy, cz;
 	float min_x, max_x, min_y, max_y, min_z, max_z;
-
 };
 #endif

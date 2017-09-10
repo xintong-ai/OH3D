@@ -49,7 +49,7 @@ Window::Window()
 	dataMgr = std::make_shared<DataMgr>();
 
 	float disThr;
-
+	std::string polyDataPath;
 
 	if (useMultiplePolyData){
 		const std::string polyDatasFolder = dataMgr->GetConfig("POLY_DATAS_FOLDER");
@@ -87,7 +87,7 @@ Window::Window()
 
 	}
 	else{
-		const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+		polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
 
 		PolyMesh::dataParameters(polyDataPath, disThr);
 
@@ -112,7 +112,7 @@ Window::Window()
 			VTPReader reader;
 			reader.readFile(polyDataPath.c_str(), polyMesh.get());
 		}
-
+		   
 		polyMesh->setVertexCoordsOri();
 		polyMesh->setVertexDeviateVals();
 		polyMesh->setVertexColorVals(0);
@@ -120,7 +120,7 @@ Window::Window()
 		std::cout << "Read data from : " << polyDataPath << std::endl;
 
 	}
-
+	//polyMesh->checkShortestEdge();
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -132,8 +132,14 @@ Window::Window()
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
-	////matrixMgr->moveEyeInLocalByModeMat(make_float3(5,-10, 5)); //for test with testDummy
 
+	////for test with testDummy
+	if (std::string(polyDataPath).find("testDummy") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(5, -10, 5));
+	}
+	else if (std::string(polyDataPath).find("moortgat") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
+	}
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);

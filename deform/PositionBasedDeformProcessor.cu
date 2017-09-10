@@ -145,6 +145,7 @@ void PositionBasedDeformProcessor::resetData()
 	}
 	else if (dataType == MESH){
 		poly->reset();
+		PrepareDataStructureForPolyDeform();
 	}
 	else if (dataType == PARTICLE){
 		particle->reset();
@@ -308,7 +309,7 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 }
 
 bool PositionBasedDeformProcessor::sameTunnel(){
-	float thr = 0.0001;
+	float thr = 0.00001;
 	if (shapeModel == CUBOID){
 		return length(lastTunnelStart - tunnelStart) < thr	&& length(lastTunnelEnd - tunnelEnd) < thr && length(lastDeformationDirVertical - rectVerticalDir) < thr;
 	}
@@ -549,7 +550,7 @@ __device__ inline float3 d_disturbVertexSingle_circle(float* vertexCoords, float
 	float tunnelLength = length(end - start);
 
 	float thr = 0.000001;
-	float disturb = 0.00001;
+	float disturb = 0.000002;
 
 	float3 voxelVec = pos - start;
 	float l = dot(voxelVec, tunnelVec);
@@ -595,8 +596,8 @@ __global__ void d_disturbVertex_CircleModel(float* vertexCoords, unsigned int* i
 	float3 v2 = make_float3(vertexCoords[3 * inds.y], vertexCoords[3 * inds.y + 1], vertexCoords[3 * inds.y + 2]);
 	float3 v3 = make_float3(vertexCoords[3 * inds.z], vertexCoords[3 * inds.z + 1], vertexCoords[3 * inds.z + 2]);
 	
-	float thr = 0.000001;
-	float disturb = 0.00001;
+	float thr = 0.00001;
+	float disturb = 0.00002;
 	float3 tunnelVec = normalize(end - start);
 
 	v1 = d_disturbVertexSingle_circle(vertexCoords + 3 * inds.x, start, end, v1);
@@ -818,6 +819,23 @@ __global__ void d_modifyMeshKernel_CircledModel_round2(unsigned int* indices, in
 	}
 }
 
+
+__device__ float3 d_intersectPoint(float3 o, float3 d, float3 a, float3 b) //get the intersected point of ray from point o to direction d, and segment a-b. if parallel, return (-1000, -1000, -1000)
+//assume d is normalized
+{
+	//https://rootllama.wordpress.com/2014/06/20/ray-line-segment-intersection-test-in-2d/
+
+	float3 v1 = o - a;
+	float3 v2 = b - a;
+	if (abs(dot(normalize(v2), d)) > 0.999999){
+		return make_float3(-1000, -1000, -1000);
+	}
+
+	float3 v3 =  - normalize(cross(d, cross(d, v2)));
+	float t1 = length(cross(v2, v1)) / abs(dot(v2, v3));
+	return o + d*t1;
+}
+
 __global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, int* numAddedFaces, int* numAddedVertices, float* vertexColorVals, unsigned int* intersectedTris, int* neighborIdsOfIntersectedTris, int numIntersectTris)
 {
 	//now the point is inside of the triangle. Due to the distrubance, it is supposed to be far enough from the 3 edges and vertices of the triangle
@@ -884,7 +902,7 @@ __global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsi
 	float newColorVal = vertexColorVals[inds.x];//any one of the 3 vertices. assume the 3 values are the same for a triangle
 
 
-	float thr = 0.000005;
+	float thr = 0.00001;
 	float3 vNew[3] = { intersect + normalize(v1 - intersect)*thr, intersect + normalize(v2 - intersect)*thr, intersect + normalize(v3 - intersect)*thr };
 	for (int j = 0; j < 3; j++){
 		vertexCoords[3 * (curNumVertex + j * numNewVerticesEachSide)] = vNew[j].x;
@@ -897,13 +915,41 @@ __global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsi
 	}
 	float3 vOld[3] = { v1, v2, v3 };
 	float3 normOld[3] = { norm1, norm2, norm3 };
+	
+	triNormal = -triNormal; //bad design... should fix it at the first time it is used
+
+	float3 nNewToOld[3] = { normalize(v1 - intersect), normalize(v2 - intersect), normalize(v3 - intersect) };
+	float angles[3] = { acosf(dot(nNewToOld[0], nNewToOld[1])), acosf(dot(nNewToOld[1], nNewToOld[2])), acosf(dot(nNewToOld[2], nNewToOld[0])) };
+	float rotateMat[3][9];
+
 	for (int j = 0; j < 3; j++){
 		for (int jj = 1; jj <= RESOLU; jj++){
-			float ratio1 = 1.0 * jj / (RESOLU + 1.0);
+			float rotateAngles[3] = { angles[0] * jj / (RESOLU + 1.0), angles[1] * jj / (RESOLU + 1.0), angles[2] * jj / (RESOLU + 1.0) };
+			float cosRotateAngles[3] = { cosf(rotateAngles[0]), cosf(rotateAngles[1]), cosf(rotateAngles[2]) };
+			float sinRotateAngles[3] = { sinf(rotateAngles[0]), sinf(rotateAngles[1]), sinf(rotateAngles[2]) };
+
+			//http://scipp.ucsc.edu/~haber/ph216/rotation_12.pdf
+			//for (int j = 0; j < 3; j++){
+				rotateMat[j][0] = cosRotateAngles[j] + triNormal.x*triNormal.x*(1 - cosRotateAngles[j]);
+				rotateMat[j][1] = triNormal.x*triNormal.y*(1 - cosRotateAngles[j]) - triNormal.z*sinRotateAngles[j];
+				rotateMat[j][2] = triNormal.x*triNormal.z*(1 - cosRotateAngles[j]) + triNormal.y*sinRotateAngles[j];
+				rotateMat[j][3] = triNormal.x*triNormal.y*(1 - cosRotateAngles[j]) + triNormal.z*sinRotateAngles[j];
+				rotateMat[j][4] = cosRotateAngles[j] + triNormal.y*triNormal.y*(1 - cosRotateAngles[j]);
+				rotateMat[j][5] = triNormal.y*triNormal.z*(1 - cosRotateAngles[j]) - triNormal.x*sinRotateAngles[j];
+				rotateMat[j][6] = triNormal.x*triNormal.z*(1 - cosRotateAngles[j]) - triNormal.y*sinRotateAngles[j];
+				rotateMat[j][7] = triNormal.y*triNormal.z*(1 - cosRotateAngles[j]) + triNormal.x*sinRotateAngles[j];
+				rotateMat[j][8] = cosRotateAngles[j] + triNormal.z*triNormal.z*(1 - cosRotateAngles[j]);
+			//}
+
+			//float3 temp1 = vNew[j] * (1 - ratio1) + vNew[(j + 1) % 3] * ratio1;
+			//rotate first
+			//nNewToOld[j] = mul(rotateMat[j], nNewToOld[j]);
+			//float3 temp1 = intersect + nNewToOld[j] * thr;
+			float3 v = mul(rotateMat[j], nNewToOld[j]);
+			float3 temp1 = intersect + v * thr;
 
 			int curId = curNumVertex + j * numNewVerticesEachSide + 1 + (jj-1) * 2;
-			float3 temp1 = vNew[j] * (1 - ratio1) + vNew[(j + 1) % 3] * ratio1;
-			temp1 = intersect + normalize(temp1 - intersect)*thr;
+			
 			vertexCoords[3 * curId] = temp1.x;
 			vertexCoords[3 * curId + 1] = temp1.y;
 			vertexCoords[3 * curId + 2] = temp1.z;
@@ -913,7 +959,10 @@ __global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsi
 			vertexColorVals[curId] = newColorVal;
 
 			curId++;
-			temp1 = vOld[j] * (1 - ratio1) + vOld[(j + 1) % 3] * ratio1;
+			//float ratio1 = 1.0 * jj / (RESOLU + 1.0);
+			//temp1 = vOld[j] * (1 - ratio1) + vOld[(j + 1) % 3] * ratio1;
+			temp1 = d_intersectPoint(intersect, v, vOld[j], vOld[(j + 1) % 3]);
+			float ratio1 = length(temp1 - vOld[j]) / length(vOld[(j + 1) % 3] - vOld[j]);
 			float3 sideNormal = normOld[j] * (1 - ratio1) + normOld[(j + 1) % 3] * ratio1;
 			vertexCoords[3 * curId] = temp1.x;
 			vertexCoords[3 * curId + 1] = temp1.y;
@@ -1016,8 +1065,8 @@ __global__ void d_disturbVertex_CuboidModel(float* vertexCoords, int vertexcount
 	float3 tunnelVec = normalize(end - start);
 	float tunnelLength = length(end - start);
 
-	float thr = 0.000001;
-	float disturb = 0.00001;
+	float thr = 0.00001;
+	float disturb = 0.00002;
 
 	float3 n = normalize(cross(dir2nd, tunnelVec));
 
@@ -1269,13 +1318,13 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 
 
 
+		if (numAddedVertices > 0){
+			std::vector<float3> vv(numAddedVertices, make_float3(0, 0, 0));
+			cudaMemcpy(&(vv[0].x), d_vertexCoords + poly->vertexcountOri * 3, sizeof(float)* numAddedVertices * 3, cudaMemcpyDeviceToHost);
 
-		std::vector<float3> vv(numAddedVertices, make_float3(0,0,0));
-		cudaMemcpy(&(vv[0].x), d_vertexCoords + poly->vertexcountOri * 3, sizeof(float)* numAddedVertices*3, cudaMemcpyDeviceToHost);
-
-		std::vector<uint3> fff(numAddedFaces, make_uint3(0,0,0));
-		cudaMemcpy(&(fff[0].x), d_indices + poly->facecountOri * 3, sizeof(uint)* numAddedFaces * 3, cudaMemcpyDeviceToHost);
-
+			std::vector<uint3> fff(numAddedFaces, make_uint3(0, 0, 0));
+			cudaMemcpy(&(fff[0].x), d_indices + poly->facecountOri * 3, sizeof(uint)* numAddedFaces * 3, cudaMemcpyDeviceToHost);
+		}
 
 		cudaFree(d_numAddedVertices);
 
