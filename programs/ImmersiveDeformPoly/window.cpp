@@ -183,7 +183,7 @@ Window::Window()
 		positionBasedDeformProcessor->radius = 25;
 	}
 
-	//positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
+	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);

@@ -152,9 +152,10 @@ void PositionBasedDeformProcessor::particleDataUpdated()
 	}
 
 	if (systemState != ORIGINAL && isActive){
-
-		computeTunnelInfo(matrixMgr->getEyeInLocal());
-		//lengthenTunnel(matrixMgr->getEyeInLocal());
+		if (!atProperLocation(matrixMgr->getEyeInLocal(), true)){
+			computeTunnelInfo(matrixMgr->getEyeInLocal());
+			//lengthenTunnel(matrixMgr->getEyeInLocal());
+		}
 
 		if (systemState == MIXING){
 			doParticleDeform2Tunnel(rOpen, rClose);
@@ -1458,6 +1459,128 @@ __global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsi
 		}
 		startFaceId += (RESOLU + 1);
 	}
+
+	//erase current triangle
+	indices[3 * i] = 0;
+	indices[3 * i + 1] = 0;
+	indices[3 * i + 2] = 0;
+}
+
+__global__ void d_modifyMeshKernel_CircledModel_round3_new(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, int* numAddedFaces, int* numAddedVertices, float* vertexColorVals, unsigned int* intersectedTris, int* neighborIdsOfIntersectedTris, int numIntersectTris, int* minThr)
+{
+	//now the point is inside of the triangle. Due to the distrubance, it is supposed to be far enough from the 3 edges and vertices of the triangle
+
+	int indThread = blockDim.x * blockIdx.x + threadIdx.x;
+	if (indThread >= numIntersectTris)	return;
+
+	unsigned int i = intersectedTris[indThread];
+
+	uint3 inds = make_uint3(indices[3 * i], indices[3 * i + 1], indices[3 * i + 2]);
+	float3 v1 = make_float3(vertexCoords[3 * inds.x], vertexCoords[3 * inds.x + 1], vertexCoords[3 * inds.x + 2]);
+	float3 v2 = make_float3(vertexCoords[3 * inds.y], vertexCoords[3 * inds.y + 1], vertexCoords[3 * inds.y + 2]);
+	float3 v3 = make_float3(vertexCoords[3 * inds.z], vertexCoords[3 * inds.z + 1], vertexCoords[3 * inds.z + 2]);
+
+	float3 norm1 = make_float3(norms[3 * inds.x], norms[3 * inds.x + 1], norms[3 * inds.x + 2]);
+	float3 norm2 = make_float3(norms[3 * inds.y], norms[3 * inds.y + 1], norms[3 * inds.y + 2]);
+	float3 norm3 = make_float3(norms[3 * inds.z], norms[3 * inds.z + 1], norms[3 * inds.z + 2]);
+
+	//suppose any 2 points of the triangle are not overlapping
+	float dis12 = length(v2 - v1);
+	float3 l12 = normalize(v2 - v1);
+	float dis23 = length(v3 - v2);
+	float3 l23 = normalize(v3 - v2);
+	float dis31 = length(v1 - v3);
+	float3 l31 = normalize(v1 - v3);
+
+	float3 tunnelVec = normalize(end - start);
+	float tunnelLength = length(end - start);
+
+	//https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+	float3 triNormal = normalize(cross(l12, l31));
+	bool isPara = abs(dot(tunnelVec, triNormal)) < 0.000001;
+	float dis_startToIntersectionPoint = dot(v1 - start, triNormal) / (isPara ? 0.000001 : dot(tunnelVec, triNormal));
+	bool hasIntersect = (!isPara) && dis_startToIntersectionPoint > 0 && dis_startToIntersectionPoint < length(end - start);
+	if (!hasIntersect){
+		return;  //should never return
+	}
+
+	float3 intersect = start + dis_startToIntersectionPoint * tunnelVec;
+
+	int numNewVerticesEachSide = 1 + RESOLU;//1 for small triangle; RESOLU on the arc; RESOLU on the original edge
+	int numAddedVerticesBefore = atomicAdd(numAddedVertices, numNewVerticesEachSide * 3);
+	int curNumVertex = vertexcount + numAddedVerticesBefore;
+
+	float disto1 = length(intersect - v1);
+	float disto2 = length(intersect - v2);
+	float disto3 = length(intersect - v3);
+	float disAllDouble = 2 * (disto1 + disto2 + disto3);
+	float3 newNormal = (disto2 + disto3) / disAllDouble*norm1 + (disto1 + disto3) / disAllDouble*norm2 + (disto2 + disto1) / disAllDouble*norm3; //simple interpolation
+	float newColorVal = vertexColorVals[inds.x];//any one of the 3 vertices. assume the 3 values are the same for a triangle
+
+
+	float thr = 0.00001;
+	float3 vNew[3] = { intersect + normalize(v1 - intersect)*thr, intersect + normalize(v2 - intersect)*thr, intersect + normalize(v3 - intersect)*thr };
+	for (int j = 0; j < 3; j++){
+		vertexCoords[3 * (curNumVertex + j * numNewVerticesEachSide)] = vNew[j].x;
+		vertexCoords[3 * (curNumVertex + j* numNewVerticesEachSide) + 1] = vNew[j].y;
+		vertexCoords[3 * (curNumVertex + j* numNewVerticesEachSide) + 2] = vNew[j].z;
+		norms[3 * (curNumVertex + j * numNewVerticesEachSide)] = newNormal.x;
+		norms[3 * (curNumVertex + j * numNewVerticesEachSide) + 1] = newNormal.y;
+		norms[3 * (curNumVertex + j * numNewVerticesEachSide) + 2] = newNormal.z;
+		vertexColorVals[curNumVertex + j * numNewVerticesEachSide] = newColorVal;
+	}
+	float3 vOld[3] = { v1, v2, v3 };
+	float3 normOld[3] = { norm1, norm2, norm3 };
+
+	triNormal = -triNormal; //bad design... should fix it at the first time it is used
+
+	float3 nNewToOld[3] = { normalize(v1 - intersect), normalize(v2 - intersect), normalize(v3 - intersect) };
+	float angles[3] = { acosf(dot(nNewToOld[0], nNewToOld[1])), acosf(dot(nNewToOld[1], nNewToOld[2])), acosf(dot(nNewToOld[2], nNewToOld[0])) };
+	float rotateMat[3][9];
+
+	float halfRotateAngles[3] = { angles[0] / (RESOLU + 1.0) / 2.0, angles[1] / (RESOLU + 1.0) / 2.0, angles[2] / (RESOLU + 1.0) / 2.0 };
+	float minArcRatio = cosf(min(min(halfRotateAngles[0], halfRotateAngles[1]), halfRotateAngles[2]));
+	int minArcRatioInt = minArcRatio * 1000000;
+	atomicMin(minThr, minArcRatioInt);
+
+	for (int j = 0; j < 3; j++){
+		for (int jj = 1; jj <= RESOLU; jj++){
+			float rotateAngles[3] = { angles[0] * jj / (RESOLU + 1.0), angles[1] * jj / (RESOLU + 1.0), angles[2] * jj / (RESOLU + 1.0) };
+			float cosRotateAngles[3] = { cosf(rotateAngles[0]), cosf(rotateAngles[1]), cosf(rotateAngles[2]) };
+			float sinRotateAngles[3] = { sinf(rotateAngles[0]), sinf(rotateAngles[1]), sinf(rotateAngles[2]) };
+
+			//http://scipp.ucsc.edu/~haber/ph216/rotation_12.pdf
+			//for (int j = 0; j < 3; j++){
+			rotateMat[j][0] = cosRotateAngles[j] + triNormal.x*triNormal.x*(1 - cosRotateAngles[j]);
+			rotateMat[j][1] = triNormal.x*triNormal.y*(1 - cosRotateAngles[j]) - triNormal.z*sinRotateAngles[j];
+			rotateMat[j][2] = triNormal.x*triNormal.z*(1 - cosRotateAngles[j]) + triNormal.y*sinRotateAngles[j];
+			rotateMat[j][3] = triNormal.x*triNormal.y*(1 - cosRotateAngles[j]) + triNormal.z*sinRotateAngles[j];
+			rotateMat[j][4] = cosRotateAngles[j] + triNormal.y*triNormal.y*(1 - cosRotateAngles[j]);
+			rotateMat[j][5] = triNormal.y*triNormal.z*(1 - cosRotateAngles[j]) - triNormal.x*sinRotateAngles[j];
+			rotateMat[j][6] = triNormal.x*triNormal.z*(1 - cosRotateAngles[j]) - triNormal.y*sinRotateAngles[j];
+			rotateMat[j][7] = triNormal.y*triNormal.z*(1 - cosRotateAngles[j]) + triNormal.x*sinRotateAngles[j];
+			rotateMat[j][8] = cosRotateAngles[j] + triNormal.z*triNormal.z*(1 - cosRotateAngles[j]);
+			//}
+
+			//float3 temp1 = vNew[j] * (1 - ratio1) + vNew[(j + 1) % 3] * ratio1;
+			//rotate first
+			//nNewToOld[j] = mul(rotateMat[j], nNewToOld[j]);
+			//float3 temp1 = intersect + nNewToOld[j] * thr;
+			float3 v = mul(rotateMat[j], nNewToOld[j]);
+			float3 temp1 = intersect + v * thr;
+
+			int curId = curNumVertex + j * numNewVerticesEachSide + 1 + (jj - 1);
+
+			vertexCoords[3 * curId] = temp1.x;
+			vertexCoords[3 * curId + 1] = temp1.y;
+			vertexCoords[3 * curId + 2] = temp1.z;
+			norms[3 * curId] = newNormal.x;
+			norms[3 * curId + 1] = newNormal.y;
+			norms[3 * curId + 2] = newNormal.z;
+			vertexColorVals[curId] = newColorVal;
+		}
+	}
+
 
 	//erase current triangle
 	indices[3 * i] = 0;

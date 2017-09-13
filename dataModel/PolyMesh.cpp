@@ -3,6 +3,21 @@
 #include "BinaryTuplesReader.h"
 #include <helper_math.h>
 
+
+
+
+#include <vtkCellArray.h>
+#include <vtkProperty.h>
+#include <vtkPoints.h>
+#include <vtkPolyData.h>
+#include <vtkPolygon.h>
+#include <vtkSmartPointer.h>
+#include <vtkDelaunay2D.h>
+#include <vtkMath.h>
+
+#include <vtkXMLPolyDataWriter.h>
+
+
 using namespace std;
 
 PolyMesh::~PolyMesh(){
@@ -411,4 +426,66 @@ void PolyMesh::checkShortestEdge()
 	}
 
 	cout << "minimum edge length is: " << minL << endl;
+}
+
+
+
+void PolyMesh::doDelaunay(int edgeResolution)
+{
+	return;
+	vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+	for (unsigned int x = 0; x < vertexcount; x++)
+	{
+		points->InsertNextPoint(vertexCoords[3 * x], vertexCoords[3 * x + 1], vertexCoords[3 * x + 2]);
+	}
+
+	std::vector<float3> bbb((float3*)vertexCoords, (float3*)(vertexCoords + 3*vertexcount));
+
+	vtkSmartPointer<vtkPolyData> aPolyData =
+		vtkSmartPointer<vtkPolyData>::New();
+	aPolyData->SetPoints(points);
+
+	// Create a cell array to store the polygon in
+	vtkSmartPointer<vtkCellArray> aCellArray =
+		vtkSmartPointer<vtkCellArray>::New();
+
+
+	int numVerticesPerBrokenFace = (3 * (1 + edgeResolution));
+	int countBrokenFaces = (vertexcount - vertexcountOri) / numVerticesPerBrokenFace;
+	for (int i = 0; i < countBrokenFaces; i++){
+		// Define a polygonal hole with a clockwise polygon
+		vtkSmartPointer<vtkPolygon> aPolygon = vtkSmartPointer<vtkPolygon>::New();
+
+		for (int j = 0; j < numVerticesPerBrokenFace; j++){
+			aPolygon->GetPointIds()->InsertNextId(vertexcountOri + i*numVerticesPerBrokenFace + j);
+		}
+
+		aCellArray->InsertNextCell(aPolygon);
+	}
+
+
+	// Create a polydata to store the boundary. The points must be the
+	// same as the points we will triangulate.
+	vtkSmartPointer<vtkPolyData> boundary =
+		vtkSmartPointer<vtkPolyData>::New();
+	boundary->SetPoints(aPolyData->GetPoints());
+	boundary->SetPolys(aCellArray);
+
+	// Triangulate the grid points
+	vtkSmartPointer<vtkDelaunay2D> delaunay =
+		vtkSmartPointer<vtkDelaunay2D>::New();
+
+	delaunay->SetInputData(aPolyData);
+	delaunay->SetSourceData(boundary);
+
+	delaunay->Update();
+
+	static int qq = 0;
+	if (qq == 0){
+		vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+		writer->SetFileName("delay.vtp");
+		writer->SetInputData(delaunay->GetOutput());
+		writer->Write();
+		qq++;
+	}
 }

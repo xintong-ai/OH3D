@@ -54,6 +54,7 @@ private:
 
 	bool centerBasedRendering = false;
 
+
 protected:
 
     unsigned int vbo_norm;

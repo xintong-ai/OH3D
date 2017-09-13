@@ -113,6 +113,9 @@ public:
 	void checkShortestEdge();
 
 	void copyFrom(std::shared_ptr<PolyMesh> target, bool useParticle);
+
+	void doDelaunay(int edgeResolution); //used for circle model deformation
+
 private:
 	float cx, cy, cz;
 	float min_x, max_x, min_y, max_y, min_z, max_z;

@@ -196,7 +196,8 @@ Window::Window()
 	polyWallRenderable = std::make_shared<PolyRenderable>(polyMeshWall);
 	openGL->AddRenderable("5polyWall", polyWallRenderable.get());
 	//polyMeshWall->opacity = 0.5;
-
+	polyWallRenderable->SetAmbientColor(139.0 / 255.0, 69.0 / 255.0, 19.0 / 255.0);
+	
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
