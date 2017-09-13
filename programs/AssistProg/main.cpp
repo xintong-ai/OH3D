@@ -61,6 +61,10 @@
 #include <vtkFloatArray.h>
 #include <vtkPolyDataNormals.h>
 
+#include <Eigen/Core>
+#include <Eigen/Eigen>
+
+
 using namespace std;
 
 const int PHASES_COUNT = 1; //phase 1 is for creating cell volume; phase 2 is for creating skeletion; phase 3 is for creating bilateral volume
@@ -471,9 +475,94 @@ void reduceBloodCell()	//also generate the normal
 	std::cout << "facecount: " << datanew->GetNumberOfCells() << std::endl;
 }
 
+
+void pca(vtkSmartPointer<vtkPolyData> data, int start, int count, float3 & pcaMinor){
+	using namespace Eigen;
+
+	unsigned int m = 3;   // dimension of each point
+	unsigned int n = count;  // number of points 
+	MatrixXd DataPoints(n, m);
+	
+	for (int i = start; i < start + n; i++){
+		double * coord = data->GetPoint(i);
+	
+		for (int j = 0; j < 3; j++){
+			DataPoints(i - start, j) = coord[j];
+		}
+	}
+
+
+	double mean; VectorXd meanVector;
+
+	typedef std::pair<double, int> myPair;
+	typedef std::vector<myPair> PermutationIndices;
+	
+	float3 center;
+
+	for (int i = 0; i < m; i++){
+		mean = (DataPoints.col(i).sum()) / n;		 //compute mean
+		meanVector = VectorXd::Constant(n, mean); // create a vector with constant value = mean
+		DataPoints.col(i) -= meanVector;
+		//cout << "mean: " << mean << endl;
+		*((float*)(&center) + i) = mean;
+	}
+
+	//cout <<"center: "<< center.x << " " << center.y << " " << center.z << endl;
+
+	// get the covariance matrix
+	MatrixXd Covariance = MatrixXd::Zero(m, m);
+	Covariance = DataPoints.transpose() * DataPoints;
+
+	// compute the eigenvalue on the Cov Matrix
+	EigenSolver<MatrixXd> m_solve(Covariance);
+	VectorXd eigenvalues = VectorXd::Zero(m);
+	eigenvalues = m_solve.eigenvalues().real();
+
+	MatrixXd eigenVectors = MatrixXd::Zero(m, m);
+	eigenVectors = m_solve.eigenvectors().real();
+
+	//std::cout << "eigenvalues:" << std::endl << eigenvalues << std::endl;
+	//std::cout << "eigenVectors:" << std::endl << eigenVectors << std::endl;
+
+	// sort and get the permutation indices
+	PermutationIndices pi;
+	for (int i = 0; i < m; i++)
+		pi.push_back(std::make_pair(eigenvalues(i), i));
+
+	sort(pi.begin(), pi.end()); //ascending order
+
+	//for (unsigned int i = 0; i < m; i++)
+	//	std::cout << "eigen=" << pi[i].first << " pi=" << pi[i].second << std::endl;
+	//for (int i = pi.size() - 1; i >= 0; i--)
+	//{
+	//	std::cout << i << "-eigenvalue " << pi[i].first << " with eigenvector " << eigenVectors.col(pi[i].second) << "\n";
+	//}
+
+	float eigneVecs[9];
+
+	for (int i = 0; i < m; i++)
+	{
+		int ind = m - 1 - i;
+		for (int j = 0; j < 3; j++){
+			eigneVecs[3 * i + j] = eigenVectors(j, pi[ind].second);
+		}
+	}
+	//for (int i = 0; i < 9; i++)
+	//{
+	//	std::cout << eigneVecs[i] << " ";
+	//}
+	//std::cout << "\n";
+
+
+	//pcaDir = normalize(make_float3(eigneVecs[0], eigneVecs[1], eigneVecs[2]));
+	pcaMinor = normalize(make_float3(eigneVecs[6], eigneVecs[7], eigneVecs[8]));
+}
+
+
 void markReducedBloodCell()
 {
 	int startTs = 6, endTs = 32;
+	//int startTs = 6, endTs = 6;
 
 	int i = startTs;
 	stringstream ss;
@@ -529,6 +618,18 @@ void markReducedBloodCell()
 		maxPos[d] = make_float3(fmax(maxPos[d].x, coord[0]), fmax(maxPos[d].y, coord[1]), fmax(maxPos[d].z, coord[2])); 
 		count[d]++;
 	}
+
+
+	vector<float3> pcaMinor(nRegion);
+	int lastregionid = -1;
+	for (int i = 0; i < n; i++){
+		long long d = arrayRegionId->GetValue(i);
+		if (d != lastregionid){
+			pca(data, i, count[d], pcaMinor[d]);
+			lastregionid = d;
+		}
+	}
+
 	vector<float3> posAve(nRegion);
 	for (int i = 0; i < nRegion; i++){
 		posAve[i] = make_float3(posSum[i].x / count[i], posSum[i].y / count[i], posSum[i].z / count[i]);
@@ -577,9 +678,10 @@ void markReducedBloodCell()
 		fwrite(&startvf, sizeof(float), 1, fp); //range of vertices of the current region
 		fwrite(&endvf, sizeof(float), 1, fp);
 		fwrite(&(minPos[i].x), sizeof(float3), 1, fp); //for bounding box of the current region
-		fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
+		//fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
+		fwrite(&(pcaMinor[i].x), sizeof(float3), 1, fp);  //borrow this channel for pcaMinor info		
 		float tempi = i;
-		fwrite(&tempi, sizeof(int), 1, fp); //id of the region
+		fwrite(&tempi, sizeof(float), 1, fp); //id of the region
 		startv = startv + count[i];
 		startf = startf + countFace[i];
 	}
@@ -635,6 +737,16 @@ void markReducedBloodCell()
 			posAve[i] = make_float3(posSum[i].x / count[i], posSum[i].y / count[i], posSum[i].z / count[i]);
 		}
 
+
+		vector<float3> pcaMinor(nRegion);
+		int lastregionid = -1;
+		for (int i = 0; i < n; i++){
+			long long d = arrayRegionId->GetValue(i);
+			if (d != lastregionid){
+				pca(data, i, count[d], pcaMinor[d]);
+				lastregionid = d;
+			}
+		}
 		//for record tuple file
 		vector<int> countFace(nRegion, 0);
 		int curid = 0;
@@ -733,9 +845,10 @@ void markReducedBloodCell()
 			fwrite(&startvf, sizeof(float), 1, fp); //range of vertices of the current region
 			fwrite(&endvf, sizeof(float), 1, fp);
 			fwrite(&(minPos[i].x), sizeof(float3), 1, fp); //for bounding box of the current region
-			fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
+			//fwrite(&(maxPos[i].x), sizeof(float3), 1, fp);
+			fwrite(&(pcaMinor[i].x), sizeof(float3), 1, fp);  //borrow this channel for pcaMinor info		
 			float tempi = idChangeMap[i];
-			fwrite(&tempi, sizeof(int), 1, fp); //id of the region
+			fwrite(&tempi, sizeof(float), 1, fp); //id of the region
 			startv = startv + count[i];
 			startf = startf + countFace[i];
 		}
@@ -746,10 +859,10 @@ void markReducedBloodCell()
 int main(int argc, char **argv)
 {
 	//createSphere();
-	labelPoly();
+	//labelPoly();
 
 	//reduceBloodCell();
-	//markReducedBloodCell();
+	markReducedBloodCell();
 
 	return 0;
 }

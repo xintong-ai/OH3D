@@ -10,8 +10,6 @@
 #include <helper_math.h>
 
 #include "PositionBasedDeformProcessor.h"
-//#include "PolyRenderable.h"
-
 
 void TimeVaryingParticleDeformerManager::turnActive()
 {
@@ -32,14 +30,15 @@ void TimeVaryingParticleDeformerManager::resetPolyMeshes()
 	}
 }
 
+////// not all infor is recorded, but just record necessary parts
 void TimeVaryingParticleDeformerManager::saveOriginalCopyOfMeshes()
 {
 	for (int i = 0; i < polyMeshes.size(); i++){
-		std::shared_ptr<PolyMesh> polyMesh = std::make_shared<PolyMesh>();
-		polyMesh->particle = std::make_shared<Particle>();
-		polyMesh->particle->numParticles = polyMeshes[i]->particle->numParticles;
-		polyMesh->particle->posOrig = polyMeshes[i]->particle->posOrig;
-		polyMeshesOri.push_back(polyMesh);
+		std::shared_ptr<PolyMesh> curPoly = std::make_shared<PolyMesh>();
+		curPoly->particle = std::make_shared<Particle>();
+		curPoly->particle->numParticles = polyMeshes[i]->particle->numParticles;
+		curPoly->particle->posOrig = polyMeshes[i]->particle->posOrig;
+		polyMeshesOri.push_back(curPoly);
 	}
 }
 
@@ -51,18 +50,15 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 
 	//sdkStopTimer(&timer);
 	//float timePassed = sdkGetAverageTimerValue(&timer) / 1000.f;
-	if (curT % (numInter + 1) == 0){
+	if (curT % (numInter + 1) == 0){	//in this case, not only the particles stored in polyMesh will change, but the vertices of polyMesh will also change
 		int meshid = curT / (numInter + 1);				
-		polyMesh = polyMeshes[meshid];
 
-		//polyRenderable->polyMesh = polyMesh;//NOTE!! the polymesh stored in other modules are not always combined with the pointer "polyMesh" here!!!
-		//polyRenderable->dataChange();
-		justChangedForRenderer = true;	
-		//the best method is to set both polyRenderable and positionBasedDeformProcessor here, but they cannot be included in this file together, because the conflict of QT and CUDA. so use this alternative method, to let polyRenderable have a link to TimeVaryingParticleDeformerManager object
+		polyMesh->copyFrom(polyMeshes[meshid], true);
+		polyMesh->verticesJustChanged = true;
 
-		positionBasedDeformProcessor->updateParticleData(polyMesh->particle);
+		positionBasedDeformProcessor->particleDataUpdated();
 	}
-	else{
+	else{//in this case, only the particles stored in polyMesh will change, and the vertices of polyMesh will NOT change
 		int meshid1 = curT / (numInter + 1), meshid2 = meshid1 + 1;
 		float ratio = 1.0 * (curT % (numInter + 1)) / (numInter + 1);
 
@@ -83,7 +79,7 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 			}
 		}
 
-		positionBasedDeformProcessor->updateParticleData(polyMesh->particle); //actually pointer address of the particle is not changed, but the content is changed
+		positionBasedDeformProcessor->particleDataUpdated(); //actually pointer address of the particle is not changed, but the content is changed
 
 	}
 	//std::cout << "at " << curT << ", polyMesh->particle->pos[0]: " << polyMesh->particle->pos[0].x << " " << polyMesh->particle->pos[0].y << " " << polyMesh->particle->pos[0].z << std::endl;
@@ -92,6 +88,7 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 	curT++;
 	if (curT > ((timeEnd - timeStart) * (numInter + 1))){
 		isActive = false;
+		positionBasedDeformProcessor->tv = false;
 	}
 	return true;
 }

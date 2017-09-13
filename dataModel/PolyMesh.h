@@ -35,7 +35,6 @@ public:
 	void setVertexColorVals(float v);
 
 
-	bool readyForDeform = false;
 	unsigned int vertexcountOri = 0;
 	unsigned int facecountOri = 0;
 	float* vertexCoordsOri = 0;
@@ -78,7 +77,7 @@ public:
 	static void dataParameters(std::string dataPath, float & disThr, std::string &subfolder)
 	{
 		if (std::string(dataPath).find("reduced-rbcs") != std::string::npos){
-			disThr = 4.1;
+			disThr = 5.95; //4.1
 			std::size_t found = dataPath.find_last_of("/\\");
 			if (found == std::string::npos){
 				subfolder = dataPath;//rarely
@@ -88,14 +87,14 @@ public:
 			}
 		}
 		else if (std::string(dataPath).find("rbcs") != std::string::npos){
-			disThr = 4.1;
+			disThr = 5.95;//4.1
 			subfolder = "bloodCell";
 		}
 		else if (std::string(dataPath).find("iso_t40_v3") != std::string::npos){
 			disThr = 2;
 		}
 		else if (std::string(dataPath).find("moortgat") != std::string::npos){
-			disThr = 2.1; //in a minimal case, this number should be no less than sqrt(3)/2
+			disThr = 1.5; //in a minimal case, this number should be no less than sqrt(3)/2
 		}
 		else if (std::string(dataPath).find("testDummy") != std::string::npos){
 			disThr = 4;
@@ -107,12 +106,13 @@ public:
 	};
 
 
-	bool justChanged = false;
+	bool verticesJustChanged = false;
 	std::shared_ptr<PolyMesh> newPoly;
 	void createTestDummy();
 
 	void checkShortestEdge();
 
+	void copyFrom(std::shared_ptr<PolyMesh> target, bool useParticle);
 private:
 	float cx, cy, cz;
 	float min_x, max_x, min_y, max_y, min_z, max_z;

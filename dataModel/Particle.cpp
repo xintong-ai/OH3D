@@ -176,3 +176,10 @@ bool Particle::findClosetFeature(float3 aim, float3 & result, int & resid)
 	return false;
 }
 
+void Particle::extractOrientation(int id) //special function for ImmersiveDeformParticle and ImmersiveDeformParticleTV
+{
+	orientation.resize(numParticles);
+	for (int i = 0; i < numParticles; i++){
+		orientation[i] = make_float3(valTuple[i*tupleCount + id], valTuple[i*tupleCount + id + 1], valTuple[i*tupleCount + id + 2]);
+	}
+}

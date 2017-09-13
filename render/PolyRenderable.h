@@ -8,7 +8,6 @@ class PositionBasedDeformProcessor;
 class PolyMesh;
 class ShaderProgram;
 enum COLOR_MAP;
-class TimeVaryingParticleDeformerManager;
 
 class PolyRenderable :public Renderable
 {
@@ -49,8 +48,6 @@ public:
 	std::shared_ptr<PolyMesh> polyMesh;
 	void dataChange();
 
-	std::shared_ptr<TimeVaryingParticleDeformerManager> tvParticleDeformerManager = 0;
-
 private:
 	void loadShaders();
 	void loadShadersImmer();
@@ -74,6 +71,6 @@ protected:
 	float3 ka = make_float3(0.6f, 0.6f, 0.6f);
 
 	void GenVertexBuffer(int nv, float* vertex, float* normal);
-	void GenVertexBuffer(int nv);
+	//void GenVertexBuffer(int nv);
 };
 #endif //POLY_RENDERABLE_H

@@ -60,3 +60,6 @@ endif()
 if(USE_VTK)
 	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
 endif()
+
+find_package(EIGEN REQUIRED)
+include_directories(${EIGEN_INCLUDE_DIR} required)

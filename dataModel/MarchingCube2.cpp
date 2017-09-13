@@ -1,5 +1,6 @@
 #include "MarchingCube2.h"
 #include <PolyMesh.h>
+#include <Algorithm>
 
 #include <vtkXMLImageDataReader.h>
 #include <vtkFloatArray.h>
@@ -30,7 +31,7 @@
 MarchingCube2::MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, float value)
 {
 	polyMesh = p;
-	isoValue = value;
+	isoValue0 = value;
 	
 	vtkSmartPointer<vtkXMLImageDataReader> reader =
 		vtkSmartPointer<vtkXMLImageDataReader>::New();
@@ -81,7 +82,8 @@ inputImage = 	vtkSmartPointer<vtkImageData>::New();
 	surface = vtkSmartPointer<vtkMarchingCubes>::New();
 	surface->SetInputData(inputImage);
 	surface->ComputeNormalsOn();
-	surface->SetValue(0, 0.001);
+	surface->SetValue(0, isoValue0);
+	surface->SetValue(1, isoValue1);
 
 	vtpdata = vtkSmartPointer<vtkPolyData>::New();
 
@@ -104,9 +106,9 @@ void MarchingCube2::computeIsosurface()
 	//writer->Write();
 }
 
-void MarchingCube2::newIsoValue(float v)
+void MarchingCube2::newIsoValue(float v, int index )
 {
-	surface->SetValue(0, v);
+	surface->SetValue(index, v);
 	surface->Update();
 	vtpdata = surface->GetOutput();
 	updatePoly();
@@ -127,6 +129,9 @@ void MarchingCube2::updatePoly()
 		polyMesh->vertexCoords = new float[3 * polyMesh->vertexcount];
 		polyMesh->vertexNorms = new float[3 * polyMesh->vertexcount];
 		polyMesh->indices = new unsigned[3 * polyMesh->facecount];
+
+		polyMesh->vertexColorVals = new float[polyMesh->vertexcount * 2]; //times 2 to prepare for newly added vertices
+		memset((void*)(polyMesh->vertexColorVals + vertexcount), 0, sizeof(float)* vertexcount);//the rest will always be set to 0 regardless of v
 	}
 	else{
 		polyMesh->vertexcount = vertexcount;
@@ -143,7 +148,12 @@ void MarchingCube2::updatePoly()
 	vtkFloatArray* normalDataFloat = vtkFloatArray::SafeDownCast(vtpdata->GetPointData()->GetNormals());
 	//vtkFloatArray* normalDataFloat = vtkFloatArray::SafeDownCast(vtpdata->GetPointData()->GetArray("Normals_"));
 	//vtkDataArray* normalsGeneric = polydata->GetPointData()->GetNormals(); 
+	vtkFloatArray* scalarDataFloat = vtkFloatArray::SafeDownCast(vtpdata->GetPointData()->GetScalars(0));
 
+	vtkFloatArray* normalDataFloat2 = vtkFloatArray::SafeDownCast(vtpdata->GetPointData()->GetArray("Scalars_"));
+
+	float vmin = std::min(isoValue0, isoValue1), vmax = std::max(isoValue0, isoValue1);
+	if (vmax - vmin < 0.000001) vmax = vmin + 1;
 
 	for (int i = 0; i < polyMesh->vertexcount; i++) {
 		double coord[3];
@@ -155,6 +165,9 @@ void MarchingCube2::updatePoly()
 		polyMesh->vertexNorms[3 * i] = normalDataFloat->GetComponent(i, 0);
 		polyMesh->vertexNorms[3 * i + 1] = normalDataFloat->GetComponent(i, 1);
 		polyMesh->vertexNorms[3 * i + 2] = normalDataFloat->GetComponent(i, 2);
+		
+		float zz = scalarDataFloat->GetValue(i);
+		polyMesh->vertexColorVals[i] = (zz - vmin) / (vmax - vmin);
 	}
 
 

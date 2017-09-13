@@ -41,7 +41,7 @@ bool useMultiplePolyData = false;
 
 Window::Window()
 {
-	setWindowTitle(tr("Egocentric VR Volume Visualization"));
+	setWindowTitle(tr("Egocentric Isosurface Visualization"));
 
 	////////////////////////////////prepare data////////////////////////////////
 	//////////////////Volume and RayCastingParameters
@@ -94,6 +94,10 @@ Window::Window()
 		polyMesh = std::make_shared<PolyMesh>();
 		if (std::string(polyDataPath).find("testDummy") != std::string::npos){
 			polyMesh->createTestDummy();
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			polyMesh->setVertexColorVals(0);
+		
 		}
 		else if (std::string(polyDataPath).find(".vti") != std::string::npos){
 
@@ -101,21 +105,33 @@ Window::Window()
 			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
 					
 			//std::shared_ptr<MarchingCube> mc = std::make_shared<MarchingCube>(inputVolume, polyMesh);
-			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.001);
+			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0007);
 			useIsoAdjust = true;
+
+
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			//polyMesh->setVertexColorVals(0);  //VertexColorVals is set by MarchingCube2
 		}
 		else if(std::string(polyDataPath).find(".ply") != std::string::npos){
 			PlyVTKReader plyVTKReader;
 			plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
+
+
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			polyMesh->setVertexColorVals(0);
 		}
 		else{
 			VTPReader reader;
 			reader.readFile(polyDataPath.c_str(), polyMesh.get());
+
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			polyMesh->setVertexColorVals(0);
 		}
 		   
-		polyMesh->setVertexCoordsOri();
-		polyMesh->setVertexDeviateVals();
-		polyMesh->setVertexColorVals(0);
+
 
 		std::cout << "Read data from : " << polyDataPath << std::endl;
 
@@ -167,11 +183,11 @@ Window::Window()
 		positionBasedDeformProcessor->radius = 25;
 	}
 
-	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
+	//positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
 	//////////////////////////////// Renderable ////////////////////////////////	
 
-	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
 
 
 	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
@@ -212,26 +228,34 @@ Window::Window()
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
+	bool fullVersion = true;
 
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
-
-	controlLayout->addWidget(saveStateBtn.get());
-	controlLayout->addWidget(loadStateBtn.get());
+	if (fullVersion){
+		controlLayout->addWidget(saveStateBtn.get());
+		controlLayout->addWidget(loadStateBtn.get());
+	}
 
 	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
 	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
-	controlLayout->addWidget(isDeformEnabled);
+	if (fullVersion){
+		controlLayout->addWidget(isDeformEnabled);
+	}
 	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 
 	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
 	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
-	controlLayout->addWidget(isForceDeformEnabled);
+	if (fullVersion){
+		controlLayout->addWidget(isForceDeformEnabled);
+	}
 	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
 
 	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
 	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
-	controlLayout->addWidget(isDeformColoringEnabled);
+	if (fullVersion){
+		controlLayout->addWidget(isDeformColoringEnabled);
+	}
 	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 
 
@@ -251,8 +275,9 @@ Window::Window()
 	eyePosLayout2->addLayout(eyePosLayout);
 	eyePosLayout2->addWidget(eyePosBtn);
 	eyePosGroup->setLayout(eyePosLayout2);
-	controlLayout->addWidget(eyePosGroup);
-
+	if (fullVersion){
+		controlLayout->addWidget(eyePosGroup);
+	}
 
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
@@ -263,32 +288,53 @@ Window::Window()
 	deformModeLayout2->addWidget(immerRb.get());
 	deformModeLayout2->addWidget(nonImmerRb.get());
 	groupBox2->setLayout(deformModeLayout2);
-	controlLayout->addWidget(groupBox2);
+	if (fullVersion){
+		controlLayout->addWidget(groupBox2);
+	}
 	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
 	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
 
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
-	controlLayout->addWidget(saveScreenBtn);
+	if (fullVersion){
+		controlLayout->addWidget(saveScreenBtn);
+	}
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
 
 	if (useIsoAdjust){
-		QLabel *transFuncP1SliderLabelLit = new QLabel("Iso Value");
-		QSlider *isoValueSlider = new QSlider(Qt::Horizontal);
+
+		QLabel *isoValueSliderLabelLit = new QLabel("Iso Value 1:");
+		isoValueSlider = new QSlider(Qt::Horizontal);
 		isoValueSlider->setRange(0, 38); //0-0.0038
-		isoValueSlider->setValue(mc->isoValue / 0.0001);
+		isoValueSlider->setValue(round(mc->isoValue0 / 0.0001));
 		connect(isoValueSlider, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged(int)));
-		isoValueLabel = new QLabel(QString::number(mc->isoValue));
+		isoValueLabel = new QLabel(QString::number(mc->isoValue0));
 		QHBoxLayout *isoValueSliderLayout = new QHBoxLayout;
+		isoValueSliderLayout->addWidget(isoValueSliderLabelLit);
 		isoValueSliderLayout->addWidget(isoValueSlider);
 		isoValueSliderLayout->addWidget(isoValueLabel);
 		controlLayout->addLayout(isoValueSliderLayout);
+
+
+		QLabel *isoValueSliderLabelLit1 = new QLabel("Iso Value 2:");
+		isoValueSlider1 = new QSlider(Qt::Horizontal);
+		isoValueSlider1->setRange(0, 38); //0-0.0038
+		isoValueSlider1->setValue(round(mc->isoValue1 / 0.0001));
+		connect(isoValueSlider1, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged1(int)));
+		isoValueLabel1 = new QLabel(QString::number(mc->isoValue1));
+		QHBoxLayout *isoValueSliderLayout1 = new QHBoxLayout;
+		isoValueSliderLayout1->addWidget(isoValueSliderLabelLit1);
+		isoValueSliderLayout1->addWidget(isoValueSlider1);
+		isoValueSliderLayout1->addWidget(isoValueLabel1);
+		controlLayout->addLayout(isoValueSliderLayout1);
 	}
 
 
 	QCheckBox* toggleWireframe = new QCheckBox("Toggle Wireframe", this);
 	toggleWireframe->setChecked(polyRenderable->useWireFrame);
-	controlLayout->addWidget(toggleWireframe);
+	if (fullVersion){
+		controlLayout->addWidget(toggleWireframe);
+	}
 	connect(toggleWireframe, SIGNAL(clicked(bool)), this, SLOT(toggleWireframeClicked(bool)));
 
 
@@ -421,11 +467,42 @@ void Window::isoValueSliderValueChanged(int v)
 {
 	//isoValueSlider->setRange(0, 38); //0-0.0038
 	//isoValueSlider->setValue(mc->isoValue / 0.0001);
-	mc->isoValue = v*0.0001;
-	isoValueLabel->setText(QString::number(mc->isoValue));
-	mc->newIsoValue(v*0.0001);
 
-	polyMesh->setVertexCoordsOri();
-	polyMesh->setVertexDeviateVals();
-	polyMesh->setVertexColorVals(0);
+	float newvalue = v*0.0001;
+	if (newvalue < mc->isoValue1){
+		mc->isoValue0 = newvalue;
+		isoValueLabel->setText(QString::number(mc->isoValue0));
+		mc->newIsoValue(v*0.0001, 0);
+
+		polyMesh->setVertexCoordsOri();
+		polyMesh->setVertexDeviateVals();
+
+		positionBasedDeformProcessor->polyMeshDataUpdated();
+		
+	}
+	else{
+		isoValueSlider->setValue(round(mc->isoValue0 / 0.0001));
+	}
+}
+
+void Window::isoValueSliderValueChanged1(int v)
+{
+	//isoValueSlider->setRange(0, 38); //0-0.0038
+	//isoValueSlider->setValue(mc->isoValue / 0.0001);
+
+	float newvalue = v*0.0001;
+	if (newvalue > mc->isoValue0){
+		mc->isoValue1 = newvalue;
+		isoValueLabel1->setText(QString::number(mc->isoValue1));
+		mc->newIsoValue(v*0.0001, 1);
+
+		polyMesh->setVertexCoordsOri();
+		polyMesh->setVertexDeviateVals();
+
+		positionBasedDeformProcessor->polyMeshDataUpdated();
+		
+	}
+	else{
+		isoValueSlider1->setValue(round(mc->isoValue1 / 0.0001));
+	}
 }

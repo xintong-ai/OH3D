@@ -72,7 +72,7 @@ public:
 	float densityThr = 0.01; //used for volume
 	int checkRadius = 1;  //used for volume. can combine with disThr?
 	float disThr = 4.1;	//used for poly and particle
-
+	std::vector<float> thrOriented; //used for particle
 
 	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m);
 	PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m);
@@ -113,7 +113,7 @@ public:
 		else{ return false; }
 	}
 
-
+	bool tv = false;
 	void reset(){}
 
 	float3 getTunnelStart(){ return tunnelStart; }
@@ -121,11 +121,12 @@ public:
 	float3 getRectVerticalDir(){ return rectVerticalDir; }
 
 	float r = 0; //degree of deformation
+	float rOpen = 0, rClose = 0;
 
 	bool deformData = true; //sometimes not need to modify the data, but just compute the deformation info like the frame, and just deform the internal data copy
 
 	//for time varying particle dataset
-	void updateParticleData(std::shared_ptr<Particle> ori);
+	void particleDataUpdated();
 	void polyMeshDataUpdated();
 
 	~PositionBasedDeformProcessor(){
@@ -160,6 +161,8 @@ private:
 
 	//tunnel functions
 	void computeTunnelInfo(float3 centerPoint);
+	void lengthenTunnel(float3 centerPoint);
+
 	bool sameTunnel();
 	//tunnel info
 	float3 lastDeformationDirVertical;
@@ -225,6 +228,8 @@ private:
 
 	thrust::device_vector<float4> d_vec_posOrig;
 	thrust::device_vector<float4> d_vec_posTarget;
+	thrust::device_vector<float3> d_vec_orientation;
+	thrust::device_vector<float> d_vec_mid;
 
 	
 	void deformDataByDegree(float r);
@@ -235,7 +240,6 @@ private:
 	
 	bool inRange(float3 v); 
 	void resetData();
-	bool atProperLocationInDeformedData(float3 pos);
 	bool atProperLocation(float3 pos, bool useOriData); //useOriData = true: check if proper in original data; false: check if proper in deformed data (with a in-tunnel check at the beginning)
 
 
@@ -244,9 +248,10 @@ private:
 	void PrepareDataStructureForPolyDeform();
 
 	void doVolumeDeform(float degree);
-	void doVolumeDeform2Tunnel(float degree, float degreeClose);
+	void doVolumeDeform2Tunnel(float degreeOpen, float degreeClose);
 	void doPolyDeform(float degree);
 	void doParticleDeform(float degree);
+	void doParticleDeform2Tunnel(float degreeOpen, float degreeClose);
 
 	void doPolyDeform2(float degree);
 
@@ -261,7 +266,17 @@ private:
 	TunnelTimer tunnelTimer1, tunnelTimer2;
 	float outTime = 3000;//miliseconds
 
-
+	float finalDegree()
+	{
+		switch (shapeModel)
+		{
+		case CUBOID: return deformationScale / 2;
+		case CIRCLE: return radius / 2;
+		default:{
+					std::cout << "finalDegree not implemented!!" << std::endl;
+			}
+		}
+	}
 
 
 };

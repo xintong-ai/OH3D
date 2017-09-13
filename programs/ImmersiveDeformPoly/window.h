@@ -100,7 +100,8 @@ private:
 	std::shared_ptr<MarchingCube2> mc;
 	QLineEdit *eyePosLineEdit;
 
-	QLabel *isoValueLabel;
+	QLabel *isoValueLabel, *isoValueLabel1;
+	QSlider *isoValueSlider, *isoValueSlider1;
 
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
@@ -121,6 +122,7 @@ private:
 	void SlotNonImmerRb(bool);
 	
 	void isoValueSliderValueChanged(int v);
+	void isoValueSliderValueChanged1(int v);
 
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();

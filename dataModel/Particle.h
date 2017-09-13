@@ -22,6 +22,8 @@ public:
 
 	std::vector<float4> pos; //current position after deformation
 
+	std::vector<float3> orientation; //orientation of each particle. used when the shape of each particle is not isotropic
+
 	//to record the attribute(s) that might be important, two ways can be used
 	//the first case is for only one attribute
 	std::vector<float> val; 
@@ -69,7 +71,8 @@ public:
 	bool isPickingGlyph = false;
 	int GetSnappedGlyphId(){ return snappedGlyphId; }
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
-
+	
+	void extractOrientation(int id); //special function for ImmersiveDeformParticle and ImmersiveDeformParticleTV
 private:
 
 };

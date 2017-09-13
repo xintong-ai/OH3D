@@ -68,23 +68,24 @@ Window::Window()
 	for (int i = tvParticleDeformerManager->timeStart; i <= tvParticleDeformerManager->timeEnd; i++){
 		std::cout << "reading data of timestep " << i << std::endl;
 		//single time step
-		std::shared_ptr<PolyMesh> polyMesh = std::make_shared<PolyMesh>();
+		std::shared_ptr<PolyMesh> curPoly = std::make_shared<PolyMesh>();
 		std::stringstream ss;
 		ss << std::setw(4) << std::setfill('0') << i;
 		std::string s = ss.str();
 		std::string fname = subfolder + "/marked-reduced-rbcs-" + s + ".vtp";
 
 		VTPReader reader;
-		reader.readFile(fname.c_str(), polyMesh.get());
+		reader.readFile(fname.c_str(), curPoly.get());
 
-		polyMesh->setAssisParticle((subfolder + "/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str());
-		//polyMesh->setVertexCoordsOri(); //not needed when vertex coords need not to change
+		curPoly->setAssisParticle((subfolder + "/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str());
+		//curPoly->setVertexCoordsOri(); //not needed when vertex coords need not to change
+		curPoly->particle->extractOrientation(7); //7 is decided by how we write the polyMeshRegions.mytup file
 
 		//normally when a particle already used valTuple, we do not need to use val
 		//but here use val to record the amount of shiftness after deformation
-		polyMesh->particle->val.resize(polyMesh->particle->numParticles, 0);
-		polyMesh->particle->valMax = 0;
-		polyMesh->particle->valMin = 0;
+		curPoly->particle->val.resize(curPoly->particle->numParticles, 0);
+		curPoly->particle->valMax = 0;
+		curPoly->particle->valMin = 0;
 
 
 		//create the cellMaps
@@ -93,14 +94,14 @@ Window::Window()
 			int n = lastParticle->numParticles;
 			std::vector<int> cellMap(n, -1);
 
-			int m = polyMesh->particle->numParticles;
-			int tupleCount = polyMesh->particle->tupleCount; //should be 11
+			int m = curPoly->particle->numParticles;
+			int tupleCount = curPoly->particle->tupleCount; //should be 11
 			for (int i = 0; i < n; i++){
 				int lastLabel = lastParticle->valTuple[i * tupleCount + 10];
 				bool notFound = true;
 
 				for (int j = 0; j < m && notFound; j++){
-					if (lastLabel == polyMesh->particle->valTuple[tupleCount * j + 10]){
+					if (lastLabel == curPoly->particle->valTuple[tupleCount * j + 10]){
 						cellMap[i] = j;
 						notFound = false;
 					}
@@ -108,17 +109,19 @@ Window::Window()
 			}
 			tvParticleDeformerManager->cellMaps.push_back(cellMap);
 		}
-		tvParticleDeformerManager->polyMeshes.push_back(polyMesh);
+		tvParticleDeformerManager->polyMeshes.push_back(curPoly);
 
-		int n = polyMesh->particle->numParticles;
-		int tupleCount = polyMesh->particle->tupleCount; //should be 11
+		int n = curPoly->particle->numParticles;
+		int tupleCount = curPoly->particle->tupleCount; //should be 11
 		for (int i = 0; i < n; i++){
-			int label = polyMesh->particle->valTuple[i * tupleCount + 10];
+			int label = curPoly->particle->valTuple[i * tupleCount + 10];
 		}
 	}
 	tvParticleDeformerManager->finishedMeshesSetting();
 
-	polyMesh = tvParticleDeformerManager->polyMeshes[0];
+	polyMesh = std::make_shared<PolyMesh>();
+	polyMesh->copyFrom(tvParticleDeformerManager->polyMeshes[0], true);
+
 
 	//read wall
 	polyMeshWall = std::make_shared<PolyMesh>();
@@ -138,7 +141,7 @@ Window::Window()
 	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
 
 	//matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x, -20, matrixMgr->getEyeInLocal().z));
-	matrixMgr->moveEyeInLocalByModeMat(make_float3(32.9, 13.6, 67.2));
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(34.4, 13.6, 67.2));
 	//matrixMgr->setViewAndUpInWorld(QVector3D(1, 0, 0), QVector3D(0, 0, 1));
 	
 
@@ -155,17 +158,24 @@ Window::Window()
 	//////////////////////////////// Processor ////////////////////////////////
 	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh->particle, matrixMgr);
 	positionBasedDeformProcessor->disThr = disThr;
+
+	//float thrAlong = 3, thrPerpen = 4.1; //currently hard coding
+	positionBasedDeformProcessor->thrOriented.push_back(2.5); 
+	positionBasedDeformProcessor->thrOriented.push_back(4);
+
 	positionBasedDeformProcessor->minPos = posMin - make_float3(disThr + 1, disThr + 1, disThr + 1);
 	positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);
 
 	openGL->AddProcessor("1ForTV", tvParticleDeformerManager.get());
 	openGL->AddProcessor("2positionBasedDeformProcessor", positionBasedDeformProcessor.get());
 
-	positionBasedDeformProcessor->setDeformationScale(10);
-	positionBasedDeformProcessor->setDeformationScaleVertical(14);
+	positionBasedDeformProcessor->setDeformationScale(8.5);
+	positionBasedDeformProcessor->setDeformationScaleVertical(4.5);
 
-	positionBasedDeformProcessor->setOutTime(1.5);
+	positionBasedDeformProcessor->setOutTime(1.0);
 
+	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
+	positionBasedDeformProcessor->radius = 9;
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 
@@ -185,7 +195,7 @@ Window::Window()
 
 	polyWallRenderable = std::make_shared<PolyRenderable>(polyMeshWall);
 	openGL->AddRenderable("5polyWall", polyWallRenderable.get());
-	polyMeshWall->opacity = 0.5;
+	//polyMeshWall->opacity = 0.5;
 
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
@@ -228,6 +238,11 @@ Window::Window()
 	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
 	controlLayout->addWidget(isDeformEnabled);
 	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+
+	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+	controlLayout->addWidget(isForceDeformEnabled);
+	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
 
 	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
 	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
@@ -305,15 +320,10 @@ Window::Window()
 
 
 
-
-	polyRenderable->tvParticleDeformerManager = tvParticleDeformerManager;
-
 	tvParticleDeformerManager->polyMesh = polyMesh;
 	tvParticleDeformerManager->isActive = false;
 
 	tvParticleDeformerManager->positionBasedDeformProcessor = positionBasedDeformProcessor;
-	//tvParticleDeformerManager->polyRenderable = polyRenderable;
-
 }
 
 
@@ -364,6 +374,16 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 }
 
+void Window::isForceDeformEnabledClicked(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->isForceDeform = true;
+	}
+	else{
+		positionBasedDeformProcessor->isForceDeform = false;
+	}
+}
+
 void Window::isDeformColoringEnabledClicked(bool b)
 {
 	if (b){
@@ -408,6 +428,7 @@ void Window::saveScreenBtnClicked()
 void Window::startTVBtnClicked()
 {
 	tvParticleDeformerManager->turnActive();
+	positionBasedDeformProcessor->tv = true;
 }
 
 
@@ -415,10 +436,8 @@ void Window::backToFirstTimestepBtnClicked()
 {
 	tvParticleDeformerManager->resetPolyMeshes();
 
-	polyMesh = tvParticleDeformerManager->polyMeshes[0];
-	tvParticleDeformerManager->polyMesh = polyMesh;
-	polyRenderable->polyMesh = polyMesh;
-	polyRenderable->dataChange();
+	polyMesh->copyFrom(tvParticleDeformerManager->polyMeshes[0], true);
+	polyMesh->verticesJustChanged = true;
 
-	positionBasedDeformProcessor->updateParticleData(polyMesh->particle);
+	positionBasedDeformProcessor->particleDataUpdated();
 }

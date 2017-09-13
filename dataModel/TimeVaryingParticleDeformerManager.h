@@ -9,6 +9,7 @@
 #include <ctime>
 #include <vector_types.h>
 #include <helper_timer.h>
+//#include <PolyRenderable.h>
 
 
 class Particle;
@@ -21,7 +22,6 @@ class PolyRenderable;
 class TimeVaryingParticleDeformerManager :public Processor
 {
 public:
-	bool justChangedForRenderer = false;
 
 	std::shared_ptr<PolyMesh> polyMesh;
 	std::vector < std::shared_ptr<PolyMesh>> polyMeshes;
@@ -30,9 +30,9 @@ public:
 	std::vector < std::shared_ptr<PolyMesh>> polyMeshesOri; //the renderable and the processor can both operate and change polyMeshes. Save the original copy here. It may not save all info, but only saves the one that might be changed.
 
 
-	int timeStart = 6, timeEnd = 7;
+	int timeStart = 6, timeEnd = 32;
 	int curT = -1;
-	int numInter = 40;
+	int numInter = 20;
 	std::vector<std::vector<int>> cellMaps;//given the index of a region in last timestep. get the index of the region in next timestep with the same label
 
 
@@ -56,5 +56,10 @@ private:
 	int fpsCount = 0;
 	StopWatchInterface *timerFrame = 0;
 	void saveOriginalCopyOfMeshes();
+
+	//std::shared_ptr<PolyRenderable> qq;
+	//void tese(){
+	//	qq->polyMesh = polyMesh;
+	//}
 };
 #endif

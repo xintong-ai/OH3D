@@ -18,8 +18,9 @@ PolyMesh::~PolyMesh(){
 	if (indicesOri){ delete[]indicesOri; indicesOri = 0; }
 
 	if (vertexDeviateVals){ delete[]vertexDeviateVals; vertexDeviateVals = 0; }
-
 	if (vertexColorVals){ delete[]vertexColorVals; vertexColorVals = 0; }
+
+	if (particle){ particle->~Particle(); particle = 0; }
 }
 
 
@@ -99,7 +100,6 @@ void PolyMesh::setVertexCoordsOri() //needed when the data is used for deformati
 		memcpy(indices, indicesOri, sizeof(unsigned int)* 3 * facecount);
 
 	}
-	readyForDeform = true;
 }
 
 
@@ -139,14 +139,107 @@ void PolyMesh::setAssisParticle(const char* fname)
 		float3 c = make_float3(particle->pos[i]);
 		int start = particle->valTuple[i * particle->tupleCount +2];
 		int end = particle->valTuple[i * particle->tupleCount + 3];
+
+		//float3 bbmax = make_float3(-10000, -10000, -1000), bbmin = make_float3(10000, 10000, 10000);
+
 		for (int j = start; j <= end; j++){
 			vertexCoords[3 * j] -= c.x;
 			vertexCoords[3 * j + 1] -= c.y;
 			vertexCoords[3 * j + 2] -= c.z;
+			//bbmax = fmaxf(bbmax, make_float3(vertexCoords[3 * j], vertexCoords[3 * j + 1], vertexCoords[3 * j + 2]));
+			//bbmin = fminf(bbmin, make_float3(vertexCoords[3 * j], vertexCoords[3 * j + 1], vertexCoords[3 * j + 2]));
 		}
+		//std::cout << "bbscale: " << length(bbmin - bbmax) / 2 << std::endl; //less than 6
+		//std::cout << "bbscale 3d: " << (bbmax - bbmin).x << " " << (bbmax - bbmin).y << " " << (bbmax - bbmin).z << std::endl; //less than (3,8,8)
+
 	}
 
 }
+
+void PolyMesh::copyFrom(std::shared_ptr<PolyMesh> target, bool useParticle)
+{
+	//PolyMesh::~PolyMesh();
+	if (vertexCoords){
+		delete[]vertexCoords; vertexCoords = 0;
+	}
+	if (vertexNorms){ delete[]vertexNorms; vertexNorms = 0; }
+	if (indices){
+		delete[]indices; indices = 0;
+	}
+	if (vertexCoordsOri) { delete[]vertexCoordsOri; vertexCoordsOri = 0; }
+	if (vertexNormsOri){ delete[]vertexNormsOri; vertexNormsOri = 0; }
+	if (indicesOri){ delete[]indicesOri; indicesOri = 0; }
+
+	if (vertexDeviateVals){ delete[]vertexDeviateVals; vertexDeviateVals = 0; }
+	if (vertexColorVals){ delete[]vertexColorVals; vertexColorVals = 0; }
+
+	vertexcount = target->vertexcount;
+	facecount = target->facecount;
+
+	vertexCoords = new float[3 * vertexcount];
+	vertexNorms = new float[3 * vertexcount];
+
+	memcpy(vertexCoords, target->vertexCoords, sizeof(float)* 3 * vertexcount);
+	memcpy(vertexNorms, target->vertexNorms, sizeof(float)* 3 * vertexcount);
+
+	indices = new unsigned[3 * facecount];
+	memcpy(indices, target->indices, sizeof(unsigned int)* 3 * facecount);
+
+	float3 posMin, posMax;
+	target->GetPosRange(posMin, posMax);
+	//cx, cy, cz; are not computed
+	min_x = posMin.x, max_x = posMax.x, min_y = posMin.y, max_y = posMax.y, min_z = posMin.z, max_z = posMax.z;
+
+	if (useParticle)
+	{
+		if (target->particle == 0){
+			std::cout << "error copying the particle from the other polymesh!" << std::endl;
+			exit(0);
+		}
+		if (particle == 0){
+			particle = std::make_shared<Particle>(); //only used for the first time
+		}
+		particle->numParticles = target->particle->numParticles;
+
+		particle->pos = target->particle->pos;
+		particle->posOrig = target->particle->posOrig;
+
+		particle->val = target->particle->val;
+
+		particle->orientation = target->particle->orientation;
+
+		particle->posMin = target->particle->posMin;
+		particle->posMax = target->particle->posMax;
+		particle->valMin = target->particle->valMin;
+		particle->valMax = target->particle->valMax;
+
+		particle->tupleCount = target->particle->tupleCount;
+		particle->valTuple = target->particle->valTuple;
+
+		particle->hasFeature = target->particle->hasFeature;
+		particle->feature = target->particle->feature;
+		particle->featureMin = target->particle->featureMin;
+		particle->featureMax = target->particle->featureMax;
+
+		//do not need the following!!! the original PolyMesh has already changed the vertices!!!
+		//for the same reason, find_center_and_range will not work correctly
+		//int nRegion = particle->numParticles;
+		//for (int i = 0; i < nRegion; i++){
+		//	float3 c = make_float3(particle->pos[i]);
+		//	int start = particle->valTuple[i * particle->tupleCount + 2];
+		//	int end = particle->valTuple[i * particle->tupleCount + 3];
+		//	for (int j = start; j <= end; j++){
+		//		vertexCoords[3 * j] -= c.x;
+		//		vertexCoords[3 * j + 1] -= c.y;
+		//		vertexCoords[3 * j + 2] -= c.z;
+		//	}
+		//}
+
+
+	}
+	verticesJustChanged = true;
+}
+
 
 void PolyMesh::doShift(float3 shift)
 {

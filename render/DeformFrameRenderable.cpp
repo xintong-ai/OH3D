@@ -131,7 +131,7 @@ void DeformFrameRenderable::drawCircileModel(float modelview[16], float projecti
 
 
 
-	bool blockFurtherObjects = true;
+	bool blockFurtherObjects = false;
 	if (blockFurtherObjects){
 		float3 zaxisn = normalize(processor->getTunnelEnd() - processor->getTunnelStart());
 		float3 yaxis = processor->getRectVerticalDir();

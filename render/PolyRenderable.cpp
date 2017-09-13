@@ -19,7 +19,6 @@
 #include "PositionBasedDeformProcessor.h"
 
 
-#include "TimeVaryingParticleDeformerManager.h"
 
 void PolyRenderable::init()
 {
@@ -266,17 +265,11 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	if (!visible)
 		return;
 
-	//if (polyMesh->justChanged){
-	//	polyMesh->justChanged = false;
-	//	polyMesh = polyMesh->newPoly;
-	//	dataChange();
-	//}
-	if (tvParticleDeformerManager != 0 && tvParticleDeformerManager->justChangedForRenderer)
-	{
-		polyMesh = tvParticleDeformerManager->polyMesh;
+	if (polyMesh->verticesJustChanged){
+		polyMesh->verticesJustChanged = false;
 		dataChange();
-		tvParticleDeformerManager->justChangedForRenderer = false;
 	}
+
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -377,9 +370,47 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	curGlProg->disable();
 
 	glDisable(GL_BLEND);
+
+
+
+
+	////for test
+	//if (centerBasedRendering){
+	//	glMatrixMode(GL_PROJECTION);
+	//	glPushMatrix();
+	//	glLoadIdentity();
+	//	glLoadMatrixf(projection);
+	//	glMatrixMode(GL_MODELVIEW);
+	//	glPushMatrix();
+	//	glLoadIdentity();
+	//	glLoadMatrixf(modelview);
+
+
+	//	glColor4f(0.89f, 0.29f, 0.26f, 0.8f);
+	//	glLineWidth(4);
+	//	{
+
+	//		int nRegion = polyMesh->particle->numParticles;
+	//		for (int i = 0; i < nRegion; i++){
+	//			float3 p1 = make_float3(polyMesh->particle->pos[i]);
+	//			float3 p2 = p1 + 6 * make_float3(polyMesh->particle->valTuple[7], polyMesh->particle->valTuple[8], polyMesh->particle->valTuple[9]);
+	//			glBegin(GL_LINES);
+	//			glVertex3fv(&(p1.x));
+	//			glVertex3fv(&(p2.x));
+	//			glEnd();
+	//		}
+
+	//	}
+	//	glLineWidth(1); //restore
+	//}
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
 }
 
-
+/*
 void PolyRenderable::GenVertexBuffer(int nv)
 {
 	m_vao->bind();
@@ -408,7 +439,7 @@ void PolyRenderable::GenVertexBuffer(int nv)
 
 	m_vao->release();
 }
-
+*/
 void PolyRenderable::GenVertexBuffer(int nv, float* vertex, float* normal)
 {
 	m_vao->bind();

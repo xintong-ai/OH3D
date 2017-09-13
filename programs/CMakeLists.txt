@@ -23,7 +23,7 @@ if(BUILD_TEST)
 		if(USE_VTK)
 			add_subdirectory(ImmersiveDeformPoly)
 			#add_subdirectory(ImmersiveDeformParticle)#temporarily to speed up for testing...
-			#add_subdirectory(ImmersiveDeformParticleTV)
+			add_subdirectory(ImmersiveDeformParticleTV)
 			add_subdirectory(AssistProg)
 		endif()
 	endif()

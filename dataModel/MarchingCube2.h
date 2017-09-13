@@ -18,11 +18,13 @@ class MarchingCube2
 public:
 	std::shared_ptr<PolyMesh> polyMesh = 0;
 
-	float isoValue = -1;
+	float isoValue0 = -1;
+	float isoValue1 = 0.0013;
+
 	bool needCompute = false;
 	MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, float value = 0.001);
 
-	void newIsoValue(float v);
+	void newIsoValue(float v, int index = 0);
 
 
 private:

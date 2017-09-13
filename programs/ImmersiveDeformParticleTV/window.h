@@ -122,6 +122,7 @@ private slots:
 	void applyEyePos();
 
 	void isDeformEnabledClicked(bool b);
+	void isForceDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
 
 

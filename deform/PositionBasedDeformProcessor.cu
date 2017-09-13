@@ -81,24 +81,6 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<PolyM
 
 void PositionBasedDeformProcessor::PrepareDataStructureForPolyDeform()
 {
-	//if (d_vertexCoords) { cudaFree(d_vertexCoords); d_vertexCoords = 0; };
-	//if (d_vertexCoords_init){ cudaFree(d_vertexCoords_init); d_vertexCoords_init = 0; };
-	//if (d_indices){ cudaFree(d_indices); d_indices = 0; };
-	//if (d_norms){ cudaFree(d_norms); d_norms = 0; };
-	//if (d_vertexDeviateVals){ cudaFree(d_vertexDeviateVals); d_vertexDeviateVals = 0; };
-	//if (d_vertexColorVals) { cudaFree(d_vertexColorVals); d_vertexColorVals = 0; };
-	//if (d_numAddedFaces){ cudaFree(d_numAddedFaces); d_numAddedFaces = 0; };
-
-
-	////NOTE!! here doubled the space. Hopefully it is large enough
-	//cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 * 2);
-	//cudaMalloc(&d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3 * 2);
-	//cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3 * 2);
-	//cudaMalloc(&d_norms, sizeof(float)*poly->vertexcount * 3 * 2);
-	//cudaMalloc(&d_vertexDeviateVals, sizeof(float)*poly->vertexcount * 2);
-	//cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2);
-	//cudaMalloc(&d_numAddedFaces, sizeof(int));
-
 	if (!d_vertexCoords) { cudaMalloc(&d_vertexCoords, sizeof(float)*poly->vertexcount * 3 * 2); };
 	if (!d_vertexCoords_init){ cudaMalloc(&d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3 * 2); };
 	if (!d_indices){ cudaMalloc(&d_indices, sizeof(unsigned int)*poly->facecount * 3 * 2); };
@@ -108,7 +90,7 @@ void PositionBasedDeformProcessor::PrepareDataStructureForPolyDeform()
 	if (!d_vertexColorVals) { cudaMalloc(&d_vertexColorVals, sizeof(float)*poly->vertexcount * 2); };
 	if (!d_numAddedFaces){ cudaMalloc(&d_numAddedFaces, sizeof(int)); };
 
-
+	////NOTE!! here doubled the space. Hopefully it is large enough
 	cudaMemcpy(d_vertexCoords, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_vertexCoords_init, poly->vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 	cudaMemcpy(d_indices, poly->indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyHostToDevice);
@@ -124,6 +106,12 @@ void PositionBasedDeformProcessor::PrepareDataStructureForPolyDeform()
 void PositionBasedDeformProcessor::polyMeshDataUpdated()
 {
 	PrepareDataStructureForPolyDeform();
+	if (systemState != ORIGINAL && isActive){
+		modifyPolyMesh();
+		doPolyDeform(r);
+	}
+
+	//!!!!!  NOT COMPLETE YET!!! to add more state changes!!!!
 }
 
 
@@ -139,17 +127,41 @@ PositionBasedDeformProcessor::PositionBasedDeformProcessor(std::shared_ptr<Parti
 
 	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
 	d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+	
+	d_vec_mid.resize(particle->numParticles);
+
+	if (particle->orientation.size() == 0){
+		std::cout << "processing unoriented particles" << std::endl;
+	}
+	d_vec_orientation.assign(&(particle->orientation[0]), &(particle->orientation[0]) + particle->numParticles);
+
 }
 
-void PositionBasedDeformProcessor::updateParticleData(std::shared_ptr<Particle> ori)
+void PositionBasedDeformProcessor::particleDataUpdated()
 {
-	particle = ori;
 	d_vec_posOrig.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
+	if (d_vec_mid.size() != particle->numParticles){
+		d_vec_mid.resize(particle->numParticles);
+	}
 
-	//process(0, 0, 0, 0);
+	if (particle->orientation.size() >0){
+		d_vec_orientation.assign(&(particle->orientation[0]), &(particle->orientation[0]) + particle->numParticles);
+	}
+	else{
+		std::cout << "WARNING! particles orientation expected but not found" << std::endl;
+	}
 
-	if (systemState == DEFORMED && isActive){
-		doParticleDeform(r);
+	if (systemState != ORIGINAL && isActive){
+
+		computeTunnelInfo(matrixMgr->getEyeInLocal());
+		//lengthenTunnel(matrixMgr->getEyeInLocal());
+
+		if (systemState == MIXING){
+			doParticleDeform2Tunnel(rOpen, rClose);
+		}
+		else{
+			doParticleDeform(r); //although the deformation might be computed later, still do it once here to compute d_vec_posTarget in case of needed by detecting proper location
+		}
 	}
 	else{
 		d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
@@ -181,6 +193,14 @@ void PositionBasedDeformProcessor::resetData()
 
 void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 {
+	float step;
+	if (dataType == VOLUME){
+		step = 1; //for VOLUME, no need to be less than 1
+	}
+	else{
+		step = 0.5;
+	}
+
 	if (isForceDeform) //just for testing, may not be precise
 	{
 		//when this funciton is called, suppose we already know that centerPoint is not inWall
@@ -194,7 +214,7 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		}
 
 		//old method
-		float step = 1;
+
 		tunnelStart = centerPoint;
 		while (atProperLocation(tunnelStart, true)){
 			tunnelStart += tunnelAxis*step;
@@ -217,8 +237,6 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		else{
 		rectVerticalDir = matrixMgr->getViewVecInLocal();
 		}
-
-		float step = 1;
 
 		bool* d_planeHasSolid;
 		cudaMalloc(&d_planeHasSolid, sizeof(bool)* 1);
@@ -272,7 +290,7 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 
 
 		//old method
-		float step = 1;
+
 		tunnelEnd = centerPoint + tunnelAxis*step;
 		while (!atProperLocation(tunnelEnd, true)){
 			tunnelEnd += tunnelAxis*step;
@@ -284,7 +302,6 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 
 
 		/* //new method
-		float step = 1;
 
 		bool* d_planeHasSolid;
 		cudaMalloc(&d_planeHasSolid, sizeof(bool)* 1);
@@ -323,6 +340,38 @@ void PositionBasedDeformProcessor::computeTunnelInfo(float3 centerPoint)
 		//std::cout << "tunnelEnd: " << tunnelEnd.x << " " << tunnelEnd.y << " " << tunnelEnd.z << std::endl << std::endl;
 		cudaFree(d_planeHasSolid);
 		*/
+	}
+}
+
+void PositionBasedDeformProcessor::lengthenTunnel(float3 centerPoint)
+{
+	float step;
+	if (dataType == VOLUME){
+		step = 1; //for VOLUME, no need to be less than 1
+	}
+	else{
+		step = 0.5;
+	}
+
+	if (isForceDeform) //just for testing, may not be precise
+	{
+		float3 tunnelAxis = normalize(matrixMgr->getViewVecInLocal());
+
+		//old method
+		while (!atProperLocation(tunnelEnd, true)){
+			tunnelEnd += tunnelAxis*step;
+		}
+	}
+	else{
+		float3 tunnelAxis = normalize(matrixMgr->getViewVecInLocal());
+
+		//old method
+		while (!atProperLocation(tunnelEnd, true)){
+			tunnelEnd += tunnelAxis*step;
+		}
+		while (!atProperLocation(tunnelStart, true)){
+			tunnelStart -= tunnelAxis*step;
+		}
 	}
 }
 
@@ -399,6 +448,34 @@ struct functor_dis
 		: pos(_pos){}
 };
 
+
+struct functor_ParticleDis
+{
+	float3 pos;
+	float thrAlong, thrPerpen;
+	template<typename Tuple>
+	__device__ __host__ void operator() (Tuple t){
+		float3 center = make_float3(thrust::get<0>(t));
+		float3 orient = thrust::get<1>(t);
+
+		float l = dot(pos - center, orient);
+		float3 proj = center + l*orient;
+		float l3 = length(proj - pos);
+
+		if (abs(l) < thrAlong && l3 < thrPerpen){
+			thrust::get<2>(t) = 1;
+		}
+		else{
+			thrust::get<2>(t) = 0;
+		}
+		
+	}
+	
+	functor_ParticleDis(float3 _pos, float _thrAlong, float _thrPerpen)
+		: pos(_pos), thrAlong(_thrAlong), thrPerpen(_thrPerpen){}
+};
+
+
 __device__ float d_disToTri(float3 p, float3 p1, float3 p2, float3 p3, float thr)
 {
 	float3 e12 = p2 - p1;
@@ -442,7 +519,7 @@ __device__ float d_disToTri(float3 p, float3 p1, float3 p2, float3 p3, float thr
 	return sqrt(disInPlaneSqu + disToPlane*disToPlane);
 }
 
-__global__ void d_checkIfTooCloseToPoly(float3 pos, uint* indices, int faceCoords, float* vertexCoords, float thr, bool* res)
+__global__ void d_checkIfTooCloseToPoly(float3 pos, uint* indices, int faceCoords, float* vertexCoords, float *norms, float thr, bool* res)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= faceCoords)	return;
@@ -454,11 +531,23 @@ __global__ void d_checkIfTooCloseToPoly(float3 pos, uint* indices, int faceCoord
 
 	//float dis = min(min(length(pos - v1), length(pos - v2)), length(pos - v3));
 	float dis = d_disToTri(pos, v1, v2, v3, thr);
-	if (dis < thr)
-	{
-		*res = true;
-	}
 
+	float3 norm1 = make_float3(norms[3 * inds.x], norms[3 * inds.x + 1], norms[3 * inds.x + 2]);
+	float3 norm2 = make_float3(norms[3 * inds.y], norms[3 * inds.y + 1], norms[3 * inds.y + 2]);
+	float3 norm3 = make_float3(norms[3 * inds.z], norms[3 * inds.z + 1], norms[3 * inds.z + 2]);
+	float3 avenorm = (norm1 + norm2 + norm3) / 3;
+	//if (dot(avenorm, pos - (v1 + v2 + v3) / 3) < 0){//back side of the triangle
+	//	if (dis < thr/2)
+	//	{
+	//		*res = true;
+	//	}
+	//}
+	//else{
+		if (dis < thr)
+		{
+			*res = true;
+		}
+	//}
 	return;
 }
 
@@ -521,15 +610,11 @@ bool PositionBasedDeformProcessor::atProperLocation(float3 pos, bool useOriData)
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
 		if (useOriData){
-			d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords_init, disThr, d_tooCloseToData);
+			d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords_init, d_norms, disThr, d_tooCloseToData);
 		}
 		else{
-			d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords, disThr, d_tooCloseToData);
+			d_checkIfTooCloseToPoly << <blocksPerGrid, threadsPerBlock >> >(pos, d_indices, poly->facecount, d_vertexCoords, d_norms, disThr, d_tooCloseToData);
 		}
-
-	/*	std::vector<float> aaa(poly->facecount, 0);
-		cudaMemcpy(&(aaa[0]), d_dis, sizeof(float)*  poly->facecount, cudaMemcpyDeviceToHost);
-*/
 
 		bool tooCloseToData;
 		cudaMemcpy(&tooCloseToData, d_tooCloseToData, sizeof(bool)* 1, cudaMemcpyDeviceToHost);
@@ -539,15 +624,56 @@ bool PositionBasedDeformProcessor::atProperLocation(float3 pos, bool useOriData)
 	else if (dataType == PARTICLE){
 		float init = 10000;
 		float inSavePosition;
+		//if (useOriData){
+		//	inSavePosition = thrust::transform_reduce(
+		//		d_vec_posOrig.begin(), d_vec_posOrig.end(), functor_dis(pos), init, thrust::minimum<float>());
+		//}
+		//else{
+		//	inSavePosition = thrust::transform_reduce(
+		//		d_vec_posTarget.begin(), d_vec_posTarget.end(), functor_dis(pos), init, thrust::minimum<float>());
+		//}
+		//return (inSavePosition > disThr);
+		
 		if (useOriData){
-			inSavePosition = thrust::transform_reduce(
-				d_vec_posOrig.begin(), d_vec_posOrig.end(), functor_dis(pos), init, thrust::minimum<float>());
+			thrust::for_each(
+				thrust::make_zip_iterator(
+				thrust::make_tuple(
+				d_vec_posOrig.begin(),
+				d_vec_orientation.begin(),
+				d_vec_mid.begin()
+				)),
+				thrust::make_zip_iterator(
+				thrust::make_tuple(
+				d_vec_posOrig.end(),
+				d_vec_orientation.end(),
+				d_vec_mid.end()
+				)),
+				functor_ParticleDis(pos, thrOriented[0], thrOriented[1]));
 		}
 		else{
-			inSavePosition = thrust::transform_reduce(
-				d_vec_posTarget.begin(), d_vec_posTarget.end(), functor_dis(pos), init, thrust::minimum<float>());
+			thrust::for_each(
+				thrust::make_zip_iterator(
+				thrust::make_tuple(
+				d_vec_posTarget.begin(),
+				d_vec_orientation.begin(),
+				d_vec_mid.begin()
+				)),
+				thrust::make_zip_iterator(
+				thrust::make_tuple(
+				d_vec_posTarget.end(),
+				d_vec_orientation.end(),
+				d_vec_mid.end()
+				)),
+				functor_ParticleDis(pos, thrOriented[0], thrOriented[1]));
 		}
-		return (inSavePosition > disThr);
+
+		float result = thrust::reduce(thrust::device,
+			d_vec_mid.begin(), d_vec_mid.end(),
+			-1,
+			thrust::maximum<float>());
+
+		return (result < 0.5);
+
 	}
 	else{
 		std::cout << " in data not implemented " << std::endl;
@@ -2458,9 +2584,8 @@ void PositionBasedDeformProcessor::doPolyDeform2(float degree)
 
 //////////////////////deform particle
 
-struct functor_particleDeform
+struct functor_particleDeform_Cuboid
 {
-	int n;
 	float3 start, end, dir2nd;
 	float r, deformationScale, deformationScaleVertical;
 
@@ -2502,11 +2627,112 @@ struct functor_particleDeform
 	}
 
 
-	functor_particleDeform(int _n, float3 _start, float3 _end, float _r, float _deformationScale, float _deformationScaleVertical, float3 _dir2nd)
-		: n(_n), start(_start), end(_end), r(_r), deformationScale(_deformationScale), deformationScaleVertical(_deformationScaleVertical), dir2nd(_dir2nd){}
+	functor_particleDeform_Cuboid( float3 _start, float3 _end, float _r, float _deformationScale, float _deformationScaleVertical, float3 _dir2nd)
+		: start(_start), end(_end), r(_r), deformationScale(_deformationScale), deformationScaleVertical(_deformationScaleVertical), dir2nd(_dir2nd){}
 };
 
+struct functor_particleDeform_Circle
+{
+
+	float3 start, end;
+	float r, radius;
+
+	template<typename Tuple>
+	__device__ __host__ void operator() (Tuple t){
+		float4 posf4 = thrust::get<0>(t);
+		float3 pos = make_float3(posf4.x, posf4.y, posf4.z);
+		float3 newPos;
+
+		float3 tunnelVec = normalize(end - start);
+		float tunnelLength = length(end - start);
+
+		float3 voxelVec = pos - start;
+		float l = dot(voxelVec, tunnelVec);
+		if (l > 0 && l < tunnelLength){
+
+			float3 prjPoint = start + l*tunnelVec;
+			float dis = length(pos - prjPoint);
+			if (dis < 0.0000001){
+				pos = pos + cross(tunnelVec, make_float3(0, 0, 0.00001)) + cross(tunnelVec, make_float3(0, 0.00001, 0.1));//semi-random disturb
+			}
+			float3 dir = normalize(pos - prjPoint);
+			if (dis < radius){
+				float newDis = radius - (radius - dis) / radius * (radius - r);
+				newPos = prjPoint + newDis * dir;
+
+				float oneTimeThr = -1;;
+				if (oneTimeThr > 0){
+					if (length(newPos - pos) > oneTimeThr){
+						newPos = pos + normalize(newPos - pos) * oneTimeThr;
+					}
+				}
+			}
+			else{
+				newPos = pos;
+			}
+		}
+		else{
+			newPos = pos;
+		}
+		thrust::get<1>(t) = make_float4(newPos.x, newPos.y, newPos.z, 1);
+
+	}
+
+	functor_particleDeform_Circle(float3 _start, float3 _end, float _r, float _radius)
+		:start(_start), end(_end), r(_r), radius(_radius){}
+};
+
+
 void PositionBasedDeformProcessor::doParticleDeform(float degree)
+{
+	if (!deformData)
+		return;
+
+	//int count = particle->numParticles;
+	//for debug
+	//	std::vector<float4> tt(count);
+	//	//thrust::copy(tt.begin(), tt.end(), d_vec_posTarget.begin());
+	//	std::cout << "pos of region 0 before: " << tt[0].x << " " << tt[0].y << " " << tt[0].z << std::endl;
+
+
+	if (shapeModel == CUBOID){
+		thrust::for_each(
+			thrust::make_zip_iterator(
+			thrust::make_tuple(
+			d_vec_posOrig.begin(),
+			d_vec_posTarget.begin()
+			)),
+			thrust::make_zip_iterator(
+			thrust::make_tuple(
+			d_vec_posOrig.end(),
+			d_vec_posTarget.end()
+			)),
+			functor_particleDeform_Cuboid(tunnelStart, tunnelEnd, degree, deformationScale, deformationScaleVertical, rectVerticalDir));
+		thrust::copy(d_vec_posTarget.begin(), d_vec_posTarget.end(), &(particle->pos[0]));
+	}
+	else if (shapeModel == CIRCLE){
+		thrust::for_each(
+			thrust::make_zip_iterator(
+			thrust::make_tuple(
+			d_vec_posOrig.begin(),
+			d_vec_posTarget.begin()
+			)),
+			thrust::make_zip_iterator(
+			thrust::make_tuple(
+			d_vec_posOrig.end(),
+			d_vec_posTarget.end()
+			)),
+			functor_particleDeform_Circle(tunnelStart, tunnelEnd, degree, radius));
+		thrust::copy(d_vec_posTarget.begin(), d_vec_posTarget.end(), &(particle->pos[0]));
+	}
+
+
+	//	std::cout << "moved particles by: " << degree <<" with count "<<count<< std::endl;
+	//	std::cout << "pos of region 0: " << particle->pos[0].x << " " << particle->pos[0].y << " " << particle->pos[0].z << std::endl;
+
+}
+
+void PositionBasedDeformProcessor::doParticleDeform2Tunnel(float degreeOpen, float degreeClose)
 {
 	if (!deformData)
 		return;
@@ -2517,18 +2743,34 @@ void PositionBasedDeformProcessor::doParticleDeform(float degree)
 	//	//thrust::copy(tt.begin(), tt.end(), d_vec_posTarget.begin());
 	//	std::cout << "pos of region 0 before: " << tt[0].x << " " << tt[0].y << " " << tt[0].z << std::endl;
 
+	thrust::device_vector<float4> d_vec_posMid(count);
+
 	thrust::for_each(
 		thrust::make_zip_iterator(
 		thrust::make_tuple(
 		d_vec_posOrig.begin(),
-		d_vec_posTarget.begin()
+		d_vec_posMid.begin()
 		)),
 		thrust::make_zip_iterator(
 		thrust::make_tuple(
 		d_vec_posOrig.end(),
+		d_vec_posMid.end()
+		)),
+		functor_particleDeform_Cuboid(lastTunnelStart, lastTunnelEnd, degreeClose, deformationScale, deformationScaleVertical, lastDeformationDirVertical));
+
+
+	thrust::for_each(
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_posMid.begin(),
+		d_vec_posTarget.begin()
+		)),
+		thrust::make_zip_iterator(
+		thrust::make_tuple(
+		d_vec_posMid.end(),
 		d_vec_posTarget.end()
 		)),
-		functor_particleDeform(count, tunnelStart, tunnelEnd, degree, deformationScale, deformationScaleVertical, rectVerticalDir));
+		functor_particleDeform_Cuboid(tunnelStart, tunnelEnd, degreeOpen, deformationScale, deformationScaleVertical, rectVerticalDir));
 
 	thrust::copy(d_vec_posTarget.begin(), d_vec_posTarget.end(), &(particle->pos[0]));
 
@@ -2536,6 +2778,7 @@ void PositionBasedDeformProcessor::doParticleDeform(float degree)
 	//	std::cout << "pos of region 0: " << particle->pos[0].x << " " << particle->pos[0].y << " " << particle->pos[0].z << std::endl;
 
 }
+
 
 //////////////////////deform volume
 __global__ void
@@ -2723,8 +2966,12 @@ void PositionBasedDeformProcessor::deformDataByDegree2Tunnel(float r, float rClo
 		doVolumeDeform2Tunnel(r, rClose);
 	}
 	else if (dataType == MESH){
+		//doPolyDeform(r);  //currently simply use opening
 	}
 	else if (dataType == PARTICLE){
+		doParticleDeform2Tunnel(r, rClose);
+
+		//doParticleDeform(r);  //currently simply use opening
 	}
 	else{
 		std::cout << " deformDataByDegree2Tunnel not implemented " << std::endl;
@@ -2763,10 +3010,74 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			if (tunnelTimer1.out()){
 				systemState = DEFORMED;
 				tunnelTimer1.end();
-				r = deformationScale / 2; //reset r
+				r = finalDegree(); //reset r
 			}
 		}
 		else if (systemState == DEFORMED){
+		}
+		else{
+			std::cout << "STATE NOT DEFINED for force deform" << std::endl;
+			exit(0);
+		}
+	}
+	else if (false){//(tv){	//NOTE!! should not turn tv into true when at mixing state
+		if (systemState == ORIGINAL){
+			if (!atProperLocation(eyeInLocal, true)){
+				systemState = OPENING;
+				computeTunnelInfo(eyeInLocal);
+				tunnelTimer1.init(outTime, 0);
+
+				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
+					modifyPolyMesh();
+				}
+			}
+		}
+		else if (systemState == OPENING){
+			if (tunnelTimer1.out()){
+				systemState = DEFORMED;
+				tunnelTimer1.end();
+				r = finalDegree(); //reset r
+			}
+			else{
+				if (atProperLocation(eyeInLocal, true)){
+					systemState = CLOSING;
+					float passed = tunnelTimer1.getTime();
+					tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
+				}
+			}
+		}
+		else if (systemState == CLOSING){
+			if (tunnelTimer1.out()){
+				systemState = ORIGINAL;
+				tunnelTimer1.end();
+				r = 0; //reset r
+				resetData();
+			}
+			else if (!atProperLocation(eyeInLocal, true)){
+				storeCurrentTunnel();
+				computeTunnelInfo(eyeInLocal);
+				if (sameTunnel()){
+					systemState = OPENING;
+					float passed = tunnelTimer1.getTime();
+					tunnelTimer1.init(outTime, outTime - passed);
+				}
+				else{
+					systemState = OPENING;
+					computeTunnelInfo(eyeInLocal);
+					tunnelTimer1.init(outTime, 0);
+
+					if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
+						modifyPolyMesh();
+					}
+				}
+			}
+		}
+		else if (systemState == DEFORMED){
+			if (atProperLocation(eyeInLocal, true)){
+				systemState = CLOSING;
+				float passed = tunnelTimer1.getTime();
+				tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
+			}
 		}
 		else{
 			std::cout << "STATE NOT DEFINED for force deform" << std::endl;
@@ -2790,7 +3101,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			if (tunnelTimer1.out()){
 				systemState = DEFORMED;
 				tunnelTimer1.end();
-				r = deformationScale / 2; //reset r
+				r = finalDegree(); //reset r
 			}
 			else{
 				if (atProperLocation(eyeInLocal, true)){
@@ -2799,10 +3110,14 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 					tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
 				}
 				else if (!atProperLocation(eyeInLocal, false)){
-					systemState = MIXING;
-					float passed = tunnelTimer1.getTime();
-					tunnelTimer2.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
-					tunnelTimer1.init(outTime, 0);
+					//if (dataType == VOLUME){ //currently only for volume data
+						storeCurrentTunnel();
+						computeTunnelInfo(eyeInLocal);
+						systemState = MIXING;
+						float passed = tunnelTimer1.getTime();
+						tunnelTimer2.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
+						tunnelTimer1.init(outTime, 0);
+					//}
 				}
 			}
 		}
@@ -2822,10 +3137,14 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 					tunnelTimer1.init(outTime, outTime - passed);
 				}
 				else{
-					systemState = MIXING;
-					//tunnelTimer2 = tunnelTimer1;//cannot assign in this way!!!
-					tunnelTimer2.init(outTime, tunnelTimer1.getTime());
-					tunnelTimer1.init(outTime, 0);
+					//if (dataType == VOLUME){ //currently only for volume data
+						storeCurrentTunnel();
+						computeTunnelInfo(eyeInLocal);
+						systemState = MIXING;
+						//tunnelTimer2 = tunnelTimer1;//cannot assign in this way!!!
+						tunnelTimer2.init(outTime, tunnelTimer1.getTime());
+						tunnelTimer1.init(outTime, 0);
+					//}
 				}
 			}
 		}
@@ -2834,7 +3153,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				systemState = DEFORMED;
 				tunnelTimer1.end();
 				tunnelTimer2.end();
-				r = deformationScale / 2; //reset r
+				r = finalDegree(); //reset r
 			}
 			else if (atProperLocation(eyeInLocal, true)){
 				//tunnelTimer2 may not have been out() yet, but here ignore the 2nd tunnel
@@ -2853,11 +3172,13 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
 			}
 			else if (!atProperLocation(eyeInLocal, false)){
-				storeCurrentTunnel();
-				computeTunnelInfo(eyeInLocal);
-				systemState = MIXING;
-				tunnelTimer2.init(outTime, 0);
-				tunnelTimer1.init(outTime, 0);
+				//if (dataType == VOLUME){ //currently only for volume data
+					storeCurrentTunnel();
+					computeTunnelInfo(eyeInLocal);
+					systemState = MIXING;
+					tunnelTimer2.init(outTime, 0);
+					tunnelTimer1.init(outTime, 0);
+				//}
 			}
 		}
 		else{
@@ -2883,14 +3204,13 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				exit(0);
 			}
 			else{
-				float rOpen, rClose;
 				if (shapeModel == CUBOID){
-					float rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
-					float rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
+					rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+					rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
 				}
 				else if (shapeModel == CIRCLE){
-					float rOpen = tunnelTimer1.getTime() / outTime * radius / 2;
-					float rClose = (1 - tunnelTimer2.getTime() / outTime) * radius / 2;
+					rOpen = tunnelTimer1.getTime() / outTime * radius / 2;
+					rClose = (1 - tunnelTimer2.getTime() / outTime) * radius / 2;
 				}		
 				r = rOpen;//might be used elsewhere
 				deformDataByDegree2Tunnel(rOpen, rClose);
@@ -2917,6 +3237,9 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 		}
 		deformDataByDegree(r);
 		//std::cout << "doing closing with r: " << r << std::endl;
+	}
+	else if (systemState == DEFORMED){
+		deformDataByDegree(r);
 	}
 
 	return false;
