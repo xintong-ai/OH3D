@@ -69,7 +69,6 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 		if (curT > timeEnd - timeStart){
 			std::cout << "slow machine behavior in time varying manager!!" << curT + timeStart << std::endl;
 			isActive = false;
-			positionBasedDeformProcessor->tv = false;
 			sdkResetTimer(&timer);
 			return true;//on very slow machine, or during debugging
 		}
@@ -86,11 +85,19 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 
 			int n = polyMesh->particle->numParticles;
 			std::vector<float4> newLastPos(n, make_float4(-1000, -1000, -1000, 1000));
-
+			int oooo = newLastPos.size();
 			int lastT = curT - 1;
 			int ll = cellMaps[lastT].size();
+			if (ll > lastPos.size()){
+				std::cout << "wow!! ll size " << ll << std::endl;
+				return true;
+			}
 			for (int i = 0; i < ll; i++){
 				int m = cellMaps[lastT][i];
+				if (m >= oooo){
+					std::cout << "wtf!! m is " << m << " newLastPos.size() " << oooo << std::endl;
+					return true;
+				}
 				if (m > -1){
 					newLastPos[m] = lastPos[i];
 				}
@@ -104,7 +111,6 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 		if (curT >= timeEnd - timeStart){
 			std::cout << "UNEXPECTED behavior in time varying manager!!" << curT + timeStart << std::endl;
 			isActive = false;
-			positionBasedDeformProcessor->tv = false;
 			sdkResetTimer(&timer);
 			return true;
 		}
@@ -136,7 +142,6 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 
 	if (curT >= timeEnd - timeStart){
 		isActive = false;
-		positionBasedDeformProcessor->tv = false;
 		sdkResetTimer(&timer);
 	}
 	return true;

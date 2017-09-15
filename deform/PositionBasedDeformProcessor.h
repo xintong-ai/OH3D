@@ -113,7 +113,6 @@ public:
 		else{ return false; }
 	}
 
-	bool tv = false;
 	void reset(){}
 
 	float3 getTunnelStart(){ return tunnelStart; }

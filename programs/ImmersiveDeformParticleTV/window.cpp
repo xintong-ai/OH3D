@@ -64,11 +64,10 @@ Window::Window()
 	PolyMesh::dataParameters(polyDataPath, disThr, subfolder);
 
 	tvParticleDeformerManager = std::make_shared<TimeVaryingParticleDeformerManager>();
-	tvParticleDeformerManager->timeStart = 6;
-	tvParticleDeformerManager->timeEnd = 6;
+	tvParticleDeformerManager->timeStart = 16;
+	tvParticleDeformerManager->timeEnd = 32;
 
 	for (int i = tvParticleDeformerManager->timeStart; i <= tvParticleDeformerManager->timeEnd; i++){
-		std::cout << "reading data of timestep " << i << std::endl;
 		//single time step
 		std::shared_ptr<PolyMesh> curPoly = std::make_shared<PolyMesh>();
 		std::stringstream ss;
@@ -81,6 +80,8 @@ Window::Window()
 
 		curPoly->setAssisParticle((subfolder + "/marked-reduced-rbcs-" + s + "-polyMeshRegions.mytup").c_str());
 		//curPoly->setVertexCoordsOri(); //not needed when vertex coords need not to change
+		std::cout << "data from timestep " << i << " with " << curPoly->particle->numParticles << " particles" << std::endl;
+
 		curPoly->particle->extractOrientation(7); //7 is decided by how we write the polyMeshRegions.mytup file
 
 		//normally when a particle already used valTuple, we do not need to use val
@@ -439,7 +440,6 @@ void Window::saveScreenBtnClicked()
 void Window::startTVBtnClicked()
 {
 	tvParticleDeformerManager->turnActive();
-	positionBasedDeformProcessor->tv = true;
 }
 
 

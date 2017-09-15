@@ -144,7 +144,9 @@ void PositionBasedDeformProcessor::particleDataUpdated()
 	if (d_vec_mid.size() != particle->numParticles){
 		d_vec_mid.resize(particle->numParticles);
 	}
-
+	if (d_vec_lastFramePos.size() != particle->numParticles){
+		d_vec_lastFramePos.resize(particle->numParticles);
+	}
 	if (particle->orientation.size() >0){
 		d_vec_orientation.assign(&(particle->orientation[0]), &(particle->orientation[0]) + particle->numParticles);
 	}
@@ -2923,17 +2925,25 @@ struct functor_particleDeform_Circle2
 					}
 				}
 
-				float angleThr = 0.06;
-				if (oneTimeThr > 0 && posLast.x > -500){
-					float3 prjLast = start + dot(posLast - start, tunnelVec);
+				float angleThr = 0.04;
+				if (angleThr > 0 && posLast.x > -500){
+
+					float3 prjLast = start + dot(posLast - start, tunnelVec) * tunnelVec;
 					float3 vecLast = normalize(posLast - prjLast);
-					float ang = acos(dot(prjLast, vecLast));
+					float ang = acosf(dot(dir, vecLast));
 					if (ang > angleThr){
-						float3 rotateAxis = cross(vecLast, dir);
+						float3 rotateAxisPre = cross(vecLast, dir);
+						float3 rotateAxis;
+						if (length(rotateAxisPre) < 0.0001){
+							rotateAxis = -tunnelVec;
+						}
+						else{
+							rotateAxis = normalize(rotateAxisPre);
+						}
 						float adjustAngle = -(ang - angleThr);  //rotate dir back for certain angle
 
 						float rotateMat[9];
-						float sinval = sin(adjustAngle), cosval = cos(adjustAngle);
+						float sinval = sinf(adjustAngle), cosval = cosf(adjustAngle);
 						rotateMat[0] = cosval + rotateAxis.x*rotateAxis.x*(1 - cosval);
 						rotateMat[1] = rotateAxis.x*rotateAxis.y*(1 - cosval) - rotateAxis.z*sinval;
 						rotateMat[2] = rotateAxis.x*rotateAxis.z*(1 - cosval) + rotateAxis.y*sinval;
@@ -2944,12 +2954,38 @@ struct functor_particleDeform_Circle2
 						rotateMat[7] = rotateAxis.y*rotateAxis.z*(1 - cosval) + rotateAxis.x*sinval;
 						rotateMat[8] = cosval + rotateAxis.z*rotateAxis.z*(1 - cosval);
 
-						float3 newDir = make_float3(rotateMat[0] * dir.x + rotateMat[1] * dir.y + rotateMat[2] * dir.z, 
-													rotateMat[3] * dir.x + rotateMat[4] * dir.y + rotateMat[5] * dir.z, 
-													rotateMat[6] * dir.x + rotateMat[7] * dir.y + rotateMat[8] * dir.z);
+						float3 newDir = make_float3(rotateMat[0] * dir.x + rotateMat[1] * dir.y + rotateMat[2] * dir.z,
+							rotateMat[3] * dir.x + rotateMat[4] * dir.y + rotateMat[5] * dir.z,
+							rotateMat[6] * dir.x + rotateMat[7] * dir.y + rotateMat[8] * dir.z);
 
 						newPos = prjPoint + newDis * newDir;
 					}
+
+					//float3 prjLast = start + dot(posLast - start, tunnelVec);
+					//float3 vecLast = normalize(posLast - prjLast);
+					//float ang = acos(dot(prjLast, vecLast));
+					//if (ang > angleThr){
+					//	float3 rotateAxis = cross(vecLast, dir);
+					//	float adjustAngle = -(ang - angleThr);  //rotate dir back for certain angle
+
+					//	float rotateMat[9];
+					//	float sinval = sin(adjustAngle), cosval = cos(adjustAngle);
+					//	rotateMat[0] = cosval + rotateAxis.x*rotateAxis.x*(1 - cosval);
+					//	rotateMat[1] = rotateAxis.x*rotateAxis.y*(1 - cosval) - rotateAxis.z*sinval;
+					//	rotateMat[2] = rotateAxis.x*rotateAxis.z*(1 - cosval) + rotateAxis.y*sinval;
+					//	rotateMat[3] = rotateAxis.x*rotateAxis.y*(1 - cosval) + rotateAxis.z*sinval;
+					//	rotateMat[4] = cosval + rotateAxis.y*rotateAxis.y*(1 - cosval);
+					//	rotateMat[5] = rotateAxis.y*rotateAxis.z*(1 - cosval) - rotateAxis.x*sinval;
+					//	rotateMat[6] = rotateAxis.x*rotateAxis.z*(1 - cosval) - rotateAxis.y*sinval;
+					//	rotateMat[7] = rotateAxis.y*rotateAxis.z*(1 - cosval) + rotateAxis.x*sinval;
+					//	rotateMat[8] = cosval + rotateAxis.z*rotateAxis.z*(1 - cosval);
+
+					//	float3 newDir = make_float3(rotateMat[0] * dir.x + rotateMat[1] * dir.y + rotateMat[2] * dir.z, 
+					//								rotateMat[3] * dir.x + rotateMat[4] * dir.y + rotateMat[5] * dir.z, 
+					//								rotateMat[6] * dir.x + rotateMat[7] * dir.y + rotateMat[8] * dir.z);
+
+					//	newPos = prjPoint + newDis * newDir;
+					//}
 				}
 
 			}
@@ -3328,70 +3364,6 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			}
 		}
 		else if (systemState == DEFORMED){
-		}
-		else{
-			std::cout << "STATE NOT DEFINED for force deform" << std::endl;
-			exit(0);
-		}
-	}
-	else if (false){//(tv){	//NOTE!! should not turn tv into true when at mixing state
-		if (systemState == ORIGINAL){
-			if (!atProperLocation(eyeInLocal, true)){
-				systemState = OPENING;
-				computeTunnelInfo(eyeInLocal);
-				tunnelTimer1.init(outTime, 0);
-
-				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-					modifyPolyMesh();
-				}
-			}
-		}
-		else if (systemState == OPENING){
-			if (tunnelTimer1.out()){
-				systemState = DEFORMED;
-				tunnelTimer1.end();
-				r = finalDegree(); //reset r
-			}
-			else{
-				if (atProperLocation(eyeInLocal, true)){
-					systemState = CLOSING;
-					float passed = tunnelTimer1.getTime();
-					tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
-				}
-			}
-		}
-		else if (systemState == CLOSING){
-			if (tunnelTimer1.out()){
-				systemState = ORIGINAL;
-				tunnelTimer1.end();
-				r = 0; //reset r
-				resetData();
-			}
-			else if (!atProperLocation(eyeInLocal, true)){
-				storeCurrentTunnel();
-				computeTunnelInfo(eyeInLocal);
-				if (sameTunnel()){
-					systemState = OPENING;
-					float passed = tunnelTimer1.getTime();
-					tunnelTimer1.init(outTime, outTime - passed);
-				}
-				else{
-					systemState = OPENING;
-					computeTunnelInfo(eyeInLocal);
-					tunnelTimer1.init(outTime, 0);
-
-					if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-						modifyPolyMesh();
-					}
-				}
-			}
-		}
-		else if (systemState == DEFORMED){
-			if (atProperLocation(eyeInLocal, true)){
-				systemState = CLOSING;
-				float passed = tunnelTimer1.getTime();
-				tunnelTimer1.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
-			}
 		}
 		else{
 			std::cout << "STATE NOT DEFINED for force deform" << std::endl;
