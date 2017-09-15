@@ -49,7 +49,7 @@
 
 Window::Window()
 {
-	setWindowTitle(tr("Egocentric VR Volume Visualization"));
+	setWindowTitle(tr("Egocentric Blood Cell Visualization"));
 
 	////////////////////////////////prepare data////////////////////////////////
 	//////////////////Volume and RayCastingParameters
@@ -64,6 +64,8 @@ Window::Window()
 	PolyMesh::dataParameters(polyDataPath, disThr, subfolder);
 
 	tvParticleDeformerManager = std::make_shared<TimeVaryingParticleDeformerManager>();
+	tvParticleDeformerManager->timeStart = 6;
+	tvParticleDeformerManager->timeEnd = 6;
 
 	for (int i = tvParticleDeformerManager->timeStart; i <= tvParticleDeformerManager->timeEnd; i++){
 		std::cout << "reading data of timestep " << i << std::endl;
@@ -175,7 +177,7 @@ Window::Window()
 	positionBasedDeformProcessor->setOutTime(1.0);
 
 	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
-	positionBasedDeformProcessor->radius = 9;
+	positionBasedDeformProcessor->radius = 8;
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 
@@ -183,8 +185,8 @@ Window::Window()
 	openGL->AddRenderable("0deform", deformFrameRenderable.get());
 
 
-	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
+//	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+//	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	openGL->AddRenderable("1poly", polyRenderable.get());
@@ -295,6 +297,10 @@ Window::Window()
 	controlLayout->addWidget(backToFirstTimestepBtn);
 	connect(backToFirstTimestepBtn, SIGNAL(clicked()), this, SLOT(backToFirstTimestepBtnClicked()));
 
+	QPushButton *pauseBtn = new QPushButton("Pause");
+	controlLayout->addWidget(pauseBtn);
+	connect(pauseBtn, SIGNAL(clicked()), this, SLOT(pauseTVManager()));
+
 
 	controlLayout->addStretch();
 
@@ -347,10 +353,14 @@ void Window::init()
 void Window::SlotSaveState()
 {
 	std::cout << matrixMgr->getEyeInLocal().x << " " << matrixMgr->getEyeInLocal().y << " " << matrixMgr->getEyeInLocal().z << std::endl;
+
+	matrixMgr->SaveState("stateParticleTV.txt");
 }
 
 void Window::SlotLoadState()
 {
+	matrixMgr->LoadState("stateParticleTV.txt");
+
 }
 
 void Window::applyEyePos()
@@ -441,4 +451,18 @@ void Window::backToFirstTimestepBtnClicked()
 	polyMesh->verticesJustChanged = true;
 
 	positionBasedDeformProcessor->particleDataUpdated();
+}
+
+void Window::pauseTVManager()
+{
+	if (paused){
+		tvParticleDeformerManager->timer->start();
+		tvParticleDeformerManager->paused = false;
+		paused = false;
+	}
+	else{
+		tvParticleDeformerManager->timer->stop();
+		tvParticleDeformerManager->paused = true;
+		paused = true;
+	}
 }

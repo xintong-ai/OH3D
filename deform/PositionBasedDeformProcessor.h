@@ -154,14 +154,20 @@ public:
 	int usedFaceCount;
 	int usedVertexCount;
 
+	void getLastPos(std::vector<float4> &);
+	void newLastPos(std::vector<float4> &);
+
 private:
 	SYSTEM_STATE systemState = ORIGINAL;
+	SYSTEM_STATE lastSystemState = ORIGINAL;
+
 	DEFORMED_DATA_TYPE dataType = VOLUME;
 	SHAPE_MODEL shapeModel = CUBOID;
 
 	//tunnel functions
 	void computeTunnelInfo(float3 centerPoint);
-	void lengthenTunnel(float3 centerPoint);
+	void adjustTunnelEnds();
+	void adjustTunnelEndsLastTunnel();
 
 	bool sameTunnel();
 	//tunnel info
@@ -227,6 +233,8 @@ private:
 	bool processParticleData(float* modelview, float* projection, int winWidth, int winHeight);
 
 	thrust::device_vector<float4> d_vec_posOrig;
+	thrust::device_vector<float4> d_vec_lastFramePos;
+
 	thrust::device_vector<float4> d_vec_posTarget;
 	thrust::device_vector<float3> d_vec_orientation;
 	thrust::device_vector<float> d_vec_mid;

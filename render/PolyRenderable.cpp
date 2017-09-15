@@ -326,8 +326,15 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 				float dis = length(
 					make_float3(polyMesh->particle->pos[i].x, polyMesh->particle->pos[i].y, polyMesh->particle->pos[i].z)
 					- make_float3(polyMesh->particle->posOrig[i].x, polyMesh->particle->posOrig[i].y, polyMesh->particle->posOrig[i].z));
-				float ratio = dis / (positionBasedDeformProcessor->getDeformationScale() / 2) * 0.5;//0.5 is selected parameter
-				ka = make_float3(0.2f, 0, 0) * (1 - ratio) + make_float3(0.2f, 0.2f, 0) * ratio;
+				float scale;
+				if (positionBasedDeformProcessor->getShapeModel() == SHAPE_MODEL::CUBOID){
+					scale = positionBasedDeformProcessor->getDeformationScale();
+				}
+				else {
+					scale = positionBasedDeformProcessor->radius;
+				}
+				float ratio = dis / (scale / 2);//0.5 is selected parameter
+				ka = make_float3(0.2f, 0, 0) * (1 - ratio) + make_float3(0.0f, 0.2f, 0.2f) * ratio;
 			}
 
 			int startface = polyMesh->particle->valTuple[i * polyMesh->particle->tupleCount];

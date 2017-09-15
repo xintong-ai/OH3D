@@ -113,8 +113,8 @@ private:
 
 	StopWatchInterface *timer = 0;
 
-	bool startTV = false;
-	
+	bool paused = false;
+
 private slots:
 	
 	void SlotSaveState();
@@ -134,6 +134,7 @@ private slots:
 
 	void startTVBtnClicked();
 	void backToFirstTimestepBtnClicked();
+	void pauseTVManager();
 };
 
 #endif

@@ -127,8 +127,44 @@ void DeformFrameRenderable::drawCircileModel(float modelview[16], float projecti
 		glVertex3fv(&(p1.x));
 		glEnd();
 	}
-	glLineWidth(1); //restore
 
+	{
+		float3 zaxisn = normalize(processor->getTunnelEnd() - processor->getTunnelStart());
+		float3 xaxis = normalize(cross(zaxisn, cross(zaxisn, make_float3(1, 0, 0)) + cross(zaxisn, make_float3(0, 1, 0))));
+		float3 yaxis = normalize(cross(zaxisn, xaxis));
+		float radius = processor->radius * 0.15; ///!!!!!!!!!!! NOTE !!!!!!halved the value for easier observation
+		const int n = 8;
+		vector<float3> top(n);
+		vector<float3> bottom(n);
+
+		for (int i = 0; i < n; i++){
+			float angle = 2 * 3.1415926 / n * i;
+			top[i] = processor->getTunnelEnd() + xaxis*radius * cos(angle) + yaxis*radius * sin(angle);
+			bottom[i] = processor->getTunnelStart() + xaxis*radius * cos(angle) + yaxis*radius * sin(angle);
+		}
+
+		glBegin(GL_LINE_LOOP);
+		for (int i = 0; i < n; i++){
+			glVertex3fv(&(top[i].x));
+
+		}
+		glEnd();
+		glBegin(GL_LINE_LOOP);
+		for (int i = 0; i < n; i++){
+			glVertex3fv(&(bottom[i].x));
+
+		}
+		glEnd();
+
+		glBegin(GL_LINES);
+		for (int i = 0; i < n; i++){
+			glVertex3fv(&(top[i].x));
+			glVertex3fv(&(bottom[i].x));
+		}
+		glEnd();
+	}
+
+	glLineWidth(1); //restore
 
 
 	bool blockFurtherObjects = false;

@@ -18,6 +18,9 @@ void TimeVaryingParticleDeformerManager::turnActive()
 		resetPolyMeshes();
 	}
 	curT = 0;
+
+	sdkResetTimer(&timer);
+	sdkStartTimer(&timer);
 }
 
 ////// not actual full reset, just reset the parts that might be changed
@@ -48,26 +51,71 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 		return false;
 	}
 
-	//sdkStopTimer(&timer);
-	//float timePassed = sdkGetAverageTimerValue(&timer) / 1000.f;
-	if (curT % (numInter + 1) == 0){	//in this case, not only the particles stored in polyMesh will change, but the vertices of polyMesh will also change
-		int meshid = curT / (numInter + 1);				
+	if (paused){
+		return false;
+	}
+
+	float timePassed = timer->getTime();
+	int timeStepPassed = (int)(timePassed / durationEachTimeStep);
+
+
+
+	if (timeStepPassed != curT){// curT % (numInter + 1) == 0){	//in this case, not only the particles stored in polyMesh will change, but the vertices of polyMesh will also change
+		//therefore, this branch must be done at least once when entering a new time step, to update the vertices
+
+		int meshid = timeStepPassed;// curT / (numInter + 1);
+		curT = timeStepPassed;
+
+		if (curT > timeEnd - timeStart){
+			std::cout << "slow machine behavior in time varying manager!!" << curT + timeStart << std::endl;
+			isActive = false;
+			positionBasedDeformProcessor->tv = false;
+			sdkResetTimer(&timer);
+			return true;//on very slow machine, or during debugging
+		}
+		std::cout << "used data from " << curT + timeStart << std::endl;
+
 
 		polyMesh->copyFrom(polyMeshes[meshid], true);
 		polyMesh->verticesJustChanged = true;
 
-		positionBasedDeformProcessor->particleDataUpdated();
-	}
-	else{//in this case, only the particles stored in polyMesh will change, and the vertices of polyMesh will NOT change
-		int meshid1 = curT / (numInter + 1), meshid2 = meshid1 + 1;
-		float ratio = 1.0 * (curT % (numInter + 1)) / (numInter + 1);
+		if (curT > 0)
+		{
+			std::vector<float4> lastPos;
+			positionBasedDeformProcessor->getLastPos(lastPos);
 
-		//polyMesh = polyMeshes[meshid];//should not need to change polyMesh in this case
+			int n = polyMesh->particle->numParticles;
+			std::vector<float4> newLastPos(n, make_float4(-1000, -1000, -1000, 1000));
+
+			int lastT = curT - 1;
+			int ll = cellMaps[lastT].size();
+			for (int i = 0; i < ll; i++){
+				int m = cellMaps[lastT][i];
+				if (m > -1){
+					newLastPos[m] = lastPos[i];
+				}
+			}
+			positionBasedDeformProcessor->newLastPos(newLastPos);
+		}
+
+	}
+	else{ //in this case, only the particles stored in polyMesh will change, and the vertices of polyMesh will NOT change
+
+		if (curT >= timeEnd - timeStart){
+			std::cout << "UNEXPECTED behavior in time varying manager!!" << curT + timeStart << std::endl;
+			isActive = false;
+			positionBasedDeformProcessor->tv = false;
+			sdkResetTimer(&timer);
+			return true;
+		}
+
+		int meshid1 = curT, meshid2 = meshid1 + 1;
+		float ratio = 1.0 * (timePassed / durationEachTimeStep - timeStepPassed * 1.0);
+
 		int n = polyMesh->particle->numParticles;
 		int tupleCount = polyMesh->particle->tupleCount; //should be 10
 		for (int i = 0; i < n; i++){
 			int m = cellMaps[meshid1][i];
-			int label = polyMesh->particle->valTuple[i*tupleCount + 7];
 			if (m > -1){
 				polyMesh->particle->posOrig[i] = polyMeshesOri[meshid1]->particle->posOrig[i] * (1 - ratio) + polyMeshesOri[meshid2]->particle->posOrig[m] * ratio;
 				polyMesh->particle->pos[i] = polyMesh->particle->posOrig[i];
@@ -78,17 +126,19 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 				polyMesh->particle->pos[i] = polyMesh->particle->posOrig[i];
 			}
 		}
-
-		positionBasedDeformProcessor->particleDataUpdated(); //actually pointer address of the particle is not changed, but the content is changed
-
 	}
-	//std::cout << "at " << curT << ", polyMesh->particle->pos[0]: " << polyMesh->particle->pos[0].x << " " << polyMesh->particle->pos[0].y << " " << polyMesh->particle->pos[0].z << std::endl;
-	std::cout << "used data from " << curT << std::endl;
 
-	curT++;
-	if (curT > ((timeEnd - timeStart) * (numInter + 1))){
+	positionBasedDeformProcessor->particleDataUpdated();
+
+
+	//std::cout << "at " << curT << ", polyMesh->particle->pos[0]: " << polyMesh->particle->pos[0].x << " " << polyMesh->particle->pos[0].y << " " << polyMesh->particle->pos[0].z << std::endl;
+
+
+	if (curT >= timeEnd - timeStart){
 		isActive = false;
 		positionBasedDeformProcessor->tv = false;
+		sdkResetTimer(&timer);
 	}
 	return true;
 }
+

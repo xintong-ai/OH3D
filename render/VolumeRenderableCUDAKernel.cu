@@ -472,7 +472,7 @@ __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
 
 	//float3 light_in_eye = make_float3(0.0, 2.0, 0.0);
 	//float3 light_in_eye = make_float3(0.0, -200.0, 0.0);
-	float3 light_in_eye = make_float3(0.0, -200.0, 200);
+	float3 light_in_eye = make_float3(0.0, 200.0, 200);
 
 	float3 s = normalize(light_in_eye - pos_in_eye);
 	float3 v = normalize(-pos_in_eye);
@@ -484,7 +484,8 @@ __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
 	float3 diffuse = a * sDotN * ld;
 	float3 spec = make_float3(0.0);
 	//if (sDotN > 0.0)
-	spec = a * pow(max(dot(r, v), 0.0f), Shininess)* ls;
+	//spec = a * pow(max(dot(r, v), 0.0f), Shininess)* ls;
+	spec = a * pow(fabs(dot(r, v)), Shininess)* ls;
 	return ambient + diffuse + spec;
 }
 
