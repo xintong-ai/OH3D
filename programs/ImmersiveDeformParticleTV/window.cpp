@@ -65,7 +65,7 @@ Window::Window()
 
 	tvParticleDeformerManager = std::make_shared<TimeVaryingParticleDeformerManager>();
 	tvParticleDeformerManager->timeStart = 6;
-	tvParticleDeformerManager->timeEnd = 6;
+	tvParticleDeformerManager->timeEnd = 32;
 
 	for (int i = tvParticleDeformerManager->timeStart; i <= tvParticleDeformerManager->timeEnd; i++){
 		//single time step
@@ -349,6 +349,7 @@ Window::Window()
 	vrVolumeRenderable->rcp = rcp;
 #endif
 
+	openGL->setFixedSize(600, 600);
 
 
 	tvParticleDeformerManager->polyMesh = polyMesh;

@@ -365,6 +365,8 @@ Window::Window()
 	mainLayout->addLayout(controlLayout, 1);
 	setLayout(mainLayout);
 
+	openGL->setFixedSize(600, 600);
+
 
 #ifdef USE_OSVR
 	vrWidget = std::make_shared<VRWidget>(matrixMgr);
