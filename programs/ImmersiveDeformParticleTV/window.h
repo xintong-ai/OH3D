@@ -68,6 +68,7 @@ private:
 	
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 	std::shared_ptr<TimeVaryingParticleDeformerManager> tvParticleDeformerManager = 0;
+	bool tvAtStartState = true;
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
@@ -108,6 +109,10 @@ private:
 	QLabel *meshResLabel;
 	QLineEdit *eyePosLineEdit;
 
+	std::shared_ptr<QRadioButton> cuboidRb;
+	std::shared_ptr<QRadioButton> circularRb;
+	std::shared_ptr<QRadioButton> physicallyRb;
+	
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
@@ -125,6 +130,9 @@ private slots:
 	void isForceDeformEnabledClicked(bool b);
 	void isDeformColoringEnabledClicked(bool b);
 
+	void SlotCircularRb(bool b);
+	void SlotCuboidRb(bool b);
+	void SlotPhysicallyRb(bool b);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

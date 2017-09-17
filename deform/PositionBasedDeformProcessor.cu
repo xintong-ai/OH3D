@@ -1438,10 +1438,7 @@ __global__ void d_modifyMeshKernel_CircledModel_round3(float* vertexCoords, unsi
 				rotateMat[j][8] = cosRotateAngles[j] + triNormal.z*triNormal.z*(1 - cosRotateAngles[j]);
 			//}
 
-			//float3 temp1 = vNew[j] * (1 - ratio1) + vNew[(j + 1) % 3] * ratio1;
-			//rotate first
-			//nNewToOld[j] = mul(rotateMat[j], nNewToOld[j]);
-			//float3 temp1 = intersect + nNewToOld[j] * thr;
+
 			float3 v = mul(rotateMat[j], nNewToOld[j]);
 			float3 temp1 = intersect + v * thr;
 
@@ -3343,6 +3340,9 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 {
 	if (!isActive)
 		return false;
+
+	//if (isForceDeform && r > 0.05) //used to draw the triangle cutting of poly meshes
+		//return false;
 
 	float3 eyeInLocal = matrixMgr->getEyeInLocal();
 

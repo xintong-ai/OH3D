@@ -106,6 +106,11 @@ private:
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
+	std::shared_ptr<QRadioButton> originalRb;
+	std::shared_ptr<QRadioButton> deformRb;	
+	std::shared_ptr<QRadioButton> clipRb;
+	std::shared_ptr<QRadioButton> transpRb;
+
 	private slots:
 
 	void SlotSaveState();
@@ -117,6 +122,12 @@ private:
 	void isDeformColoringEnabledClicked(bool b);
 	
 	void toggleWireframeClicked(bool b);
+
+
+	void SlotOriginalRb();
+	void SlotDeformRb();
+	void SlotClipRb();
+	void SlotTranspRb();
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

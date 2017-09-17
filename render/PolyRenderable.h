@@ -70,6 +70,8 @@ protected:
 	float3 transform = make_float3(0,0,0);
 
 	float3 ka = make_float3(0.6f, 0.6f, 0.6f);
+	float3 kd = make_float3(0.3f, 0.3f, 0.3f);
+	float3 ks = make_float3(0.2f, 0.2f, 0.2f);
 
 	void GenVertexBuffer(int nv, float* vertex, float* normal);
 	//void GenVertexBuffer(int nv);

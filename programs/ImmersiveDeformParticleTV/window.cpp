@@ -64,8 +64,8 @@ Window::Window()
 	PolyMesh::dataParameters(polyDataPath, disThr, subfolder);
 
 	tvParticleDeformerManager = std::make_shared<TimeVaryingParticleDeformerManager>();
-	tvParticleDeformerManager->timeStart = 16;
-	tvParticleDeformerManager->timeEnd = 32;
+	tvParticleDeformerManager->timeStart = 6;
+	tvParticleDeformerManager->timeEnd = 6;
 
 	for (int i = tvParticleDeformerManager->timeStart; i <= tvParticleDeformerManager->timeEnd; i++){
 		//single time step
@@ -146,7 +146,7 @@ Window::Window()
 	//matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x, -20, matrixMgr->getEyeInLocal().z));
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(34.4, 13.6, 67.2));
 	//matrixMgr->setViewAndUpInWorld(QVector3D(1, 0, 0), QVector3D(0, 0, 1));
-	
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(40.4, 13.3, 65.2));
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -184,7 +184,6 @@ Window::Window()
 
 	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	openGL->AddRenderable("0deform", deformFrameRenderable.get());
-
 
 //	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 //	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
@@ -271,6 +270,30 @@ Window::Window()
 	eyePosLayout2->addWidget(eyePosBtn);
 	eyePosGroup->setLayout(eyePosLayout2);
 	controlLayout->addWidget(eyePosGroup);
+
+	QGroupBox *groupBoxShapeModes = new QGroupBox(tr("deformation shape modes"));
+	QHBoxLayout *shapeModeLayout = new QHBoxLayout;
+	circularRb = std::make_shared<QRadioButton>(tr("&Circular"));
+	cuboidRb = std::make_shared<QRadioButton>(tr("&Cuboid"));
+	physicallyRb = std::make_shared<QRadioButton>(tr("&Physically"));
+	if (positionBasedDeformProcessor->getShapeModel() == CUBOID){
+		cuboidRb->setChecked(true);
+	}
+	else if (positionBasedDeformProcessor->getShapeModel() == CIRCLE){
+		circularRb->setChecked(true);
+	}
+	else if (positionBasedDeformProcessor->getShapeModel() == PHYSICALLY)
+	{
+		physicallyRb->setChecked(true);
+	}
+	shapeModeLayout->addWidget(circularRb.get());
+	shapeModeLayout->addWidget(cuboidRb.get());
+	shapeModeLayout->addWidget(physicallyRb.get());
+	groupBoxShapeModes->setLayout(shapeModeLayout);
+	controlLayout->addWidget(groupBoxShapeModes);
+	connect(circularRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotCircularRb(bool)));
+	connect(cuboidRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotCuboidRb(bool)));
+	connect(physicallyRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotPhysicallyRb(bool)));
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -407,6 +430,52 @@ void Window::isDeformColoringEnabledClicked(bool b)
 }
 
 
+void Window::SlotCircularRb(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->setShapeModel(CIRCLE);
+	}
+	else{
+		if (positionBasedDeformProcessor->getShapeModel() == CUBOID){
+			cuboidRb->setChecked(true);
+		}
+		else if (positionBasedDeformProcessor->getShapeModel() == CIRCLE){
+		}
+		else if (positionBasedDeformProcessor->getShapeModel() == PHYSICALLY)
+		{
+			physicallyRb->setChecked(true);
+		}
+	}
+}
+void Window::SlotCuboidRb(bool b)
+{
+	if (b){
+		positionBasedDeformProcessor->setShapeModel(CUBOID);
+	}
+	else{
+		if (positionBasedDeformProcessor->getShapeModel() == CUBOID){
+		}
+		else if (positionBasedDeformProcessor->getShapeModel() == CIRCLE){
+			circularRb->setChecked(true);
+		}
+		else if (positionBasedDeformProcessor->getShapeModel() == PHYSICALLY)
+		{
+			physicallyRb->setChecked(true);
+		}
+	}
+}
+void Window::SlotPhysicallyRb(bool b)
+{
+	//not implement yet!!
+	if (positionBasedDeformProcessor->getShapeModel() == CUBOID){
+		cuboidRb->setChecked(true);
+	}
+	else if (positionBasedDeformProcessor->getShapeModel() == CIRCLE){
+		circularRb->setChecked(true);
+	}
+}
+
+
 void Window::SlotImmerRb(bool b)
 {
 	if (b){
@@ -439,6 +508,10 @@ void Window::saveScreenBtnClicked()
 
 void Window::startTVBtnClicked()
 {
+	tvAtStartState = false;
+	cuboidRb->setEnabled(false);
+	circularRb->setEnabled(false);
+	physicallyRb->setEnabled(false);
 	tvParticleDeformerManager->turnActive();
 }
 
@@ -451,6 +524,10 @@ void Window::backToFirstTimestepBtnClicked()
 	polyMesh->verticesJustChanged = true;
 
 	positionBasedDeformProcessor->particleDataUpdated();
+
+	cuboidRb->setEnabled(true);
+	circularRb->setEnabled(true);
+	physicallyRb->setEnabled(true);
 }
 
 void Window::pauseTVManager()

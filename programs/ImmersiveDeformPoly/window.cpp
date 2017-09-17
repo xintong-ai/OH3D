@@ -183,15 +183,13 @@ Window::Window()
 		positionBasedDeformProcessor->radius = 25;
 	}
 
-	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
+	//positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
-
-
-	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
+	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	//openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	polyRenderable->immersiveMode = true;
@@ -279,6 +277,24 @@ Window::Window()
 		controlLayout->addWidget(eyePosGroup);
 	}
 
+	QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
+	QHBoxLayout *orModeLayout = new QHBoxLayout;
+	originalRb = std::make_shared<QRadioButton>(tr("&original"));
+	deformRb = std::make_shared<QRadioButton>(tr("&deform"));
+	clipRb = std::make_shared<QRadioButton>(tr("&clip"));
+	transpRb = std::make_shared<QRadioButton>(tr("&transparent"));
+
+	deformRb->setChecked(true);
+	orModeLayout->addWidget(originalRb.get());
+	orModeLayout->addWidget(deformRb.get());
+	orModeLayout->addWidget(clipRb.get());
+	orModeLayout->addWidget(transpRb.get());
+	groupBoxORModes->setLayout(orModeLayout);
+	controlLayout->addWidget(groupBoxORModes);
+	connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
+	connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
+	connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
+	connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -382,10 +398,12 @@ void Window::init()
 
 void Window::SlotSaveState()
 {
+	matrixMgr->SaveState("state.txt");
 }
 
 void Window::SlotLoadState()
 {
+	matrixMgr->LoadState("state.txt");
 }
 
 void Window::applyEyePos()
@@ -431,6 +449,23 @@ void Window::toggleWireframeClicked(bool b)
 {
 	polyRenderable->useWireFrame = b;	
 }
+
+
+void Window::SlotOriginalRb()
+{
+	positionBasedDeformProcessor->deformData = false;
+}
+void Window::SlotDeformRb()
+{
+	positionBasedDeformProcessor->deformData = true;
+}
+void Window::SlotClipRb()
+{
+}
+void Window::SlotTranspRb()
+{
+}
+
 
 void Window::SlotImmerRb(bool b)
 {

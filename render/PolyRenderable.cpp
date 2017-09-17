@@ -203,6 +203,8 @@ void PolyRenderable::loadShadersImmer()
 		vec3 r = reflect(-s, normal);
 		//vec3 ambient = Ka * (1 - deviateVal) + errorColor*deviateVal;
 		vec3 ccc = Ka*0.02 + (vec3(0.705882, 0.0156863, 0.14902)*colorVal + vec3(0.231373, 0.298039, 0.752941)*(1 - colorVal))*0.98;
+		//vec3 ccc = Ka*0.000002 + (vec3(0.14902, 0.14902, 0.14902)*colorVal + vec3(0.231373, 0.231373, 0.231373)*(1 - colorVal))*0.98;
+		
 		vec3 ambient = ccc * (1 - deviateVal) + errorColor*deviateVal;
 		float sDotN = max(dot(s, normal), 0.0);
 		vec3 diffuse = Kd * sDotN ;
@@ -297,8 +299,8 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 
 	qgl->glUniform4f(curGlProg->uniform("LightPosition"), 0, 0, 1000, 1);
 
-	qgl->glUniform3f(curGlProg->uniform("Kd"), 0.3f, 0.3f, 0.3f);
-	qgl->glUniform3f(curGlProg->uniform("Ks"), 0.2f, 0.2f, 0.2f);
+	qgl->glUniform3f(curGlProg->uniform("Kd"), kd.x, kd.y, kd.z);
+	qgl->glUniform3f(curGlProg->uniform("Ks"), ks.x, ks.y, ks.z);
 	qgl->glUniform1f(curGlProg->uniform("Shininess"), 1);
 	qgl->glUniform1f(curGlProg->uniform("Opacity"), polyMesh->opacity);
 
@@ -310,8 +312,12 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	qgl->glUniformMatrix3fv(curGlProg->uniform("NormalMatrix"), 1, GL_FALSE, q_modelview.normalMatrix().data());
 
 
-	if (useWireFrame)
+	if (useWireFrame){
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glLineWidth(4);
+		qgl->glUniform3f(curGlProg->uniform("Kd"), 0, 0, 0);
+		qgl->glUniform3f(curGlProg->uniform("Ks"), 0, 0, 0);
+	}
 
 	if (centerBasedRendering){
 		ka = make_float3(0.2f, 0, 0);
@@ -370,7 +376,11 @@ void PolyRenderable::draw(float modelview[16], float projection[16])
 	}
 
 	if (useWireFrame)
+	{
+		//restore
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glLineWidth(1);
+	}
 
 	//glBindVertexArray(0);
 	m_vao->release();
