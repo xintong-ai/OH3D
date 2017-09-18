@@ -246,6 +246,7 @@ void DeformFrameRenderable::draw(float modelview[16], float projection[16])
 
 	if (!visible)
 		return;
+	
 	if (processor->getSystemState() == SYSTEM_STATE::ORIGINAL){
 		return;
 	}

@@ -366,7 +366,8 @@ Window::Window()
 	mainLayout->addLayout(controlLayout, 1);
 	setLayout(mainLayout);
 
-	openGL->setFixedSize(800, 800);
+
+	openGL->setFixedSize(600, 600);
 
 
 #ifdef USE_OSVR

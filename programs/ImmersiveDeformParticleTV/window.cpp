@@ -349,6 +349,7 @@ Window::Window()
 	vrVolumeRenderable->rcp = rcp;
 #endif
 
+	openGL->setFixedSize(600, 600);
 
 	openGL->setFixedSize(800, 800);
 
