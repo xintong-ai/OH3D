@@ -84,6 +84,10 @@ inputImage = 	vtkSmartPointer<vtkImageData>::New();
 	surface->ComputeNormalsOn();
 	surface->SetValue(0, isoValue0);
 	surface->SetValue(1, isoValue1);
+	if (forNav){
+		surface->SetValue(2, isoValue2);
+		surface->SetValue(3, isoValue3);
+	}
 
 	vtpdata = vtkSmartPointer<vtkPolyData>::New();
 
@@ -153,6 +157,10 @@ void MarchingCube2::updatePoly()
 	vtkFloatArray* normalDataFloat2 = vtkFloatArray::SafeDownCast(vtpdata->GetPointData()->GetArray("Scalars_"));
 
 	float vmin = std::min(isoValue0, isoValue1), vmax = std::max(isoValue0, isoValue1);
+	if (forNav){
+		vmax = isoValue3;
+	}
+
 	if (vmax - vmin < 0.000001) vmax = vmin + 1;
 
 	for (int i = 0; i < polyMesh->vertexcount; i++) {

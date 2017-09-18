@@ -155,7 +155,7 @@ void PositionBasedDeformProcessor::particleDataUpdated()
 	}
 
 	if (systemState != ORIGINAL && isActive){
-		std::cout << "camera BAD in new original data" << std::endl;
+		//std::cout << "camera BAD in new original data" << std::endl;
 
 
 		if (!atProperLocation(matrixMgr->getEyeInLocal(), true)){
@@ -179,7 +179,7 @@ void PositionBasedDeformProcessor::particleDataUpdated()
 	}
 	else{
 		d_vec_posTarget.assign(&(particle->pos[0]), &(particle->pos[0]) + particle->numParticles);
-		std::cout << "camera GOOD in new original data" << std::endl;
+		//std::cout << "camera GOOD in new original data" << std::endl;
 	}
 }
 

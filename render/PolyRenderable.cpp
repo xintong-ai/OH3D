@@ -196,8 +196,8 @@ void PolyRenderable::loadShadersImmer()
 	out vec4 FragColor;
 
 	vec3 phongModel(vec4 position, vec3 normal) {
-		vec3 errorColor = vec3(1.0f, 0.0f, 0.0f);
-
+		//vec3 errorColor = vec3(1.0f, 0.0f, 0.0f);
+		vec3 errorColor = vec3(0.02f, 0.94f, 0.04f);
 		vec3 s = normalize(vec3(LightPosition - position));
 		vec3 v = normalize(-position.xyz);
 		vec3 r = reflect(-s, normal);

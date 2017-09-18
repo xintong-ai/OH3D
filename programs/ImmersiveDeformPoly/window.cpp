@@ -52,7 +52,7 @@ Window::Window()
 	std::string polyDataPath;
 
 	if (useMultiplePolyData){
-		const std::string polyDatasFolder = dataMgr->GetConfig("POLY_DATAS_FOLDER");
+	/*	const std::string polyDatasFolder = dataMgr->GetConfig("POLY_DATAS_FOLDER");
 		std::string paths[2];
 		paths[0] = polyDatasFolder + "sand60_067_xw2_iso0.0005_shiftedAndRespaced.vtp";
 		paths[1] = polyDatasFolder + "sand60_067_xw2_iso0.0012_shiftedAndRespaced.vtp";
@@ -83,7 +83,7 @@ Window::Window()
 		}
 
 		polyMesh->setVertexCoordsOri();
-		polyMesh->setVertexDeviateVals();
+		polyMesh->setVertexDeviateVals();*/
 
 	}
 	else{
@@ -100,14 +100,15 @@ Window::Window()
 		
 		}
 		else if (std::string(polyDataPath).find(".vti") != std::string::npos){
-
+			disThr = 1;
 			std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
 					
 			//std::shared_ptr<MarchingCube> mc = std::make_shared<MarchingCube>(inputVolume, polyMesh);
-			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0007);
+			//mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0007);  //for isovalue adjust applications, use 0.0007 and 0.0013 as start values are good
+			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0004);  //for camera navi applications, use 0.0004 and 0.001 as first two start values are good
+			
 			useIsoAdjust = true;
-
 
 			polyMesh->setVertexCoordsOri();
 			polyMesh->setVertexDeviateVals();
@@ -364,6 +365,8 @@ Window::Window()
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);
 	setLayout(mainLayout);
+
+	openGL->setFixedSize(800, 800);
 
 
 #ifdef USE_OSVR

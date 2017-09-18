@@ -58,8 +58,6 @@ bool TimeVaryingParticleDeformerManager::process(float* modelview, float* projec
 	float timePassed = timer->getTime();
 	int timeStepPassed = (int)(timePassed / durationEachTimeStep);
 
-
-
 	if (timeStepPassed != curT){// curT % (numInter + 1) == 0){	//in this case, not only the particles stored in polyMesh will change, but the vertices of polyMesh will also change
 		//therefore, this branch must be done at least once when entering a new time step, to update the vertices
 

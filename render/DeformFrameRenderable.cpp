@@ -23,7 +23,8 @@ void DeformFrameRenderable::drawCuboidModel(float modelview[16], float projectio
 	glLoadIdentity();
 	glLoadMatrixf(modelview);
 
-	//if (false){
+	bool drawFrame = true;
+	if (drawFrame){
 		glColor4f(0.89f, 0.29f, 0.26f, 0.8f);
 		glLineWidth(4);
 		{
@@ -71,9 +72,9 @@ void DeformFrameRenderable::drawCuboidModel(float modelview[16], float projectio
 			glEnd();
 		}
 		glLineWidth(1); //restore
-	//}
+	}
 	
-	bool blockFurtherObjects = true;
+	bool blockFurtherObjects = false;
 	if (blockFurtherObjects){
 		float3 zaxisn = normalize(processor->getTunnelEnd() - processor->getTunnelStart());
 		float3 yaxis = processor->getRectVerticalDir();

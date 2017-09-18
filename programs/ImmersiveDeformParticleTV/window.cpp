@@ -65,7 +65,7 @@ Window::Window()
 
 	tvParticleDeformerManager = std::make_shared<TimeVaryingParticleDeformerManager>();
 	tvParticleDeformerManager->timeStart = 6;
-	tvParticleDeformerManager->timeEnd = 6;
+	tvParticleDeformerManager->timeEnd = 32;
 
 	for (int i = tvParticleDeformerManager->timeStart; i <= tvParticleDeformerManager->timeEnd; i++){
 		//single time step
@@ -182,8 +182,8 @@ Window::Window()
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 
-	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
 
 //	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 //	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
@@ -350,6 +350,7 @@ Window::Window()
 #endif
 
 
+	openGL->setFixedSize(800, 800);
 
 	tvParticleDeformerManager->polyMesh = polyMesh;
 	tvParticleDeformerManager->isActive = false;
