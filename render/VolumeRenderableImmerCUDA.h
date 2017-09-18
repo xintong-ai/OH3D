@@ -66,6 +66,7 @@ public:
 	};
 
 	void updateColorTable(); //may not be a good design. should be placed into RCP
+	void updateColorTableold(); //may not be a good design. should be placed into RCP
 
 private:
 	bool useClipRendering = false;

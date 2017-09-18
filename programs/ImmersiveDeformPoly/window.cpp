@@ -100,14 +100,18 @@ Window::Window()
 		
 		}
 		else if (std::string(polyDataPath).find(".vti") != std::string::npos){
-			disThr = 1;
+			
 			std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
 					
 			//std::shared_ptr<MarchingCube> mc = std::make_shared<MarchingCube>(inputVolume, polyMesh);
-			//mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0007);  //for isovalue adjust applications, use 0.0007 and 0.0013 as start values are good
-			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0004);  //for camera navi applications, use 0.0004 and 0.001 as first two start values are good
+			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0010);  //for isovalue adjust applications, use 0.0007 and 0.0013 as start values are good
 			
+			////for camera navi application
+			//mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0004);  
+			//disThr = 1;
+			//for camera navi applications, use 0.0004 and 0.001 as first two start values are good
+
 			useIsoAdjust = true;
 
 			polyMesh->setVertexCoordsOri();
@@ -179,6 +183,10 @@ Window::Window()
 	positionBasedDeformProcessor->setDeformationScale(2);
 	positionBasedDeformProcessor->setDeformationScaleVertical(2.5);
 	
+	if (useIsoAdjust){
+		positionBasedDeformProcessor->setDeformationScale(1.5);
+		positionBasedDeformProcessor->setDeformationScaleVertical(2);
+	}
 	
 	if (std::string(polyDataPath).find("testDummy") != std::string::npos){
 		positionBasedDeformProcessor->radius = 25;
@@ -455,18 +463,18 @@ void Window::toggleWireframeClicked(bool b)
 }
 
 
-void Window::SlotOriginalRb()
+void Window::SlotOriginalRb(bool b)
 {
 	positionBasedDeformProcessor->deformData = false;
 }
-void Window::SlotDeformRb()
+void Window::SlotDeformRb(bool b)
 {
 	positionBasedDeformProcessor->deformData = true;
 }
-void Window::SlotClipRb()
+void Window::SlotClipRb(bool b)
 {
 }
-void Window::SlotTranspRb()
+void Window::SlotTranspRb(bool b)
 {
 }
 

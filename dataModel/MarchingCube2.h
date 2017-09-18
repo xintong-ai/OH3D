@@ -19,9 +19,9 @@ public:
 	std::shared_ptr<PolyMesh> polyMesh = 0;
 
 	float isoValue0 = -1;
-	float isoValue1 = 0.001;
+	float isoValue1 = 0.0013;
 
-	bool forNav = true;
+	bool forNav = false;
 	float isoValue2 = 0.0016;
 	float isoValue3 = 0.0024;
 

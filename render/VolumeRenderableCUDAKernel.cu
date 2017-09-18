@@ -198,9 +198,6 @@ surface<void, cudaSurfaceType2DLayered>                             transferLaye
 // 1D transfer function texture
 texture<float4, 1, cudaReadModeElementType>           transferTex;
 
-//float curfuncRes = clamp((sample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
-//float lastFuncRes = clamp((lastSample - transFuncP2) / (transFuncP1 - transFuncP2), 0.0, 1.0);
-
 
 __global__ void
 d_integrate_trapezoidal(cudaExtent extent, float transFuncP1, float transFuncP2)
@@ -471,8 +468,10 @@ __device__ float3 phongModel(float3 a, float3 pos_in_eye, float3 normal){
 	float Shininess = 5;// 25;
 
 	//float3 light_in_eye = make_float3(0.0, 2.0, 0.0);
-	//float3 light_in_eye = make_float3(0.0, -200.0, 0.0);
-	float3 light_in_eye = make_float3(0.0, 200.0, 200);
+	//float3 light_in_eye = make_float3(0.0, -200.0, 0.0); //for moortgat data?
+	float3 light_in_eye = make_float3(0.0, 0.0, 200.0); //for moortgat data?
+
+	//float3 light_in_eye = make_float3(0.0, 200.0, 200);  //used for brain data
 
 	float3 s = normalize(light_in_eye - pos_in_eye);
 	float3 v = normalize(-pos_in_eye);

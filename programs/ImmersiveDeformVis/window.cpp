@@ -49,7 +49,7 @@ void positionBasedDeformerConfigure(std::string dataPath, float & densityThr, in
 	}
 	else if (std::string(dataPath).find("moortgat") != std::string::npos){
 		densityThr = 0.0007;
-		checkRadius = 1;
+		checkRadius = 2;
 	}
 	else{
 		std::cout << "volume data name not recognized" << std::endl;
@@ -84,10 +84,12 @@ Window::Window()
 
 	//rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.3, 0.18, 0.1, 512, 0.125f, 1.0, true); //for moortgat data, non cubic spline interpolation. Note this data is not suitable to use cubic spline interpolation. also the Shininess for specular light for this data is 5
 
-
+	
 	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vti") != std::string::npos){
 		VTIReader vtiReader(dataPath.c_str(), inputVolume);
+
+		rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.0013 / 0.0038998252712, 0.18, 0.36, 512, 0.125f, 1.0, true);
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
@@ -284,6 +286,32 @@ Window::Window()
 	controlLayout->addWidget(useSplineInterpolationCB);
 	connect(useSplineInterpolationCB, SIGNAL(clicked(bool)), this, SLOT(useSplineInterpolationCBClicked(bool)));
 
+
+	QLabel *isoValueSliderLabelLit = new QLabel("Iso Value 1:");
+	isoValueSlider = new QSlider(Qt::Horizontal);
+	isoValueSlider->setRange(0, 38); //0-0.0038
+	isoValueSlider->setValue(round(rcp->transFuncP2 * 0.0038998252712 / 0.0001));
+	connect(isoValueSlider, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged(int)));
+	isoValueLabel = new QLabel(QString::number(rcp->transFuncP2 * 0.0038998252712));
+	QHBoxLayout *isoValueSliderLayout = new QHBoxLayout;
+	isoValueSliderLayout->addWidget(isoValueSliderLabelLit);
+	isoValueSliderLayout->addWidget(isoValueSlider);
+	isoValueSliderLayout->addWidget(isoValueLabel);
+	controlLayout->addLayout(isoValueSliderLayout);
+
+
+	QLabel *isoValueSliderLabelLit1 = new QLabel("Iso Value 2:");
+	isoValueSlider1 = new QSlider(Qt::Horizontal);
+	isoValueSlider1->setRange(0, 38); //0-0.0038
+	isoValueSlider1->setValue(round(rcp->transFuncP1 * 0.0038998252712 / 0.0001));
+	connect(isoValueSlider1, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged1(int)));
+	isoValueLabel1 = new QLabel(QString::number(rcp->transFuncP1 * 0.0038998252712));
+	QHBoxLayout *isoValueSliderLayout1 = new QHBoxLayout;
+	isoValueSliderLayout1->addWidget(isoValueSliderLabelLit1);
+	isoValueSliderLayout1->addWidget(isoValueSlider1);
+	isoValueSliderLayout1->addWidget(isoValueLabel1);
+	controlLayout->addLayout(isoValueSliderLayout1);
+
 	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
 	addRayCastingInterfaces(rcGroupBox);
 	controlLayout->addWidget(rcGroupBox);
@@ -294,11 +322,9 @@ Window::Window()
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
 
-
+	/*
 	//////////////////////////miniature
 	QVBoxLayout *assistLayout = new QVBoxLayout;
-	QLabel *miniatureLabel = new QLabel("miniature");
-	//assistLayout->addWidget(miniatureLabel);
 
 	openGLMini = std::make_shared<GLWidget>(matrixMgrExocentric);
 
@@ -382,7 +408,7 @@ Window::Window()
 
 	mainLayout->addLayout(assistLayout, 1);
 	//openGL->setFixedSize(576, 648); //in accordance to 960x1080 of OSVR
-
+	*/
 
 
 	//openGL->setFixedSize(1000, 1000);
@@ -800,4 +826,47 @@ void Window::doTourBtnClicked()
 void Window::saveScreenBtnClicked()
 {
 	openGL->saveCurrentImage();
+}
+
+
+
+void Window::isoValueSliderValueChanged(int v)
+{
+	//isoValueSlider->setRange(0, 38); //0-0.0038
+	//isoValueSlider->setValue(mc->isoValue / 0.0001);
+	float othervalue = rcp->transFuncP1 * 0.0038998252712;
+
+	float newvalue = v*0.0001;
+	if (newvalue < othervalue){
+		rcp->transFuncP2 = newvalue/ 0.0038998252712;
+		isoValueLabel->setText(QString::number(newvalue));
+
+		volumeRenderable->preIntTableNeedUpdate();
+
+	}
+	else{
+		isoValueSlider->setValue(round(rcp->transFuncP2 * 0.0038998252712 / 0.0001));
+	}
+}
+
+void Window::isoValueSliderValueChanged1(int v)
+{
+//	//isoValueSlider->setRange(0, 38); //0-0.0038
+//	//isoValueSlider->setValue(mc->isoValue / 0.0001);
+//
+//	float newvalue = v*0.0001;
+//	if (newvalue > mc->isoValue0){
+//		mc->isoValue1 = newvalue;
+//		isoValueLabel1->setText(QString::number(mc->isoValue1));
+//		mc->newIsoValue(v*0.0001, 1);
+//
+//		polyMesh->setVertexCoordsOri();
+//		polyMesh->setVertexDeviateVals();
+//
+//		positionBasedDeformProcessor->polyMeshDataUpdated();
+//
+//	}
+//	else{
+//		isoValueSlider1->setValue(round(mc->isoValue1 / 0.0001));
+//	}
 }

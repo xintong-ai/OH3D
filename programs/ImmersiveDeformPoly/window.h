@@ -124,10 +124,10 @@ private:
 	void toggleWireframeClicked(bool b);
 
 
-	void SlotOriginalRb();
-	void SlotDeformRb();
-	void SlotClipRb();
-	void SlotTranspRb();
+	void SlotOriginalRb(bool b);
+	void SlotDeformRb(bool b);
+	void SlotClipRb(bool b);
+	void SlotTranspRb(bool b);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);

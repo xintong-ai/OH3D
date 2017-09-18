@@ -83,6 +83,10 @@ private:
 	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
 
 
+
+	QLabel *isoValueLabel, *isoValueLabel1;
+	QSlider *isoValueSlider, *isoValueSlider1;
+
 	//for miniature
 	std::shared_ptr<GLWidget> openGLMini;
 	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
@@ -180,6 +184,11 @@ private slots:
 
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
+
+	void isoValueSliderValueChanged(int v);
+	void isoValueSliderValueChanged1(int v);
+
+	
 };
 
 #endif
