@@ -124,7 +124,8 @@ public:
 
 	bool deformData = true; //sometimes not need to modify the data, but just compute the deformation info like the frame, and just deform the internal data copy
 
-	//for time varying particle dataset
+	//for changing rendering parameter and time varying dataset
+	void volumeDataUpdated();
 	void particleDataUpdated();
 	void polyMeshDataUpdated();
 

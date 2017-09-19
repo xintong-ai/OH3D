@@ -90,7 +90,7 @@ bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 
 	float3 viewVecLocal = matrixMgr->getViewVecInLocal();
 	QVector3D oldTransVec = matrixMgr->getTransVec();
-	matrixMgr->setTransVec(oldTransVec - v / 200.0 *QVector3D(viewVecLocal.x, viewVecLocal.y, viewVecLocal.z));
+	matrixMgr->setTransVec(oldTransVec - v / 400.0 *QVector3D(viewVecLocal.x, viewVecLocal.y, viewVecLocal.z));
 	if (v > 0){
 		matrixMgr->recentChange = 1;
 	}

@@ -15,6 +15,9 @@
 #include <thrust/functional.h>
 #include <thrust/execution_policy.h>
 
+//#include <cubicTex3D.cu>
+
+
 #define RESOLU 5
 
 //!!! NOTE !!! spacing not considered yet!!!! in the global functions
@@ -112,6 +115,35 @@ void PositionBasedDeformProcessor::polyMeshDataUpdated()
 	}
 
 	//!!!!!  NOT COMPLETE YET!!! to add more state changes!!!!
+}
+
+void PositionBasedDeformProcessor::volumeDataUpdated()
+//only for changing rendering parameter
+{
+	if (systemState != ORIGINAL && isActive){
+		//std::cout << "camera BAD in new original data" << std::endl;
+		if (!atProperLocation(matrixMgr->getEyeInLocal(), true)){
+			computeTunnelInfo(matrixMgr->getEyeInLocal());
+		}
+		else{
+			adjustTunnelEnds();
+		}
+		
+		if (systemState == MIXING)
+		{
+			adjustTunnelEndsLastTunnel();
+		}
+
+		if (systemState == MIXING){
+			doVolumeDeform2Tunnel(rOpen, rClose);
+		}
+		else{
+			doVolumeDeform(r); //although the deformation might be computed later, still do it once here to compute d_vec_posTarget in case of needed by detecting proper location
+		}
+	}
+	else{
+		//std::cout << "camera GOOD in new original data" << std::endl;
+	}
 }
 
 
@@ -3174,6 +3206,55 @@ d_deformVolume_CircleModel(cudaExtent volumeSize, float3 start, float3 end, floa
 	return;
 }
 
+// Inline calculation of the bspline convolution weights, without conditional statements
+inline __device__ void WEIGHTS_my(float3 fraction, float3& w0, float3& w1, float3& w2, float3& w3)
+{
+	const float3 one_frac = 1.0f - fraction;
+	const float3 squared = fraction * fraction;
+	const float3 one_sqd = one_frac * one_frac;
+
+	w0 = 1.0f / 6.0f * one_sqd * one_frac;
+	w1 = 2.0f / 3.0f - 0.5f * squared * (2.0f - fraction);
+	w2 = 2.0f / 3.0f - 0.5f * one_sqd * (2.0f - one_frac);
+	w3 = 1.0f / 6.0f * squared * fraction;
+}
+
+
+__device__ float CUBICTEX3D_my( float3 coord)
+{
+	// shift the coordinate from [0,extent] to [-0.5, extent-0.5]
+	const float3 coord_grid = coord - 0.5f;
+	const float3 index = floorf(coord_grid);
+	const float3 fraction = coord_grid - index;
+	float3 w0, w1, w2, w3;
+	WEIGHTS_my(fraction, w0, w1, w2, w3);
+
+	const float3 g0 = w0 + w1;
+	const float3 g1 = w2 + w3;
+	const float3 h0 = (w1 / g0) - 0.5f + index;  //h0 = w1/g0 - 1, move from [-0.5, extent-0.5] to [0, extent]
+	const float3 h1 = (w3 / g1) + 1.5f + index;  //h1 = w3/g1 + 1, move from [-0.5, extent-0.5] to [0, extent]
+
+	// fetch the eight linear interpolations
+	// weighting and fetching is interleaved for performance and stability reasons
+	float tex000 = tex3D(volumeTexInput, h0.x, h0.y, h0.z);
+	float tex100 = tex3D(volumeTexInput, h1.x, h0.y, h0.z);
+	tex000 = g0.x * tex000 + g1.x * tex100;  //weigh along the x-direction
+	float tex010 = tex3D(volumeTexInput, h0.x, h1.y, h0.z);
+	float tex110 = tex3D(volumeTexInput, h1.x, h1.y, h0.z);
+	tex010 = g0.x * tex010 + g1.x * tex110;  //weigh along the x-direction
+	tex000 = g0.y * tex000 + g1.y * tex010;  //weigh along the y-direction
+	float tex001 = tex3D(volumeTexInput, h0.x, h0.y, h1.z);
+	float tex101 = tex3D(volumeTexInput, h1.x, h0.y, h1.z);
+	tex001 = g0.x * tex001 + g1.x * tex101;  //weigh along the x-direction
+	float tex011 = tex3D(volumeTexInput, h0.x, h1.y, h1.z);
+	float tex111 = tex3D(volumeTexInput, h1.x, h1.y, h1.z);
+	tex011 = g0.x * tex011 + g1.x * tex111;  //weigh along the x-direction
+	tex001 = g0.y * tex001 + g1.y * tex011;  //weigh along the y-direction
+
+	return (g0.z * tex000 + g1.z * tex001);  //weigh along the z-direction
+}
+
+
 __global__ void
 d_deformVolume_CuboidModel(cudaExtent volumeSize, float3 start, float3 end, float3 spacing, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd)
 {
@@ -3212,6 +3293,9 @@ d_deformVolume_CuboidModel(cudaExtent volumeSize, float3 start, float3 end, floa
 				samplePos /= spacing;
 
 				float res = tex3D(volumeTexInput, samplePos.x + 0.5, samplePos.y + 0.5, samplePos.z + 0.5);
+				//sample = cubicTex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+				res = CUBICTEX3D_my(make_float3(samplePos.x + 0.5, samplePos.y + 0.5, samplePos.z + 0.5));
+
 				surf3Dwrite(res, volumeSurfaceOut, x * sizeof(float), y, z);
 
 			}

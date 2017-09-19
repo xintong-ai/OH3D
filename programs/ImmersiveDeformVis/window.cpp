@@ -48,7 +48,8 @@ void positionBasedDeformerConfigure(std::string dataPath, float & densityThr, in
 		checkRadius = 1;
 	}
 	else if (std::string(dataPath).find("moortgat") != std::string::npos){
-		densityThr = 0.0007;
+		//densityThr = 0.0007;
+		densityThr = 0.008;// 0.038;
 		checkRadius = 2;
 	}
 	else{
@@ -84,12 +85,16 @@ Window::Window()
 
 	//rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.3, 0.18, 0.1, 512, 0.125f, 1.0, true); //for moortgat data, non cubic spline interpolation. Note this data is not suitable to use cubic spline interpolation. also the Shininess for specular light for this data is 5
 
+
 	
 	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vti") != std::string::npos){
 		VTIReader vtiReader(dataPath.c_str(), inputVolume);
 
-		rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.0013 / 0.0038998252712, 0.18, 0.36, 512, 0.125f, 1.0, true);
+		rcp = std::make_shared<RayCastingParameters>(0.4, 0.5, 0.3, 0.0013 / 0.0038998252712, 0.001 / 0.0038998252712, 0.8, 512, 0.125f, 1.0, true); //for moortgat data, cubic spline interpolation version
+
+
+		rcp = std::make_shared<RayCastingParameters>(0.4, 0.5, 0.5, 0.0013 / 0.0038998252712, 0.001 / 0.0038998252712, 0.54, 512, 0.125f, 1.15, true); //for moortgat data, cubic spline interpolation version
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
@@ -152,7 +157,10 @@ Window::Window()
 	positionBasedDeformProcessor->densityThr = densityThr;
 	positionBasedDeformProcessor->checkRadius = checkRadius;
 	positionBasedDeformProcessor->setDeformationScale(6);
-
+	if (std::string(dataPath).find("moortgat") != std::string::npos){
+		positionBasedDeformProcessor->setDeformationScale(1.5);
+		positionBasedDeformProcessor->setDeformationScaleVertical(2);
+	}
 	positionBasedDeformProcessor->radius = 7;
 	//animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
 	//animationByMatrixProcessor->setViews(views);
@@ -617,12 +625,16 @@ void Window::transFuncP1LabelSliderValueChanged(int v)
 	rcp->transFuncP1 = 1.0*v / 100;
 	transFuncP1Label->setText(QString::number(1.0*v / 100));
 	volumeRenderable->preIntTableNeedUpdate();
+	positionBasedDeformProcessor->volumeDataUpdated();
+
 }
 void Window::transFuncP2LabelSliderValueChanged(int v)
 {
 	rcp->transFuncP2 = 1.0*v / 100;
 	transFuncP2Label->setText(QString::number(1.0*v / 100));
 	volumeRenderable->preIntTableNeedUpdate();
+	positionBasedDeformProcessor->volumeDataUpdated();
+
 }
 
 void Window::transFuncP1SecondLabelSliderValueChanged(int v)
@@ -843,6 +855,7 @@ void Window::isoValueSliderValueChanged(int v)
 
 		volumeRenderable->preIntTableNeedUpdate();
 
+		positionBasedDeformProcessor->volumeDataUpdated(); //must be called after volumeRenderable->preIntTableNeedUpdate()!!!
 	}
 	else{
 		isoValueSlider->setValue(round(rcp->transFuncP2 * 0.0038998252712 / 0.0001));

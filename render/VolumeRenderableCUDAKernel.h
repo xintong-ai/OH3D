@@ -6,7 +6,6 @@
 #include "myDefineRayCasting.h"
 #include <memory>
 #include <vector>
-#include "PositionBasedDeformProcessor.h"
 
 typedef unsigned int  uint;
 
@@ -23,7 +22,8 @@ extern "C" {
 
 
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, PositionBasedDeformProcessor* pd,
+		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, 
+		float3 tunnelStart, float3 tunnelEnd, float3 vertDir, float degree, float deformationscale, float deformationScaleVerticel, bool isColoringDeformedPart,
 		bool usePreInt = false, bool useSplineInterpolation = false, bool useCliping = false);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);

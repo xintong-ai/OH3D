@@ -70,6 +70,106 @@ void VolumeRenderableImmerCUDA::init()
 	actor->GetWindowSize(winWidth, winHeight);
 }
 
+void VolumeRenderableImmerCUDA::updateColorTableold()
+{
+	if (colorTable.size() != numColors){
+		colorTable.resize(numColors);
+	}
+	if (rcp->useColor){
+		float peakRange = 0.01;
+		std::vector<float> peaks;
+		peaks.push_back(rcp->transFuncP2);
+		peaks.push_back(rcp->transFuncP1);
+
+		for (int i = 0; i < numColors; i++){
+			float normi = i*1.0 / (numColors - 1);
+			float colRes;
+
+			if (peaks.size() < 2){
+				colRes = normi;
+			}
+			else{
+				colRes = clamp((normi - peaks[0]) / (peaks.back() - peaks[0]), 0.0, 1.0);
+			}
+			float3 col = make_float3(colRes, 0, 1 - colRes);
+			float den = 0.00;
+
+			/*
+			float peakWidth = 0;
+			float deltab = 0.012, cooefb = 80;
+			if (peakWidth == 0){
+			for (int j = 0; j < peaks.size(); j++){
+
+			float delta = deltab - 0.002 * j, cooef = cooefb * (j + 1);
+
+			float curDen = cooef * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta / delta);
+			curDen = max(curDen - 0.1, 0);
+			den = max(den, curDen);
+			}
+			}
+			else{
+			for (int j = 0; j < peaks.size(); j++){
+			float delta = deltab / (j + 1), cooef = cooefb * (j + 1);
+
+			float xv;
+			if(abs(normi - peaks[j]) < peakWidth){
+			xv = 0;
+			}
+			else{
+			xv = fmin(abs(peaks[j] + peakWidth - normi), abs(peaks[j] - peakWidth - normi));
+			}
+			float curDen = cooef * exp(-xv*xv / 2 / delta / delta);
+			den = max(den, curDen);
+			}
+			}*/
+
+			float peakWidth = 0.01;
+			float deltab = 0.0022, cooefb = 40;
+			//exp(-0.01*0.01/2/0.0025/0.0025)*5 = 0.00167731313
+			//exp(-0.01*0.01/2/0.002/0.002)*10 = 0.00003726653
+			//float v1 = 0.00167731313, v2 = 0.00003726653;
+			float v1 = cooefb * exp(-peakWidth * peakWidth / 2 / deltab / deltab);//0.00130480841
+			float v2 = cooefb * 2 * exp(-peakWidth * peakWidth / 2 / (deltab - 0.0002) / (deltab - 0.0002)); //0.00029813225
+
+			if (normi < peaks[0] - peakWidth){
+				den = normi / (peaks[0] - peakWidth) * v1;
+			}
+			else if (normi < peaks[0] + peakWidth){
+				int j = 0;
+				float delta = deltab - 0.0002 * j, cooef = cooefb * (j + 1);
+				den = cooef * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta / delta);
+			}
+			else if (normi > peaks[1] - peakWidth){
+				int j = 1;
+				float delta = deltab - 0.0002 * j, cooef = cooefb * (j + 1);
+				den = cooef * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta / delta);
+			}
+			else{
+				float r = (normi - (peaks[0] + peakWidth)) / ((peaks[1] - peakWidth) - (peaks[0] + peakWidth));
+				den = v1 * (1 - r) + v2 * r;
+			}
+
+
+			colorTable[i] = make_float4(col, den);
+		}
+	}
+	else{
+		for (int i = 0; i < numColors; i++){
+			float funcRes = (i*1.0 / (numColors - 1) - rcp->transFuncP2) / (rcp->transFuncP1 - rcp->transFuncP2);
+			funcRes = clamp(funcRes, 0.0, 1.0);
+			colorTable[i] = make_float4(funcRes, funcRes, funcRes, funcRes);
+		}
+	}
+
+	if (rcp->d_transferFunc == 0)
+	{
+		cudaChannelFormatDesc channelFloat4 = cudaCreateChannelDesc<float4>();
+		checkCudaErrors(cudaMallocArray(&(rcp->d_transferFunc), &channelFloat4, numColors, 1));
+	}
+	checkCudaErrors(cudaMemcpyToArray((rcp->d_transferFunc), 0, 0, &(colorTable[0]), sizeof(float4)*numColors, cudaMemcpyHostToDevice));
+}
+
+
 void VolumeRenderableImmerCUDA::updateColorTable()
 {
 	if (colorTable.size() != numColors){
@@ -94,59 +194,80 @@ void VolumeRenderableImmerCUDA::updateColorTable()
 			float3 col = make_float3(colRes, 0, 1 - colRes);
 			float den = 0.00;
 
-/*
-			float peakWidth = 0;
-			float deltab = 0.012, cooefb = 80;
-			if (peakWidth == 0){
-				for (int j = 0; j < peaks.size(); j++){
+			/*
+						float peakWidth = 0;
+						float deltab = 0.012, cooefb = 80;
+						if (peakWidth == 0){
+						for (int j = 0; j < peaks.size(); j++){
 
-					float delta = deltab - 0.002 * j, cooef = cooefb * (j + 1);
+						float delta = deltab - 0.002 * j, cooef = cooefb * (j + 1);
 
-					float curDen = cooef * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta / delta);
-					curDen = max(curDen - 0.1, 0);
-					den = max(den, curDen);
-				}
-			}
-			else{
-				for (int j = 0; j < peaks.size(); j++){
-					float delta = deltab / (j + 1), cooef = cooefb * (j + 1);
+						float curDen = cooef * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta / delta);
+						curDen = max(curDen - 0.1, 0);
+						den = max(den, curDen);
+						}
+						}
+						else{
+						for (int j = 0; j < peaks.size(); j++){
+						float delta = deltab / (j + 1), cooef = cooefb * (j + 1);
 
-					float xv;
-					if(abs(normi - peaks[j]) < peakWidth){
+						float xv;
+						if(abs(normi - peaks[j]) < peakWidth){
 						xv = 0;
-					}
-					else{
+						}
+						else{
 						xv = fmin(abs(peaks[j] + peakWidth - normi), abs(peaks[j] - peakWidth - normi));
-					}
-					float curDen = cooef * exp(-xv*xv / 2 / delta / delta);
-					den = max(den, curDen);
-				}
-			}*/
+						}
+						float curDen = cooef * exp(-xv*xv / 2 / delta / delta);
+						den = max(den, curDen);
+						}
+						}*/
 
-			float peakWidth = 0.01;
-			float deltab = 0.0022, cooefb = 40; 
+
+			float densityThr = 0.008;
+
+			float slopeRange = 0.05;
+
+			float right0 = 0.001, left1 = 0.0001;
+
+			float peakWidth = 0.015;
+			float delta[2] = { 0.005, 0.0045 }, cooef[2] = {10, 20};
 			//exp(-0.01*0.01/2/0.0025/0.0025)*5 = 0.00167731313
 			//exp(-0.01*0.01/2/0.002/0.002)*10 = 0.00003726653
 			//float v1 = 0.00167731313, v2 = 0.00003726653;
-			float v1 = cooefb * exp(-peakWidth * peakWidth / 2 / deltab / deltab);//0.00130480841
-			float v2 = cooefb * 2 * exp(-peakWidth * peakWidth / 2 / (deltab - 0.0002) / (deltab - 0.0002)); //0.00029813225
+			float v0 = cooef[0] * exp(-peakWidth * peakWidth / 2 / delta[0] / delta[0]);
+			float v1 = cooef[1] * exp(-peakWidth * peakWidth / 2 / delta[1] / delta[1]);
 
-			if (normi < peaks[0] - peakWidth){
-				den = normi / (peaks[0] - peakWidth) * v1;
+			if (normi < peaks[0] - peakWidth - slopeRange){
+				den = 0;
+			}
+			else if (normi < peaks[0] - peakWidth){
+				float startPos = peaks[0] - peakWidth - slopeRange;
+				float r = (normi - startPos) / ((peaks[0] - peakWidth) - startPos);
+				den = densityThr * (1-r) + v0 * r;
 			}
 			else if (normi < peaks[0] + peakWidth){
 				int j = 0;
-				float delta = deltab - 0.0002 * j, cooef = cooefb * (j + 1);
-				den = cooef * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta / delta);
+				den = cooef[j] * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta[j] / delta[j]);
 			}
 			else if (normi > peaks[1] - peakWidth){
 				int j = 1;
-				float delta = deltab - 0.0002 * j, cooef = cooefb * (j + 1);
-				den = cooef * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta / delta);
+				den = cooef[j] * exp(-(peaks[j] - normi)*(peaks[j] - normi) / 2 / delta[j] / delta[j]);
 			}
 			else{
+
+
 				float r = (normi - (peaks[0] + peakWidth)) / ((peaks[1] - peakWidth) - (peaks[0] + peakWidth));
-				den = v1 * (1 - r) + v2 * r;
+				den = right0 * (1 - r) + left1 * r;
+
+				//if (normi < peaks[1] - peakWidth - slopeRange){
+				//	den = 0;
+				//}
+				//else{// normi < peaks[1] - peakWidth
+				//	float startPos = peaks[1] - peakWidth - slopeRange;
+				//	float r = (normi - startPos) / ((peaks[1] - peakWidth) - startPos);
+				//	den = v1 * r;
+				//}
 			}
 			
 			
@@ -252,7 +373,10 @@ void VolumeRenderableImmerCUDA::draw(float modelview[16], float projection[16])
 		VolumeRender_renderWithDepthInput(d_output, winWidth, winHeight, rcp->density, rcp->brightness, eyeInLocal, volume->size, rcp->maxSteps, rcp->tstep, rcp->useColor, densityBonus);
 	}
 	else{
-		VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, rcp.get(), positionBasedDeformProcessor.get(), usePreInt, useSplineInterpolation, useClipRendering);
+		//VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, rcp.get(), positionBasedDeformProcessor.get(), usePreInt, useSplineInterpolation, useClipRendering);
+		VolumeRender_renderImmer(d_output, winWidth, winHeight, eyeInLocal, volume->size, rcp.get(),
+			positionBasedDeformProcessor->getTunnelStart(), positionBasedDeformProcessor->getTunnelEnd(), positionBasedDeformProcessor->getRectVerticalDir(), positionBasedDeformProcessor->r, positionBasedDeformProcessor->getDeformationScale(), positionBasedDeformProcessor->getDeformationScaleVertical(), positionBasedDeformProcessor->isColoringDeformedPart,
+			usePreInt, useSplineInterpolation, useClipRendering);
 	}
 
 	checkCudaErrors(cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0));

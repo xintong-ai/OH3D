@@ -2,7 +2,6 @@
 #include <helper_math.h>
 #include <iostream>
 #include "TransformFunc.h"
-#include "PositionBasedDeformProcessor.h"
 #include "myDefineRayCasting.h"
 
 #include <stdlib.h>
@@ -1498,9 +1497,9 @@ __global__ void d_render_preint_coloringDeformedElement(uint *d_output, uint ima
 			float3 origianlPos = getOrigianlSamplePos(volumeSize, pos,
 				tunnelStart, tunnelEnd, spacing, r, deformationScale, deformationScaleVertical, rectVerticalDir);
 			if (origianlPos.x > -0.01){
-				const float3 errorColor = make_float3(1, 0, 0);
+				const float3 errorColor = make_float3(0, 1.0, 0);
 				float maxDis = deformationScale / 2.0;
-				float ratio = length(pos - origianlPos) / maxDis*0.8; //0.2 is selected parameter
+				float ratio = clamp(length(pos - origianlPos) / maxDis, 0.6, 1.0); //0.6 is selected parameter for moortgat data
 				cc = cc*(1 - ratio) + errorColor*ratio;
 			}
 			////to deal with partial volume effect. may be useful
@@ -1576,19 +1575,21 @@ __global__ void d_render_preint_coloringDeformedElement(uint *d_output, uint ima
 
 //used specifically for immersive deformation project
 void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-	float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, PositionBasedDeformProcessor* pd, bool usePreInt, bool useSplineInterpolation, bool useCliping)
+	float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp,
+	float3 tunnelStart, float3 tunnelEnd, float3 vertDir, float degree, float deformationscale, float deformationScaleVerticel, bool isColoringDeformedPart,
+	bool usePreInt, bool useSplineInterpolation, bool useCliping)
 {
 	dim3 blockSize = dim3(16, 16, 1);
 	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
 
 	if (useCliping){
 		d_render_immer_withClipping << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation,
-			pd->getTunnelStart(), pd->getTunnelEnd(), pd->getRectVerticalDir(), pd->r, pd->getDeformationScale(), pd->getDeformationScaleVertical());
+			tunnelStart,  tunnelEnd, vertDir, degree, deformationscale, deformationScaleVerticel);
 	}
 	else if (usePreInt){
-		if (pd->isColoringDeformedPart){ //care!! pd must be non-0 here
+		if (isColoringDeformedPart){ //care!! pd must be non-0 here
 			d_render_preint_coloringDeformedElement << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation,
-				pd->getTunnelStart(), pd->getTunnelEnd(), pd->getRectVerticalDir(), pd->r, pd->getDeformationScale(), pd->getDeformationScaleVertical());
+				tunnelStart, tunnelEnd, vertDir, degree, deformationscale, deformationScaleVerticel);
 		}
 		else{
 			d_render_preint << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, useSplineInterpolation);
