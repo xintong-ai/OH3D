@@ -165,7 +165,7 @@ public:
 		else if (std::string(dataPath).find("moortgat") != std::string::npos){
 			//dims = make_int3(351, 257, 257);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.3, 0.18, 0.36, 512, 0.125f, 1.0, true);
+			rcp = std::make_shared<RayCastingParameters>(0.4, 0.5, 0.5, 0.0013 / 0.0038998252712, 0.001 / 0.0038998252712, 0.54, 512, 0.125f, 1.15, true);
 		}
 		else{
 			std::cout << "volume data name not recognized" << std::endl;

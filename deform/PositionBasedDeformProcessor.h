@@ -249,6 +249,7 @@ private:
 	bool inRange(float3 v); 
 	void resetData();
 	bool atProperLocation(float3 pos, bool useOriData); //useOriData = true: check if proper in original data; false: check if proper in deformed data (with a in-tunnel check at the beginning)
+	bool inFullExtentTunnel(float3 v);
 
 
 	

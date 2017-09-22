@@ -174,12 +174,14 @@ private:
 	
 
     /****timing****/
-    StopWatchInterface *timer = 0;
+    StopWatchInterface *timer = 0; //stop and restart at every call of paintGL
     int fpsCount = 0;
     int fpsLimit = 64;
-	void computeFPS();
 	void TimerStart();
 	void TimerEnd();
+
+	StopWatchInterface *timerOverall = 0; //no intermedieta restart
+	int fpsCountOverall = 0;
 
 signals:
 	void SignalPaintGL();

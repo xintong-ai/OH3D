@@ -26,6 +26,10 @@ extern "C" {
 		float3 tunnelStart, float3 tunnelEnd, float3 vertDir, float degree, float deformationscale, float deformationScaleVerticel, bool isColoringDeformedPart,
 		bool usePreInt = false, bool useSplineInterpolation = false, bool useCliping = false);
 
+	void VolumeRender_renderImmer_withPreBlend(uint *d_output, uint imageW, uint imageH,
+		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, float densityBonus,
+		bool usePreInt = false, bool useSplineInterpolation = false);
+
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);
 	void VolumeRender_setLabelVolume(const VolumeCUDA *volume);

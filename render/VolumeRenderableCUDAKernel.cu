@@ -1973,3 +1973,210 @@ void VolumeRender_renderWithDepthInput(uint *d_output, uint imageW, uint imageH,
 }
 
 
+
+__global__ void d_render_preint_withDepthInput(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize, float densityBonus, bool useSplineInterpolation)
+{
+	uint x = blockIdx.x*blockDim.x + threadIdx.x;
+	uint y = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if ((x >= imageW) || (y >= imageH)) return;
+
+	const float opacityThreshold = 0.95f;
+
+	const float3 boxMin = make_float3(0.0f, 0.0f, 0.0f);
+	const float3 boxMax = spacing*make_float3(volumeSize);
+	//const float3 boxMin = make_float3(0.0f, 114.0f, 0.0f);
+	//const float3 boxMax = spacing*make_float3(256, 115, 256);//for NEK image
+
+
+	float u = ((x + 0.5) / (float)imageW)*2.0f - 1.0f;
+	float v = ((y + 0.5) / (float)imageH)*2.0f - 1.0f;
+
+	float inputDepth = tex3D(tex_inputImageDepth, x, y, 0.5);
+	uchar4 inputColor_uchar = tex2D(tex_inputImageColor, x, y);
+	float4 inputColor = make_float4(inputColor_uchar.x / 255.0, inputColor_uchar.y / 255.0, inputColor_uchar.z / 255.0, inputColor_uchar.w / 255.0);
+
+
+	Ray eyeRay;
+	eyeRay.o = eyeInLocal;
+	float4 pixelInClip = make_float4(u, v, -1.0f, 1.0f);
+	float3 pixelInWorld = make_float3(divW(mul(c_invMVPMatrix, pixelInClip)));
+	eyeRay.d = normalize(pixelInWorld - eyeRay.o);
+
+	// find intersection with box
+	float tnear, tfar;
+	int hit = intersectBox(eyeRay, boxMin, boxMax, &tnear, &tfar);
+
+	if (tnear < 0.0f) tnear = 0.01f;     // clamp to near plane according to the projection matrix
+
+	if (tfar<tnear)
+		//	if (!hit)
+	{
+		float4 sum = make_float4(0.0f, 0.0f, 0.0f, 1.0f);
+		if (inputDepth < 1.0){
+			//cases when previous renderable result is outside of the bounding box
+			d_output[y*imageW + x] = rgbaFloatToInt(inputColor * density * brightness * densityBonus);
+		}
+		else{
+			d_output[y*imageW + x] = rgbaFloatToInt(sum);
+		}
+		return;
+	}
+
+	// march along ray from front to back, accumulating color
+	float4 sum = make_float4(0.0f);
+	float t = tnear;
+	float3 pos = eyeRay.o + eyeRay.d*tnear;
+
+	float tstepv = tstep;
+	float3 step = eyeRay.d*tstep;
+	float lightingThr = 0.000001;
+
+	float fragDepth = 1.0;
+
+	float3 coord = pos / spacing;
+	float lastSample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+	float3 last_normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+	float3 last_normal_in_eye = normalize(mul(c_NormalMatrix, last_normalInWorld));
+	t += tstepv;
+	pos += step;
+
+
+	for (int i = 1; i<maxSteps; i++)
+	{
+		if (i > 1 && i % 256 == 0 && tstepv < 0.51) {
+			//increase step size to improve performance, when the ray is already far, since then we do not need short step size that much then
+			//but still limit the tstepv not to exceed 1
+			tstepv *= 2;
+			step *= 2;
+		}
+
+		float3 coord = pos / spacing;
+		float sample;
+		if (useSplineInterpolation)
+			sample = cubicTex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+		else
+			sample = tex3D(volumeTexValueForRC, coord.x, coord.y, coord.z);
+
+		float4 cpreint = tex2DLayered(transferLayerPreintTex, sample, lastSample, 0);
+
+		float3 cc;
+
+		cc = make_float3(cpreint.x, cpreint.y, cpreint.z);
+		cc.x = __saturatef(cc.x);
+		cc.y = __saturatef(cc.y);
+		cc.z = __saturatef(cc.z);
+
+		float colDensity = cpreint.w * tstepv;
+
+		float4 col;
+
+		float3 normalInWorld;
+		if (useSplineInterpolation){
+			normalInWorld = make_float3(cubicTex3D_1st_derivative_x(volumeTexValueForRC, coord),
+				cubicTex3D_1st_derivative_y(volumeTexValueForRC, coord),
+				cubicTex3D_1st_derivative_z(volumeTexValueForRC, coord)) / spacing;
+			normalInWorld = make_float3(1, 1, 0);
+		}
+		else{
+			normalInWorld = make_float3(tex3D(volumeTexGradient, coord.x, coord.y, coord.z)) / spacing;
+		}
+
+		
+
+		float3 posInEye = mul(c_MVMatrix, pos);
+		if (length(normalInWorld) > lightingThr)// && abs(sample - lastSample) > 0.0001)
+		{
+			float3 normal_in_eye = normalize(mul(c_NormalMatrix, normalInWorld));
+			col = make_float4(phongModel(cc, posInEye, normal_in_eye), colDensity);
+
+			//col = make_float4(phongModel(cc, posInEye, (last_normal_in_eye + normal_in_eye)/2), colDensity); //need to solve the case when last_normal_in_eye + normal_in_eye == 0
+			last_normal_in_eye = normal_in_eye;
+			//using average of last_normal_in_eye and normal_in_eye is just one option, and may not be the best.
+			//see the other paper
+		}
+		else
+		{
+			col = make_float4(la*cc, colDensity);
+			last_normal_in_eye = make_float3(0, 0, 0);
+		}
+
+		col.w *= density;
+
+		// pre-multiply alpha
+		col.x *= col.w;
+		col.y *= col.w;
+		col.z *= col.w;
+		// "over" operator for front-to-back blending
+		sum = sum + col*(1.0f - sum.w);
+
+		float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+		float curDepth = posInClip.z / 2.0 + 0.5;
+		if (curDepth > inputDepth){
+			inputColor.w *= density * densityBonus; //give extra density
+
+			// pre-multiply alpha
+			inputColor.x *= inputColor.w;
+			inputColor.y *= inputColor.w;
+			inputColor.z *= inputColor.w;
+
+			sum = sum + inputColor*(1.0f - sum.w);
+			fragDepth = curDepth;
+			// note!!here for now, ignore the cases that the ray can pass the input image and continue integrating
+			break;
+		}
+
+
+		// exit early if opaque
+		if (sum.w > opacityThreshold){
+			//float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			fragDepth = curDepth;
+			break;
+		}
+
+		t += tstepv;
+
+		if (t > tfar){
+			//float4 posInClip = divW(mul(c_MVPMatrix, make_float4(pos, 1.0)));
+			if (inputDepth < 1.0){
+				//cases when previous renderable result is further than the bounding box
+				inputColor.w *= density * 1; //give extra density
+
+				// pre-multiply alpha
+				inputColor.x *= inputColor.w;
+				inputColor.y *= inputColor.w;
+				inputColor.z *= inputColor.w;
+
+				sum = sum + inputColor*(1.0f - sum.w);
+				fragDepth = inputDepth;
+			}
+			else{
+				fragDepth = curDepth;
+			}
+			break;
+		}
+
+		pos += step;
+		lastSample = sample;
+	}
+
+	sum *= brightness;
+	d_output[y*imageW + x] = rgbaFloatToInt(sum);
+}
+
+void VolumeRender_renderImmer_withPreBlend(uint *d_output, uint imageW, uint imageH,
+	float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, float densityBonus,
+	bool usePreInt, bool useSplineInterpolation)
+{
+	dim3 blockSize = dim3(16, 16, 1);
+	dim3 gridSize = dim3(iDivUp(imageW, blockSize.x), iDivUp(imageH, blockSize.y));
+
+	if (usePreInt){
+		d_render_preint_withDepthInput << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, densityBonus, useSplineInterpolation);
+	}
+	else{
+		d_render_withDepthInput << <gridSize, blockSize >> >(d_output, imageW, imageH, eyeInLocal, volumeSize, densityBonus);
+	}
+
+
+}

@@ -83,18 +83,12 @@ Window::Window()
 	//rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
 
-	//rcp = std::make_shared<RayCastingParameters>(0.4, 0.9, 1.2, 0.3, 0.18, 0.1, 512, 0.125f, 1.0, true); //for moortgat data, non cubic spline interpolation. Note this data is not suitable to use cubic spline interpolation. also the Shininess for specular light for this data is 5
 
 
 	
 	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vti") != std::string::npos){
 		VTIReader vtiReader(dataPath.c_str(), inputVolume);
-
-		rcp = std::make_shared<RayCastingParameters>(0.4, 0.5, 0.3, 0.0013 / 0.0038998252712, 0.001 / 0.0038998252712, 0.8, 512, 0.125f, 1.0, true); //for moortgat data, cubic spline interpolation version
-
-
-		rcp = std::make_shared<RayCastingParameters>(0.4, 0.5, 0.5, 0.0013 / 0.0038998252712, 0.001 / 0.0038998252712, 0.54, 512, 0.125f, 1.15, true); //for moortgat data, cubic spline interpolation version
 	}
 	else{
 		std::shared_ptr<RawVolumeReader> reader;
@@ -179,7 +173,7 @@ Window::Window()
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
 	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
-	//!!!!! once turned on blending, some render technique is not implemented yet !!!!!!
+	////!!!!! once turned on blending, some render technique is not implemented yet !!!!!!
 
 	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//openGL->AddRenderable("3matrixMgr", matrixMgrRenderable.get()); 

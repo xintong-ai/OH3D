@@ -667,6 +667,43 @@ __global__ void d_checkIfTooCloseToPoly(float3 pos, uint* indices, int faceCoord
 	return;
 }
 
+bool PositionBasedDeformProcessor::inFullExtentTunnel(float3 pos)
+{
+	if (shapeModel == CUBOID){
+		float3 tunnelVec = normalize(tunnelEnd - tunnelStart);
+		float tunnelLength = length(tunnelEnd - tunnelStart);
+		float3 n = normalize(cross(rectVerticalDir, tunnelVec));
+		float3 voxelVec = pos - tunnelStart;
+		float l = dot(voxelVec, tunnelVec);
+		if (l >= 0 && l <= tunnelLength){
+			float l2 = dot(voxelVec, rectVerticalDir);
+			if (abs(l2) < deformationScaleVertical){
+				float l3 = dot(voxelVec, n);
+				if (abs(l3) < deformationScale / 2){
+					return true;
+				}
+			}
+		}
+	}
+	else if (shapeModel == CIRCLE){
+		float3 tunnelVec = normalize(tunnelEnd - tunnelStart);
+		float tunnelLength = length(tunnelEnd - tunnelStart);
+		float3 voxelVec = pos - tunnelStart;
+		float l = dot(voxelVec, tunnelVec);
+		if (l >= 0 && l <= tunnelLength){
+			float l3 = length(tunnelStart + voxelVec * l - pos);
+			if (abs(l3) < radius / 2){
+				return true;
+			}
+		}
+	}
+	else{
+		std::cout << "inFullExtentTunnel not implemented function !!!" << std::endl;
+	}
+
+	return false;
+}
+
 bool PositionBasedDeformProcessor::atProperLocation(float3 pos, bool useOriData)
 {
 	if (!inRange(pos)){
@@ -676,19 +713,23 @@ bool PositionBasedDeformProcessor::atProperLocation(float3 pos, bool useOriData)
 	if (!useOriData){
 		if (systemState != ORIGINAL && systemState != CLOSING){
 			//first check if inside the deform frame	
-			float3 tunnelVec = normalize(tunnelEnd - tunnelStart);
-			float tunnelLength = length(tunnelEnd - tunnelStart);
-			float3 n = normalize(cross(rectVerticalDir, tunnelVec));
-			float3 voxelVec = pos - tunnelStart;
-			float l = dot(voxelVec, tunnelVec);
-			if (l >= 0 && l <= tunnelLength){
-				float l2 = dot(voxelVec, rectVerticalDir);
-				if (abs(l2) < deformationScaleVertical){
-					float l3 = dot(voxelVec, n);
-					if (abs(l3) < deformationScale / 2){
-						return true;
-					}
-				}
+			//float3 tunnelVec = normalize(tunnelEnd - tunnelStart);
+			//float tunnelLength = length(tunnelEnd - tunnelStart);
+			//float3 n = normalize(cross(rectVerticalDir, tunnelVec));
+			//float3 voxelVec = pos - tunnelStart;
+			//float l = dot(voxelVec, tunnelVec);
+			//if (l >= 0 && l <= tunnelLength){
+			//	float l2 = dot(voxelVec, rectVerticalDir);
+			//	if (abs(l2) < deformationScaleVertical){
+			//		float l3 = dot(voxelVec, n);
+			//		if (abs(l3) < deformationScale / 2){
+			//			return true;
+			//		}
+			//	}
+			//}
+
+			if (inFullExtentTunnel(pos)){
+				return true;
 			}
 		}
 		else{
