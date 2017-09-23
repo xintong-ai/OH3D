@@ -284,7 +284,14 @@ Window::Window()
 	eyePosGroup->setLayout(eyePosLayout2);
 	if (fullVersion){
 		controlLayout->addWidget(eyePosGroup);
-	}
+	}	
+	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
+
+
+
+	QPushButton *seeBacksBtn = new QPushButton("See Back");
+	controlLayout->addWidget(seeBacksBtn);
+	connect(seeBacksBtn, SIGNAL(clicked()), this, SLOT(seeBacksBtnClicked()));
 
 	QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
 	QHBoxLayout *orModeLayout = new QHBoxLayout;
@@ -367,7 +374,6 @@ Window::Window()
 
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
-	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
 
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -423,6 +429,11 @@ void Window::applyEyePos()
 	QString s = eyePosLineEdit->text();
 	QStringList sl = s.split(QRegExp("[\\s,]+"));
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
+}
+
+void Window::seeBacksBtnClicked()
+{
+	matrixMgr->setViewAndUpInWorld(-matrixMgr->getViewVecInWorld(), matrixMgr->getUpVecInWorld());
 }
 
 void Window::isDeformEnabledClicked(bool b)

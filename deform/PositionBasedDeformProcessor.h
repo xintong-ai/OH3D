@@ -72,13 +72,15 @@ public:
 	float densityThr = 0.01; //used for volume
 	int checkRadius = 1;  //used for volume. can combine with disThr?
 	float disThr = 4.1;	//used for poly and particle
-	std::vector<float> thrOriented; //used for particle
+	
+	//used for particle
+	std::vector<float> thrOriented; 
+	void getLastPos(std::vector<float4> &);
+	void newLastPos(std::vector<float4> &);
 
 	PositionBasedDeformProcessor(std::shared_ptr<Volume> ori, std::shared_ptr<MatrixManager> _m);
 	PositionBasedDeformProcessor(std::shared_ptr<PolyMesh> ori, std::shared_ptr<MatrixManager> _m);
 	PositionBasedDeformProcessor(std::shared_ptr<Particle> ori, std::shared_ptr<MatrixManager> _m);
-
-
 
 	bool isColoringDeformedPart = false;
 	
@@ -130,8 +132,6 @@ public:
 	void polyMeshDataUpdated();
 
 	~PositionBasedDeformProcessor(){
-		sdkDeleteTimer(&timer);
-		sdkDeleteTimer(&timerFrame);
 		if (d_vertexCoords) { cudaFree(d_vertexCoords); d_vertexCoords = 0; };
 		if (d_vertexCoords_init){ cudaFree(d_vertexCoords_init); d_vertexCoords_init = 0; };
 		if (d_indices){ cudaFree(d_indices); d_indices = 0; };
@@ -140,9 +140,6 @@ public:
 		if (d_vertexDeviateVals){ cudaFree(d_vertexDeviateVals); d_vertexDeviateVals = 0; };
 		if (d_vertexColorVals) { cudaFree(d_vertexColorVals); d_vertexColorVals = 0; };
 		if (d_numAddedFaces){ cudaFree(d_numAddedFaces); d_numAddedFaces = 0; };
-
-		if (d_intersectedTris){ cudaFree(d_intersectedTris); d_intersectedTris = 0; };
-		if (d_neighborIdsOfIntersectedTris){ cudaFree(d_neighborIdsOfIntersectedTris); d_neighborIdsOfIntersectedTris = 0; };
 	};
 
 
@@ -150,12 +147,9 @@ public:
 
 	//circle
 	float radius = 5;
-	float3 intersect;
-	int usedFaceCount;
-	int usedVertexCount;
 
-	void getLastPos(std::vector<float4> &);
-	void newLastPos(std::vector<float4> &);
+
+
 
 private:
 	SYSTEM_STATE systemState = ORIGINAL;
@@ -196,36 +190,9 @@ private:
 	float* d_vertexColorVals = 0;
 	int* d_numAddedFaces = 0;
 
-	unsigned int* d_intersectedTris = 0;
-	int* d_neighborIdsOfIntersectedTris = 0;
-
-	int4* d_errorEdgeInfos = 0;
-	int* d_anotherFaceOfErrorEdge = 0;
-	float3* d_closestPoints = 0;
-
-	void prepareIntersectionInfoForCircleAndPoly(){
-		if (!d_intersectedTris) { cudaMalloc(&d_intersectedTris, sizeof(unsigned int)*MAX_CIRCLE_INTERACT); };
-		if (!d_neighborIdsOfIntersectedTris){ cudaMalloc(&d_neighborIdsOfIntersectedTris, sizeof(int)* 3 * MAX_CIRCLE_INTERACT); };
-
-		std::vector<int> temp(MAX_CIRCLE_INTERACT * 3, -1);
-		cudaMemcpy(d_neighborIdsOfIntersectedTris, &(temp[0]), sizeof(int)* 3 * MAX_CIRCLE_INTERACT, cudaMemcpyHostToDevice);
-
-		if (!d_errorEdgeInfos) { cudaMalloc(&d_errorEdgeInfos, sizeof(int4)*MAX_ERROR_EDGE); };
-		if (!d_anotherFaceOfErrorEdge){ cudaMalloc(&d_anotherFaceOfErrorEdge, sizeof(int)* MAX_ERROR_EDGE); };
-		if (!d_closestPoints){ cudaMalloc(&d_closestPoints, sizeof(float3)* MAX_ERROR_EDGE); }
-
-
-		std::vector<int4> temp3(MAX_ERROR_EDGE, make_int4(-1, -1, -1, -1));
-		cudaMemcpy(d_errorEdgeInfos, &(temp3[0].x), sizeof(int4)* MAX_ERROR_EDGE, cudaMemcpyHostToDevice);
-	
-		std::vector<int> temp22(MAX_ERROR_EDGE, -1);
-		cudaMemcpy(d_anotherFaceOfErrorEdge, &(temp22[0]), sizeof(int)* MAX_ERROR_EDGE, cudaMemcpyHostToDevice);
-
-		std::vector<float3> temp33(MAX_ERROR_EDGE, make_float3(-1, -1, -1));
-		cudaMemcpy(d_closestPoints, &(temp33[0].x), sizeof(float3)* MAX_ERROR_EDGE, cudaMemcpyHostToDevice);
-	}
-
 	void modifyPolyMesh();
+	void modifyPolyMeshForMix();
+	void modifyPolyMeshForDifMix(); //when state changes from mix to a mix of new tunnels.
 	float circleThr = -1;
 
 	bool processVolumeData(float* modelview, float* projection, int winWidth, int winHeight);
@@ -259,18 +226,13 @@ private:
 	void doVolumeDeform(float degree);
 	void doVolumeDeform2Tunnel(float degreeOpen, float degreeClose);
 	void doPolyDeform(float degree);
+	void doPolyDeform2Tunnel(float degreeOpen, float degreeClose);
 	void doParticleDeform(float degree);
 	void doParticleDeform2Tunnel(float degreeOpen, float degreeClose);
-
-	void doPolyDeform2(float degree);
 
 
 	std::shared_ptr<MatrixManager> matrixMgr;
 	float3 targetUpVecInLocal = make_float3(0, 0, 1);	//note! the vector make_float3(0,0,1) may also be used in ImmersiveInteractor class. They are supposed to be the same
-
-	StopWatchInterface *timer = 0;
-	int fpsCount = 0;
-	StopWatchInterface *timerFrame = 0;
 
 	TunnelTimer tunnelTimer1, tunnelTimer2;
 	float outTime = 3000;//miliseconds
@@ -286,6 +248,8 @@ private:
 			}
 		}
 	}
+
+	void printState();
 
 
 };

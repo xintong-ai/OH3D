@@ -116,6 +116,7 @@ private:
 	void SlotSaveState();
 	void SlotLoadState();
 	void applyEyePos();
+	void seeBacksBtnClicked();
 
 	void isDeformEnabledClicked(bool b);
 	void isForceDeformEnabledClicked(bool b);
