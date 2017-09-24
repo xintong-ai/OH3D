@@ -62,7 +62,7 @@ Window::Window()
 	std::string subfolder;
 	float disThr;
 	PolyMesh::dataParameters(polyDataPath, disThr, subfolder);
-
+	//disThr = 0.6;
 	tvParticleDeformerManager = std::make_shared<TimeVaryingParticleDeformerManager>();
 	tvParticleDeformerManager->timeStart = 6;
 	tvParticleDeformerManager->timeEnd = 32;
@@ -163,8 +163,8 @@ Window::Window()
 	positionBasedDeformProcessor->disThr = disThr;
 
 	//float thrAlong = 3, thrPerpen = 4.1; //currently hard coding
-	positionBasedDeformProcessor->thrOriented.push_back(2.5); 
-	positionBasedDeformProcessor->thrOriented.push_back(4);
+	positionBasedDeformProcessor->disThrOriented.push_back(2.5); 
+	positionBasedDeformProcessor->disThrOriented.push_back(4);
 
 	positionBasedDeformProcessor->minPos = posMin - make_float3(disThr + 1, disThr + 1, disThr + 1);
 	positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);

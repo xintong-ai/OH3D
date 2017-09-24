@@ -197,8 +197,8 @@ Window::Window()
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
-	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	//openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
+	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	polyRenderable->immersiveMode = true;
@@ -235,35 +235,21 @@ Window::Window()
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	bool fullVersion = true;
+	bool fullVersion = false;
 
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
-	if (fullVersion){
 		controlLayout->addWidget(saveStateBtn.get());
 		controlLayout->addWidget(loadStateBtn.get());
-	}
+	
+	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
+	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
-	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
-	if (fullVersion){
-		controlLayout->addWidget(isDeformEnabled);
-	}
-	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
+		controlLayout->addWidget(saveScreenBtn);
 
-	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
-	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
-	if (fullVersion){
-		controlLayout->addWidget(isForceDeformEnabled);
-	}
-	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
-	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
-	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
-	if (fullVersion){
-		controlLayout->addWidget(isDeformColoringEnabled);
-	}
-	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
 
 
 
@@ -289,9 +275,6 @@ Window::Window()
 
 
 
-	QPushButton *seeBacksBtn = new QPushButton("See Back");
-	controlLayout->addWidget(seeBacksBtn);
-	connect(seeBacksBtn, SIGNAL(clicked()), this, SLOT(seeBacksBtnClicked()));
 
 	QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
 	QHBoxLayout *orModeLayout = new QHBoxLayout;
@@ -300,17 +283,12 @@ Window::Window()
 	clipRb = std::make_shared<QRadioButton>(tr("&clip"));
 	transpRb = std::make_shared<QRadioButton>(tr("&transparent"));
 
-	deformRb->setChecked(true);
-	orModeLayout->addWidget(originalRb.get());
-	orModeLayout->addWidget(deformRb.get());
-	orModeLayout->addWidget(clipRb.get());
-	orModeLayout->addWidget(transpRb.get());
-	groupBoxORModes->setLayout(orModeLayout);
-	controlLayout->addWidget(groupBoxORModes);
-	connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
-	connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
-	connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
-	connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));
+	QCheckBox* toggleWireframe = new QCheckBox("Toggle Wireframe", this);
+	toggleWireframe->setChecked(polyRenderable->useWireFrame);
+		controlLayout->addWidget(toggleWireframe);
+
+	connect(toggleWireframe, SIGNAL(clicked(bool)), this, SLOT(toggleWireframeClicked(bool)));
+
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -320,17 +298,29 @@ Window::Window()
 	deformModeLayout2->addWidget(immerRb.get());
 	deformModeLayout2->addWidget(nonImmerRb.get());
 	groupBox2->setLayout(deformModeLayout2);
-	if (fullVersion){
 		controlLayout->addWidget(groupBox2);
-	}
+
 	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
 	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
 
-	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
+	QPushButton *seeBacksBtn = new QPushButton("See Back");
+	controlLayout->addWidget(seeBacksBtn);
+	connect(seeBacksBtn, SIGNAL(clicked()), this, SLOT(seeBacksBtnClicked()));
+
+	deformRb->setChecked(true);
+	orModeLayout->addWidget(originalRb.get());
+	orModeLayout->addWidget(deformRb.get());
+	orModeLayout->addWidget(clipRb.get());
+	orModeLayout->addWidget(transpRb.get());
+	groupBoxORModes->setLayout(orModeLayout);
 	if (fullVersion){
-		controlLayout->addWidget(saveScreenBtn);
+		controlLayout->addWidget(groupBoxORModes);
 	}
-	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+	connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
+	connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
+	connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
+	connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));
+
 
 
 	if (useIsoAdjust){
@@ -361,19 +351,46 @@ Window::Window()
 		controlLayout->addLayout(isoValueSliderLayout1);
 	}
 
+	QGroupBox *deformGroupBox = new QGroupBox(tr("Deform Control"));
+	QVBoxLayout *deformLayout = new QVBoxLayout;
 
-	QCheckBox* toggleWireframe = new QCheckBox("Toggle Wireframe", this);
-	toggleWireframe->setChecked(polyRenderable->useWireFrame);
-	if (fullVersion){
-		controlLayout->addWidget(toggleWireframe);
-	}
-	connect(toggleWireframe, SIGNAL(clicked(bool)), this, SLOT(toggleWireframeClicked(bool)));
+	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
+	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+		deformLayout->addWidget(isDeformEnabled);
+	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+
+	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+	deformLayout->addWidget(isForceDeformEnabled);
+	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+
+	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+	deformLayout->addWidget(isDeformColoringEnabled);
+	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
+
+	QLabel *disThrLabelLit1 = new QLabel("Distance Threshold:");
+	disThrSlider = new QSlider(Qt::Horizontal);
+	disThrSlider->setRange(0, 45);
+	disThrSlider->setValue(round(positionBasedDeformProcessor->disThr / 0.1));
+	connect(disThrSlider, SIGNAL(valueChanged(int)), this, SLOT(disThrSliderValueChanged(int)));
+	disThrLabel = new QLabel(QString::number(positionBasedDeformProcessor->disThr));
+	QHBoxLayout *disThrSliderLayout1 = new QHBoxLayout;
+	disThrSliderLayout1->addWidget(disThrLabelLit1);
+	disThrSliderLayout1->addWidget(disThrSlider);
+	disThrSliderLayout1->addWidget(disThrLabel);
+	deformLayout->addLayout(disThrSliderLayout1);
+
+	useDifThrForBackCb = new QCheckBox("Use Different Thr for Backface", this);
+	useDifThrForBackCb->setChecked(positionBasedDeformProcessor->useDifThrForBack);
+	deformLayout->addWidget(useDifThrForBackCb);
+	connect(useDifThrForBackCb, SIGNAL(clicked(bool)), this, SLOT(useDifThrForBackClicked(bool)));
+
+	deformGroupBox->setLayout(deformLayout);
+	controlLayout->addWidget(deformGroupBox);
 
 
 	controlLayout->addStretch();
-
-	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
-	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
 
 	mainLayout->addWidget(openGL.get(), 5);
@@ -562,5 +579,33 @@ void Window::isoValueSliderValueChanged1(int v)
 	}
 	else{
 		isoValueSlider1->setValue(round(mc->isoValue1 / 0.0001));
+	}
+}
+
+
+void Window::disThrSliderValueChanged(int v)
+{
+	if (round(positionBasedDeformProcessor->disThr / 0.1) == v){
+		return;
+	}
+
+	if (positionBasedDeformProcessor->getSystemState() != ORIGINAL){
+		disThrSlider->setValue(round(positionBasedDeformProcessor->disThr / 0.1));
+	}
+	else{
+		float newDisThr = v*0.1;
+		positionBasedDeformProcessor->disThr = newDisThr;
+		disThrSlider->setValue(round(positionBasedDeformProcessor->disThr / 0.1));
+		disThrLabel->setText(QString::number(positionBasedDeformProcessor->disThr));
+	}
+}
+
+void Window::useDifThrForBackClicked(bool b)
+{
+	if (positionBasedDeformProcessor->getSystemState() != ORIGINAL){
+		useDifThrForBackCb->setChecked(positionBasedDeformProcessor->useDifThrForBack);
+	}
+	else{
+		positionBasedDeformProcessor->useDifThrForBack = b;
 	}
 }

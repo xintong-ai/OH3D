@@ -102,6 +102,9 @@ private:
 
 	QLabel *isoValueLabel, *isoValueLabel1;
 	QSlider *isoValueSlider, *isoValueSlider1;
+	QSlider *disThrSlider;
+	QLabel *disThrLabel;
+	QCheckBox* useDifThrForBackCb;
 
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
@@ -123,8 +126,8 @@ private:
 	void isDeformColoringEnabledClicked(bool b);
 	
 	void toggleWireframeClicked(bool b);
-
-
+	void useDifThrForBackClicked(bool b);
+	
 	void SlotOriginalRb(bool b);
 	void SlotDeformRb(bool b);
 	void SlotClipRb(bool b);
@@ -135,6 +138,7 @@ private:
 	
 	void isoValueSliderValueChanged(int v);
 	void isoValueSliderValueChanged1(int v);
+	void disThrSliderValueChanged(int v);
 
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();

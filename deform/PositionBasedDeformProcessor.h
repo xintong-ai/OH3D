@@ -72,9 +72,10 @@ public:
 	float densityThr = 0.01; //used for volume
 	int checkRadius = 1;  //used for volume. can combine with disThr?
 	float disThr = 4.1;	//used for poly and particle
-	
+	bool useDifThrForBack = false;
+
 	//used for particle
-	std::vector<float> thrOriented; 
+	std::vector<float> disThrOriented; 
 	void getLastPos(std::vector<float4> &);
 	void newLastPos(std::vector<float4> &);
 
