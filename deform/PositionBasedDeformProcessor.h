@@ -192,8 +192,8 @@ private:
 	int* d_numAddedFaces = 0;
 
 	void modifyPolyMesh();
-	void modifyPolyMeshForMix();
-	void modifyPolyMeshForDifMix(); //when state changes from mix to a mix of new tunnels.
+	void modifyPolyMeshByAddingOneTunnel();
+	void resetToOneTunnelStructure(); //when state changes from mix to deformed.
 	float circleThr = -1;
 
 	bool processVolumeData(float* modelview, float* projection, int winWidth, int winHeight);

@@ -197,8 +197,8 @@ Window::Window()
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
 	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
-	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
+	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	//openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
 
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
 	polyRenderable->immersiveMode = true;

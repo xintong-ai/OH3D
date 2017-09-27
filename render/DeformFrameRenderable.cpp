@@ -100,7 +100,7 @@ void DeformFrameRenderable::drawCuboidModel(float modelview[16], float projectio
 		glEnd();
 	}
 
-	bool blockFurtherObjects = false;
+	bool blockFurtherObjects = true;
 	if (blockFurtherObjects){
 		float3 zaxisn = normalize(processor->getTunnelEnd() - processor->getTunnelStart());
 		float3 yaxis = processor->getRectVerticalDir();

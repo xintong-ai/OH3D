@@ -216,20 +216,16 @@ void PolyRenderable::loadShadersImmer()
 	}
 
 	void main() {
-		vec3 FrontColor;
-		vec3 BackColor;
-		//tnorm = normalize(tnorm);
-
-		FrontColor = phongModel(eyeCoords, tnorm);
-
-		BackColor = phongModel(eyeCoords, -tnorm);
+		vec3 FrontColor = phongModel(eyeCoords, tnorm);
+		vec3 BackColor = phongModel(eyeCoords, -tnorm);
 
 		if (gl_FrontFacing) {
-			FragColor = vec4(FrontColor, Opacity);//vec4(tnorm, 1.0);
+			FragColor = vec4(FrontColor, Opacity);
 		}
 		else {
 			FragColor = vec4(BackColor, Opacity);
 		}
+		//FragColor = vec4(FrontColor, Opacity);
 	}
 	);
 

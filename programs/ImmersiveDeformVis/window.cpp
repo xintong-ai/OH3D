@@ -45,6 +45,7 @@ void positionBasedDeformerConfigure(std::string dataPath, float & densityThr, in
 {
 	if (std::string(dataPath).find("181") != std::string::npos){
 		densityThr = 0.01;
+		//densityThr = 0.1;
 		checkRadius = 1;
 	}
 	else if (std::string(dataPath).find("moortgat") != std::string::npos){
@@ -80,7 +81,7 @@ Window::Window()
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	positionBasedDeformerConfigure(dataPath, densityThr, checkRadius);
 
-	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	//rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
 
 
@@ -170,10 +171,10 @@ Window::Window()
 	//volumeRenderable->setPreIntegrate(true);
 
 
-	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
-	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
-	////!!!!! once turned on blending, some render technique is not implemented yet !!!!!!
+	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+	//!!!!! once turned on blending, some render technique is not implemented yet !!!!!!
 
 	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//openGL->AddRenderable("3matrixMgr", matrixMgrRenderable.get()); 

@@ -21,9 +21,8 @@ public:
 	float isoValue0 = -1;
 	float isoValue1 = 0.0013;
 
-	bool forNav = false;
-	float isoValue2 = 0.0016;
-	float isoValue3 = 0.0024;
+	bool forNav = true;
+	float isoValue2 = 0.0014;
 
 	bool needCompute = false;
 	MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, float value = 0.001);

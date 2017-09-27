@@ -33,6 +33,11 @@ MarchingCube2::MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, fl
 	polyMesh = p;
 	isoValue0 = value;
 	
+	if (forNav){
+		isoValue0 = 0.0006;
+		isoValue1 = 0.0011;
+		isoValue2 = 0.0014;
+	}
 	vtkSmartPointer<vtkXMLImageDataReader> reader =
 		vtkSmartPointer<vtkXMLImageDataReader>::New();
 	reader->SetFileName(fname);
@@ -86,7 +91,6 @@ inputImage = 	vtkSmartPointer<vtkImageData>::New();
 	surface->SetValue(1, isoValue1);
 	if (forNav){
 		surface->SetValue(2, isoValue2);
-		surface->SetValue(3, isoValue3);
 	}
 
 	vtpdata = vtkSmartPointer<vtkPolyData>::New();
@@ -158,7 +162,7 @@ void MarchingCube2::updatePoly()
 
 	float vmin = std::min(isoValue0, isoValue1), vmax = std::max(isoValue0, isoValue1);
 	if (forNav){
-		vmax = isoValue3;
+		vmax = isoValue2;
 	}
 
 	if (vmax - vmin < 0.000001) vmax = vmin + 1;

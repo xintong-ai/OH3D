@@ -97,7 +97,7 @@ void PositionBasedDeformProcessor::PrepareDataStructureForPolyDeform()
 	cudaMemcpy(d_norms, poly->vertexNorms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice);
 	cudaMemset(d_vertexDeviateVals, 0, sizeof(float)*poly->vertexcount * 2);
 	cudaMemcpy(d_vertexColorVals, poly->vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyHostToDevice);
-	cudaMemset(d_numAddedFaces, 0, sizeof(int));
+	//cudaMemset(d_numAddedFaces, 0, sizeof(int));
 }
 
 void PositionBasedDeformProcessor::polyMeshDataUpdated()
@@ -108,7 +108,7 @@ void PositionBasedDeformProcessor::polyMeshDataUpdated()
 		doPolyDeform(r);
 	}
 
-	//!!!!!  NOT COMPLETE YET!!! to add more state changes!!!!
+	//!!!!!  NOT COMPLETE YET!!! to add more state changes!!!! for mixing
 }
 
 void PositionBasedDeformProcessor::volumeDataUpdated()
@@ -802,7 +802,7 @@ __global__ void d_disturbVertex_CuboidModel(float* vertexCoords, int vertexcount
 	return;
 }
 
-__global__ void d_modifyMeshKernel_CuboidModel(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd, int* numAddedFaces, float* vertexColorVals)
+__global__ void d_modifyMeshKernel_CuboidModel(float* vertexCoords, unsigned int* indices, int facecount, int vertexcount, float* norms, float3 start, float3 end, float r, float deformationScale, float deformationScaleVertical, float3 dir2nd, int* numAddedFaces, float* vertexColorVals, int* futureEdges, int* numFutureEdges)
 {
 	int i = blockDim.x * blockIdx.x + threadIdx.x;
 	if (i >= facecount)	return;
@@ -887,8 +887,11 @@ __global__ void d_modifyMeshKernel_CuboidModel(float* vertexCoords, unsigned int
 	float projLength1short = dot(intersect1 - start, dir2nd);
 	float projLength2long = dot(intersect2 - start, tunnelVec);
 	float projLength2short = dot(intersect2 - start, dir2nd);
-	if ((projLength1long > 0 && projLength1long < tunnelLength && abs(projLength1short) < deformationScaleVertical)
-		|| (projLength2long > 0 && projLength2long < tunnelLength && abs(projLength2short) < deformationScaleVertical)){
+	bool planeIntersectLong1 = projLength1long > 0 && projLength1long < tunnelLength ;
+	bool planeIntersectLong2 = projLength2long > 0 && projLength2long < tunnelLength;
+	bool planeIntersectShort1 = abs(projLength1short) < deformationScaleVertical;
+	bool planeIntersectShort2 = abs(projLength2short) < deformationScaleVertical;
+	if (planeIntersectLong1 && planeIntersectLong2 && (planeIntersectShort1 || planeIntersectShort2)){
 		indices[3 * i] = 0;
 		indices[3 * i + 1] = 0;
 		indices[3 * i + 2] = 0;
@@ -896,19 +899,50 @@ __global__ void d_modifyMeshKernel_CuboidModel(float* vertexCoords, unsigned int
 		int numAddedFacesBefore = atomicAdd(numAddedFaces, 3); //each divided triangle creates 3 new faces
 
 		int curNumVertex = vertexcount + 4 * numAddedFacesBefore / 3; //each divided triangle creates 4 new vertex
-		vertexCoords[3 * curNumVertex] = intersect1.x + disturb.x;
-		vertexCoords[3 * curNumVertex + 1] = intersect1.y + disturb.y;
-		vertexCoords[3 * curNumVertex + 2] = intersect1.z + disturb.z;
-		vertexCoords[3 * (curNumVertex + 1)] = intersect2.x + disturb.x;
-		vertexCoords[3 * (curNumVertex + 1) + 1] = intersect2.y + disturb.y;
-		vertexCoords[3 * (curNumVertex + 1) + 2] = intersect2.z + disturb.z;
-		vertexCoords[3 * (curNumVertex + 2)] = intersect1.x - disturb.x;
-		vertexCoords[3 * (curNumVertex + 2) + 1] = intersect1.y - disturb.y;
-		vertexCoords[3 * (curNumVertex + 2) + 2] = intersect1.z - disturb.z;
-		vertexCoords[3 * (curNumVertex + 3)] = intersect2.x - disturb.x;
-		vertexCoords[3 * (curNumVertex + 3) + 1] = intersect2.y - disturb.y;
-		vertexCoords[3 * (curNumVertex + 3) + 2] = intersect2.z - disturb.z;
+		if (planeIntersectShort1){
+			vertexCoords[3 * curNumVertex] = intersect1.x + disturb.x;
+			vertexCoords[3 * curNumVertex + 1] = intersect1.y + disturb.y;
+			vertexCoords[3 * curNumVertex + 2] = intersect1.z + disturb.z;
+			vertexCoords[3 * (curNumVertex + 2)] = intersect1.x - disturb.x;
+			vertexCoords[3 * (curNumVertex + 2) + 1] = intersect1.y - disturb.y;
+			vertexCoords[3 * (curNumVertex + 2) + 2] = intersect1.z - disturb.z;
+		}
+		else{
+			vertexCoords[3 * curNumVertex] = intersect1.x;
+			vertexCoords[3 * curNumVertex + 1] = intersect1.y;
+			vertexCoords[3 * curNumVertex + 2] = intersect1.z;
+			vertexCoords[3 * (curNumVertex + 2)] = intersect1.x;
+			vertexCoords[3 * (curNumVertex + 2) + 1] = intersect1.y;
+			vertexCoords[3 * (curNumVertex + 2) + 2] = intersect1.z;
 
+			int numFutureEdgesBefore = atomicAdd(numFutureEdges, 1);
+			futureEdges[4 * numFutureEdgesBefore] = bottomV1;
+			futureEdges[4 * numFutureEdgesBefore + 1] = separateVectex;
+			futureEdges[4 * numFutureEdgesBefore + 2] = curNumVertex;
+			futureEdges[4 * numFutureEdgesBefore + 3] = curNumVertex + 2;
+		}
+		if (planeIntersectShort2){
+			vertexCoords[3 * (curNumVertex + 1)] = intersect2.x + disturb.x;
+			vertexCoords[3 * (curNumVertex + 1) + 1] = intersect2.y + disturb.y;
+			vertexCoords[3 * (curNumVertex + 1) + 2] = intersect2.z + disturb.z;
+			vertexCoords[3 * (curNumVertex + 3)] = intersect2.x - disturb.x;
+			vertexCoords[3 * (curNumVertex + 3) + 1] = intersect2.y - disturb.y;
+			vertexCoords[3 * (curNumVertex + 3) + 2] = intersect2.z - disturb.z;
+		}
+		else{
+			vertexCoords[3 * (curNumVertex + 1)] = intersect2.x;
+			vertexCoords[3 * (curNumVertex + 1) + 1] = intersect2.y;
+			vertexCoords[3 * (curNumVertex + 1) + 2] = intersect2.z;
+			vertexCoords[3 * (curNumVertex + 3)] = intersect2.x;
+			vertexCoords[3 * (curNumVertex + 3) + 1] = intersect2.y;
+			vertexCoords[3 * (curNumVertex + 3) + 2] = intersect2.z;
+
+			int numFutureEdgesBefore = atomicAdd(numFutureEdges, 1);
+			futureEdges[4 * numFutureEdgesBefore] = separateVectex;
+			futureEdges[4 * numFutureEdgesBefore + 1] = bottomV2;
+			futureEdges[4 * numFutureEdgesBefore + 2] = curNumVertex + 1;
+			futureEdges[4 * numFutureEdgesBefore + 3] = curNumVertex + 3;
+		}
 
 		vertexColorVals[curNumVertex] = vertexColorVals[separateVectex];
 		vertexColorVals[curNumVertex + 1] = vertexColorVals[separateVectex];
@@ -947,6 +981,67 @@ __global__ void d_modifyMeshKernel_CuboidModel(float* vertexCoords, unsigned int
 
 }
 
+__global__ void d_modifyMeshKernel_CuboidModel_round2(unsigned int* indices, int facecount, int* numAddedFaces, int* futureEdges, int* numFutureEdges)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= facecount)	return;
+
+
+	uint3 inds = make_uint3(indices[3 * i], indices[3 * i + 1], indices[3 * i + 2]);
+
+
+	for (int i = 0; i < *numFutureEdges; i++){
+		int bottomV1 = futureEdges[4 * i];
+		int bottomV2 = futureEdges[4 * i + 1];
+		if ((inds.x == bottomV1 && inds.y == bottomV2) || (inds.y == bottomV1 && inds.x == bottomV2)){
+			int numAddedFacesBefore = atomicAdd(numAddedFaces, 2); //each divided triangle creates 3 new faces
+			int curNumFaces = numAddedFacesBefore + facecount;
+
+			indices[3 * curNumFaces] = inds.x;
+			indices[3 * curNumFaces + 1] = futureEdges[4 * i + 2];  //order of vertex matters! use counter clockwise
+			indices[3 * curNumFaces + 2] = inds.z;
+			indices[3 * (curNumFaces + 1)] = futureEdges[4 * i + 3];
+			indices[3 * (curNumFaces + 1) + 1] = inds.y;
+			indices[3 * (curNumFaces + 1) + 2] = inds.z;
+
+			indices[3 * i] = 0;
+			indices[3 * i + 1] = 0;
+			indices[3 * i + 2] = 0;
+		}
+		else if ((inds.x == bottomV1 && inds.z == bottomV2) || (inds.z == bottomV1 && inds.x == bottomV2)){
+			int numAddedFacesBefore = atomicAdd(numAddedFaces, 2); //each divided triangle creates 3 new faces
+			int curNumFaces = numAddedFacesBefore + facecount;
+
+			indices[3 * curNumFaces] = inds.x;
+			indices[3 * curNumFaces + 1] = inds.y;  //order of vertex matters! use counter clockwise
+			indices[3 * curNumFaces + 2] = futureEdges[4 * i + 2];
+			indices[3 * (curNumFaces + 1)] = futureEdges[4 * i + 3];
+			indices[3 * (curNumFaces + 1) + 1] = inds.y;
+			indices[3 * (curNumFaces + 1) + 2] = inds.z;
+
+			indices[3 * i] = 0;
+			indices[3 * i + 1] = 0;
+			indices[3 * i + 2] = 0;
+		}
+		else if ((inds.y == bottomV1 && inds.z == bottomV2) || (inds.z == bottomV1 && inds.y == bottomV2)){
+			int numAddedFacesBefore = atomicAdd(numAddedFaces, 2); //each divided triangle creates 3 new faces
+			int curNumFaces = numAddedFacesBefore + facecount;
+
+			indices[3 * curNumFaces] = inds.x;
+			indices[3 * curNumFaces + 1] = inds.y;  //order of vertex matters! use counter clockwise
+			indices[3 * curNumFaces + 2] = futureEdges[4 * i + 2];
+			indices[3 * (curNumFaces + 1)] = inds.x;
+			indices[3 * (curNumFaces + 1) + 1] = futureEdges[4 * i + 3];
+			indices[3 * (curNumFaces + 1) + 2] = inds.z;
+
+			indices[3 * i] = 0;
+			indices[3 * i + 1] = 0;
+			indices[3 * i + 2] = 0;
+		}
+
+	}
+}
+
 
 void PositionBasedDeformProcessor::modifyPolyMesh()
 {
@@ -971,12 +1066,38 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	if (shapeModel == CUBOID){
 		int threadsPerBlock = 64;
 		int blocksPerGrid = (poly->facecount + threadsPerBlock - 1) / threadsPerBlock;
+
+		int maxFutureEdgesSupported = 12;
+		int* d_futureEdges = 0;
+		cudaMalloc(&d_futureEdges, sizeof(int)* maxFutureEdgesSupported);
+		int* d_numFutureEdges;
+		cudaMalloc(&d_numFutureEdges, sizeof(int));
+		cudaMemset(d_numFutureEdges, 0, sizeof(int));
+
+
 		d_modifyMeshKernel_CuboidModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_indices, poly->facecount, poly->vertexcount, d_norms,
 			tunnelStart, tunnelEnd, deformationScale, deformationScale, deformationScaleVertical, rectVerticalDir,
-			d_numAddedFaces, d_vertexColorVals);
+			d_numAddedFaces, d_vertexColorVals, d_futureEdges, d_numFutureEdges);
 
 		cudaMemcpy(&numAddedFaces, d_numAddedFaces, sizeof(int), cudaMemcpyDeviceToHost);
 		numAddedVertices = numAddedFaces / 3 * 4;
+
+
+		int tt;
+		cudaMemcpy(&tt, d_numFutureEdges, sizeof(int), cudaMemcpyDeviceToHost);
+		//std::cout << "future edge to do count: " << tt << std::endl;
+		if (tt > maxFutureEdgesSupported){
+			std::cout << "!!!! unexpected count of future edge to process: " << tt << std::endl;
+		}
+
+		d_modifyMeshKernel_CuboidModel_round2 << <blocksPerGrid, threadsPerBlock >> >(d_indices, poly->facecount, d_numAddedFaces, d_futureEdges, d_numFutureEdges);
+
+		//a few new faces added again
+		cudaMemcpy(&numAddedFaces, d_numAddedFaces, sizeof(int), cudaMemcpyDeviceToHost);
+		//numAddedVertices = numAddedFaces / 3 * 4;
+
+		cudaFree(d_futureEdges);
+		cudaFree(d_numFutureEdges);
 	}
 
 	int oldf = poly->facecount, oldv = poly->vertexcount;
@@ -991,17 +1112,20 @@ void PositionBasedDeformProcessor::modifyPolyMesh()
 	cudaMemcpy(poly->vertexNorms, d_norms, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
 	cudaMemcpy(poly->vertexColorVals, d_vertexColorVals, sizeof(float)*poly->vertexcount, cudaMemcpyDeviceToHost);
 
-	cudaMemcpy(d_vertexCoords_init, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost);
-	cudaMemcpy(d_indices_init, d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToHost);
+	cudaMemcpy(d_vertexCoords_init, d_vertexCoords, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToDevice);
+	cudaMemcpy(d_indices_init, d_indices, sizeof(unsigned int)*poly->facecount * 3, cudaMemcpyDeviceToDevice);
 }
 
-void PositionBasedDeformProcessor::modifyPolyMeshForMix()
+void PositionBasedDeformProcessor::modifyPolyMeshByAddingOneTunnel()
 {
+	//the modifyPolyMesh() function can successfully modify the vert and indices to add info of the new tunnel, so can be reused directly here when change from open/close to mix
 	modifyPolyMesh();
 }
-void PositionBasedDeformProcessor::modifyPolyMeshForDifMix()//when state changes from mix to a mix of new tunnels.
+
+
+void PositionBasedDeformProcessor::resetToOneTunnelStructure()//when state changes from mix to defomred
 {
-	if (shapeModel != CIRCLE){
+	if (shapeModel == CIRCLE){
 		std::cout << "circle model for poly not implemented!! " << std::endl;
 		return;
 	}
@@ -1009,23 +1133,23 @@ void PositionBasedDeformProcessor::modifyPolyMeshForDifMix()//when state changes
 	//first reset everything back to before
 	poly->vertexcount = poly->vertexcountOri;
 	poly->facecount = poly->facecountOri;
-	cudaMemcpy(d_vertexCoords_init, d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
-	cudaMemcpy(d_indices_init, d_indices_init, sizeof(float)*poly->facecount * 3, cudaMemcpyDeviceToHost); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
+	cudaMemcpy(d_vertexCoords_init, poly->vertexCoordsOri, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
+	cudaMemcpy(d_indices_init, poly->indicesOri, sizeof(float)*poly->facecount * 3, cudaMemcpyHostToDevice); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
 
 	//modify mesh for tunnel1
 	modifyPolyMesh();
 
-	//modify mesh for tunnel2
-	float3 tstart = tunnelStart;
-	float3 tend = tunnelEnd;
-	float3 tvirt = rectVerticalDir;
-	tunnelStart = lastTunnelStart;
-	tunnelEnd = lastTunnelEnd;
-	rectVerticalDir = lastDeformationDirVertical;
-	modifyPolyMesh();
-	tunnelStart = tstart;
-	tunnelEnd = tend;
-	rectVerticalDir = tvirt;
+	////modify mesh for tunnel2
+	//float3 tstart = tunnelStart;
+	//float3 tend = tunnelEnd;
+	//float3 tvirt = rectVerticalDir;
+	//tunnelStart = lastTunnelStart;
+	//tunnelEnd = lastTunnelEnd;
+	//rectVerticalDir = lastDeformationDirVertical;
+	//modifyPolyMesh();
+	//tunnelStart = tstart;
+	//tunnelEnd = tend;
+	//rectVerticalDir = tvirt;
 }
 
 
@@ -1080,6 +1204,7 @@ void PositionBasedDeformProcessor::doPolyDeform(float degree)
 {
 	if (!deformData)
 		return;
+
 	int threadsPerBlock = 64;
 	int blocksPerGrid = (poly->vertexcount + threadsPerBlock - 1) / threadsPerBlock;
 
@@ -1728,7 +1853,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 					tunnelTimer1.init(outTime, 0);
 
 					if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-						modifyPolyMeshForMix();
+						modifyPolyMeshByAddingOneTunnel();
 					}
 				}
 			}
@@ -1755,7 +1880,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 					tunnelTimer1.init(outTime, 0);
 
 					if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-						modifyPolyMeshForMix();
+						modifyPolyMeshByAddingOneTunnel();
 					}
 				}
 			}
@@ -1766,6 +1891,20 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				tunnelTimer1.end();
 				tunnelTimer2.end();
 				r = finalDegree(); //reset r
+				if (dataType == MESH){ //for poly data, when state in mix, modification of mesh contains 2 tunnels. now only 1 is needed
+					resetToOneTunnelStructure();
+				}	
+			}
+			else if (tunnelTimer2.out()){
+				systemState = OPENING;
+				tunnelTimer2.end();
+				if (dataType == MESH){ //for poly data, when state in mix, modification of mesh contains 2 tunnels. now only 1 is needed
+					resetToOneTunnelStructure();
+				}
+			}
+			else if (tunnelTimer1.out()){
+				std::cout << "impossible combination!" << std::endl;
+				exit(0);
 			}
 			else if (atProperLocation(eyeInLocal, true)){
 				//tunnelTimer2 may not have been out() yet, but here ignore the 2nd tunnel. i.e., now we do not process double closing
@@ -1776,16 +1915,19 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 			else if (atProperLocation(eyeInLocal, false)){
 				//proper in current, no need to do anything
 			}
-			else{
-				//mixing of 2 different tunnels
+			else{ //mixing of 2 different tunnels
+
+				if (dataType == MESH){ //first remove the old tunnel that is unuseful now
+					resetToOneTunnelStructure();
+				}
 				storeCurrentTunnel();
 				computeTunnelInfo(eyeInLocal);
 				float passed = tunnelTimer1.getTime();
 				tunnelTimer2.init(outTime, (passed >= outTime) ? 0 : (outTime - passed));
 				tunnelTimer1.init(outTime, 0);
 
-				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-					modifyPolyMeshForMix();
+				if (dataType == MESH){ //the add the new tunnel
+					modifyPolyMeshByAddingOneTunnel();
 				}
 				std::cout << " current state NEW MIXING" << std::endl;
 			}
@@ -1804,7 +1946,7 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 				tunnelTimer1.init(outTime, 0);
 
 				if (dataType == MESH){ //for poly data, the original data will be modified, which is not applicable to other types of data
-					modifyPolyMeshForMix();
+					modifyPolyMeshByAddingOneTunnel();
 				}
 			}
 		}
@@ -1815,35 +1957,48 @@ bool PositionBasedDeformProcessor::process(float* modelview, float* projection, 
 	}
 
 	if (systemState == MIXING){
-		if (tunnelTimer2.out()){
-			if (shapeModel == CUBOID){
-				r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
-			}
-			else if (shapeModel == CIRCLE){
-				r = tunnelTimer1.getTime() / outTime * radius / 2;
-			}
-			deformDataByDegree(r);
-			//std::cout << "doing mixinig with r: " << r << " and 0" << std::endl;
+		if (shapeModel == CUBOID){
+			rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+			rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
 		}
-		else{
-			if (tunnelTimer1.out()){
-				std::cout << "impossible combination!" << std::endl;
-				exit(0);
-			}
-			else{
-				if (shapeModel == CUBOID){
-					rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
-					rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
-				}
-				else if (shapeModel == CIRCLE){
-					rOpen = tunnelTimer1.getTime() / outTime * radius / 2;
-					rClose = (1 - tunnelTimer2.getTime() / outTime) * radius / 2;
-				}
-				r = rOpen;//might be used elsewhere
-				deformDataByDegree2Tunnel(rOpen, rClose);
-				//std::cout << "doing mixinig with r: " << rOpen << " and " << rClose << std::endl;
-			}
+		else if (shapeModel == CIRCLE){
+			rOpen = tunnelTimer1.getTime() / outTime * radius / 2;
+			rClose = (1 - tunnelTimer2.getTime() / outTime) * radius / 2;
 		}
+		r = rOpen;//might be used elsewhere
+		deformDataByDegree2Tunnel(rOpen, rClose);
+		//std::cout << "doing mixinig with r: " << rOpen << " and " << rClose << std::endl;
+
+
+		//if (tunnelTimer2.out()){
+		//	if (shapeModel == CUBOID){
+		//		r = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+		//	}
+		//	else if (shapeModel == CIRCLE){
+		//		r = tunnelTimer1.getTime() / outTime * radius / 2;
+		//	}
+		//	deformDataByDegree(r);
+		//	//std::cout << "doing mixinig with r: " << r << " and 0" << std::endl;
+		//}
+		//else{
+		//	if (tunnelTimer1.out()){
+		//		std::cout << "impossible combination!" << std::endl;
+		//		exit(0);
+		//	}
+		//	else{
+		//		if (shapeModel == CUBOID){
+		//			rOpen = tunnelTimer1.getTime() / outTime * deformationScale / 2;
+		//			rClose = (1 - tunnelTimer2.getTime() / outTime) * deformationScale / 2;
+		//		}
+		//		else if (shapeModel == CIRCLE){
+		//			rOpen = tunnelTimer1.getTime() / outTime * radius / 2;
+		//			rClose = (1 - tunnelTimer2.getTime() / outTime) * radius / 2;
+		//		}
+		//		r = rOpen;//might be used elsewhere
+		//		deformDataByDegree2Tunnel(rOpen, rClose);
+		//		//std::cout << "doing mixinig with r: " << rOpen << " and " << rClose << std::endl;
+		//	}
+		//}
 	}
 	else if (systemState == OPENING){
 		if (shapeModel == CUBOID){
