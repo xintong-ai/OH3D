@@ -178,7 +178,9 @@ Window::Window()
 	positionBasedDeformProcessor->setOutTime(1.0);
 
 	positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
+	//positionBasedDeformProcessor->radius = 6; //6 is used for the video of shape model case study
 	positionBasedDeformProcessor->radius = 8;
+
 	//////////////////////////////// Renderable ////////////////////////////////	
 
 

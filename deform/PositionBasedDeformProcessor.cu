@@ -586,7 +586,7 @@ bool PositionBasedDeformProcessor::inFullExtentTunnel(float3 pos)
 		float3 voxelVec = pos - tunnelStart;
 		float l = dot(voxelVec, tunnelVec);
 		if (l >= 0 && l <= tunnelLength){
-			float l3 = length(tunnelStart + voxelVec * l - pos);
+			float l3 = length(tunnelStart + tunnelVec * l - pos);
 			if (abs(l3) < radius / 2){
 				return true;
 			}
@@ -619,7 +619,7 @@ bool PositionBasedDeformProcessor::inFullExtentTunnel(float3 pos)
 			float3 voxelVec = pos - lastTunnelStart;
 			float l = dot(voxelVec, tunnelVec);
 			if (l >= 0 && l <= tunnelLength){
-				float l3 = length(lastTunnelStart + voxelVec * l - pos);
+				float l3 = length(lastTunnelStart + tunnelVec * l - pos);
 				if (abs(l3) < radius / 2){
 					return true;
 				}
@@ -1046,7 +1046,7 @@ __global__ void d_modifyMeshKernel_CuboidModel_round2(unsigned int* indices, int
 void PositionBasedDeformProcessor::modifyPolyMesh()
 {
 	cudaMemcpy(d_vertexCoords, d_vertexCoords_init, sizeof(float)*poly->vertexcount * 3, cudaMemcpyDeviceToHost); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
-	cudaMemcpy(d_indices, d_indices_init, sizeof(float)*poly->facecount * 3, cudaMemcpyDeviceToHost); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
+	cudaMemcpy(d_indices, d_indices_init, sizeof(float)*poly->facecount * 3, cudaMemcpyDeviceToHost); //need to do this since for mixing, d_indices may be dif from d_indices_init
 
 	if (shapeModel == CUBOID){
 		int threadsPerBlock = 64;
@@ -1130,11 +1130,14 @@ void PositionBasedDeformProcessor::resetToOneTunnelStructure()//when state chang
 		return;
 	}
 
-	//first reset everything back to before
-	poly->vertexcount = poly->vertexcountOri;
-	poly->facecount = poly->facecountOri;
-	cudaMemcpy(d_vertexCoords_init, poly->vertexCoordsOri, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
-	cudaMemcpy(d_indices_init, poly->indicesOri, sizeof(float)*poly->facecount * 3, cudaMemcpyHostToDevice); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
+	//easiest but may not be the most efficient
+	resetData();
+
+	////first reset everything back to before
+	//poly->vertexcount = poly->vertexcountOri;
+	//poly->facecount = poly->facecountOri;
+	//cudaMemcpy(d_vertexCoords_init, poly->vertexCoordsOri, sizeof(float)*poly->vertexcount * 3, cudaMemcpyHostToDevice); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
+	//cudaMemcpy(d_indices_init, poly->indicesOri, sizeof(float)*poly->facecount * 3, cudaMemcpyHostToDevice); //need to do this since for mixing, d_vertexCoords may be dif from d_vertexCoords_init
 
 	//modify mesh for tunnel1
 	modifyPolyMesh();
@@ -1190,11 +1193,26 @@ __global__ void d_deformPolyMesh_CuboidModel(float* vertexCoords_init, float* ve
 				vertexCoords[3 * i] = newPos.x;
 				vertexCoords[3 * i + 1] = newPos.y;
 				vertexCoords[3 * i + 2] = newPos.z;
-
-				vertexDeviateVals[i] = length(newPos - pos) / (deformationScale / 2); //value range [0,1]
+				
+				vertexDeviateVals[i] = length(newPos - pos) / (deformationScale / 2); //value range [0,1]	
 			}
 		}
 	}
+
+	return;
+}
+
+__global__ void d_deformPolyMesh_ComputeDeviate(float* vertexCoords_init, float* vertexCoords, int vertexcount, float deformationScale, float* vertexDeviateVals)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= vertexcount)	return;
+
+
+	float3 pos = make_float3(vertexCoords_init[3 * i], vertexCoords_init[3 * i + 1], vertexCoords_init[3 * i + 2]);
+
+	float3 newPos = make_float3(vertexCoords[3 * i], vertexCoords[3 * i + 1], vertexCoords[3 * i + 2]);
+
+	vertexDeviateVals[i] = length(newPos - pos) / (deformationScale / 2);
 
 	return;
 }
@@ -1236,6 +1254,7 @@ void PositionBasedDeformProcessor::doPolyDeform2Tunnel(float degreeOpen, float d
 		d_deformPolyMesh_CuboidModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount, lastTunnelStart, lastTunnelEnd, degreeClose, deformationScale, deformationScaleVertical, lastDeformationDirVertical, d_vertexDeviateVals);
 		d_deformPolyMesh_CuboidModel << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords, d_vertexCoords, poly->vertexcount, tunnelStart, tunnelEnd, degreeOpen, deformationScale, deformationScaleVertical, rectVerticalDir, d_vertexDeviateVals);
 
+		d_deformPolyMesh_ComputeDeviate << <blocksPerGrid, threadsPerBlock >> >(d_vertexCoords_init, d_vertexCoords, poly->vertexcount, deformationScale, d_vertexDeviateVals);
 	}
 	else if (shapeModel == CIRCLE){
 		std::cout << "not implemented for circle model of poly data!" << std::endl;

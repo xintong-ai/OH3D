@@ -39,8 +39,6 @@
 #include <thrust/device_vector.h>
 #include "VTIReader.h"
 
-//
-
 void positionBasedDeformerConfigure(std::string dataPath, float & densityThr, int & checkRadius)
 {
 	if (std::string(dataPath).find("181") != std::string::npos){
@@ -171,10 +169,10 @@ Window::Window()
 	//volumeRenderable->setPreIntegrate(true);
 
 
-	deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	openGL->AddRenderable("0deform", deformFrameRenderable.get());
-	volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
-	//!!!!! once turned on blending, some render technique is not implemented yet !!!!!!
+	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
+	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+	////!!!!! once turned on blending, some render technique is not implemented yet !!!!!!
 
 	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
 	//openGL->AddRenderable("3matrixMgr", matrixMgrRenderable.get()); 
@@ -205,6 +203,8 @@ Window::Window()
 #endif
 
 	///********controls******/
+	bool fullVersion = false;
+
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 
 	QVBoxLayout *controlLayout = new QVBoxLayout;
@@ -213,27 +213,16 @@ Window::Window()
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
 	std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
 	std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
-	controlLayout->addWidget(saveStateBtn.get());
-	controlLayout->addWidget(loadStateBtn.get());
+	if (fullVersion){
 
-	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
-	controlLayout->addWidget(isDeformEnabled);
-	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+		controlLayout->addWidget(saveStateBtn.get());
+		controlLayout->addWidget(loadStateBtn.get());
+	}
+	else{
+		matrixMgr->LoadState("state.txt");
+	}
 
-	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
-	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
-	controlLayout->addWidget(isForceDeformEnabled);
-	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
-
-	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part (when preintegrate)", this);
-	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
-	controlLayout->addWidget(isDeformColoringEnabled);
-	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
-
-
-
-
+	
 	QGroupBox *groupBoxShapeModes = new QGroupBox(tr("deformation shape modes"));
 	QHBoxLayout *shapeModeLayout = new QHBoxLayout;
 	circularRb = std::make_shared<QRadioButton>(tr("&Circular"));
@@ -245,7 +234,7 @@ Window::Window()
 	shapeModeLayout->addWidget(cuboidRb.get());
 	shapeModeLayout->addWidget(physicallyRb.get());
 	groupBoxShapeModes->setLayout(shapeModeLayout);
-	controlLayout->addWidget(groupBoxShapeModes);
+	//controlLayout->addWidget(groupBoxShapeModes);
 	connect(circularRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotCircularRb(bool)));
 	connect(cuboidRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotCuboidRb(bool)));
 	connect(physicallyRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotPhysicallyRb(bool)));
@@ -264,7 +253,7 @@ Window::Window()
 	orModeLayout->addWidget(clipRb.get());
 	orModeLayout->addWidget(transpRb.get());
 	groupBoxORModes->setLayout(orModeLayout);
-	controlLayout->addWidget(groupBoxORModes);
+	//controlLayout->addWidget(groupBoxORModes);
 	connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
 	connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
 	connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
@@ -272,23 +261,28 @@ Window::Window()
 
 
 
+	if (fullVersion){
+		QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
+		controlLayout->addWidget(saveScreenBtn);
+		connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+	}
 
-	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
-	controlLayout->addWidget(saveScreenBtn);
-	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+	if (std::string(dataPath).find("moortgat") != std::string::npos || std::string(dataPath).find("181") != std::string::npos){
+		volumeRenderable->usePreInt = true;
+	}
+	if (fullVersion){
+		QCheckBox* usePreIntCB = new QCheckBox("Use Pre-Integrate", this);
+		usePreIntCB->setChecked(volumeRenderable->usePreInt);
+		controlLayout->addWidget(usePreIntCB);
+		connect(usePreIntCB, SIGNAL(clicked(bool)), this, SLOT(usePreIntCBClicked(bool)));
+	}
 
-
-
-	QCheckBox* usePreIntCB = new QCheckBox("Use Pre-Integrate", this);
-	usePreIntCB->setChecked(volumeRenderable->usePreInt);
-	controlLayout->addWidget(usePreIntCB);
-	connect(usePreIntCB, SIGNAL(clicked(bool)), this, SLOT(usePreIntCBClicked(bool)));
-
-	QCheckBox* useSplineInterpolationCB = new QCheckBox("Use cubic spline interpolation (when preintegrate)", this);
-	useSplineInterpolationCB->setChecked(volumeRenderable->useSplineInterpolation);
-	controlLayout->addWidget(useSplineInterpolationCB);
-	connect(useSplineInterpolationCB, SIGNAL(clicked(bool)), this, SLOT(useSplineInterpolationCBClicked(bool)));
-
+	if (fullVersion){
+		QCheckBox* useSplineInterpolationCB = new QCheckBox("Use cubic spline interpolation (when preintegrate)", this);
+		useSplineInterpolationCB->setChecked(volumeRenderable->useSplineInterpolation);
+		controlLayout->addWidget(useSplineInterpolationCB);
+		connect(useSplineInterpolationCB, SIGNAL(clicked(bool)), this, SLOT(useSplineInterpolationCBClicked(bool)));
+	}
 
 	QLabel *isoValueSliderLabelLit = new QLabel("Iso Value 1:");
 	isoValueSlider = new QSlider(Qt::Horizontal);
@@ -315,9 +309,34 @@ Window::Window()
 	isoValueSliderLayout1->addWidget(isoValueLabel1);
 	controlLayout->addLayout(isoValueSliderLayout1);
 
+	QGroupBox *deformGroupBox = new QGroupBox(tr("Deform Control"));
+	QVBoxLayout *deformLayout = new QVBoxLayout;
+
+	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
+	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+	deformLayout->addWidget(isDeformEnabled);
+	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+
+	if (fullVersion){
+		QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+		isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+		deformLayout->addWidget(isForceDeformEnabled);
+		connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+	}
+
+	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Elements", this);
+	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+	deformLayout->addWidget(isDeformColoringEnabled);
+	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
+
+
+	deformGroupBox->setLayout(deformLayout);
+	controlLayout->addWidget(deformGroupBox);
+
+
 	QGroupBox *rcGroupBox = new QGroupBox(tr("Ray Casting setting"));
 	addRayCastingInterfaces(rcGroupBox);
-	controlLayout->addWidget(rcGroupBox);
+	//controlLayout->addWidget(rcGroupBox);
 
 	controlLayout->addStretch();
 
@@ -415,9 +434,7 @@ Window::Window()
 
 
 	//openGL->setFixedSize(1000, 1000);
-	//openGLMini->setFixedSize(300, 300);
 	openGL->setFixedSize(600, 600);
-	//openGL->setFixedSize(750, 900);
 
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);
@@ -443,10 +460,7 @@ Window::Window()
 void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 {
 	///////////////ray casting settings
-
-
 	QLabel *transFuncP1SliderLabelLit = new QLabel("Transfer Function Higher Cut Off");
-	//controlLayout->addWidget(transFuncP1SliderLabelLit);
 	QSlider *transFuncP1LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP1LabelSlider->setRange(0, 100);
 	transFuncP1LabelSlider->setValue(rcp->transFuncP1 * 100);
@@ -455,10 +469,8 @@ void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 	QHBoxLayout *transFuncP1Layout = new QHBoxLayout;
 	transFuncP1Layout->addWidget(transFuncP1LabelSlider);
 	transFuncP1Layout->addWidget(transFuncP1Label);
-	//controlLayout->addLayout(transFuncP1Layout);
 
 	QLabel *transFuncP2SliderLabelLit = new QLabel("Transfer Function Lower Cut Off");
-	//controlLayout->addWidget(transFuncP2SliderLabelLit);
 	QSlider *transFuncP2LabelSlider = new QSlider(Qt::Horizontal);
 	transFuncP2LabelSlider->setRange(0, 100);
 	transFuncP2LabelSlider->setValue(rcp->transFuncP2 * 100);
@@ -467,10 +479,8 @@ void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 	QHBoxLayout *transFuncP2Layout = new QHBoxLayout;
 	transFuncP2Layout->addWidget(transFuncP2LabelSlider);
 	transFuncP2Layout->addWidget(transFuncP2Label);
-	//controlLayout->addLayout(transFuncP2Layout);
 
 	QLabel *brLabelLit = new QLabel("Brightness of the volume: ");
-	//controlLayout->addWidget(brLabelLit);
 	QSlider* brSlider = new QSlider(Qt::Horizontal);
 	brSlider->setRange(0, 40);
 	brSlider->setValue(rcp->brightness * 20);
@@ -479,10 +489,8 @@ void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 	QHBoxLayout *brLayout = new QHBoxLayout;
 	brLayout->addWidget(brSlider);
 	brLayout->addWidget(brLabel);
-	//controlLayout->addLayout(brLayout);
 
 	QLabel *dsLabelLit = new QLabel("Density of the volume: ");
-	//controlLayout->addWidget(dsLabelLit);
 	QSlider* dsSlider = new QSlider(Qt::Horizontal);
 	dsSlider->setRange(0, 200);
 	dsSlider->setValue(rcp->density * 50);
@@ -491,10 +499,8 @@ void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 	QHBoxLayout *dsLayout = new QHBoxLayout;
 	dsLayout->addWidget(dsSlider);
 	dsLayout->addWidget(dsLabel);
-	//controlLayout->addLayout(dsLayout);
 
 	QLabel *laSliderLabelLit = new QLabel("Coefficient for Ambient Lighting: ");
-	//controlLayout->addWidget(laSliderLabelLit);
 	QSlider* laSlider = new QSlider(Qt::Horizontal);
 	laSlider->setRange(0, 50);
 	laSlider->setValue(rcp->la * 10);
@@ -503,10 +509,8 @@ void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 	QHBoxLayout *laLayout = new QHBoxLayout;
 	laLayout->addWidget(laSlider);
 	laLayout->addWidget(laLabel);
-	//controlLayout->addLayout(laLayout);
 
 	QLabel *ldSliderLabelLit = new QLabel("Coefficient for Diffusial Lighting: ");
-	//controlLayout->addWidget(ldSliderLabelLit);
 	QSlider* ldSlider = new QSlider(Qt::Horizontal);
 	ldSlider->setRange(0, 50);
 	ldSlider->setValue(rcp->ld * 10);
@@ -515,10 +519,8 @@ void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 	QHBoxLayout *ldLayout = new QHBoxLayout;
 	ldLayout->addWidget(ldSlider);
 	ldLayout->addWidget(ldLabel);
-	//controlLayout->addLayout(ldLayout);
 
 	QLabel *lsSliderLabelLit = new QLabel("Coefficient for Specular Lighting: ");
-	//controlLayout->addWidget(lsSliderLabelLit);
 	QSlider* lsSlider = new QSlider(Qt::Horizontal);
 	lsSlider->setRange(0, 50);
 	lsSlider->setValue(rcp->ls * 10);
@@ -527,7 +529,6 @@ void Window::addRayCastingInterfaces(QGroupBox *rcGroupBox)
 	QHBoxLayout *lsLayout = new QHBoxLayout;
 	lsLayout->addWidget(lsSlider);
 	lsLayout->addWidget(lsLabel);
-	//controlLayout->addLayout(lsLayout);
 
 	QLabel *transFuncP1SecondSliderLabelLit = new QLabel("Second Higher Cut Off");
 	QSlider *transFuncP1SecondLabelSlider = new QSlider(Qt::Horizontal);

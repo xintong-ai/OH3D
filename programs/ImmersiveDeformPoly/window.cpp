@@ -33,7 +33,7 @@
 #include "leap/LeapListener.h"
 #include "leap/MatrixLeapInteractor.h"
 #endif
-#include "MarchingCube.h"
+//#include "MarchingCube.h"
 #include "VTIReader.h"
 #include "MarchingCube2.h"
 
@@ -52,38 +52,6 @@ Window::Window()
 	std::string polyDataPath;
 
 	if (useMultiplePolyData){
-	/*	const std::string polyDatasFolder = dataMgr->GetConfig("POLY_DATAS_FOLDER");
-		std::string paths[2];
-		paths[0] = polyDatasFolder + "sand60_067_xw2_iso0.0005_shiftedAndRespaced.vtp";
-		paths[1] = polyDatasFolder + "sand60_067_xw2_iso0.0012_shiftedAndRespaced.vtp";
-
-		PolyMesh::dataParameters(paths[0], disThr);
-
-		for (int i = 0; i < 2; i++){
-			std::shared_ptr<PolyMesh> curpolyMesh = std::make_shared<PolyMesh>();
-			if (std::string(paths[i]).find(".ply") != std::string::npos){
-				PlyVTKReader plyVTKReader;
-				plyVTKReader.readPLYByVTK(paths[i].c_str(), curpolyMesh.get());
-			}
-			else{
-				VTPReader reader;
-				reader.readFile(paths[i].c_str(), curpolyMesh.get());
-			}
-			std::cout << "Read data from : " << paths[i] << std::endl;
-			curpolyMesh->setVertexColorVals((i == 0) ? 0 : 1);
-
-			polyMeshes.push_back(curpolyMesh);
-		}
-
-		polyMesh = std::make_shared<PolyMesh>();
-		polyMesh->createByCombiningPolyMeshes(polyMeshes);
-
-		for (int i = 0; i < 2; i++){
-			polyMeshes[i].reset();
-		}
-
-		polyMesh->setVertexCoordsOri();
-		polyMesh->setVertexDeviateVals();*/
 
 	}
 	else{
@@ -239,15 +207,21 @@ Window::Window()
 
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
+	if (fullVersion){
 		controlLayout->addWidget(saveStateBtn.get());
 		controlLayout->addWidget(loadStateBtn.get());
-	
+	}
+	else{
+		matrixMgr->LoadState("state.txt");
+	}
+
 	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
 	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
 
 	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
+	if (fullVersion){
 		controlLayout->addWidget(saveScreenBtn);
-
+	}
 	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
 
 
@@ -283,11 +257,13 @@ Window::Window()
 	clipRb = std::make_shared<QRadioButton>(tr("&clip"));
 	transpRb = std::make_shared<QRadioButton>(tr("&transparent"));
 
-	QCheckBox* toggleWireframe = new QCheckBox("Toggle Wireframe", this);
-	toggleWireframe->setChecked(polyRenderable->useWireFrame);
-		controlLayout->addWidget(toggleWireframe);
 
-	connect(toggleWireframe, SIGNAL(clicked(bool)), this, SLOT(toggleWireframeClicked(bool)));
+	if (fullVersion){
+		QCheckBox* toggleWireframe = new QCheckBox("Toggle Wireframe", this);
+		toggleWireframe->setChecked(polyRenderable->useWireFrame); 
+		controlLayout->addWidget(toggleWireframe);
+		connect(toggleWireframe, SIGNAL(clicked(bool)), this, SLOT(toggleWireframeClicked(bool)));
+	}
 
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
@@ -298,13 +274,17 @@ Window::Window()
 	deformModeLayout2->addWidget(immerRb.get());
 	deformModeLayout2->addWidget(nonImmerRb.get());
 	groupBox2->setLayout(deformModeLayout2);
+	if (fullVersion){
 		controlLayout->addWidget(groupBox2);
+	}
 
 	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
 	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
 
 	QPushButton *seeBacksBtn = new QPushButton("See Back");
-	controlLayout->addWidget(seeBacksBtn);
+	if (fullVersion){
+		controlLayout->addWidget(seeBacksBtn);
+	}
 	connect(seeBacksBtn, SIGNAL(clicked()), this, SLOT(seeBacksBtnClicked()));
 
 	deformRb->setChecked(true);
@@ -359,12 +339,14 @@ Window::Window()
 		deformLayout->addWidget(isDeformEnabled);
 	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
 
-	QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
-	isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
-	deformLayout->addWidget(isForceDeformEnabled);
-	connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+	if (fullVersion){
+		QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+		isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+		deformLayout->addWidget(isForceDeformEnabled);
+		connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+	}
 
-	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Part", this);
+	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Elements", this);
 	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
 	deformLayout->addWidget(isDeformColoringEnabled);
 	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
@@ -379,12 +361,20 @@ Window::Window()
 	disThrSliderLayout1->addWidget(disThrLabelLit1);
 	disThrSliderLayout1->addWidget(disThrSlider);
 	disThrSliderLayout1->addWidget(disThrLabel);
-	deformLayout->addLayout(disThrSliderLayout1);
+	if (fullVersion){
+		deformLayout->addLayout(disThrSliderLayout1);
+	}
 
-	useDifThrForBackCb = new QCheckBox("Use Different Thr for Backface", this);
-	useDifThrForBackCb->setChecked(positionBasedDeformProcessor->useDifThrForBack);
-	deformLayout->addWidget(useDifThrForBackCb);
-	connect(useDifThrForBackCb, SIGNAL(clicked(bool)), this, SLOT(useDifThrForBackClicked(bool)));
+	if (mc->forNav){
+		positionBasedDeformProcessor->useDifThrForBack = true;
+	}
+	if (fullVersion){
+		useDifThrForBackCb = new QCheckBox("Use Different Thr for Backface", this);
+		useDifThrForBackCb->setChecked(positionBasedDeformProcessor->useDifThrForBack);
+
+		deformLayout->addWidget(useDifThrForBackCb);
+		connect(useDifThrForBackCb, SIGNAL(clicked(bool)), this, SLOT(useDifThrForBackClicked(bool)));
+	}
 
 	deformGroupBox->setLayout(deformLayout);
 	controlLayout->addWidget(deformGroupBox);

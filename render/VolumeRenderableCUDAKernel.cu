@@ -1497,9 +1497,10 @@ __global__ void d_render_preint_coloringDeformedElement(uint *d_output, uint ima
 			float3 origianlPos = getOrigianlSamplePos(volumeSize, pos,
 				tunnelStart, tunnelEnd, spacing, r, deformationScale, deformationScaleVertical, rectVerticalDir);
 			if (origianlPos.x > -0.01){
-				const float3 errorColor = make_float3(1.0, 0.0, 0);
+				const float3 errorColor = make_float3(0.0, 1.0, 0.0);
+				const float minWeight = 0.6; //0.6 is selected parameter for moortgat data; 0.2 for 181
 				float maxDis = deformationScale / 2.0;
-				float ratio = clamp(length(pos - origianlPos) / maxDis, 0.2, 1.0); //0.6 is selected parameter for moortgat data
+				float ratio = clamp(length(pos - origianlPos) / minWeight, 0.6, 1.0);
 				cc = cc*(1 - ratio) + errorColor*ratio;
 			}
 			////to deal with partial volume effect. may be useful

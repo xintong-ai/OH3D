@@ -21,7 +21,7 @@ public:
 	float isoValue0 = -1;
 	float isoValue1 = 0.0013;
 
-	bool forNav = true;
+	bool forNav = true;// true;
 	float isoValue2 = 0.0014;
 
 	bool needCompute = false;

@@ -32,7 +32,7 @@ MarchingCube2::MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, fl
 {
 	polyMesh = p;
 	isoValue0 = value;
-	
+
 	if (forNav){
 		isoValue0 = 0.0006;
 		isoValue1 = 0.0011;
@@ -53,7 +53,7 @@ MarchingCube2::MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, fl
 	double spacing[3] = { 1, 1, 1 };
 	double origin[3] = { 0, 0, 0 };
 	int dim[3] = { dataSizes.x, dataSizes.y, dataSizes.z };
-inputImage = 	vtkSmartPointer<vtkImageData>::New();
+	inputImage = vtkSmartPointer<vtkImageData>::New();
 	inputImage->SetSpacing(spacing);
 	inputImage->SetDimensions(dim);
 	inputImage->SetOrigin(origin);
@@ -101,7 +101,7 @@ inputImage = 	vtkSmartPointer<vtkImageData>::New();
 	needCompute = false;
 	updatePoly();
 	polyMesh->SetPosRange(make_float3(0, 0, 0), make_float3(dataSizes.x, dataSizes.y, dataSizes.z));  //one time call should be enough
-}	
+}
 
 void MarchingCube2::computeIsosurface()
 {
@@ -114,7 +114,7 @@ void MarchingCube2::computeIsosurface()
 	//writer->Write();
 }
 
-void MarchingCube2::newIsoValue(float v, int index )
+void MarchingCube2::newIsoValue(float v, int index)
 {
 	surface->SetValue(index, v);
 	surface->Update();
@@ -145,7 +145,7 @@ void MarchingCube2::updatePoly()
 		polyMesh->vertexcount = vertexcount;
 		polyMesh->facecount = facecount;
 	}
-	
+
 
 	//vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
 	//writer->SetFileName("test.vtp");
@@ -177,7 +177,7 @@ void MarchingCube2::updatePoly()
 		polyMesh->vertexNorms[3 * i] = normalDataFloat->GetComponent(i, 0);
 		polyMesh->vertexNorms[3 * i + 1] = normalDataFloat->GetComponent(i, 1);
 		polyMesh->vertexNorms[3 * i + 2] = normalDataFloat->GetComponent(i, 2);
-		
+
 		float zz = scalarDataFloat->GetValue(i);
 		polyMesh->vertexColorVals[i] = (zz - vmin) / (vmax - vmin);
 	}
