@@ -12,7 +12,7 @@ class BinaryTuplesReader :public ParticleReader
 public:
 	BinaryTuplesReader(const char* filename) :ParticleReader(filename){ Load(); }
 
-	//void OutputToParticleData(std::shared_ptr<Particle> v);
+	void OutputToParticleData(std::shared_ptr<Particle> v);
 	void OutputToParticleDataArrays(std::vector<std::shared_ptr<Particle>> & v);
 protected:
 	int numTupleArrays = 0;

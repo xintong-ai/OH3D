@@ -14,6 +14,8 @@ else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR}
 	${CMAKE_BINARY_DIR}
+		${CUDA_SDK_ROOT_DIR}/common/inc 
+
 )
 
 

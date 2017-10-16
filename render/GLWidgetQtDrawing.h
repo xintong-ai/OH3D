@@ -13,7 +13,7 @@ public:
 	Helper();
 	int w, h;
 	int z;
-	unsigned short* labelVolLocal;
+	unsigned short* labelVolLocal = 0;
 	bool valSet = false;
 
 	int multiplier = 1;

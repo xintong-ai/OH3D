@@ -1,5 +1,4 @@
 #include "BoxRenderable.h"
-//#include "VecReader.h"
 #include <QOpenGLWidget>
 
 BoxRenderable::BoxRenderable(int3 d)
@@ -10,15 +9,6 @@ BoxRenderable::BoxRenderable(int3 d)
 	dim.z = d.z;
 	pos = make_float3(0, 0, 0);
 }
-
-
-//BoxRenderable::BoxRenderable(VecReader* r)
-//{
-////	SetVecReader(r);
-//	int3 volDim = r->GetVolumeDim();
-//	dim = make_float3(volDim.x, volDim.y, volDim.z);
-//	pos = make_float3(0, 0, 0);
-//}
 
 BoxRenderable::BoxRenderable(float x, float y, float z, float nx, float ny, float nz)
 {

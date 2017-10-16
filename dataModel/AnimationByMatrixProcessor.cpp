@@ -59,5 +59,6 @@ bool AnimationByMatrixProcessor::process(float modelview[16], float projection[1
 	else{
 		return false;
 	}
+	return false;
 }
 

@@ -6,13 +6,14 @@
 #include "myDefineRayCasting.h"
 #include <memory>
 #include <vector>
-#include "PositionBasedDeformProcessor.h"
 
 typedef unsigned int  uint;
 
 extern "C" {
 	void VolumeRender_init();
 	void VolumeRender_deinit();
+	
+	void updatePreIntTabelNew(cudaArray *d_transferFunc);
 
 	void VolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);
 	void OmniVolumeRender_render(uint *d_output, uint imageW, uint imageH, float3 eyeInLocal, int3 volumeSize);
@@ -21,7 +22,13 @@ extern "C" {
 
 
 	void VolumeRender_renderImmer(uint *d_output, uint imageW, uint imageH,
-		float3 eyeInLocal, int3 volumeSize, char* screenMark, RayCastingParameters* rcp);
+		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, 
+		float3 tunnelStart, float3 tunnelEnd, float3 vertDir, float degree, float deformationscale, float deformationScaleVerticel, bool isColoringDeformedPart,
+		bool usePreInt = false, bool useSplineInterpolation = false, bool useCliping = false);
+
+	void VolumeRender_renderImmer_withPreBlend(uint *d_output, uint imageW, uint imageH,
+		float3 eyeInLocal, int3 volumeSize, RayCastingParameters* rcp, float densityBonus,
+		bool usePreInt = false, bool useSplineInterpolation = false);
 
 	void VolumeRender_setVolume(const VolumeCUDA *volume);
 	void VolumeRender_setGradient(const VolumeCUDA *volume);

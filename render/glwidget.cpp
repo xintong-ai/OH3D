@@ -28,7 +28,9 @@ GLWidget::GLWidget(std::shared_ptr<GLMatrixManager> _matrixMgr, QWidget *parent)
 : QOpenGLWidget(parent), matrixMgr(_matrixMgr)
 {
     setFocusPolicy(Qt::StrongFocus);
+
     sdkCreateTimer(&timer);
+	sdkCreateTimer(&timerOverall);
 
 	grabGesture(Qt::PinchGesture);
 }
@@ -57,6 +59,7 @@ void GLWidget::AddInteractor(const char* name, void* r)
 GLWidget::~GLWidget()
 {
 	sdkDeleteTimer(&timer);
+	sdkDeleteTimer(&timerOverall);
 }
 
 QSize GLWidget::minimumSizeHint() const
@@ -73,25 +76,15 @@ void GLWidget::initializeGL()
 {
 	makeCurrent();
 	initializeOpenGLFunctions();
-	//glClearColor(0.2f, 0.2f, 0.4f, 1.0f);
+	//glClearColor(0.7f, 0.7f, 0.7f, 1.0f);
 	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	//glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
 	glEnable(GL_DEPTH_TEST);
+
+	sdkStartTimer(&timerOverall);
 }
 
-void GLWidget::computeFPS()
-{
-    fpsCount++;
-    if (fpsCount == fpsLimit)
-    {
-        float ifps = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
-        //qDebug() << "Processor plus Renderer FPS: "<<ifps;
-        fpsCount = 0;
-        fpsLimit = min(4*ifps, 100);
-        sdkResetTimer(&timer);
-    }
-}
 
 void GLWidget::TimerStart()
 {
@@ -101,20 +94,24 @@ void GLWidget::TimerStart()
 void GLWidget::TimerEnd()
 {
 	fpsCount++;
+	fpsCountOverall++;
+
 	if (fpsCount >= fpsLimit)
 	{
 		sdkStopTimer(&timer);
 
 		float ifps = 1.f*fpsCount / (sdkGetAverageTimerValue(&timer) / 1000.f);
-		qDebug() << "Overall FPS: "<<ifps;
+		//qDebug() << "Overall FPS: "<<ifps;
 
 		fpsCount = 0;
 		sdkResetTimer(&timer);
 		sdkStartTimer(&timer);
 		fpsLimit = max(min(4 * ifps, 128), 16);
+
+		float ifps2 = 1.f*fpsCountOverall / ((timerOverall->getTime()) / 1000.f);
+		//qDebug() << "Overall FPS 2: " << ifps2;
 	}
 
-	//computeFPS();
 }
 
 
@@ -169,13 +166,19 @@ void GLWidget::paintGL() {
 			renderer.second->DrawEnd(renderer.first.c_str());
 		}
 	}
-#else		
+#else	
+
+	//glEnable(GL_BLEND);
+
 	for (auto renderer : renderers)
 	{
 		renderer.second->DrawBegin();
 		renderer.second->draw(modelview, projection);
 		renderer.second->DrawEnd(renderer.first.c_str());
 	}
+
+	//glDisable(GL_BLEND);
+
 #endif
 
 

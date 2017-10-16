@@ -9,7 +9,9 @@ message("io is already defined")
 
 else()
 
-include_directories(${SHARED_LIB_INCLUDE_DIR})
+include_directories(${SHARED_LIB_INCLUDE_DIR}
+ 	${CUDA_SDK_ROOT_DIR}/common/inc 
+)
 
 
 set(SRCS DataMgr.cpp PlyMeshReader.cpp  ParticleReader.cpp
@@ -27,8 +29,8 @@ set(HDRS DataMgr.h PlyMeshReader.h  ParticleReader.h
 	)
 
 if(BUILD_TEST AND USE_VTK)
-	set(HDRS ${HDRS} PlyVTKReader.h )
-	set(SRCS ${SRCS} PlyVTKReader.cpp)
+	set(HDRS ${HDRS} PlyVTKReader.h VTPReader.h  VTIReader.h)
+	set(SRCS ${SRCS} PlyVTKReader.cpp VTPReader.cpp VTIReader.cpp)
 	include(${VTK_USE_FILE}) 
 endif()
 

@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 2.8.5 FATAL_ERROR)
+
 PROJECT (ImmersiveDeformPoly)
-set(SHARED_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(SHARED_LIB_INCLUDE_DIR ${SHARED_LIB_INCLUDE_DIR} PARENT_SCOPE)
+
+#set(SHARED_LIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+#set(SHARED_LIB_INCLUDE_DIR ${SHARED_LIB_INCLUDE_DIR} PARENT_SCOPE)
 
 find_package(OpenGL REQUIRED)
 find_package(Qt5Widgets REQUIRED)
-
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
@@ -41,8 +42,6 @@ target_link_libraries(${PROJECT_NAME}
 	render
 	dataModel
 	deform
-	vpsel
-	${ITK_LIBRARIES}
 )
 
 
@@ -53,4 +52,13 @@ endif()
 
 if(USE_OSVR)
 	target_link_libraries(${PROJECT_NAME} osvr::osvrClientKitCpp)
+endif()
+
+set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
+
+
+if(USE_VTK)
+	find_package(VTK REQUIRED)
+	include(${VTK_USE_FILE}) 
+	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
 endif()

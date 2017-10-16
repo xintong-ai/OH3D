@@ -1,5 +1,5 @@
-#ifndef MESH_READER_H
-#define MESH_READER_H
+#ifndef PLYVTK_READER_H
+#define PLYVTK_READER_H
 
 #include <fstream>
 #include <iostream>

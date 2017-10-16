@@ -327,7 +327,15 @@ inline float3 mul(const float3x3 &M, const float3 &v)
 	return r;
 }
 
-
+__device__
+inline float3 mul(float* M3x3, const float3 &v) //row major multiplication
+{
+	float3 r;
+	r.x = v.x*M3x3[0] + v.y*M3x3[1] + v.z*M3x3[2];
+	r.y = v.x*M3x3[3] + v.y*M3x3[4] + v.z*M3x3[5];
+	r.z = v.x*M3x3[6] + v.y*M3x3[7] + v.z*M3x3[8];
+	return r;
+}
 
 __device__
 inline float4 divW(float4 v)

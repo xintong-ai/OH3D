@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 PROJECT (DeformVis)
 
 find_package(Qt5Widgets REQUIRED)
+	find_package(CUDA REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
@@ -63,21 +64,22 @@ set(INTERACT_DIR	"${CMAKE_SOURCE_DIR}/interact")
 set(IO_DIR			"${CMAKE_SOURCE_DIR}/io")
 set(RENDER_DIR		"${CMAKE_SOURCE_DIR}/render")
 set(DATAMODEL_DIR		"${CMAKE_SOURCE_DIR}/dataModel")
-set(VPSEL_DIR		"${CMAKE_SOURCE_DIR}/vpsel")
+#set(VPSEL_DIR		"${CMAKE_SOURCE_DIR}/vpsel")
 
 include_directories(
 	${DEFORM_DIR}
 	${INTERACT_DIR}
-	${VPSEL_DIR}
+	#${VPSEL_DIR}
 	${IO_DIR}
 	${RENDER_DIR}
 	${GLM_INCLUDE_DIR}
 	${DATAMODEL_DIR}
 	cuda_types/
+	${CUDA_SDK_ROOT_DIR}/common/inc 
 	)
 
 if(USE_ITK)
-	add_subdirectory(vpsel)
+	#add_subdirectory(vpsel)
 	#essentially vpsel does not need ITK. but all executables using vpsel will use ITK
 endif()
 

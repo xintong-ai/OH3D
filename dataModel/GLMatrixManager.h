@@ -30,7 +30,7 @@ protected:
 	//for projection 
 	//float zNear = 0.1;
 	//float zFar = 100;
-	float projAngle = 30;
+	float projAngle = 60;
 	float width = 1, height = 1;
 	void UpdateProjMatrixFromDetail(float width, float height);
 	void UpdateProjMatrixFromDetail();

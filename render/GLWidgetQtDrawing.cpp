@@ -46,7 +46,7 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 	QImage image(w*multiplier, h*multiplier, QImage::Format_RGB32);
 	for (int i = 0; i<w; ++i) {
 		for (int j = 0; j<h; ++j) {
-			if (labelVolLocal[sliceOffset + w*j + i]){
+			if (labelVolLocal && labelVolLocal[sliceOffset + w*j + i]){
 				for (int ii = 0; ii < multiplier; ii++){
 					for (int jj = 0; jj < multiplier; jj++){
 						image.setPixel(i*multiplier + ii, (h - 1 - j)*multiplier + jj, 256 * 256 * 0 + 256 * 255 + 255);
@@ -121,6 +121,11 @@ void Helper::paint(QPainter *painter, QPaintEvent *event, int elapsed)
 
 void Helper::featureGrowing()
 {
+	if (!labelVolLocal){
+		std::cout << "labelVolLocal not set!!" << std::endl;
+		return;
+	}
+
 	if (!valSet){
 		return;
 	}
@@ -164,6 +169,10 @@ void Helper::featureGrowing()
 
 void Helper::brushPoint(int _x, int _y)
 {
+	if (!labelVolLocal){
+		std::cout << "labelVolLocal not set!!" << std::endl;
+		return;
+	}
 	const int cons = 3;
 	int x = _x / multiplier, y = h - 1 - _y / multiplier;
 

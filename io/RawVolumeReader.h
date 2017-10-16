@@ -34,6 +34,7 @@ public:
 
 	void OutputToVolumeByNormalizedValue(std::shared_ptr<Volume> v);
 	void OutputToVolumeCUDAUnsignedShort(std::shared_ptr<VolumeCUDA>);
+	void OutputToVolume_OnlyVolumeCuda_NoNormalized(std::shared_ptr<Volume> v);
 
 	static void rawFileReadingInfo(std::string dataPath, DataType & volDataType, bool &labelFromFile)
 	{

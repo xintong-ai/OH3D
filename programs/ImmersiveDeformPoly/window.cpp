@@ -3,34 +3,25 @@
 
 #include "myDefineRayCasting.h"
 #include "GLWidget.h"
-#include "Volume.h"
-#include "RawVolumeReader.h"
 #include "DataMgr.h"
-#include "VecReader.h"
 #include "GLMatrixManager.h"
-#include "ScreenMarker.h"
-#include "LabelVolumeProcessor.h"
-#include "VolumeRenderableCUDA.h"
-#include "VolumeRenderableImmerCUDA.h"
 #include "mouse/RegularInteractor.h"
 #include "mouse/ImmersiveInteractor.h"
-#include "mouse/ScreenBrushInteractor.h"
-#include "LabelVolumeProcessor.h"
-#include "ViewpointEvaluator.h"
-#include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
 #include "Particle.h"
 
-#include "PositionBasedDeformProcessor.h"
 #include "MatrixMgrRenderable.h"
-#include "InfoGuideRenderable.h"
-#include "BinaryTuplesReader.h"
 #include "DeformFrameRenderable.h"
 #include "SphereRenderable.h"
 #include "PolyRenderable.h"
 #include "PolyMesh.h"
 
 #include "PlyVTKReader.h"
+#include "VTPReader.h"
+
+#include "PositionBasedDeformProcessor.h"
+
+#include <thrust/device_vector.h>
 
 #ifdef USE_OSVR
 #include "VRWidget.h"
@@ -42,102 +33,100 @@
 #include "leap/LeapListener.h"
 #include "leap/MatrixLeapInteractor.h"
 #endif
+#include "VTIReader.h"
+#include "MarchingCube2.h"
 
-#include "VolumeRenderableCUDAKernel.h"
-
+bool useMultiplePolyData = false;
 
 Window::Window()
 {
-	setWindowTitle(tr("Egocentric VR Volume Visualization"));
+	setWindowTitle(tr("Egocentric Isosurface Visualization"));
 
 	////////////////////////////////prepare data////////////////////////////////
 	//////////////////Volume and RayCastingParameters
 	std::shared_ptr<DataMgr> dataMgr;
 	dataMgr = std::make_shared<DataMgr>();
-	const std::string dataPath = dataMgr->GetConfig("VOLUME_DATA_PATH");
 
-	rcp = std::make_shared<RayCastingParameters>();
+	float disThr;
+	std::string polyDataPath;
 
-	std::string subfolder;
-	
-	//Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
-	//rcp->useColor = false;
+	if (useMultiplePolyData){
 
-	dims = make_int3(160, 224, 64);
-	spacing = make_float3(1, 1, 1);
-	rcp = std::make_shared<RayCastingParameters>(0.6, 0.0, 0.0, 0.29, 0.0, 0.35, 512, 0.25f, 1.0, false); //for 181
-	subfolder = "beetle";
-	rcp->use2DInteg = false;
-
-	std::shared_ptr<RayCastingParameters> rcpMini = rcp;// std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 512, 0.25f, 1.0, false);
-
-	inputVolume = std::make_shared<Volume>(true);
-	
-	if (std::string(dataPath).find(".vec") != std::string::npos){
-		std::shared_ptr<VecReader> reader;
-		reader = std::make_shared<VecReader>(dataPath.c_str());
-		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
-		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
-		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
-		reader.reset();
 	}
 	else{
-		std::shared_ptr<RawVolumeReader> reader;
-		if (std::string(dataPath).find("engine") != std::string::npos || std::string(dataPath).find("knee") != std::string::npos || std::string(dataPath).find("181") != std::string::npos || std::string(dataPath).find("Bucky") != std::string::npos || std::string(dataPath).find("bloodCell") != std::string::npos || std::string(dataPath).find("Lobster") != std::string::npos || std::string(dataPath).find("Orange") != std::string::npos){
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims, RawVolumeReader::dtUint8);
+		polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
+
+		PolyMesh::dataParameters(polyDataPath, disThr);
+
+		polyMesh = std::make_shared<PolyMesh>();
+		if (std::string(polyDataPath).find("testDummy") != std::string::npos){
+			polyMesh->createTestDummy();
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			polyMesh->setVertexColorVals(0);
+		
+		}
+		else if (std::string(polyDataPath).find(".vti") != std::string::npos){
+			
+			std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
+			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
+					
+			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0010);  //for isovalue adjust applications, use 0.0007 and 0.0013 as start values are good
+			
+			////for camera navi application
+			//mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0004);  
+			//disThr = 1;
+			//for camera navi applications, use 0.0004 and 0.001 as first two start values are good
+
+			useIsoAdjust = true;
+
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			//polyMesh->setVertexColorVals(0);  //VertexColorVals is set by MarchingCube2
+		}
+		else if(std::string(polyDataPath).find(".ply") != std::string::npos){
+			PlyVTKReader plyVTKReader;
+			plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
+
+
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			polyMesh->setVertexColorVals(0);
 		}
 		else{
-			reader = std::make_shared<RawVolumeReader>(dataPath.c_str(), dims);
+			VTPReader reader;
+			reader.readFile(polyDataPath.c_str(), polyMesh.get());
+
+			polyMesh->setVertexCoordsOri();
+			polyMesh->setVertexDeviateVals();
+			polyMesh->setVertexColorVals(0);
 		}
-		reader->OutputToVolumeByNormalizedValue(inputVolume);
-		reader.reset();
+		   
+
+
+		std::cout << "Read data from : " << polyDataPath << std::endl;
+
 	}
-	inputVolume->spacing = spacing;
-	inputVolume->initVolumeCuda();
-	
-
-	if (rcp->use2DInteg){
-		inputVolume->computeGradient();
-		rcp->secondCutOffLow = 0.19f;
-		rcp->secondCutOffHigh = 0.72f;
-		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
-	}
-
-	bool channelSkelViewReady = false;
-	if (channelSkelViewReady){
-		channelVolume = std::make_shared<Volume>(true);
-		std::shared_ptr<RawVolumeReader> reader2 = std::make_shared<RawVolumeReader>((subfolder + "/cleanedChannel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		reader2->OutputToVolumeByNormalizedValue(channelVolume);
-		channelVolume->initVolumeCuda();
-		reader2.reset();
-
-		skelVolume = std::make_shared<Volume>();
-		std::shared_ptr<RawVolumeReader> reader4 = std::make_shared<RawVolumeReader>((subfolder + "/skel.raw").c_str(), dims, RawVolumeReader::dtFloat32);
-		reader4->OutputToVolumeByNormalizedValue(skelVolume);
-		skelVolume->initVolumeCuda();
-		reader4.reset();
-	}
-
-	//labelVolCUDA = std::make_shared<VolumeCUDA>();
-	//labelVolCUDA->VolumeCUDA_init(dims, (unsigned short *)0, 1, 1);
-	//labelVolLocal = new unsigned short[dims.x*dims.y*dims.z];
-	//memset(labelVolLocal, 0, sizeof(unsigned short)*dims.x*dims.y*dims.z);
+	//polyMesh->checkShortestEdge();
 
 	////////////////matrix manager
 	float3 posMin, posMax;
-	inputVolume->GetPosRange(posMin, posMax);
+	polyMesh->GetPosRange(posMin, posMax);
+	std::cout << "posMin: " << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
+	std::cout << "posMax: " << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
-	matrixMgr->setDefaultForImmersiveMode();		
-	if (std::string(dataPath).find("engine") != std::string::npos){
-		matrixMgr->moveEyeInLocalByModeMat(make_float3(70, -20, 60));
+	matrixMgr->setDefaultForImmersiveMode();
+	matrixMgrExocentric = std::make_shared<GLMatrixManager>(posMin, posMax);
+
+	matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
+
+	////for test with testDummy
+	if (std::string(polyDataPath).find("testDummy") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(5, -10, 5));
 	}
-
-	matrixMgrMini = std::make_shared<GLMatrixManager>(posMin, posMax);
-
-
-
-
+	else if (std::string(polyDataPath).find("moortgat") != std::string::npos){
+		matrixMgr->moveEyeInLocalByModeMat(make_float3(matrixMgr->getEyeInLocal().x - 10, -20, matrixMgr->getEyeInLocal().z));
+	}
 
 	/********GL widget******/
 	openGL = std::make_shared<GLWidget>(matrixMgr);
@@ -150,68 +139,51 @@ Window::Window()
 
 
 	//////////////////////////////// Processor ////////////////////////////////
-	
-	
-	if (channelSkelViewReady){
-		positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(inputVolume, matrixMgr, channelVolume);
-		openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	positionBasedDeformProcessor = std::make_shared<PositionBasedDeformProcessor>(polyMesh, matrixMgr);
 
-		animationByMatrixProcessor = std::make_shared<AnimationByMatrixProcessor>(matrixMgr);
-		animationByMatrixProcessor->setViews(views);
-		openGL->AddProcessor("animationByMatrixProcessor", animationByMatrixProcessor.get());
+	positionBasedDeformProcessor->disThr = disThr;
+	positionBasedDeformProcessor->minPos = posMin - make_float3(disThr + 1, disThr + 1, disThr + 1);
+	positionBasedDeformProcessor->maxPos = posMax + make_float3(disThr + 1, disThr + 1, disThr + 1);
+
+	openGL->AddProcessor("1positionBasedDeformProcessor", positionBasedDeformProcessor.get());
+	positionBasedDeformProcessor->setDeformationScale(2);
+	positionBasedDeformProcessor->setDeformationScaleVertical(2.5);
+	
+	if (useIsoAdjust){
+		positionBasedDeformProcessor->setDeformationScale(1.5);
+		positionBasedDeformProcessor->setDeformationScaleVertical(2);
+	}
+	
+	if (std::string(polyDataPath).find("testDummy") != std::string::npos){
+		positionBasedDeformProcessor->radius = 25;
 	}
 
-	//lvProcessor = std::make_shared<LabelVolumeProcessor>(labelVolCUDA);
-	//lvProcessor->setScreenMarker(sm);
-	//lvProcessor->rcp = rcp;
-	//openGL->AddProcessor("screenMarkerLabelVolumeProcessor", lvProcessor.get());
-
-
+	//positionBasedDeformProcessor->setShapeModel(SHAPE_MODEL::CIRCLE);
 	//////////////////////////////// Renderable ////////////////////////////////	
-	//volumeRenderable = std::make_shared<VolumeRenderableImmerCUDA>(inputVolume, labelVolCUDA, positionBasedDeformProcessor);
-	//volumeRenderable->rcp = rcp;
-	//openGL->AddRenderable("1volume", volumeRenderable.get());
-	////volumeRenderable->setScreenMarker(sm);
 
 	//deformFrameRenderable = std::make_shared<DeformFrameRenderable>(matrixMgr, positionBasedDeformProcessor);
-	//openGL->AddRenderable("0deform", deformFrameRenderable.get()); 
-	//volumeRenderable->setBlending(true); //only when needed when want the deformFrameRenderable
+	//openGL->AddRenderable("0deform", deformFrameRenderable.get());
+	//matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
+	//openGL->AddRenderable("3matrix", matrixMgrRenderable.get());
 
-	matrixMgrRenderable = std::make_shared<MatrixMgrRenderable>(matrixMgr);
-	openGL->AddRenderable("2volume", matrixMgrRenderable.get()); 
-
-
-	const std::string polyDataPath = dataMgr->GetConfig("POLY_DATA_PATH");
-
-	polyMesh = std::make_shared<PolyMesh>();
-
-	PlyVTKReader plyVTKReader;
-	plyVTKReader.readPLYByVTK(polyDataPath.c_str(), polyMesh.get());
-	
 	polyRenderable = std::make_shared<PolyRenderable>(polyMesh);
-	
-	openGL->AddRenderable("mm", polyRenderable.get());
-
+	polyRenderable->immersiveMode = true;
+	openGL->AddRenderable("1poly", polyRenderable.get());
 
 
 	//////////////////////////////// Interactor ////////////////////////////////
 	immersiveInteractor = std::make_shared<ImmersiveInteractor>();
 	immersiveInteractor->setMatrixMgr(matrixMgr);
 	regularInteractor = std::make_shared<RegularInteractor>();
-	regularInteractor->setMatrixMgr(matrixMgrMini);
+	regularInteractor->setMatrixMgr(matrixMgrExocentric);
 	regularInteractor->isActive = false;
 	immersiveInteractor->isActive = true;
 
-	if (channelSkelViewReady){
-		immersiveInteractor->noMoveMode = true;
-	}
+
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
-	
-	//sbInteractor = std::make_shared<ScreenBrushInteractor>();
-	////sbInteractor->setScreenMarker(sm);
-	//openGL->AddInteractor("3screenMarker", sbInteractor.get());
-	
+
+
 
 #ifdef USE_LEAP
 	listener = new LeapListener();
@@ -224,24 +196,33 @@ Window::Window()
 	listener->AddLeapInteractor("matrixMgr", (LeapInteractor*)(matrixMgrLeapInteractor.get()));
 #endif
 
+
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;
-	
+
 	QVBoxLayout *controlLayout = new QVBoxLayout;
-	
+	bool fullVersion = false;
+
 	saveStateBtn = std::make_shared<QPushButton>("Save State");
 	loadStateBtn = std::make_shared<QPushButton>("Load State");
-	std::cout << posMin.x << " " << posMin.y << " " << posMin.z << std::endl;
-	std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
-	controlLayout->addWidget(saveStateBtn.get());
-	controlLayout->addWidget(loadStateBtn.get());
-
-	if (channelSkelViewReady){
-		QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
-		isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
-		controlLayout->addWidget(isDeformEnabled);
-		connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+	if (fullVersion){
+		controlLayout->addWidget(saveStateBtn.get());
+		controlLayout->addWidget(loadStateBtn.get());
 	}
+	else{
+		matrixMgr->LoadState("state.txt");
+	}
+
+	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
+	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
+
+	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
+	if (fullVersion){
+		controlLayout->addWidget(saveScreenBtn);
+	}
+	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+
+
 
 
 	QGroupBox *eyePosGroup = new QGroupBox(tr("eye position"));
@@ -259,22 +240,29 @@ Window::Window()
 	eyePosLayout2->addLayout(eyePosLayout);
 	eyePosLayout2->addWidget(eyePosBtn);
 	eyePosGroup->setLayout(eyePosLayout2);
-	controlLayout->addWidget(eyePosGroup);
+	if (fullVersion){
+		controlLayout->addWidget(eyePosGroup);
+	}	
+	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
 
-	QGroupBox *groupBox = new QGroupBox(tr("volume selection"));
-	QHBoxLayout *deformModeLayout = new QHBoxLayout;
-	oriVolumeRb = std::make_shared<QRadioButton>(tr("&original"));
-	channelVolumeRb = std::make_shared<QRadioButton>(tr("&channel"));
-	skelVolumeRb = std::make_shared<QRadioButton>(tr("&skeleton"));
-	oriVolumeRb->setChecked(true);
-	deformModeLayout->addWidget(oriVolumeRb.get());
-	deformModeLayout->addWidget(channelVolumeRb.get());
-	deformModeLayout->addWidget(skelVolumeRb.get());
-	groupBox->setLayout(deformModeLayout);
-	controlLayout->addWidget(groupBox);
-	connect(oriVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriVolumeRb(bool)));
-	connect(channelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotChannelVolumeRb(bool)));
-	connect(skelVolumeRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotSkelVolumeRb(bool)));
+
+
+
+	QGroupBox *groupBoxORModes = new QGroupBox(tr("occlusion removal modes"));
+	QHBoxLayout *orModeLayout = new QHBoxLayout;
+	originalRb = std::make_shared<QRadioButton>(tr("&original"));
+	deformRb = std::make_shared<QRadioButton>(tr("&deform"));
+	clipRb = std::make_shared<QRadioButton>(tr("&clip"));
+	transpRb = std::make_shared<QRadioButton>(tr("&transparent"));
+
+
+	if (fullVersion){
+		QCheckBox* toggleWireframe = new QCheckBox("Toggle Wireframe", this);
+		toggleWireframe->setChecked(polyRenderable->useWireFrame); 
+		controlLayout->addWidget(toggleWireframe);
+		connect(toggleWireframe, SIGNAL(clicked(bool)), this, SLOT(toggleWireframeClicked(bool)));
+	}
+
 
 	QGroupBox *groupBox2 = new QGroupBox(tr("volume selection"));
 	QHBoxLayout *deformModeLayout2 = new QHBoxLayout;
@@ -284,30 +272,121 @@ Window::Window()
 	deformModeLayout2->addWidget(immerRb.get());
 	deformModeLayout2->addWidget(nonImmerRb.get());
 	groupBox2->setLayout(deformModeLayout2);
-	controlLayout->addWidget(groupBox2);
+	if (fullVersion){
+		controlLayout->addWidget(groupBox2);
+	}
+
 	connect(immerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotImmerRb(bool)));
 	connect(nonImmerRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotNonImmerRb(bool)));
 
-	QPushButton *saveScreenBtn = new QPushButton("Save the current screen");
-	controlLayout->addWidget(saveScreenBtn);
-	connect(saveScreenBtn, SIGNAL(clicked()), this, SLOT(saveScreenBtnClicked()));
+	QPushButton *seeBacksBtn = new QPushButton("See Back");
+	if (fullVersion){
+		controlLayout->addWidget(seeBacksBtn);
+	}
+	connect(seeBacksBtn, SIGNAL(clicked()), this, SLOT(seeBacksBtnClicked()));
+
+	deformRb->setChecked(true);
+	orModeLayout->addWidget(originalRb.get());
+	orModeLayout->addWidget(deformRb.get());
+	orModeLayout->addWidget(clipRb.get());
+	orModeLayout->addWidget(transpRb.get());
+	groupBoxORModes->setLayout(orModeLayout);
+	if (fullVersion){
+		controlLayout->addWidget(groupBoxORModes);
+	}
+	connect(originalRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotOriginalRb(bool)));
+	connect(deformRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotDeformRb(bool)));
+	connect(clipRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotClipRb(bool)));
+	connect(transpRb.get(), SIGNAL(clicked(bool)), this, SLOT(SlotTranspRb(bool)));
 
 
-	
+
+	if (useIsoAdjust){
+
+		QLabel *isoValueSliderLabelLit = new QLabel("Iso Value 1:");
+		isoValueSlider = new QSlider(Qt::Horizontal);
+		isoValueSlider->setRange(0, 38); //0-0.0038
+		isoValueSlider->setValue(round(mc->isoValue0 / 0.0001));
+		connect(isoValueSlider, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged(int)));
+		isoValueLabel = new QLabel(QString::number(mc->isoValue0));
+		QHBoxLayout *isoValueSliderLayout = new QHBoxLayout;
+		isoValueSliderLayout->addWidget(isoValueSliderLabelLit);
+		isoValueSliderLayout->addWidget(isoValueSlider);
+		isoValueSliderLayout->addWidget(isoValueLabel);
+		controlLayout->addLayout(isoValueSliderLayout);
+
+
+		QLabel *isoValueSliderLabelLit1 = new QLabel("Iso Value 2:");
+		isoValueSlider1 = new QSlider(Qt::Horizontal);
+		isoValueSlider1->setRange(0, 38); //0-0.0038
+		isoValueSlider1->setValue(round(mc->isoValue1 / 0.0001));
+		connect(isoValueSlider1, SIGNAL(valueChanged(int)), this, SLOT(isoValueSliderValueChanged1(int)));
+		isoValueLabel1 = new QLabel(QString::number(mc->isoValue1));
+		QHBoxLayout *isoValueSliderLayout1 = new QHBoxLayout;
+		isoValueSliderLayout1->addWidget(isoValueSliderLabelLit1);
+		isoValueSliderLayout1->addWidget(isoValueSlider1);
+		isoValueSliderLayout1->addWidget(isoValueLabel1);
+		controlLayout->addLayout(isoValueSliderLayout1);
+	}
+
+	QGroupBox *deformGroupBox = new QGroupBox(tr("Deform Control"));
+	QVBoxLayout *deformLayout = new QVBoxLayout;
+
+	QCheckBox* isDeformEnabled = new QCheckBox("Enable Deform", this);
+	isDeformEnabled->setChecked(positionBasedDeformProcessor->isActive);
+		deformLayout->addWidget(isDeformEnabled);
+	connect(isDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformEnabledClicked(bool)));
+
+	if (fullVersion){
+		QCheckBox* isForceDeformEnabled = new QCheckBox("Force Deform", this);
+		isForceDeformEnabled->setChecked(positionBasedDeformProcessor->isForceDeform);
+		deformLayout->addWidget(isForceDeformEnabled);
+		connect(isForceDeformEnabled, SIGNAL(clicked(bool)), this, SLOT(isForceDeformEnabledClicked(bool)));
+	}
+
+	QCheckBox* isDeformColoringEnabled = new QCheckBox("Color Deformed Elements", this);
+	isDeformColoringEnabled->setChecked(positionBasedDeformProcessor->isColoringDeformedPart);
+	deformLayout->addWidget(isDeformColoringEnabled);
+	connect(isDeformColoringEnabled, SIGNAL(clicked(bool)), this, SLOT(isDeformColoringEnabledClicked(bool)));
+
+	QLabel *disThrLabelLit1 = new QLabel("Distance Threshold:");
+	disThrSlider = new QSlider(Qt::Horizontal);
+	disThrSlider->setRange(0, 45);
+	disThrSlider->setValue(round(positionBasedDeformProcessor->disThr / 0.1));
+	connect(disThrSlider, SIGNAL(valueChanged(int)), this, SLOT(disThrSliderValueChanged(int)));
+	disThrLabel = new QLabel(QString::number(positionBasedDeformProcessor->disThr));
+	QHBoxLayout *disThrSliderLayout1 = new QHBoxLayout;
+	disThrSliderLayout1->addWidget(disThrLabelLit1);
+	disThrSliderLayout1->addWidget(disThrSlider);
+	disThrSliderLayout1->addWidget(disThrLabel);
+	if (fullVersion){
+		deformLayout->addLayout(disThrSliderLayout1);
+	}
+
+	if (mc->forNav){
+		positionBasedDeformProcessor->useDifThrForBack = true;
+	}
+	if (fullVersion){
+		useDifThrForBackCb = new QCheckBox("Use Different Thr for Backface", this);
+		useDifThrForBackCb->setChecked(positionBasedDeformProcessor->useDifThrForBack);
+
+		deformLayout->addWidget(useDifThrForBackCb);
+		connect(useDifThrForBackCb, SIGNAL(clicked(bool)), this, SLOT(useDifThrForBackClicked(bool)));
+	}
+
+	deformGroupBox->setLayout(deformLayout);
+	controlLayout->addWidget(deformGroupBox);
+
 
 	controlLayout->addStretch();
 
-	connect(saveStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotSaveState()));
-	connect(loadStateBtn.get(), SIGNAL(clicked()), this, SLOT(SlotLoadState()));
-	connect(eyePosBtn, SIGNAL(clicked()), this, SLOT(applyEyePos()));
-
-
-
-	
 
 	mainLayout->addWidget(openGL.get(), 5);
 	mainLayout->addLayout(controlLayout, 1);
 	setLayout(mainLayout);
+
+
+	openGL->setFixedSize(600, 600);
 
 
 #ifdef USE_OSVR
@@ -316,8 +395,7 @@ Window::Window()
 	vrVolumeRenderable = std::make_shared<VRVolumeRenderableCUDA>(inputVolume);
 
 	vrWidget->AddRenderable("1volume", vrVolumeRenderable.get());
-	vrWidget->AddRenderable("2info", infoGuideRenderable.get());
-	
+
 	openGL->SetVRWidget(vrWidget.get());
 	vrVolumeRenderable->rcp = rcp;
 #endif
@@ -343,10 +421,12 @@ void Window::init()
 
 void Window::SlotSaveState()
 {
+	matrixMgr->SaveState("state.txt");
 }
 
 void Window::SlotLoadState()
 {
+	matrixMgr->LoadState("state.txt");
 }
 
 void Window::applyEyePos()
@@ -356,56 +436,9 @@ void Window::applyEyePos()
 	matrixMgr->moveEyeInLocalByModeMat(make_float3(sl[0].toFloat(), sl[1].toFloat(), sl[2].toFloat()));
 }
 
-void Window::transFuncP1LabelSliderValueChanged(int v)
+void Window::seeBacksBtnClicked()
 {
-	rcp->transFuncP1 = 1.0*v / 100;
-	transFuncP1Label->setText(QString::number(1.0*v / 100));
-}
-void Window::transFuncP2LabelSliderValueChanged(int v)
-{
-	rcp->transFuncP2 = 1.0*v / 100;
-	transFuncP2Label->setText(QString::number(1.0*v / 100));
-}
-
-void Window::transFuncP1SecondLabelSliderValueChanged(int v)
-{
-	rcp->secondCutOffHigh = 1.0*v / 100;
-	transFuncP1SecondLabel->setText(QString::number(1.0*v / 100));
-}
-void Window::transFuncP2SecondLabelSliderValueChanged(int v)
-{
-	rcp->secondCutOffLow = 1.0*v / 100;
-	transFuncP2SecondLabel->setText(QString::number(1.0*v / 100));
-}
-
-
-void Window::brSliderValueChanged(int v)
-{
-	rcp->brightness = v*1.0 / 20.0;
-	brLabel->setText(QString::number(rcp->brightness));
-}
-
-void Window::dsSliderValueChanged(int v)
-{
-	rcp->density = v*1.0 / 20.0;
-	dsLabel->setText(QString::number(rcp->density));
-}
-
-void Window::laSliderValueChanged(int v)
-{
-	rcp->la = 1.0*v / 10;
-	laLabel->setText(QString::number(1.0*v / 10));
-
-}
-void Window::ldSliderValueChanged(int v)
-{
-	rcp->ld = 1.0*v / 10;
-	ldLabel->setText(QString::number(1.0*v / 10));
-}
-void Window::lsSliderValueChanged(int v)
-{
-	rcp->ls = 1.0*v / 10;
-	lsLabel->setText(QString::number(1.0*v / 10));
+	matrixMgr->setViewAndUpInWorld(-matrixMgr->getViewVecInWorld(), matrixMgr->getUpVecInWorld());
 }
 
 void Window::isDeformEnabledClicked(bool b)
@@ -416,56 +449,51 @@ void Window::isDeformEnabledClicked(bool b)
 	}
 	else{
 		positionBasedDeformProcessor->isActive = false;
-		inputVolume->reset();
-		channelVolume->reset();
 	}
 }
 
-void Window::isBrushingClicked()
+void Window::isForceDeformEnabledClicked(bool b)
 {
-	sbInteractor->isActive = !sbInteractor->isActive;
-}
-
-void Window::moveToOptimalBtnClicked()
-{
-
-}
-
-void Window::SlotOriVolumeRb(bool b)
-{
-	if (b)
-		volumeRenderable->setVolume(inputVolume);
-}
-
-void Window::SlotChannelVolumeRb(bool b)
-{
-	if (b)
-	{
-		if (channelVolume){
-			volumeRenderable->setVolume(channelVolume);
-		}
-		else{
-			std::cout << "channelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-		}
+	if (b){
+		positionBasedDeformProcessor->isForceDeform = true;
+	}
+	else{
+		positionBasedDeformProcessor->isForceDeform = false;
 	}
 }
 
-void Window::SlotSkelVolumeRb(bool b)
+void Window::isDeformColoringEnabledClicked(bool b)
 {
-	if (b)
-	{
-		if (skelVolume){
-			volumeRenderable->setVolume(skelVolume);
-		}
-		else{
-			std::cout << "skelVolume not set!!" << std::endl;
-			oriVolumeRb->setChecked(true);
-			SlotOriVolumeRb(true);
-		}
+	if (b){
+		positionBasedDeformProcessor->isColoringDeformedPart = true;
+	}
+	else{
+		positionBasedDeformProcessor->isColoringDeformedPart = false;
+		polyMesh->setVertexDeviateVals();
 	}
 }
+
+void Window::toggleWireframeClicked(bool b)
+{
+	polyRenderable->useWireFrame = b;	
+}
+
+
+void Window::SlotOriginalRb(bool b)
+{
+	positionBasedDeformProcessor->deformData = false;
+}
+void Window::SlotDeformRb(bool b)
+{
+	positionBasedDeformProcessor->deformData = true;
+}
+void Window::SlotClipRb(bool b)
+{
+}
+void Window::SlotTranspRb(bool b)
+{
+}
+
 
 void Window::SlotImmerRb(bool b)
 {
@@ -483,42 +511,89 @@ void Window::SlotNonImmerRb(bool b)
 	{
 		regularInteractor->isActive = true;
 		immersiveInteractor->isActive = false;
-		openGL->matrixMgr = matrixMgrMini;
+		openGL->matrixMgr = matrixMgrExocentric;
 	}
-}
-
-void Window::zSliderValueChanged(int v)
-{
-	helper.z = v;
-}
-
-void Window::updateLabelVolBtnClicked()
-{
-
-}
-
-void Window::findGeneralOptimalBtnClicked()
-{
-
-}
-
-
-void Window::turnOffGlobalGuideBtnClicked()
-{
-	infoGuideRenderable->changeWhetherGlobalGuideMode(false);
-}
-
-void Window::redrawBtnClicked()
-{
-
 }
 
 void Window::doTourBtnClicked()
 {
-	animationByMatrixProcessor->startAnimation();
+	//animationByMatrixProcessor->startAnimation();
 }
 
 void Window::saveScreenBtnClicked()
 {
 	openGL->saveCurrentImage();
+}
+
+
+void Window::isoValueSliderValueChanged(int v)
+{
+	//isoValueSlider->setRange(0, 38); //0-0.0038
+	//isoValueSlider->setValue(mc->isoValue / 0.0001);
+
+	float newvalue = v*0.0001;
+	if (newvalue < mc->isoValue1){
+		mc->isoValue0 = newvalue;
+		isoValueLabel->setText(QString::number(mc->isoValue0));
+		mc->newIsoValue(v*0.0001, 0);
+
+		polyMesh->setVertexCoordsOri();
+		polyMesh->setVertexDeviateVals();
+
+		positionBasedDeformProcessor->polyMeshDataUpdated();
+		
+	}
+	else{
+		isoValueSlider->setValue(round(mc->isoValue0 / 0.0001));
+	}
+}
+
+void Window::isoValueSliderValueChanged1(int v)
+{
+	//isoValueSlider->setRange(0, 38); //0-0.0038
+	//isoValueSlider->setValue(mc->isoValue / 0.0001);
+
+	float newvalue = v*0.0001;
+	if (newvalue > mc->isoValue0){
+		mc->isoValue1 = newvalue;
+		isoValueLabel1->setText(QString::number(mc->isoValue1));
+		mc->newIsoValue(v*0.0001, 1);
+
+		polyMesh->setVertexCoordsOri();
+		polyMesh->setVertexDeviateVals();
+
+		positionBasedDeformProcessor->polyMeshDataUpdated();
+		
+	}
+	else{
+		isoValueSlider1->setValue(round(mc->isoValue1 / 0.0001));
+	}
+}
+
+
+void Window::disThrSliderValueChanged(int v)
+{
+	if (round(positionBasedDeformProcessor->disThr / 0.1) == v){
+		return;
+	}
+
+	if (positionBasedDeformProcessor->getSystemState() != ORIGINAL){
+		disThrSlider->setValue(round(positionBasedDeformProcessor->disThr / 0.1));
+	}
+	else{
+		float newDisThr = v*0.1;
+		positionBasedDeformProcessor->disThr = newDisThr;
+		disThrSlider->setValue(round(positionBasedDeformProcessor->disThr / 0.1));
+		disThrLabel->setText(QString::number(positionBasedDeformProcessor->disThr));
+	}
+}
+
+void Window::useDifThrForBackClicked(bool b)
+{
+	if (positionBasedDeformProcessor->getSystemState() != ORIGINAL){
+		useDifThrForBackCb->setChecked(positionBasedDeformProcessor->useDifThrForBack);
+	}
+	else{
+		positionBasedDeformProcessor->useDifThrForBack = b;
+	}
 }

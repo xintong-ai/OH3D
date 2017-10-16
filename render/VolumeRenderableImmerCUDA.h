@@ -13,7 +13,7 @@ class ScreenMarker;
 class PositionBasedDeformProcessor;
 struct RayCastingParameters;
 
-//the difference from VolumeRenderableCUDA is with an extra lable volume, and a screen marker
+//the difference from VolumeRenderableCUDA is with an extra label volume, and a screen marker
 class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
 {
 	Q_OBJECT
@@ -23,6 +23,7 @@ class VolumeRenderableImmerCUDA :public Renderable//, protected QOpenGLFunctions
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor;//may not be a good design
 public:
 	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<VolumeCUDA> _vl = 0, std::shared_ptr<PositionBasedDeformProcessor> p = 0);
+	VolumeRenderableImmerCUDA(std::shared_ptr<Volume> _volume, std::shared_ptr<PositionBasedDeformProcessor> p);
 	~VolumeRenderableImmerCUDA();
 
 	void setVolume(std::shared_ptr<Volume> v, bool needMoreChange = false){
@@ -31,6 +32,19 @@ public:
 			//todo in the future;
 		}
 	};
+
+	bool usePreInt = false;
+	void setPreIntegrate(bool v){
+		usePreInt = v;
+	}
+
+	bool useSplineInterpolation = false;
+	void setSplineInterpolation(bool v){
+		useSplineInterpolation = v;
+	}
+
+	void preIntTableNeedUpdate(); //!!! MUST be called after the gl loop started. cannot be called beforehand
+
 
 	bool isFixed = false;
 
@@ -44,10 +58,19 @@ public:
 		return volume;
 	}
 
-	void setScreenMarker(std::shared_ptr<ScreenMarker> _sm){ sm = _sm; }
 	void setBlending(bool b, float d = 1.0){ blendPreviousImage = b; densityBonus = d; };
 
+	void startClipRendering(std::shared_ptr<Volume> channelVolume);
+	void endClipRendering(){
+		useClipRendering = false;
+	};
+
+	void updateColorTable(); //may not be a good design. should be placed into RCP
+	void updateColorTableold(); //may not be a good design. should be placed into RCP
+
 private:
+	bool useClipRendering = false;
+
 	VolumeCUDA volumeCUDAGradient;
 	std::shared_ptr<ScreenMarker> sm;
 
@@ -97,6 +120,13 @@ private:
 	cudaArray_t c_inputImageDepthArray = 0;
 	cudaArray_t c_inputImageColorArray; //no allocation or deallocation
 	float *localDepthArray = 0; //used to transfer opengl depth to cuda array
+
+
+	//may not be a good design. should all be placed into RCP
+	//cudaArray *d_transferFunc = 0;
+	const int numColors = 1024;
+	std::vector<float4> colorTable;
+
 };
 
 #endif

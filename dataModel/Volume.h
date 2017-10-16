@@ -25,6 +25,7 @@ public:
 	
 	void VolumeCUDA_init(int3 _size, float *volumeVoxelValues, int allowStore, int numChannels = 1);
 	void VolumeCUDA_init(int3 _size, unsigned short *volumeVoxelValues, int allowStore, int numChannels = 1);
+	void VolumeCUDA_init(int3 _size, int*volumeVoxelValues, int allowStore, int numChannels = 1);	
 	void VolumeCUDA_contentUpdate(unsigned short *volumeVoxelValues, int allowStore, int numChannels = 1);
 
 
@@ -46,6 +47,8 @@ public:
 		if (!values) delete values;
 		if (!gradient) delete gradient;
 	};
+
+	void createSyntheticData();
 
 	int3 size;
 	
@@ -135,8 +138,11 @@ public:
 		else if (std::string(dataPath).find("181") != std::string::npos){
 			dims = make_int3(181, 217, 181);
 			spacing = make_float3(1, 1, 1);
-			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 1.0, 0.3, 2.6, 256, 0.25f, 1.0, false); 
+			rcp = std::make_shared<RayCastingParameters>(2.6, 0.2, 0.6, 1.0, 0.3, 3, 512, 0.125f, 1.0, false); 
 			subfolder = "181";
+		}
+		else if (std::string(dataPath).find("synthetic") != std::string::npos){
+			rcp = std::make_shared<RayCastingParameters>(2.6, 0.2, 0.6, 1.0, 0.3, 3, 512, 0.125f, 1.0, false);
 		}
 		else if (std::string(dataPath).find("Baseline") != std::string::npos){
 			dims = make_int3(256, 256, 51);
@@ -144,7 +150,7 @@ public:
 			rcp = std::make_shared<RayCastingParameters>(1, 0.2, 0.3, 0.66, 940.0 / 3500.0, 1.8, 512, 0.25f, 1.3, false);
 			subfolder = "Baseline";
 		}else if (std::string(dataPath).find("bloodCell") != std::string::npos){
-			dims = make_int3(160, 224, 64);
+			dims = make_int3(64, 224, 160);
 			spacing = make_float3(1, 1, 1);
 			rcp = std::make_shared<RayCastingParameters>(1.8, 1.0, 1.5, 0.9, 0.3, 2.6, 256, 0.25f, 1.0, false); 
 			subfolder = "bloodCell";
@@ -160,6 +166,11 @@ public:
 			spacing = make_float3(0.7813, 0.7813, 1.6);
 			rcp = std::make_shared<RayCastingParameters>(1.1, 1, 0.3, 0.19, 0.1, 1.05, 1024, 0.125f, 0.4, true);
 			subfolder = "colon";
+		}
+		else if (std::string(dataPath).find("moortgat") != std::string::npos){
+			//dims = make_int3(351, 257, 257);
+			spacing = make_float3(1, 1, 1);
+			rcp = std::make_shared<RayCastingParameters>(0.4, 0.5, 0.5, 0.0013 / 0.0038998252712, 0.001 / 0.0038998252712, 0.54, 512, 0.125f, 1.15, true);
 		}
 		else{
 			std::cout << "volume data name not recognized" << std::endl;

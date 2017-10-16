@@ -424,9 +424,7 @@ bool MeshDeformProcessor::ProcessParticleDeformation(float* modelview, float* pr
 		return false;
 	Lens *l = lenses->back();
 
-	float* glyphSizeScale = &(particle->glyphSizeScale[0]);
-	float* glyphBright = &(particle->glyphBright[0]);
-	bool isFreezingFeature = particle->isFreezingFeature;
+
 	int snappedGlyphId = particle->snappedGlyphId;
 	int snappedFeatureId = particle->snappedFeatureId;
 

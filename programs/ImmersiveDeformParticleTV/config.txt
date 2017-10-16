@@ -1,0 +1,10 @@
+VOLUME_DATA_PATH=D:/Dropbox/shareXin/bloodCellWall0032.raw
+POLY_DATA_PATH=D:/Dropbox/shareXin/rbcs-0032.ply
+
+
+VOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/bloodCellWall0032.raw
+POLY_DATA_PATH=C:/Users/lc/Dropbox/shareXin/rbcs-0032.ply
+
+POLY_DATA_PATH=C:/Users/lc/Data/reducedBloodCell/marked-reduced-rbcs-0006.vtp
+
+POLY_DATA_PATH=D:/Data/Lin/reducedBloodCell/marked-reduced-rbcs-0006.vtp

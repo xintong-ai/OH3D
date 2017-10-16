@@ -49,7 +49,11 @@ Window::Window()
 	const std::string dataPath = dataMgr->GetConfig("DATA_PATH");
 	float3 posMin, posMax;
 	inputParticle = std::make_shared<Particle>();
-	if (std::string(dataPath).find(".vtu") != std::string::npos){
+	if (std::string(dataPath).find("synthetic") != std::string::npos){
+		float3 _posMin = make_float3(-5, -5, 0), _posMax = make_float3(5, 5, 10);
+		inputParticle->createSyntheticData(_posMin, _posMax, 500);
+	}
+	else if(std::string(dataPath).find(".vtu") != std::string::npos){
 		std::shared_ptr<SolutionParticleReader> reader;
 		reader = std::make_shared<SolutionParticleReader>(dataPath.c_str(),130);		//case study candidata: smoothinglength_0.44/run06/119.vtu, thr 70
 		//case study candidata2: smoothinglength_0.44/run11/119.vtu, thr 130
@@ -108,7 +112,11 @@ Window::Window()
 	openGL->AddProcessor("2meshdeform", meshDeformer.get());
 	openGL->AddProcessor("3physicalParticleDeform", physicalParticleDeformer.get());
 
-	if (std::string(dataPath).find(".vtu") != std::string::npos){
+	if (std::string(dataPath).find("synthetic") != std::string::npos){
+		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
+		glyphRenderable->setColorMap(COLOR_MAP::RDYIGN, true);
+	}
+	else if (std::string(dataPath).find(".vtu") != std::string::npos){
 		glyphRenderable = std::make_shared<SphereRenderable>(inputParticle);
 		glyphRenderable->setColorMap(COLOR_MAP::RDYIGN, true);
 	}

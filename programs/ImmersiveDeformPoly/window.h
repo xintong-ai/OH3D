@@ -20,25 +20,17 @@ class QTimer;
 class GLMatrixManager;
 class QLineEdit;
 
-class Volume;
-class VolumeCUDA;
-class VolumeRenderableImmerCUDA;
-class VolumeRenderableCUDA;
 class ImmersiveInteractor;
-class ScreenBrushInteractor;
 class RegularInteractor;
-class LabelVolumeProcessor;
-class ViewpointEvaluator;
 class AnimationByMatrixProcessor;
 class PositionBasedDeformProcessor;
 class SphereRenderable;
 class MatrixMgrRenderable;
-class InfoGuideRenderable;
 class DeformFrameRenderable;
 class GlyphRenderable;
-struct RayCastingParameters;
 class PolyRenderable;
 class PolyMesh;
+class MarchingCube2;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -63,55 +55,36 @@ public:
 	void init();
 
 private:
-	int3 dims;
-	float3 spacing;
+	bool useIsoAdjust = false;
 	std::vector<float3> views;
 
-	std::shared_ptr<RayCastingParameters> rcp;
-	
-	std::shared_ptr<PolyMesh> polyMesh;
+	//std::shared_ptr<RayCastingParameters> rcp;
 
-	std::shared_ptr<Volume> inputVolume;
-	std::shared_ptr<Volume> channelVolume = 0; //only render when need to test
-	std::shared_ptr<Volume> skelVolume = 0; //only render when need to test	
-	
+	std::shared_ptr<PolyMesh> polyMesh;
+	std::vector<std::shared_ptr<PolyMesh>> polyMeshes;
+
 	std::shared_ptr<PositionBasedDeformProcessor> positionBasedDeformProcessor = 0;
 
 	std::shared_ptr<GLWidget> openGL;
 	std::shared_ptr<GLMatrixManager> matrixMgr;
 
 	std::shared_ptr<ImmersiveInteractor> immersiveInteractor;
-	std::shared_ptr<ScreenBrushInteractor> sbInteractor;
 	std::shared_ptr<RegularInteractor> regularInteractor;
 
 	std::shared_ptr<AnimationByMatrixProcessor> animationByMatrixProcessor;
 
 
-
-
-	//for miniature
-	std::shared_ptr<GLWidget> openGLMini;
-	std::shared_ptr<VolumeRenderableCUDA> volumeRenderableMini;
-	std::shared_ptr<GLMatrixManager> matrixMgrMini;
-	std::shared_ptr<RegularInteractor> regularInteractorMini;
-	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderableMini;
-	std::shared_ptr<GlyphRenderable> glyphRenderable;
-
+	std::shared_ptr<GLMatrixManager> matrixMgrExocentric;
 
 
 	//for main view
-	std::shared_ptr<VolumeRenderableImmerCUDA> volumeRenderable;
 	std::shared_ptr<MatrixMgrRenderable> matrixMgrRenderable;
-	std::shared_ptr<InfoGuideRenderable> infoGuideRenderable;
 	std::shared_ptr<DeformFrameRenderable> deformFrameRenderable;
 	std::shared_ptr<PolyRenderable> polyRenderable;
 
-	//for 2d view
-	Helper helper;
-
 #ifdef USE_LEAP
 	LeapListener* listener;
-	Leap::Controller* controller; 
+	Leap::Controller* controller;
 	std::shared_ptr<MatrixLeapInteractor> matrixMgrLeapInteractor;
 #endif
 
@@ -123,51 +96,50 @@ private:
 private:
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
-	QLabel *laLabel, *ldLabel, *lsLabel;
-	QLabel *transFuncP1Label, *transFuncP2Label, *transFuncP1SecondLabel, *transFuncP2SecondLabel, *brLabel, *dsLabel;
-	QLabel *deformForceLabel;
-	QLabel *meshResLabel;
+
+	std::shared_ptr<MarchingCube2> mc;
 	QLineEdit *eyePosLineEdit;
 
-	std::shared_ptr<QRadioButton> oriVolumeRb;
-	std::shared_ptr<QRadioButton> channelVolumeRb;
-	std::shared_ptr<QRadioButton> skelVolumeRb;
+	QLabel *isoValueLabel, *isoValueLabel1;
+	QSlider *isoValueSlider, *isoValueSlider1;
+	QSlider *disThrSlider;
+	QLabel *disThrLabel;
+	QCheckBox* useDifThrForBackCb;
 
 	std::shared_ptr<QRadioButton> immerRb;
 	std::shared_ptr<QRadioButton> nonImmerRb;
 
-private slots:
-	
+	std::shared_ptr<QRadioButton> originalRb;
+	std::shared_ptr<QRadioButton> deformRb;	
+	std::shared_ptr<QRadioButton> clipRb;
+	std::shared_ptr<QRadioButton> transpRb;
+
+	private slots:
+
 	void SlotSaveState();
 	void SlotLoadState();
 	void applyEyePos();
-
-	void transFuncP1LabelSliderValueChanged(int);
-	void transFuncP2LabelSliderValueChanged(int); 
-	void transFuncP1SecondLabelSliderValueChanged(int);
-	void transFuncP2SecondLabelSliderValueChanged(int); 
-	void brSliderValueChanged(int v);
-	void dsSliderValueChanged(int v);
-	void laSliderValueChanged(int);
-	void ldSliderValueChanged(int);
-	void lsSliderValueChanged(int);
+	void seeBacksBtnClicked();
 
 	void isDeformEnabledClicked(bool b);
-	void isBrushingClicked();
-	void moveToOptimalBtnClicked();
-
-	void SlotOriVolumeRb(bool);
-	void SlotChannelVolumeRb(bool);
-	void SlotSkelVolumeRb(bool);
+	void isForceDeformEnabledClicked(bool b);
+	void isDeformColoringEnabledClicked(bool b);
+	
+	void toggleWireframeClicked(bool b);
+	void useDifThrForBackClicked(bool b);
+	
+	void SlotOriginalRb(bool b);
+	void SlotDeformRb(bool b);
+	void SlotClipRb(bool b);
+	void SlotTranspRb(bool b);
 
 	void SlotImmerRb(bool);
 	void SlotNonImmerRb(bool);
+	
+	void isoValueSliderValueChanged(int v);
+	void isoValueSliderValueChanged1(int v);
+	void disThrSliderValueChanged(int v);
 
-	void zSliderValueChanged(int v);
-	void updateLabelVolBtnClicked();
-	void findGeneralOptimalBtnClicked();
-	void turnOffGlobalGuideBtnClicked();
-	void redrawBtnClicked();
 	void doTourBtnClicked();
 	void saveScreenBtnClicked();
 };

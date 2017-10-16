@@ -21,42 +21,87 @@ void ImmersiveInteractor::RotateLocal(float fromX, float fromY, float toX, float
 	if (!isActive)
 		return;
 
-	float3 upInLocalf3 = matrixMgr->getUpInLocal();
-	QVector3D upInLocal = QVector3D(upInLocalf3.x, upInLocalf3.y, upInLocalf3.z);
-	float close = abs(QVector3D::dotProduct(upInLocal, targetUpVecInLocal));
+	if (newTest){
+		QMatrix4x4 m4x4;
+		matrixMgr->GetModelMatrix(m4x4);
+		QVector4D targetUpVecInWorld4 = m4x4.map(QVector4D(targetUpVecInLocal, 0.0));
+		QVector3D targetUpVecInWorld = QVector3D(targetUpVecInWorld4).normalized();
+		QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+		QVector3D viewVecInWorld = matrixMgr->getViewVecInWorld();
 
-	float angthr = 0.5;
+		float ang = 50*( toX - fromX); //50 is selected coeff
 
-	*rot = trackball->rotate(toX, 0, fromX, 0);  //raising or lowering the head should be done by using the device
-	float m[16];
-	rot->matrix(m);
-	QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
-	
-	QMatrix4x4 oriRotMat;
-	matrixMgr->GetRotMatrix(oriRotMat);
+		QMatrix4x4 rMat;
+		rMat.setToIdentity();
+		rMat.rotate(ang, targetUpVecInWorld);
 
-	QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
-	QVector3D tempUpInLocal = (QVector3D((newRotation*oriRotMat).inverted()*QVector4D(upVecInWorld, 0.0))).normalized();
+		matrixMgr->setViewAndUpInWorld(rMat.mapVector(viewVecInWorld).normalized(), rMat.mapVector(upVecInWorld).normalized());
+	}
+	else{
+		float3 upInLocalf3 = matrixMgr->getUpInLocal();
+		QVector3D upInLocal = QVector3D(upInLocalf3.x, upInLocalf3.y, upInLocalf3.z);
+		float close = abs(QVector3D::dotProduct(upInLocal, targetUpVecInLocal));
 
-	close = abs(QVector3D::dotProduct(tempUpInLocal, targetUpVecInLocal));
-	if (close > angthr){
-		//matrixMgr->setRotMat(oriRotMat*newRotation);
-		matrixMgr->setRotMat(newRotation*oriRotMat);
+		float angthr = 0.5;
+
+		*rot = trackball->rotate(toX, 0, fromX, 0);  //raising or lowering the head should be done by using the device
+		float m[16];
+		rot->matrix(m);
+		QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
+
+		QMatrix4x4 oriRotMat;
+		matrixMgr->GetRotMatrix(oriRotMat);
+
+		QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+		QVector3D tempUpInLocal = (QVector3D((newRotation*oriRotMat).inverted()*QVector4D(upVecInWorld, 0.0))).normalized();
+
+		close = abs(QVector3D::dotProduct(tempUpInLocal, targetUpVecInLocal));
+		if (close > angthr){
+			matrixMgr->setRotMat(newRotation*oriRotMat);
+		}
 	}
 };
 
 void ImmersiveInteractor::RotateEye(float fromX, float fromY, float toX, float toY)
 {
-	QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
-	QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
-	QVector3D viewVecInWorld = matrixMgr->getViewVecInWorld();
 
-	*rot = trackball->rotate(0, fromY, 0, toY);  //left or right the head has been done by RotateLocal()
-	float m[16];
-	rot->matrix(m);
-	QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
+	
+	if (newTest){
+		QMatrix4x4 m4x4;
+		matrixMgr->GetModelMatrix(m4x4);
+		QVector4D targetUpVecInWorld4 = m4x4.map(QVector4D(targetUpVecInLocal, 0.0));
+		QVector3D targetUpVecInWorld = QVector3D(targetUpVecInWorld4).normalized();
+		QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+		QVector3D viewVecInWorld = matrixMgr->getViewVecInWorld();
 
-	matrixMgr->setViewAndUpInWorld(QVector3D(newRotation*QVector4D(viewVecInWorld, 0)), QVector3D(newRotation*QVector4D(upVecInWorld, 0)));
+		QVector3D rotAxis = QVector3D::crossProduct(viewVecInWorld, targetUpVecInWorld).normalized();
+
+		float ang = -50 * (toY - fromY); //50 is selected coeff
+
+		QMatrix4x4 rMat;
+		rMat.setToIdentity();
+		rMat.rotate(ang, rotAxis);
+	
+		QVector3D trialUpVec = rMat.mapVector(upVecInWorld).normalized();
+
+		if (fabs(QVector3D::dotProduct(trialUpVec, targetUpVecInWorld)) > 0.3) //0.3 means 72.5423981 degree
+		{
+			matrixMgr->setViewAndUpInWorld(rMat.mapVector(viewVecInWorld).normalized(), rMat.mapVector(upVecInWorld).normalized());
+		}
+
+	}
+	else{
+		//QVector3D eyeInWorld = matrixMgr->getEyeVecInWorld();
+		QVector3D upVecInWorld = matrixMgr->getUpVecInWorld();
+		QVector3D viewVecInWorld = matrixMgr->getViewVecInWorld();
+
+		*rot = trackball->rotate(0, fromY, 0, toY);  //left or right the head has been done by RotateLocal()
+		float m[16];
+		rot->matrix(m);
+		QMatrix4x4 newRotation = QMatrix4x4(m).transposed();
+
+		matrixMgr->setViewAndUpInWorld(QVector3D(newRotation*QVector4D(viewVecInWorld, 0)), QVector3D(newRotation*QVector4D(upVecInWorld, 0)));
+	}
 }
 
 
@@ -90,7 +135,7 @@ bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 
 	float3 viewVecLocal = matrixMgr->getViewVecInLocal();
 	QVector3D oldTransVec = matrixMgr->getTransVec();
-	matrixMgr->setTransVec(oldTransVec - v / 100.0 *QVector3D(viewVecLocal.x, viewVecLocal.y, viewVecLocal.z));
+	matrixMgr->setTransVec(oldTransVec - v / 400.0 *QVector3D(viewVecLocal.x, viewVecLocal.y, viewVecLocal.z));
 	if (v > 0){
 		matrixMgr->recentChange = 1;
 	}
@@ -101,6 +146,7 @@ bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 
 void ImmersiveInteractor::keyPress(char key)
 {
+	
 	switch (key)
 	{
 	case 'a':
@@ -119,28 +165,38 @@ void ImmersiveInteractor::keyPress(char key)
 	case 'S':
 		moveViewVertically(0);
 		break;
-	case 'z':
+		/*case 'z':
 	case 'Z':
-		//for Tao09Detail
-		ve->currentMethod = VPMethod::Tao09Detail;
-		ve->compute_SkelSampling(VPMethod::Tao09Detail);
-		infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+		if (ve != 0 && infoGuideRenderable != 0){
+			//for Tao09Detail
+			ve->currentMethod = VPMethod::Tao09Detail;
+			ve->compute_SkelSampling(VPMethod::Tao09Detail);
+			infoGuideRenderable->changeWhetherGlobalGuideMode(true);
 
-		//for LabelVisibility from file
-		//if (!hasLabelFromFile){
-		//	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
-		//	std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
-		//}
-		ve->currentMethod = VPMethod::LabelVisibility;
-		ve->compute_SkelSampling(VPMethod::LabelVisibility);
-		infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+			//for LabelVisibility from file
+			//if (!hasLabelFromFile){
+			//	labelVolCUDA->VolumeCUDA_contentUpdate(labelVolLocal, 1, 1);
+			//	std::cout << std::endl << "The lable volume has been updated from drawing" << std::endl << std::endl;
+			//}
+			ve->currentMethod = VPMethod::LabelVisibility;
+			ve->compute_SkelSampling(VPMethod::LabelVisibility);
+			infoGuideRenderable->changeWhetherGlobalGuideMode(true);
+		}
+		else{
+			std::cout << "ve or infoGuideRenderable not set!!" << std::endl << std::endl;
+		}
 		break;
 	case 'x':
 	case 'X':
-		infoGuideRenderable->changeWhetherGlobalGuideMode(false);
-		break;
+		if (infoGuideRenderable != 0){
+			infoGuideRenderable->changeWhetherGlobalGuideMode(false);
+		}
+		else{
+			std::cout << "ve or infoGuideRenderable not set!!" << std::endl << std::endl;
+		}
+		break;*/
 	}
-
+	
 }
 
 void ImmersiveInteractor::moveViewHorizontally(int d)
@@ -154,8 +210,16 @@ void ImmersiveInteractor::moveViewHorizontally(int d)
 
 void ImmersiveInteractor::moveViewVertically(int d)
 {
-	//d: 0. down; 1. up
-	float3 newEye = matrixMgr->getEyeInLocal() + make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z())*(d==1?1:(-1));
-	matrixMgr->moveEyeInLocalByModeMat(newEye);
-	matrixMgr->recentChange = 5 + d;
+	if (newTest){
+		matrixMgr->getUpInLocal();
+		float3 newEye = matrixMgr->getEyeInLocal() + matrixMgr->getUpInLocal()*(d == 1 ? 1 : (-1));
+		matrixMgr->moveEyeInLocalByModeMat(newEye);
+		matrixMgr->recentChange = 5 + d;
+	}
+	else{
+		//d: 0. down; 1. up
+		float3 newEye = matrixMgr->getEyeInLocal() + make_float3(targetUpVecInLocal.x(), targetUpVecInLocal.y(), targetUpVecInLocal.z())*(d == 1 ? 1 : (-1));
+		matrixMgr->moveEyeInLocalByModeMat(newEye);
+		matrixMgr->recentChange = 5 + d;
+	}
 }

@@ -14,9 +14,6 @@ else()
 find_package(CUDA REQUIRED)
 list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
-include_directories(
-	${CUDA_TOOLKIT_INCLUDE} 
-)
 
 include_directories(
 	${SHARED_LIB_INCLUDE_DIR}
@@ -36,16 +33,13 @@ set( Srcs
 	GLSphere.cpp 
 	SphereRenderable.cpp
 	PolyRenderable.cpp
-	GridRenderable.cpp
-	VolumeRenderableImmerCUDA.cpp
 	VolumeRenderableCUDA.cpp
 	VolumeRenderableCUDAKernel.cu
-	LensRenderable.cpp DeformGLWidget.cpp 
+	LensRenderable.cpp 
+	DeformGLWidget.cpp 
 		MeshRenderable.cpp
 		GLWidgetQtDrawing.cpp
-		MatrixMgrRenderable.cpp
-	InfoGuideRenderable.cpp
-		DeformFrameRenderable.cpp
+		TraceRenderable.cpp
 	)
 set( Hdrs  
 	glwidget.h 
@@ -53,21 +47,18 @@ set( Hdrs
 	BoxRenderable.h 
 	ShaderProgram.h 
 	GlyphRenderable.h 
-	GridRenderable.h
 	GLArrow.h
 	ArrowRenderable.h 
 	GLSphere.h
 	SphereRenderable.h 
     PolyRenderable.h
-	VolumeRenderableImmerCUDA.h
 	VolumeRenderableCUDA.h
 	VolumeRenderableCUDAKernel.h
-	LensRenderable.h DeformGLWidget.h 	
+	LensRenderable.h 
+	DeformGLWidget.h 	
 		MeshRenderable.h
-		GLWidgetQtDrawing.h
-		MatrixMgrRenderable.h
-	InfoGuideRenderable.h
-		DeformFrameRenderable.h
+		GLWidgetQtDrawing.h		
+		TraceRenderable.h
 	)
 
 if(USE_TEEM)
@@ -87,6 +78,11 @@ if(USE_OSVR)
 	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp VRVolumeRenderableCUDA.cpp)
 endif()
 
+
+if(BUILD_TEST)
+	set(HDRS ${HDRS} DeformFrameRenderable.h SliceRenderable.h MatrixMgrRenderable.h 	VolumeRenderableImmerCUDA.h)
+	set(SRCS ${SRCS} DeformFrameRenderable.cpp SliceRenderable.cpp MatrixMgrRenderable.cpp 	VolumeRenderableImmerCUDA.cpp)
+endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)

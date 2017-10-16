@@ -28,7 +28,7 @@ GLMatrixManager::GLMatrixManager(float3 posMin, float3 posMax)
 	viewVecInWorld = QVector3D(0, 0, -1);
 	UpdateViewMatrixFromDetail();
 
-	projAngle = 30;
+	projAngle = 60;
 	zNear = 0.1;
 	zFar = 1000;
 	UpdateProjMatrixFromDetail();

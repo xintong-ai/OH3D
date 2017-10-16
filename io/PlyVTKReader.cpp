@@ -15,7 +15,7 @@
 #include <vtkPolyDataNormals.h>
 #include <vtkPointData.h>
 #include <vtkSphereSource.h>
-
+#include <vtkXMLPolyDataWriter.h>
 
 void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 {
@@ -67,11 +67,19 @@ void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 		// Try to read normals again
 		hasPointNormals = GetPointNormals(data);
 
-		std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
+		//std::cout << "On the second try, has point normals? " << hasPointNormals << std::endl;
 		if (!hasPointNormals){
 			std::cout << "fail computing normals" << std::endl;
 			exit(0);
 		}
+		std::string oldname = std::string(fname);
+		int l = oldname.length();
+		std::string newname = oldname.substr(0, l - 4) + "-withNormal.vtp";
+		vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+		writer->SetFileName(newname.c_str());
+		writer->SetInputData(data);
+		writer->Write();
+		std::cout << "created a new file with normal at: " << newname << std::endl;
 	}
 	else
 	{
@@ -111,6 +119,7 @@ void PlyVTKReader::readPLYByVTK(const char* fname, PolyMesh* polyMesh)
 		polyMesh->indices[3 * i + 1] = data->GetCell(i)->GetPointId(1);
 		polyMesh->indices[3 * i + 2] = data->GetCell(i)->GetPointId(2);
 	}
+	polyMesh->find_center_and_range();
 }
 
 

@@ -80,6 +80,50 @@ void VolumeCUDA::VolumeCUDA_init(int3 _size, unsigned short *volumeVoxelValues, 
 	}
 }
 
+void VolumeCUDA::VolumeCUDA_init(int3 _size, int *volumeVoxelValues, int allowStore, int numChannels)
+{
+	VolumeCUDA_deinit();
+
+	size = make_cudaExtent(_size.x, _size.y, _size.z);
+	if (numChannels == 4)
+	{
+		channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindSigned);
+	}
+	else if (numChannels == 1)
+	{
+		channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindSigned);
+	}
+	else
+	{
+		channelDesc = cudaCreateChannelDesc(32, 32, 0, 0, cudaChannelFormatKindSigned);
+	}
+
+	checkCudaErrors(cudaMalloc3DArray(&content, &channelDesc, size, allowStore ? cudaArraySurfaceLoadStore : 0));
+
+	// copy data to 3D array
+	if (volumeVoxelValues){
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcPtr = make_cudaPitchedPtr(volumeVoxelValues, size.width*sizeof(int)* numChannels, size.width, size.height);
+		copyParams.dstArray = content;
+		copyParams.extent = size;
+		copyParams.kind = cudaMemcpyHostToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+	}
+	else{
+		int *temp = new int[size.width*size.height*size.depth];
+		memset(temp, 0, sizeof(int)*size.width*size.height*size.depth);
+
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcPtr = make_cudaPitchedPtr(temp, size.width*sizeof(int)* numChannels, size.width, size.height);
+		copyParams.dstArray = content;
+		copyParams.extent = size;
+		copyParams.kind = cudaMemcpyHostToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+		delete[] temp;
+	}
+}
+
+
 void VolumeCUDA::VolumeCUDA_contentUpdate(unsigned short *volumeVoxelValues, int allowStore, int numChannels)
 {
 	if (content == 0){
@@ -147,13 +191,40 @@ void Volume::initVolumeCuda(){
 	volumeCuda.VolumeCUDA_init(size, values, 1, 1); //the third parameter means allowStore or not
 	if (originSaved){
 		volumeCudaOri.VolumeCUDA_deinit();
-		volumeCudaOri.VolumeCUDA_init(size, values, 0, 1);
+		//volumeCudaOri.VolumeCUDA_init(size, values, 0, 1);
+		volumeCudaOri.VolumeCUDA_init(size, values, 1, 1);//specifically set for time varying case
+
 	}
 }
 
 void Volume::reset(){
-	volumeCuda.VolumeCUDA_deinit();
-	volumeCuda.VolumeCUDA_init(size, values, 1, 1);
+	if (values != 0){
+		volumeCuda.VolumeCUDA_deinit();
+		volumeCuda.VolumeCUDA_init(size, values, 1, 1);
+	}
+	else if (volumeCuda.content != 0 && volumeCudaOri.content != 0) {
+		//just copy volumeCudaOri to volumeCuda
+
+		volumeCuda.VolumeCUDA_deinit();
+		volumeCuda.channelDesc = volumeCudaOri.channelDesc;
+		volumeCuda.size = volumeCudaOri.size;
+
+		//int numChannels = 0;
+		//if (volumeCudaOri.channelDesc.x > 0) numChannels++;
+		//if (volumeCudaOri.channelDesc.y > 0) numChannels++;
+		//if (volumeCudaOri.channelDesc.z > 0) numChannels++;
+		//if (volumeCudaOri.channelDesc.w > 0) numChannels++;
+
+		int allowStore = 1; //mostly compared to volumeCudaOri, volumeCuda allows store
+		checkCudaErrors(cudaMalloc3DArray(&volumeCuda.content, &volumeCuda.channelDesc, volumeCuda.size, allowStore ? cudaArraySurfaceLoadStore : 0));
+
+		cudaMemcpy3DParms copyParams = { 0 };
+		copyParams.srcArray = volumeCudaOri.content;
+		copyParams.dstArray = volumeCuda.content;
+		copyParams.extent = volumeCuda.size;
+		copyParams.kind = cudaMemcpyDeviceToDevice;
+		checkCudaErrors(cudaMemcpy3D(&copyParams));
+	}
 }
 
 void Volume::saveRawToFile(const char *f)
@@ -299,6 +370,41 @@ void Volume::computeBilateralFiltering(float* &res, float sigs, float sigr)
 					res[ind] = sum / sumwp;
 				else
 					res[ind] = 0;
+			}
+		}
+	}
+}
+
+inline float gaus(float x, float delta){ //let mu is 0
+	return exp(-x * x / 2.0 / delta / delta) / delta / sqrt(2 * 3.1415926);
+}
+
+void Volume::createSyntheticData()
+{
+	std::cout << "creating synthetic volume data " << std::endl;
+
+	size = make_int3(128, 64, 64);
+	float3 center1 = make_float3(size.x / 4.0, size.y / 2.0, size.y / 2.0);
+	float3 center2 = make_float3(size.x / 4.0 * 3.0, size.y / 2.0, size.y / 2.0);
+	float r = size.x / 9.0;
+	float delta = 2.0;  //use a gaussian shape to set values
+	float coeff = 1.0 / gaus(0, delta); //coeff is to make the peak value of the gaussian shape eqauls 1 
+
+	spacing = make_float3(1, 1, 1);
+	dataOrigin = make_float3(0, 0, 0);
+
+	values = new float[size.x*size.y*size.z];
+
+	for (int k = 0; k < size.z; k++)
+	{
+		for (int j = 0; j < size.y; j++)
+		{
+			for (int i = 0; i < size.x; i++)
+			{
+				int ind = k*size.y * size.x + j*size.x + i;
+				float dis = min(length(make_float3(i, j, k) - center1), length(make_float3(i, j, k) - center2));
+				
+				values[ind] = gaus(dis - r, delta) * coeff;
 			}
 		}
 	}

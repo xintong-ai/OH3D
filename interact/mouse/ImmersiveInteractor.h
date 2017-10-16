@@ -4,20 +4,22 @@
 #include <QVector3D>
 #include <QMatrix4x4>
 
-#include <InfoGuideRenderable.h>
-#include <ViewpointEvaluator.h>
+//#include <InfoGuideRenderable.h>
+//#include <ViewpointEvaluator.h>
 
 #include "MatrixInteractor.h"
 
 class ImmersiveInteractor :public MatrixInteractor
 {
 	//not set
-	QVector3D targetUpVecInLocal = QVector3D(0.0, 0.0, 1.0);
+	const QVector3D targetUpVecInLocal = QVector3D(0.0, 0.0, 1.0);
 	void moveViewHorizontally(int d);
 	void moveViewVertically(int d);
 
 	void RotateLocal(float fromX, float fromY, float toX, float toY);
 	void RotateEye(float fromX, float fromY, float toX, float toY);
+
+	bool newTest = true;
 public:
 	ImmersiveInteractor(){};
 	~ImmersiveInteractor(){};
@@ -31,8 +33,8 @@ public:
 
 	bool noMoveMode = false;
 	
-	InfoGuideRenderable *infoGuideRenderable;
-	ViewpointEvaluator *ve;
+	//InfoGuideRenderable *infoGuideRenderable = 0;
+	//ViewpointEvaluator *ve = 0;
 
 };
 #endif
