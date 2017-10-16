@@ -374,3 +374,38 @@ void Volume::computeBilateralFiltering(float* &res, float sigs, float sigr)
 		}
 	}
 }
+
+inline float gaus(float x, float delta){ //let mu is 0
+	return exp(-x * x / 2.0 / delta / delta) / delta / sqrt(2 * 3.1415926);
+}
+
+void Volume::createSyntheticData()
+{
+	std::cout << "creating synthetic volume data " << std::endl;
+
+	size = make_int3(128, 64, 64);
+	float3 center1 = make_float3(size.x / 4.0, size.y / 2.0, size.y / 2.0);
+	float3 center2 = make_float3(size.x / 4.0 * 3.0, size.y / 2.0, size.y / 2.0);
+	float r = size.x / 9.0;
+	float delta = 2.0;  //use a gaussian shape to set values
+	float coeff = 1.0 / gaus(0, delta); //coeff is to make the peak value of the gaussian shape eqauls 1 
+
+	spacing = make_float3(1, 1, 1);
+	dataOrigin = make_float3(0, 0, 0);
+
+	values = new float[size.x*size.y*size.z];
+
+	for (int k = 0; k < size.z; k++)
+	{
+		for (int j = 0; j < size.y; j++)
+		{
+			for (int i = 0; i < size.x; i++)
+			{
+				int ind = k*size.y * size.x + j*size.x + i;
+				float dis = min(length(make_float3(i, j, k) - center1), length(make_float3(i, j, k) - center2));
+				
+				values[ind] = gaus(dis - r, delta) * coeff;
+			}
+		}
+	}
+}

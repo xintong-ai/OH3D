@@ -73,6 +73,9 @@ public:
 	void SetSnappedGlyphId(int s){ snappedGlyphId = s; }
 	
 	void extractOrientation(int id); //special function for ImmersiveDeformParticle and ImmersiveDeformParticleTV
+
+	void createSyntheticData(float3 _posMin, float3 _posMax, int N);
+
 private:
 
 };

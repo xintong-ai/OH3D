@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <helper_math.h>
-#include <random>
 
 #include "GLWidget.h"
 #include "SphereRenderable.h"
@@ -34,7 +33,7 @@ Window::Window()
 	//Next create an object of Particle.
 	inputParticle = std::make_shared<Particle>();
 
-	initParticleData(inputParticle, posMin, posMax, 100);
+	inputParticle->createSyntheticData(posMin, posMax, 100);
 	//Here we use the default values for the matrixMgr object, and use a function to set the values of inputParticle
 	//In most cases, you need to fill the data object in a certain way
 
@@ -118,32 +117,6 @@ void Window::init()
 {
 }
 
-void Window::initParticleData(std::shared_ptr<Particle> inputParticle, float3 posMin, float3 posMax, int N)
-{
-	//given the boundary of the region, randomly set the position of the particles, and use the index of them as the value for coloring
-
-	double lower_bound = 0;
-	double upper_bound = 1;
-	std::uniform_real_distribution<double> unif(lower_bound, upper_bound);
-	std::default_random_engine re;
-
-	std::vector<float4> pos(N);
-	std::vector<float> val(N);
-
-	float3 rangeDis = posMax - posMin;
-	for (int i = 0; i < N; i++){
-		pos[i] = make_float4(make_float3(unif(re), unif(re), unif(re))*rangeDis + posMin, 0);
-		val[i] = i;
-	}
-	inputParticle->init(pos, val);
-
-	inputParticle->glyphSizeScale.resize(N);
-	for (int i = 0; i < N; i++){
-		inputParticle->glyphSizeScale[i] = i*1.0 / N * 10.0;
-	}
-	inputParticle->glyphBright.assign(N, 1);
-	inputParticle->hasInitedForRendering = true;
-}
 
 void Window::ChangeColorMap()
 {

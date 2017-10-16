@@ -25,7 +25,7 @@ set(SRCS
 	MeshDeformProcessor.cu
 	PhysicalVolumeDeformProcessor.cu
 	PhysicalParticleDeformProcessor.cu
-	PositionBasedDeformProcessor.cu
+	
 	)
 
 set(HDRS	Lens.h
@@ -36,11 +36,15 @@ set(HDRS	Lens.h
 			PhysicalVolumeDeformProcessor.h
 			PhysicalParticleDeformProcessor.h
 			ScreenLensDisplaceProcessor.h
-			PositionBasedDeformProcessor.h
+			
 			)
 
 cuda_add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
+if(BUILD_TEST)
+	set(HDRS ${HDRS} PositionBasedDeformProcessor.h)
+	set(SRCS ${SRCS} PositionBasedDeformProcessor.cu)
+endif()
 
 endif()

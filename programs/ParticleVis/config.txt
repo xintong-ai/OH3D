@@ -5,3 +5,4 @@ DATA_PATHs=D:/Dropbox/ShareXin/particle_pos
 DATA_PATH=C:/Users/lc/Data/Cosmology/particle_pos
 //DATA_PATH=C:/Users/lc/Data/FPM/119.vtu
 DATA_PATH=D:/Data/FPM/smoothinglength_0.44/run11/119.vtu
+DATA_PATH=synthetic

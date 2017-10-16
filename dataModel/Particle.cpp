@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>    // std::random_shuffle
 #include <ctime>        // std::time
+#include <random>
 
 #include <helper_cuda.h>
 #include <helper_math.h>
@@ -182,4 +183,29 @@ void Particle::extractOrientation(int id) //special function for ImmersiveDeform
 	for (int i = 0; i < numParticles; i++){
 		orientation[i] = make_float3(valTuple[i*tupleCount + id], valTuple[i*tupleCount + id + 1], valTuple[i*tupleCount + id + 2]);
 	}
+}
+
+
+void Particle::createSyntheticData(float3 _posMin, float3 _posMax, int N)
+{
+	//given the boundary of the region, randomly set the position of the particles, and use the index of them as the value for coloring
+
+	std::cout << "creating random particla data " << std::endl;
+
+	double lower_bound = 0;
+	double upper_bound = 1;
+	std::uniform_real_distribution<double> unif(lower_bound, upper_bound);
+	std::default_random_engine re;
+
+	std::vector<float4> pos(N);
+	std::vector<float> val(N);
+
+	float3 rangeDis = _posMax - _posMin;
+	for (int i = 0; i < N; i++){
+		pos[i] = make_float4(make_float3(unif(re), unif(re), unif(re))*rangeDis + _posMin, 1);
+		val[i] = i;
+	}
+	init(pos, val);
+
+	initForRendering(1.0, 1.0);
 }

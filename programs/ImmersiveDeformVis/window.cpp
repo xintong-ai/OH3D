@@ -79,7 +79,7 @@ Window::Window()
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
 	positionBasedDeformerConfigure(dataPath, densityThr, checkRadius);
 
-	//rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
+	rcp->tstep = 1;  //this is actually a mistake in the VIS submission version, since rcp will be changed in the construction function of ViewpointEvaluator, which sets the tstep as 1.0
 	//use larger step size in testing phases
 
 
@@ -203,7 +203,7 @@ Window::Window()
 #endif
 
 	///********controls******/
-	bool fullVersion = false;
+	bool fullVersion = true;
 
 	QHBoxLayout *mainLayout = new QHBoxLayout;
 

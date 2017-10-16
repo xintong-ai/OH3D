@@ -14,6 +14,6 @@ eVOLUME_DATA_PATH=D:/Data/colon/DOI/colon1Crop.img
 
 VOLUME_DATA_PATH=C:/Users/lc/Data/moortgat/sand60_067_xw2_resample_61x61x81.vti
 
-VOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
 VOLUME_DATA_PATH=D:/Data/moortgat/sand60_067_xw2_resample_61x61x81.vti
 VOLUME_DATA_PATH=D:/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
+VOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw

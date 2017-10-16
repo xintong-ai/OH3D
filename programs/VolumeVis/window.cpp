@@ -36,11 +36,16 @@ Window::Window()
 	float3 spacing;
 
 	std::shared_ptr<RayCastingParameters> rcp = std::make_shared<RayCastingParameters>();
-	std::string subfolder;
-	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
+	std::string temp;
+	Volume::rawFileInfo(dataPath, dims, spacing, rcp, temp);
 	inputVolume = std::make_shared<Volume>(true);
 
-	if (std::string(dataPath).find(".vec") != std::string::npos){
+	if (std::string(dataPath).find("synthetic") != std::string::npos){
+		inputVolume->createSyntheticData();
+		dims = inputVolume->size;
+		spacing = inputVolume->spacing;
+	}
+	else if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
 		//reader->OutputToVolumeByNormalizedVecMag(inputVolume);
@@ -309,7 +314,7 @@ std::cout << posMax.x << " " << posMax.y << " " << posMax.z << std::endl;
 	rcLayout->addLayout(lsLayout);
 	rcGroupBox->setLayout(rcLayout);
 
-	controlLayout->addWidget(rcGroupBox);
+	//controlLayout->addWidget(rcGroupBox);
 
 
 	controlLayout->addStretch();

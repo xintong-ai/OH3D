@@ -33,7 +33,6 @@
 #include "leap/LeapListener.h"
 #include "leap/MatrixLeapInteractor.h"
 #endif
-//#include "MarchingCube.h"
 #include "VTIReader.h"
 #include "MarchingCube2.h"
 
@@ -72,7 +71,6 @@ Window::Window()
 			std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
 					
-			//std::shared_ptr<MarchingCube> mc = std::make_shared<MarchingCube>(inputVolume, polyMesh);
 			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0010);  //for isovalue adjust applications, use 0.0007 and 0.0013 as start values are good
 			
 			////for camera navi application

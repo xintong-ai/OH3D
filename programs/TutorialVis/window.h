@@ -30,8 +30,6 @@ private:
 	std::shared_ptr<GlyphRenderable> glyphRenderable;
 
 	QPushButton* changeColorMapBtn;
-
-	void initParticleData(std::shared_ptr<Particle> inputParticle, float3, float3, int);
 	
 private slots:
 	void ChangeColorMap();

@@ -4,3 +4,4 @@ VOLUME_DATA_PATH=D:/Dropbox/shareXin/nek256.vec
 dVOLUME_DATA_PATH=C:/Users/lc/Data/Vector/nek256.vec
 VOLUME_DATA_PATH=C:/Users/lc/Dropbox/shareXin/MRI-Phantom-T2_181x217x181_1.raw
 VOLUME_DATA_PATH=D:/Dropbox/shareXin/MGHT2.raw
+VOLUME_DATA_PATH=synthetic
