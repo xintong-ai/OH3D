@@ -34,7 +34,7 @@
 #include "leap/MatrixLeapInteractor.h"
 #endif
 #include "VTIReader.h"
-#include "MarchingCube2.h"
+#include "MarchingCube.h"
 
 bool useMultiplePolyData = false;
 
@@ -71,10 +71,10 @@ Window::Window()
 			std::shared_ptr<Volume> inputVolume = std::make_shared<Volume>(true);
 			VTIReader vtiReader(polyDataPath.c_str(), inputVolume);
 					
-			mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0010);  //for isovalue adjust applications, use 0.0007 and 0.0013 as start values are good
+			mc = std::make_shared<MarchingCube>(polyDataPath.c_str(), polyMesh, 0.0010);  //for isovalue adjust applications, use 0.0007 and 0.0013 as start values are good
 			
 			////for camera navi application
-			//mc = std::make_shared<MarchingCube2>(polyDataPath.c_str(), polyMesh, 0.0004);  
+			//mc = std::make_shared<MarchingCube>(polyDataPath.c_str(), polyMesh, 0.0004);  
 			//disThr = 1;
 			//for camera navi applications, use 0.0004 and 0.001 as first two start values are good
 
@@ -82,7 +82,7 @@ Window::Window()
 
 			polyMesh->setVertexCoordsOri();
 			polyMesh->setVertexDeviateVals();
-			//polyMesh->setVertexColorVals(0);  //VertexColorVals is set by MarchingCube2
+			//polyMesh->setVertexColorVals(0);  //VertexColorVals is set by MarchingCube
 		}
 		else if(std::string(polyDataPath).find(".ply") != std::string::npos){
 			PlyVTKReader plyVTKReader;

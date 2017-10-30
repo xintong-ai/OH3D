@@ -142,6 +142,7 @@ bool ImmersiveInteractor::MouseWheel(int x, int y, int modifier, float v)
 	else{
 		matrixMgr->recentChange = 2;
 	}
+	return true;
 }
 
 void ImmersiveInteractor::keyPress(char key)

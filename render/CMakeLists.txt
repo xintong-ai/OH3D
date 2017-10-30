@@ -12,7 +12,7 @@ message("render is already defined")
 else()
 
 find_package(CUDA REQUIRED)
-list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
+list(APPEND CUDA_NVCC_FLAGS "-arch=sm_50;-std=c++11;-DVERBOSE")
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 include_directories(
@@ -23,7 +23,7 @@ include_directories(
 	 ${CUDA_TOOLKIT_INCLUDE} 
 	required)
 
-set( Srcs 
+set( SRCS 
 	glwidget.cpp 
 	Renderable.cpp 
 	BoxRenderable.cpp 
@@ -41,7 +41,7 @@ set( Srcs
 		GLWidgetQtDrawing.cpp
 		TraceRenderable.cpp
 	)
-set( Hdrs  
+set( HDRS  
 	glwidget.h 
 	Renderable.h 
 	BoxRenderable.h 
@@ -62,8 +62,8 @@ set( Hdrs
 	)
 
 if(USE_TEEM)
-	set(Hdrs ${Hdrs} SQRenderable.h)
-	set(Srcs ${Srcs} SQRenderable.cpp)
+	set(HDRS ${HDRS} SQRenderable.h)
+	set(SRCS ${SRCS} SQRenderable.cpp)
 	include_directories(${Teem_INCLUDE_DIRS})
 
 	IF (WIN32)
@@ -74,8 +74,8 @@ if(USE_TEEM)
 endif()
 
 if(USE_OSVR)
-	set(Hdrs ${Hdrs} VRWidget.h	VRGlyphRenderable.h VRVolumeRenderableCUDA.h)
-	set(Srcs ${Srcs} VRWidget.cpp VRGlyphRenderable.cpp VRVolumeRenderableCUDA.cpp)
+	set(HDRS ${HDRS} VRWidget.h	VRGlyphRenderable.h VRVolumeRenderableCUDA.h)
+	set(SRCS ${SRCS} VRWidget.cpp VRGlyphRenderable.cpp VRVolumeRenderableCUDA.cpp)
 endif()
 
 
@@ -89,7 +89,7 @@ set(CMAKE_AUTOMOC ON)
 
 set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
-cuda_add_library(${PROJECT_NAME} STATIC ${Srcs} ${Hdrs})
+cuda_add_library(${PROJECT_NAME} STATIC ${SRCS} ${HDRS})
 
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 

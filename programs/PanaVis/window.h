@@ -28,7 +28,6 @@ class ImmersiveInteractor;
 class ScreenBrushInteractor;
 class RegularInteractor;
 class LabelVolumeProcessor;
-class ViewpointEvaluator;
 class AnimationByMatrixProcessor;
 class PositionBasedDeformProcessor;
 class SphereRenderable;

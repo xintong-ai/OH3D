@@ -245,7 +245,7 @@ bool LensInteractor::MouseWheel(int x, int y, int modifier, float delta)
 		actor->GetPosRange(posMin, posMax);
 		float3 dif = posMax - posMin;
 		float coeff = min(min(dif.x, dif.y), dif.z) / 10.0 / 20.0 / 20.0;
-		std::cout << "mouse delta" << delta << std::endl;
+		//std::cout << "mouse delta" << delta << std::endl;
 
 		l->ChangeClipDepth(delta*coeff, modelview, projection);
 	}

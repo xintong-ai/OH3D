@@ -14,7 +14,7 @@ endif()
 
 if(BUILD_TEST)
 	if(USE_ITK)
-		#add_subdirectory(PanaVis)
+		add_subdirectory(PanaVis)
 		add_subdirectory(ImmersiveDeformVis)
 		if(USE_VTK)
 			add_subdirectory(ImmersiveDeformPoly)

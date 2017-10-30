@@ -19,7 +19,7 @@ public:
 
 	void compute(int3 volumeSize, float3 spacing, std::shared_ptr<RayCastingParameters>);
 	std::vector<float3> viewpoints;
-	int N = 30;// better be the times of 30 due to 30fps
+	int N = 15; // better be the times of 30 due to 30fps. every 30 
 	//67 74 - 137 107
 private:
 	void saveImage(uint *output, int winWidth, int winHeight);

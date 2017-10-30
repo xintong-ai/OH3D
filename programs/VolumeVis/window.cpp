@@ -39,7 +39,7 @@ Window::Window()
 	std::string temp;
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, temp);
 	inputVolume = std::make_shared<Volume>(true);
-
+	
 	if (std::string(dataPath).find("synthetic") != std::string::npos){
 		inputVolume->createSyntheticData();
 		dims = inputVolume->size;

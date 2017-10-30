@@ -18,14 +18,12 @@ __device__ __host__ inline float4 Float3ToFloat4(float3 v)
 
 __device__ __host__ inline float G(float x, float r)
 {
-	//return pow((r - 1), 2) / (-r * r * x + r) + 2 - 1 / r;
 	return x*(1 - r) + r;
-
 }
 
 __device__ __host__ inline float G_Diff(float x, float r)
 {
-	return pow((r - 1)/ (r * x - 1), 2);
+	return powf((r - 1)/ (r * x - 1), 2);
 }
 
 //used for grid deformation??
@@ -82,7 +80,7 @@ struct functor_Displace
 		if (thrust::get<5>(t) != snappedGlyphId &&
 			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0)
 			|| (snappedFeatureId != -1 && 
-			(thrust::get<4>(t) / ( (int)pow(2, snappedFeatureId - 1) ) )% 2 == 0
+			(thrust::get<4>(t) / ( (int)powf(2, snappedFeatureId - 1) ) )% 2 == 0
 			))){
 
 			float4 clipPos = thrust::get<1>(t);
@@ -151,7 +149,7 @@ struct functor_Displace_LineLens
 		if (thrust::get<5>(t) != snappedGlyphId &&
 			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0)
 			|| (snappedFeatureId != -1 &&
-			(thrust::get<4>(t) / ((int)pow(2, snappedFeatureId - 1))) % 2 == 0
+			(thrust::get<4>(t) / ((int)powf(2, snappedFeatureId - 1))) % 2 == 0
 			))){
 
 			float2 toPoint = screenCoord - make_float2(x, y);
@@ -237,7 +235,7 @@ struct functor_Displace_Curve
 		if (thrust::get<5>(t) != snappedGlyphId &&
 			(!isFreezingFeature || (snappedFeatureId == -1 && thrust::get<4>(t) == 0)
 			|| (snappedFeatureId != -1 &&
-			(thrust::get<4>(t) / ((int)pow(2, snappedFeatureId - 1))) % 2 == 0
+			(thrust::get<4>(t) / ((int)powf(2, snappedFeatureId - 1))) % 2 == 0
 			))){
 
 			float4 clipPos = thrust::get<1>(t);

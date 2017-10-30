@@ -16,7 +16,6 @@
 #include "mouse/ImmersiveInteractor.h"
 #include "mouse/ScreenBrushInteractor.h"
 #include "LabelVolumeProcessor.h"
-#include "ViewpointEvaluator.h"
 #include "GLWidgetQtDrawing.h"
 #include "AnimationByMatrixProcessor.h"
 #include "Particle.h"
@@ -29,16 +28,6 @@
 
 #include "imageComputer.h"
 
-#ifdef USE_OSVR
-#include "VRWidget.h"
-#include "VRVolumeRenderableCUDA.h"
-#endif
-
-#ifdef USE_LEAP
-#include <Leap.h>
-#include "leap/LeapListener.h"
-#include "leap/MatrixLeapInteractor.h"
-#endif
 
 #include "VolumeRenderableCUDAKernel.h"
 
@@ -61,21 +50,15 @@ Window::Window()
 	Volume::rawFileInfo(dataPath, dims, spacing, rcp, subfolder);
 	bool hasLabelFromFile;
 	RawVolumeReader::rawFileReadingInfo(dataPath, volDataType, hasLabelFromFile);
-	
+		
+	//rcp->tstep = 1;
 
-	
-	rcp->tstep = 1;
-
-	std::shared_ptr<RayCastingParameters> rcpMini = std::make_shared<RayCastingParameters>(0.8, 2.0, 2.0, 1.0, 0.1, 0.03, 512, 0.25f, 0.6, false);
 
 	inputVolume = std::make_shared<Volume>(true);
 	if (std::string(dataPath).find(".vec") != std::string::npos){
 		std::shared_ptr<VecReader> reader;
 		reader = std::make_shared<VecReader>(dataPath.c_str());
 		reader->OutputToVolumeByNormalizedVecMag(inputVolume);
-		//reader->OutputToVolumeByNormalizedVecDownSample(inputVolume,2);
-		//reader->OutputToVolumeByNormalizedVecUpSample(inputVolume, 2);
-		//reader->OutputToVolumeByNormalizedVecMagWithPadding(inputVolume,10);
 		reader.reset();
 	}
 	else{
@@ -87,13 +70,6 @@ Window::Window()
 	inputVolume->spacing = spacing;
 	inputVolume->initVolumeCuda();
 	
-	if (rcp->use2DInteg){
-		inputVolume->computeGradient();
-		rcp->secondCutOffLow = 0.19f;
-		rcp->secondCutOffHigh = 0.72f;
-		rcp->secondNormalizationCoeff = inputVolume->maxGadientLength;
-	}
-
 
 	////////////////matrix manager
 	float3 posMin, posMax;
@@ -130,7 +106,6 @@ Window::Window()
 	openGL->setFormat(format); // must be called before the widget or its parent window gets shown
 
 
-
 	//////////////////////////////// Renderable ////////////////////////////////	
 	volumeRenderable = std::make_shared<VolumeRenderableCUDA>(inputVolume);
 	volumeRenderable->rcp = rcp;
@@ -148,18 +123,6 @@ Window::Window()
 	openGL->AddInteractor("1modelImmer", immersiveInteractor.get());
 	openGL->AddInteractor("2modelReg", regularInteractor.get());
 	
-
-
-#ifdef USE_LEAP
-	listener = new LeapListener();
-	controller = new Leap::Controller();
-	controller->setPolicyFlags(Leap::Controller::PolicyFlag::POLICY_OPTIMIZE_HMD);
-	controller->addListener(*listener);
-
-	matrixMgrLeapInteractor = std::make_shared<MatrixLeapInteractor>(matrixMgr);
-	matrixMgrLeapInteractor->SetActor(openGL.get());
-	listener->AddLeapInteractor("matrixMgr", (LeapInteractor*)(matrixMgrLeapInteractor.get()));
-#endif
 
 	///********controls******/
 	QHBoxLayout *mainLayout = new QHBoxLayout;

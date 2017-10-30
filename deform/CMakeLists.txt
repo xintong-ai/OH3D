@@ -5,13 +5,11 @@ set(SHARED_LIB_INCLUDE_DIR ${SHARED_LIB_INCLUDE_DIR} PARENT_SCOPE)
 
 find_package(CUDA REQUIRED)
 
-list(APPEND CUDA_NVCC_FLAGS "-arch=sm_20;-std=c++11;-DVERBOSE")
+list(APPEND CUDA_NVCC_FLAGS "-arch=sm_50;-std=c++11;-DVERBOSE")
 #SET(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 if(TARGET deform)
-
-message("deform is already defined")
-
+	message("deform is already defined")
 else()
 
 include_directories(${SHARED_LIB_INCLUDE_DIR}
@@ -25,7 +23,6 @@ set(SRCS
 	MeshDeformProcessor.cu
 	PhysicalVolumeDeformProcessor.cu
 	PhysicalParticleDeformProcessor.cu
-	
 	)
 
 set(HDRS	Lens.h
@@ -36,15 +33,14 @@ set(HDRS	Lens.h
 			PhysicalVolumeDeformProcessor.h
 			PhysicalParticleDeformProcessor.h
 			ScreenLensDisplaceProcessor.h
-			
 			)
-
-cuda_add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
-set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
 if(BUILD_TEST)
 	set(HDRS ${HDRS} PositionBasedDeformProcessor.h)
 	set(SRCS ${SRCS} PositionBasedDeformProcessor.cu)
 endif()
+
+cuda_add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
+set(CUDA_NVCC_FLAGS_DEBUG "-g -G")
 
 endif()

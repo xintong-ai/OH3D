@@ -19,9 +19,7 @@ include_directories( ${CUDA_TOOLKIT_INCLUDE}
 set(SRCS Volume.cpp Particle.cpp GLMatrixManager.cpp
 	LabelVolumeProcessor.cpp
 	AnimationByMatrixProcessor.cpp Trace.cpp
-	PolyMesh.cpp
 	TimeVaryingParticleDeformerManager.cpp #temporarily to speed up for testing...
-	MarchingCube2.cpp
 	)
 set(HDRS Volume.h Particle.h
  Processor.h 
@@ -30,9 +28,8 @@ set(HDRS Volume.h Particle.h
 	AnimationByMatrixProcessor.h
 	MatrixManager.h
 	myDefineRayCasting.h
-	PolyMesh.h Trace.h
+	 Trace.h
 	TimeVaryingParticleDeformerManager.h
-	MarchingCube2.h
 )
 add_library(${PROJECT_NAME}  STATIC ${HDRS} ${SRCS})
 
@@ -45,6 +42,8 @@ target_link_libraries(${PROJECT_NAME}
 if(USE_VTK)
 	find_package(VTK REQUIRED)
 	include(${VTK_USE_FILE}) 
+	set( HDRS ${HDRS} MarchingCube.h PolyMesh.h)
+	set( SRCS ${SRCS} MarchingCube.cpp PolyMesh.cpp)
 	target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
 endif()
 

@@ -28,12 +28,12 @@ Window::Window()
 	
 	//First we create an object of GLMatrixManager, which stores the matrices used for 3D visualization,
 	//such as model, view, projection matrices.
-	float3 posMin = make_float3(-10, -10, -10), posMax = make_float3(10, 10, 10);
+	float3 posMin = make_float3(-5, -5, -5), posMax = make_float3(5, 5, 5);
 	matrixMgr = std::make_shared<GLMatrixManager>(posMin, posMax);
 	//Next create an object of Particle.
 	inputParticle = std::make_shared<Particle>();
 
-	inputParticle->createSyntheticData(posMin, posMax, 100);
+	inputParticle->createSyntheticData(posMin, posMax, 500);
 	//Here we use the default values for the matrixMgr object, and use a function to set the values of inputParticle
 	//In most cases, you need to fill the data object in a certain way
 
