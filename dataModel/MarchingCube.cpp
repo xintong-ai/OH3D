@@ -1,4 +1,4 @@
-#include "MarchingCube2.h"
+#include "MarchingCube.h"
 #include <PolyMesh.h>
 #include <Algorithm>
 
@@ -28,7 +28,7 @@
 #include <vtkCell.h>
 
 
-MarchingCube2::MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, float value)
+MarchingCube::MarchingCube(const char * fname, std::shared_ptr<PolyMesh> p, float value)
 {
 	polyMesh = p;
 	isoValue0 = value;
@@ -103,7 +103,7 @@ MarchingCube2::MarchingCube2(const char * fname, std::shared_ptr<PolyMesh> p, fl
 	polyMesh->SetPosRange(make_float3(0, 0, 0), make_float3(dataSizes.x, dataSizes.y, dataSizes.z));  //one time call should be enough
 }
 
-void MarchingCube2::computeIsosurface()
+void MarchingCube::computeIsosurface()
 {
 	surface->Update();
 	vtpdata = surface->GetOutput();
@@ -114,7 +114,7 @@ void MarchingCube2::computeIsosurface()
 	//writer->Write();
 }
 
-void MarchingCube2::newIsoValue(float v, int index)
+void MarchingCube::newIsoValue(float v, int index)
 {
 	surface->SetValue(index, v);
 	surface->Update();
@@ -122,7 +122,7 @@ void MarchingCube2::newIsoValue(float v, int index)
 	updatePoly();
 }
 
-void MarchingCube2::updatePoly()
+void MarchingCube::updatePoly()
 {
 	int vertexcount = vtpdata->GetNumberOfPoints();
 	int facecount = vtpdata->GetNumberOfCells();

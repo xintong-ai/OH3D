@@ -44,6 +44,6 @@ Cheng Li, email: li dot 4076 at osu dot com
 
 This program is used for the following publications. Citing it will be appreciated if you use the code for your publication.
 
-[1] X. Tong; C. Li; H. W. Shen, "GlyphLens: View-dependent Occlusion Management in the Interactive Glyph Visualization," in IEEE Transactions on Visualization and Computer Graphics ( Volume: 23, Issue: 1, Jan. 2017, Page(s): 891 - 900) doi: 10.1109/TVCG.2016.2599049 keywords: {Context;Data visualization;Lenses;Probes;Shape;Three-dimensional displays;Visualization;View-dependent visualization;focus + context techniques;glyph-based techniques;human-computer interaction;manipulation and deformation}, URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7539643&isnumber=4359476
+[1] X. Tong; C. Li; H. W. Shen, "GlyphLens: View-dependent Occlusion Management in the Interactive Glyph Visualization," in IEEE Transactions on Visualization and Computer Graphics ( Volume: 23, Issue: 1, Jan. 2017, Page(s): 891 - 900) doi: 10.1109/TVCG.2016.2599049, URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7539643&isnumber=4359476
 
-[2] C. Li, X. Tong, and H.-W. Shen. Virtual retractor: An interactive data exploration system using physically based deformation. In Visualization Symposium (PacificVis), IEEE Pacific, 2017. (in press)
+[2] C. Li, X. Tong, and H.-W. Shen. Virtual retractor: An interactive data exploration system using physically based deformation. IEEE Pacific Visualization Symposium (PacificVis), pp. 51-60, 2017

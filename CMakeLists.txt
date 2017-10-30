@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 2.6)
 
 PROJECT (DeformVis)
 
-find_package(Qt5Widgets REQUIRED)
-	find_package(CUDA REQUIRED)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+
+find_package(Qt5Widgets REQUIRED)
+find_package(CUDA REQUIRED)
+find_package(GLM REQUIRED)
 
 option(BUILD_TUTORIAL "Build a tutorial project" ON)
 
@@ -16,12 +17,6 @@ option(USE_TEEM "Enable features that require Teem" OFF)
 if(USE_TEEM)
 	find_package(Teem REQUIRED)
 endif()
-
-option(USE_GLM "Enable features that require glm" ON)
-if(USE_GLM)
-	find_package(GLM REQUIRED)
-endif()
-
 
 option(USE_LEAP OFF)
 if(USE_LEAP)

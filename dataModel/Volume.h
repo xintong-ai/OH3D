@@ -142,7 +142,7 @@ public:
 			subfolder = "181";
 		}
 		else if (std::string(dataPath).find("synthetic") != std::string::npos){
-			rcp = std::make_shared<RayCastingParameters>(2.6, 0.2, 0.6, 1.0, 0.3, 3, 512, 0.125f, 1.0, false);
+			rcp = std::make_shared<RayCastingParameters>(2.6, 0.2, 0.6, 0.9, 0.1, 3, 1024, 0.125f, 1.0, false);
 		}
 		else if (std::string(dataPath).find("Baseline") != std::string::npos){
 			dims = make_int3(256, 256, 51);

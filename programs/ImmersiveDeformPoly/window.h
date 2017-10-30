@@ -30,7 +30,7 @@ class DeformFrameRenderable;
 class GlyphRenderable;
 class PolyRenderable;
 class PolyMesh;
-class MarchingCube2;
+class MarchingCube;
 
 #ifdef USE_LEAP
 class LeapListener;
@@ -97,7 +97,7 @@ private:
 	std::shared_ptr<QPushButton> saveStateBtn;
 	std::shared_ptr<QPushButton> loadStateBtn;
 
-	std::shared_ptr<MarchingCube2> mc;
+	std::shared_ptr<MarchingCube> mc;
 	QLineEdit *eyePosLineEdit;
 
 	QLabel *isoValueLabel, *isoValueLabel1;

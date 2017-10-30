@@ -14,11 +14,11 @@ include_directories(
 	${CUDA_SDK_ROOT_DIR}/common/inc 
 	required)
 
-set( Srcs 
+set( SRCS 
 	main.cpp 
 	window.cpp 
 	)
-set( Hdrs  
+set( HDRS  
 	window.h 
     )
 	
@@ -27,7 +27,7 @@ configure_file(config.txt config.txt COPYONLY)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 
-add_executable(${PROJECT_NAME} ${Srcs} ${Hdrs} config.txt)
+add_executable(${PROJECT_NAME} ${SRCS} ${HDRS} config.txt)
 
 qt5_use_modules(${PROJECT_NAME} OpenGL Gui Widgets)
 target_link_libraries(${PROJECT_NAME} 
